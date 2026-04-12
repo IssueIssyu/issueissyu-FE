@@ -6,8 +6,8 @@ import androidx.compose.ui.graphics.Color
 
 val BrandColor = Color(0xFF1D87FF)
 val Orange = Color(0xFFFF8A46)
-val LightOrange = Color(0xFFA264) 
-val LightBrown = Color(0xFFAC1C)
+val LightOrange = Color(0xFFFFA264)
+val LightBrown = Color(0xFFFFAC1C)
 val Issue = Color(0xFFFF4800)
 val Shop = Color(0xFFFFAE00)
 val Festival = Color(0xFFBD1AFF)
@@ -21,7 +21,6 @@ val Gray_4 = Color(0xFFCCCCCC)
 val Gray_5 = Color(0xFF999999)
 val Gray_6 = Color(0xFF666666)
 
-// 사용자 정의 색상들을 모아놓은 데이터 클래스
 @Immutable
 data class CustomAppColors(
     val brandColor: Color = BrandColor,
@@ -42,5 +41,4 @@ data class CustomAppColors(
     val gray6: Color = Gray_6
 )
 
-// CompositionLocal을 통해 CustomAppColors를 제공합니다.
 val LocalCustomAppColors = staticCompositionLocalOf { CustomAppColors() }
