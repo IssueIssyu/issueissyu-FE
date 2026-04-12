@@ -2,6 +2,7 @@ package com.issueissyu.fe.core.utils
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import javax.inject.Inject
 
 interface DispatcherProvider {
     val io: CoroutineDispatcher
