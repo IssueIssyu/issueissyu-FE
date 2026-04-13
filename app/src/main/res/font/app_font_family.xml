@@ -25,7 +25,7 @@
 
     <!-- SUITE SemiBold -->
     <font
-        app:font="@font/suite_semibold"
+        app:font="@font/suite_semi_bold"
         app:fontStyle="normal"
         app:fontWeight="400" />
 
