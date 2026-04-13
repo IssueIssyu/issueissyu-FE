@@ -20,7 +20,4 @@
 
 *.log
 *.jks
-*.keystore.idea/
-Get
-Run
-img.png
+*.keystore
