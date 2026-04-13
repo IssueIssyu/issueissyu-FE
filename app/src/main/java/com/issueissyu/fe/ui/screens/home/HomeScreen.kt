@@ -12,7 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.issueissyu.fe.ui.theme.LocalCustomAppColors
+
 import com.issueissyu.fe.ui.viewmodels.HomeViewModel
 
 @Composable
@@ -26,7 +26,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         Text(
             text = uiState.message,
             style = MaterialTheme.typography.headlineSmall,
-            color = LocalCustomAppColors.current.brandColor
+            color = MaterialTheme.colorScheme.primary
         )
     }
 }
