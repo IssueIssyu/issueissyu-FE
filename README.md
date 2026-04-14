@@ -29,23 +29,21 @@
         *   **macOS**: `~/.gradle/caches`
         *   **Windows**: `%USERPROFILE%\.gradle\caches`
 
-### 4. 폰트 파일 추가 (필요시)
+### 4. 네이버 지도 SDK 클라이언트 ID 설정
 
-*   `app/src/main/res/font/` 디렉토리에 `app_font_family.xml`에서 참조하는 `.ttf` 또는 `.otf` 폰트 파일들이 모두 존재하는지 확인합니다.
-*   만약 특정 폰트 파일이 없다는 빌드 오류가 발생하면, 해당 폰트 파일을 `app/src/main/res/font/` 디렉토리 안에 직접 추가해야 합니다.
+네이버 지도 SDK 사용을 위한 클라이언트 ID 설정은 `app/src/main/AndroidManifest.xml`에 있습니다. 아직 클라이언트 ID를 발급받지 않았습니다.
+나중에 [네이버 클라우드 플랫폼](https://www.ncloud.com/)에서 발급받아 `YOUR_NCP_KEY_ID_HERE` 부분을 실제 클라이언트 ID로 대체하면 됩니다.
 
-### 5. Google Maps API Key 설정 (필요시)
-
-*   Google Maps SDK를 사용하는 경우, [Google Cloud Platform](https://console.cloud.google.com/)에서 Maps SDK for Android를 활성화하고 API 키를 발급받아야 합니다.
-*   발급받은 API 키를 `app/src/main/AndroidManifest.xml` 파일 내 `<application>` 태그 안에 다음과 같이 추가합니다. (또는 `local.properties` 등을 통해 안전하게 관리)
-
-    ```xml
+```xml
+<application>
+    <!-- ... -->
     <meta-data
-        android:name="com.google.android.geo.API_KEY"
-        android:value="YOUR_API_KEY" />
-    ```
-    `YOUR_API_KEY` 부분을 발급받은 실제 API 키로 대체합니다.
+        android:name="com.naver.maps.map.NCP_KEY_ID"
+        android:value="YOUR_NCP_KEY_ID_HERE" /> <!-- 실제 클라이언트 ID로 대체 -->
+</application>
+```
+클라이언트 ID는 팀원 간 공유 가능하며, 각 개발자가 개별적으로 발급받을 필요는 없습니다.
 
-### 6. Git 설정
+### 5. Git 설정
 
 *   **`.gitignore` 확인**: `.idea/`와 같은 IDE 관련 파일, 빌드 결과물(`build/`), 개인 키 저장소(`.jks`, `.keystore`) 등이 `.gitignore`에 올바르게 포함되어 있는지 확인하여 불필요한 파일이 커밋되지 않도록 합니다.
