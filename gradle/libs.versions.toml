@@ -3,7 +3,9 @@ agp = "8.7.2"
 kotlin = "2.0.21"
 ksp = "2.0.21-1.0.27"
 kotlinxSerialization = "1.6.3"
-composeBom = "2024.10.01"
+composeBom = "2026.03.00"
+navermaps = "3.23.2"
+material = "1.13.0"
 coreKtx = "1.13.1"
 lifecycleRuntimeKtx = "2.8.6"
 activityCompose = "1.9.2"
@@ -22,6 +24,8 @@ androidxJunit = "1.2.1"
 espressoCore = "3.6.1"
 
 [libraries]
+naver-map-sdk = { group = "com.naver.maps", name = "map-sdk", version.ref = "navermaps" }
+google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }

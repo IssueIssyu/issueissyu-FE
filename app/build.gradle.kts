@@ -57,8 +57,10 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.naver.map.sdk)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.google.material)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.androidx.compose.ui)
