@@ -18,6 +18,10 @@
 .cxx
 **/build/
 
+# .idea/ 디렉토리 내의 무시할 파일들 추가
+.idea/*.xml
+.idea/.gitignore
+
 *.log
 *.jks
 *.keystore
