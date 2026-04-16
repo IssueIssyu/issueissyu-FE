@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<font-family xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!-- SUITE Light -->
+    <font
+        app:font="@font/suite_light"
+        app:fontStyle="normal"
+        app:fontWeight="100" />
+
+    <!-- SUITE Regular -->
+    <font
+        app:font="@font/suite_regular"
+        app:fontStyle="normal"
+        app:fontWeight="200" />
+
+    <!-- SUITE Medium -->
+    <font
+        app:font="@font/suite_medium"
+        app:fontStyle="normal"
+        app:fontWeight="300" />
+
+    <!-- SUITE SemiBold -->
+    <font
+        app:font="@font/suite_semi_bold"
+        app:fontStyle="normal"
+        app:fontWeight="400" />
+
+    <!-- SUITE Bold -->
+    <font
+        app:font="@font/suite_bold"
+        app:fontStyle="normal"
+        app:fontWeight="500" />
+
+    <!-- SUITE ExtraBold -->
+    <font
+        app:font="@font/suite_extra_bold"
+        app:fontStyle="normal"
+        app:fontWeight="600" />
+
+    <!-- SUITE Heavy -->
+    <font
+        app:font="@font/suite_heavy"
+        app:fontStyle="normal"
+        app:fontWeight="700" />
+</font-family>
