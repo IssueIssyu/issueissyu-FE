@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -11,6 +13,10 @@ android {
     namespace = "com.issueissyu.fe"
     compileSdk = 35
 
+    // Read API keys from local.properties
+    val properties = Properties()
+    properties.load(project.rootProject.file("local.properties").inputStream())
+
     defaultConfig {
         applicationId = "com.issueissyu.fe"
         minSdk = 26
@@ -22,6 +28,8 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        buildConfigField("String", "NAVER_MAP_CLIENT_ID", "\"${properties.getProperty("naver.map.client.id")}\"")
+        buildConfigField("String", "NAVER_MAP_CLIENT_SECRET", "\"${properties.getProperty("naver.map.client.secret")}\"")
     }
 
     buildTypes {
