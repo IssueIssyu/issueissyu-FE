@@ -13,7 +13,7 @@ fun AppNavGraph(navController: NavHostController) {
         startDestination = AppDestinations.HOME_ROUTE
     ) {
         composable(AppDestinations.HOME_ROUTE) {
-            HomeScreen()
+            HomeScreen(navController = navController)
         }
         // Add other destinations here
     }
