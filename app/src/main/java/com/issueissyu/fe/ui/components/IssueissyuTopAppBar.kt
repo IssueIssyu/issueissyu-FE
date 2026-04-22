@@ -38,8 +38,6 @@ fun IssueissyuTopAppBar(
             titleContentColor = MaterialTheme.colorScheme.primary,
         ),
         modifier = modifier
-            .height(70.dp)
-            .padding(vertical = 10.dp) // Adjust vertical padding as needed
     )
 }
 
