@@ -27,7 +27,7 @@ fun HomeScreen(
     val uiState = viewModel.uiState.value
     Scaffold(
         topBar = {
-            IssueissyuTopAppBar(onBackClick = { navController.popBackStack() })
+            IssueissyuTopAppBar(onBackClick = onBackClick)
         }
     ) { paddingValues ->
         Column(
