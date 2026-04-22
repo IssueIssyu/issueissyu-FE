@@ -13,7 +13,7 @@ fun AppNavGraph(navController: NavHostController) {
         startDestination = AppDestinations.HOME_ROUTE
     ) {
         composable(AppDestinations.HOME_ROUTE) {
-            HomeScreen(navController = navController)
+            HomeScreen(onBackClick = { navController.popBackStack() })
         }
         // Add other destinations here
     }
