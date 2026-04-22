@@ -21,7 +21,7 @@ import com.issueissyu.fe.ui.viewmodels.HomeViewModel
 
 @Composable
 fun HomeScreen(
-    navController: NavController,
+    onBackClick: () -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState = viewModel.uiState.value
