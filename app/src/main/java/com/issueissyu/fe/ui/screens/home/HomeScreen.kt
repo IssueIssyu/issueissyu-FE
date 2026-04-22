@@ -10,6 +10,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ShoppingCart
+import com.issueissyu.fe.ui.components.CategoryButtons
+import com.issueissyu.fe.ui.components.CategoryItem
+import com.issueissyu.fe.ui.theme.Communication
+import com.issueissyu.fe.ui.theme.Festival
+import com.issueissyu.fe.ui.theme.Gray_7
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,13 +44,25 @@ fun HomeScreen(
             IssueissyuTopAppBar(onBackClick = onBackClick)
         }
     ) { paddingValues ->
+        var selectedCategory by remember { mutableStateOf<String?>(null) }
+        val sampleCategories = listOf(
+            CategoryItem("이슈", Icons.Default.List, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.errorContainer),
+            CategoryItem("가게", Icons.Default.ShoppingCart, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer),
+            CategoryItem("축제", Icons.Default.Star, Festival, MaterialTheme.colorScheme.tertiaryContainer),
+            CategoryItem("소통", Icons.Default.LocationOn, Communication, MaterialTheme.colorScheme.secondaryContainer)
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Top // 상단에 배치
         ) {
+            CategoryButtons(
+                categories = sampleCategories,
+                selectedCategory = selectedCategory,
+                onCategorySelected = { categoryName -> selectedCategory = categoryName }
+            )
             Text(
                 text = uiState.message,
                 style = MaterialTheme.typography.headlineSmall,
