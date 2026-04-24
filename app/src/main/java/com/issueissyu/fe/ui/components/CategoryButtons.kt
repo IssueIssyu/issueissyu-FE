@@ -24,9 +24,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.issueissyu.fe.R
@@ -34,7 +37,6 @@ import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.Shop
-
 
 data class CategoryItem(
     val name: String,
@@ -65,6 +67,7 @@ fun CategoryButtons(
         ) {
             items(categories) { category ->
                 val isSelected = category.name == selectedCategory
+                val chipShape = RoundedCornerShape(18.dp)
 
                 FilterChip(
                     selected = isSelected,
@@ -82,7 +85,7 @@ fun CategoryButtons(
                             modifier = Modifier.size(FilterChipDefaults.IconSize)
                         )
                     },
-                    shape = RoundedCornerShape(18.dp),
+                    shape = chipShape,
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.onSecondary,
                         labelColor = MaterialTheme.colorScheme.onBackground,
@@ -91,13 +94,9 @@ fun CategoryButtons(
                         selectedLabelColor = MaterialTheme.colorScheme.onBackground,
                         selectedLeadingIconColor = category.iconColor
                     ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = isSelected,
-                        borderColor = MaterialTheme.colorScheme.outline,
-                        selectedBorderColor = MaterialTheme.colorScheme.outline
-                    ),
-                    modifier = Modifier.height(36.dp)
+                    modifier = Modifier
+                        .height(36.dp)
+                        .bottomOnlyDropShadow(chipShape)
                 )
             }
         }
@@ -113,21 +112,45 @@ fun CategoryButtons(
     }
 }
 
+fun Modifier.bottomOnlyDropShadow(
+    shape: RoundedCornerShape = RoundedCornerShape(18.dp)
+): Modifier = this.dropShadow(
+    shape = shape,
+    shadow = Shadow(
+        radius = 8.dp,
+        spread = (-5).dp,
+        color = Color.Black.copy(alpha = 0.3f),
+        offset = DpOffset(0.dp, 5.dp)
+    )
+)
+
 @Preview(showBackground = true)
 @Composable
 fun PreviewCategoryButtons() {
-    val sampleCategories = listOf(
-        CategoryItem("이슈", R.drawable.issue, Issue, MaterialTheme.colorScheme.errorContainer),
-        CategoryItem("소통", R.drawable.communicate, Communication, MaterialTheme.colorScheme.secondaryContainer),
-        CategoryItem("가게", R.drawable.shop, Shop, MaterialTheme.colorScheme.primaryContainer),
-        CategoryItem("축제", R.drawable.festival, Festival, MaterialTheme.colorScheme.tertiaryContainer)
-    )
+    val errorContainer = MaterialTheme.colorScheme.errorContainer
+    val secondaryContainer = MaterialTheme.colorScheme.secondaryContainer
+    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val tertiaryContainer = MaterialTheme.colorScheme.tertiaryContainer
+
+    val sampleCategories = remember(
+        errorContainer,
+        secondaryContainer,
+        primaryContainer,
+        tertiaryContainer
+    ) {
+        listOf(
+            CategoryItem("이슈", R.drawable.issue, Issue, errorContainer),
+            CategoryItem("소통", R.drawable.communicate, Communication, secondaryContainer),
+            CategoryItem("가게", R.drawable.shop, Shop, primaryContainer),
+            CategoryItem("축제", R.drawable.festival, Festival, tertiaryContainer)
+        )
+    }
     var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     CategoryButtons(
         categories = sampleCategories,
         selectedCategory = selectedCategory,
         onCategorySelected = { selectedCategory = it },
-        onNotificationClick = { /* 알림 클릭 시 동작 */ }
+        onNotificationClick = { print("hello") }
     )
 }
