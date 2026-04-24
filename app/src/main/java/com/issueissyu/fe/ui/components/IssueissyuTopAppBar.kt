@@ -23,17 +23,20 @@ import androidx.compose.ui.tooling.preview.Preview
 @Composable
 fun IssueissyuTopAppBar(
     onBackClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showBackButton: Boolean = true
 ) {
     TopAppBar(
         title = { /* No title needed */ },
         navigationIcon = {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = "Back",
-                    modifier = Modifier.size(36.dp)
-                )
+            if (showBackButton) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                        contentDescription = "Back",
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -42,13 +45,17 @@ fun IssueissyuTopAppBar(
             titleContentColor = MaterialTheme.colorScheme.primary,
         ),
         modifier = modifier
-            .height(70.dp)
-            .padding(vertical = 10.dp) // Adjust vertical padding as needed
     )
 }
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewIssueissyuTopAppBar() {
-    IssueissyuTopAppBar(onBackClick = { /* Do nothing for preview */ })
+    IssueissyuTopAppBar(onBackClick = { /* Do nothing for preview */ }, showBackButton = true)
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewIssueissyuTopAppBarNoBack() {
+    IssueissyuTopAppBar(onBackClick = { /* Do nothing for preview */ }, showBackButton = false)
 }
