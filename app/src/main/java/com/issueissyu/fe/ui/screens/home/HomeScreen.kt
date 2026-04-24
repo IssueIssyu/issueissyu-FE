@@ -15,17 +15,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.ShoppingCart
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
 import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Gray_7
+import com.issueissyu.fe.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,10 +41,10 @@ fun HomeScreen(
     ) { paddingValues ->
         var selectedCategory by remember { mutableStateOf<String?>(null) }
         val sampleCategories = listOf(
-            CategoryItem("이슈", Icons.Default.List, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.errorContainer),
-            CategoryItem("가게", Icons.Default.ShoppingCart, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer),
-            CategoryItem("축제", Icons.Default.Star, Festival, MaterialTheme.colorScheme.tertiaryContainer),
-            CategoryItem("소통", Icons.Default.LocationOn, Communication, MaterialTheme.colorScheme.secondaryContainer)
+            CategoryItem("이슈", R.drawable.issue, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.errorContainer),
+            CategoryItem("소통", R.drawable.communicate, Communication, MaterialTheme.colorScheme.secondaryContainer),
+            CategoryItem("가게", R.drawable.shop, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer),
+            CategoryItem("축제", R.drawable.festival, Festival, MaterialTheme.colorScheme.tertiaryContainer)
         )
         Column(
             modifier = Modifier
@@ -61,7 +56,8 @@ fun HomeScreen(
             CategoryButtons(
                 categories = sampleCategories,
                 selectedCategory = selectedCategory,
-                onCategorySelected = { categoryName -> selectedCategory = categoryName }
+                onCategorySelected = { categoryName -> selectedCategory = categoryName },
+                onNotificationClick = {}
             )
             Text(
                 text = uiState.message,
