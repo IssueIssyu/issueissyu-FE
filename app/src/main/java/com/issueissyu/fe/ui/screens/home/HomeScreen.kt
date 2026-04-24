@@ -20,6 +20,12 @@ import com.issueissyu.fe.ui.components.CategoryItem
 import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Gray_7
+import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Issue
+import com.issueissyu.fe.ui.theme.LightOrange
+import com.issueissyu.fe.ui.theme.ShopContainerLight
+import com.issueissyu.fe.ui.theme.IssueContainerLight
+import com.issueissyu.fe.ui.theme.CommunicationContainerLight
 import com.issueissyu.fe.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,12 +46,14 @@ fun HomeScreen(
         }
     ) { paddingValues ->
         var selectedCategory by remember { mutableStateOf<String?>(null) }
-        val sampleCategories = listOf(
-            CategoryItem("이슈", R.drawable.issue, MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.errorContainer),
-            CategoryItem("소통", R.drawable.communicate, Communication, MaterialTheme.colorScheme.secondaryContainer),
-            CategoryItem("가게", R.drawable.shop, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer),
-            CategoryItem("축제", R.drawable.festival, Festival, MaterialTheme.colorScheme.tertiaryContainer)
-        )
+        val sampleCategories = remember {
+            listOf(
+                CategoryItem("이슈", R.drawable.issue, Issue, IssueContainerLight),
+                CategoryItem("소통", R.drawable.communicate, Communication, LightOrange),
+                CategoryItem("가게", R.drawable.shop, BrandColor, CommunicationContainerLight),
+                CategoryItem("축제", R.drawable.festival, Festival, ShopContainerLight)
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
