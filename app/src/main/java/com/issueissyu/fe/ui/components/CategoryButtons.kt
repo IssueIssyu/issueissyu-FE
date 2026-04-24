@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,9 @@ import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.Shop
+import com.issueissyu.fe.ui.theme.White
+import com.issueissyu.fe.ui.theme.Gray_8
+import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 data class CategoryItem(
     val name: String,
@@ -75,7 +79,7 @@ fun CategoryButtons(
                         onCategorySelected(if (isSelected) null else category.name)
                     },
                     label = {
-                        Text(text = category.name, fontSize = 13.sp)
+                        Text(text = category.name, fontSize = 13.sp, fontFamily = suiteFontFamily, fontWeight = FontWeight.ExtraBold)
                     },
                     leadingIcon = {
                         Icon(
@@ -90,8 +94,8 @@ fun CategoryButtons(
                         containerColor = MaterialTheme.colorScheme.onSecondary,
                         labelColor = MaterialTheme.colorScheme.onBackground,
                         iconColor = category.iconColor,
-                        selectedContainerColor = category.backgroundColor,
-                        selectedLabelColor = MaterialTheme.colorScheme.onBackground,
+                        selectedContainerColor = Gray_8,
+                        selectedLabelColor = White,
                         selectedLeadingIconColor = category.iconColor
                     ),
                     modifier = Modifier
