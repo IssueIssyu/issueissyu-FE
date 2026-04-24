@@ -7,6 +7,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -35,32 +36,34 @@ fun BottomNavigationBar(
     navController: NavHostController,
     currentRoute: String?
 ) {
-    val items = listOf(
-        BottomNavItem(
-            label = "컬렉션",
-            icon = R.drawable.collectiondefault,
-            selectedIcon = R.drawable.collectionselected,
-            route = AppDestinations.COLLECTION_ROUTE
-        ),
-        BottomNavItem(
-            label = "동네",
-            icon = R.drawable.towndefault,
-            selectedIcon = R.drawable.townselected,
-            route = AppDestinations.TOWN_ROUTE
-        ),
-        BottomNavItem(
-            label = "커뮤니티",
-            icon = R.drawable.communitydefault,
-            selectedIcon = R.drawable.communityselected,
-            route = AppDestinations.COMMUNITY_ROUTE
-        ),
-        BottomNavItem(
-            label = "마이페이지",
-            icon = R.drawable.mypagedefault,
-            selectedIcon = R.drawable.mypageselected,
-            route = AppDestinations.MYPAGE_ROUTE
+    val items = remember {
+        listOf(
+            BottomNavItem(
+                label = "컬렉션",
+                icon = R.drawable.collectiondefault,
+                selectedIcon = R.drawable.collectionselected,
+                route = AppDestinations.COLLECTION_ROUTE
+            ),
+            BottomNavItem(
+                label = "동네",
+                icon = R.drawable.towndefault,
+                selectedIcon = R.drawable.townselected,
+                route = AppDestinations.TOWN_ROUTE
+            ),
+            BottomNavItem(
+                label = "커뮤니티",
+                icon = R.drawable.communitydefault,
+                selectedIcon = R.drawable.communityselected,
+                route = AppDestinations.COMMUNITY_ROUTE
+            ),
+            BottomNavItem(
+                label = "마이페이지",
+                icon = R.drawable.mypagedefault,
+                selectedIcon = R.drawable.mypageselected,
+                route = AppDestinations.MYPAGE_ROUTE
+            )
         )
-    )
+    }
 
     NavigationBar {
         items.forEach { item ->
