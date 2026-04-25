@@ -1,9 +1,6 @@
 package com.issueissyu.fe
 
 import android.app.Application
-import com.issueissyu.fe.BuildConfig
-import com.naver.maps.map.NaverMapSdk
-import com.naver.maps.map.NaverMapSdk.NcpKeyClient
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
