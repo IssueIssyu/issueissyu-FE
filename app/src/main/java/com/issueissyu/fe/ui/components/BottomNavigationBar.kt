@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.painterResource
 import com.issueissyu.fe.R
 import androidx.compose.ui.text.font.FontWeight
-import com.issueissyu.fe.ui.theme.suiteFontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -23,6 +22,7 @@ import com.issueissyu.fe.ui.navigation.AppDestinations
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
+import androidx.compose.material3.MaterialTheme
 
 data class BottomNavItem(
     val label: String,
@@ -90,9 +90,10 @@ fun BottomNavigationBar(
                 label = {
                     Text(
                         text = item.label,
-                        fontFamily = suiteFontFamily,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 12.sp
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontSize = 12.sp,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                        )
                     )
                 },
                 colors = NavigationBarItemDefaults.colors(

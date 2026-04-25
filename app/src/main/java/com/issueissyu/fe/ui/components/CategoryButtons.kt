@@ -40,7 +40,6 @@ import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.Shop
 import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.Gray_8
-import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 data class CategoryItem(
     val name: String,
@@ -79,7 +78,13 @@ fun CategoryButtons(
                         onCategorySelected(if (isSelected) null else category.name)
                     },
                     label = {
-                        Text(text = category.name, fontSize = 13.sp, fontFamily = suiteFontFamily, fontWeight = FontWeight.ExtraBold)
+                        Text(
+                            text = category.name,
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
+                        )
                     },
                     leadingIcon = {
                         Icon(
