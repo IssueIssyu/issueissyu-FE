@@ -1,3 +1,4 @@
+import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
@@ -14,8 +15,12 @@ android {
     compileSdk = 35
 
     // Read API keys from local.properties
-    val properties = Properties()
-    properties.load(project.rootProject.file("local.properties").inputStream())
+    val localProperties = Properties().apply {
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            load(FileInputStream(localPropertiesFile))
+        }
+    }
 
     defaultConfig {
         applicationId = "com.issueissyu.fe"
@@ -28,8 +33,8 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        buildConfigField("String", "NAVER_MAP_CLIENT_ID", "\"${properties.getProperty("naver.map.client.id")}\"")
-        buildConfigField("String", "NAVER_MAP_CLIENT_SECRET", "\"${properties.getProperty("naver.map.client.secret")}\"")
+        val naverMapNcpKeyId = localProperties.getProperty("naver.map.client.id") ?: ""
+        manifestPlaceholders["NCP_KEY_ID"] = naverMapNcpKeyId
     }
 
     buildTypes {
