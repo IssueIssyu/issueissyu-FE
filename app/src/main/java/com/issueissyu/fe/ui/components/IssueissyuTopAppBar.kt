@@ -1,58 +1,78 @@
 package com.issueissyu.fe.ui.components
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.ui.unit.dp
-
-import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import com.issueissyu.fe.ui.theme.IssueissyuTheme
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IssueissyuTopAppBar(
-    onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
-    showBackButton: Boolean = true
+    onBackClick: () -> Unit = {},
+    showBackButton: Boolean = true,
+    titleText: String? = null
 ) {
-    TopAppBar(
-        title = { /* No title needed */ },
+    CenterAlignedTopAppBar(
+        title = {
+            titleText?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+            }
+        },
+        modifier = modifier,
+        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent
+        ),
         navigationIcon = {
             if (showBackButton) {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                        contentDescription = "Back",
-                        modifier = Modifier.size(36.dp)
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "뒤로가기"
                     )
                 }
             }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = Color.Transparent,
-            titleContentColor = MaterialTheme.colorScheme.primary,
-        ),
-        modifier = modifier
+        }
     )
 }
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewIssueissyuTopAppBar() {
-    IssueissyuTopAppBar(onBackClick = { /* Do nothing for preview */ }, showBackButton = true)
+fun PreviewIssueissyuTopAppBarNoTitle() {
+    IssueissyuTheme {
+        IssueissyuTopAppBar(
+            showBackButton = true,
+            titleText = null
+        )
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewIssueissyuTopAppBarNoBack() {
-    IssueissyuTopAppBar(onBackClick = { /* Do nothing for preview */ }, showBackButton = false)
+fun PreviewIssueissyuTopAppBarWithTitle() {
+    IssueissyuTheme {
+        IssueissyuTopAppBar(
+            showBackButton = true,
+            titleText = "이슈 작성"
+        )
+    }
 }
