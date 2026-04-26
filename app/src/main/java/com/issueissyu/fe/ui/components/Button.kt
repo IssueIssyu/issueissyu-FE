@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +41,7 @@ import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueContainer
 import com.issueissyu.fe.ui.theme.IssueContainerLight
+import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.suiteFontFamily
 
@@ -66,17 +66,9 @@ fun CommonButton(
         ),
         contentPadding = PaddingValues(18.dp)
     ){
-        Text(
-            text = text,
-            fontFamily = suiteFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            //typography 쓰는 방안 고려
-        )
+        Text( text = text, style = IssueTypo.Bold18 )
     }
 }
-
-// 로그인은 네이버/카카오에서 지정한 이미지를 사용할 예정
 
 //수정 버튼
 enum class BtnSize(val btn: Dp, val icon: Dp){
@@ -203,10 +195,7 @@ fun GoNowButton(
         Spacer(modifier = Modifier.width(5.dp))
         Text(
             text = state.label,
-            fontFamily = suiteFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = state.textColor,
+            style = IssueTypo.Bold18.copy(color = state.textColor)
         )
     }
 }
@@ -237,10 +226,7 @@ fun SignButton(
         Spacer(modifier = Modifier.width(5.dp))
         Text(
             text = "청원 ($count)",
-            fontFamily = suiteFontFamily,
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            color = White
+            style = IssueTypo.Bold18.copy(color = White)
         )
     }
 }
