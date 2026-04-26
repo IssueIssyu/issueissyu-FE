@@ -37,7 +37,7 @@ fun IssueissyuTopAppBar(
             }
         },
         modifier = modifier,
-        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Transparent,
             scrolledContainerColor = Color.Transparent
         ),
