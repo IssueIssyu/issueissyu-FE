@@ -21,8 +21,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun IssueissyuTopAppBar(
     modifier: Modifier = Modifier,
-    onBackClick: () -> Unit = {},
-    showBackButton: Boolean = true,
+    onBackClick: (() -> Unit)? = null,
     titleText: String? = null
 ) {
     CenterAlignedTopAppBar(
@@ -43,8 +42,8 @@ fun IssueissyuTopAppBar(
             scrolledContainerColor = Color.Transparent
         ),
         navigationIcon = {
-            if (showBackButton) {
-                IconButton(onClick = onBackClick) {
+            onBackClick?.let { onClickAction ->
+                IconButton(onClick = onClickAction) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "뒤로가기"
@@ -60,7 +59,7 @@ fun IssueissyuTopAppBar(
 fun PreviewIssueissyuTopAppBarNoTitle() {
     IssueissyuTheme {
         IssueissyuTopAppBar(
-            showBackButton = true,
+            onBackClick = {},
             titleText = null
         )
     }
@@ -71,7 +70,7 @@ fun PreviewIssueissyuTopAppBarNoTitle() {
 fun PreviewIssueissyuTopAppBarWithTitle() {
     IssueissyuTheme {
         IssueissyuTopAppBar(
-            showBackButton = true,
+            onBackClick = {},
             titleText = "이슈 작성"
         )
     }
