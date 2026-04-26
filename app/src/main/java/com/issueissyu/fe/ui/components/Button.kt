@@ -183,14 +183,13 @@ enum class ActionState(
 @Composable
 fun GoNowButton(
     state: ActionState = ActionState.DEFAULT,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ){
     Button(
         onClick = onClick,
         enabled = state == ActionState.DEFAULT,
-        modifier = Modifier
-            .width(180.dp)  //fillmaxwidth쓸 수 있는지 검토 필요
-            .height(52.dp),
+        modifier = modifier.height(52.dp),
         shape = RoundedCornerShape(15.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = state.bgColor,
@@ -218,13 +217,12 @@ fun SignButton(
     isSigned: Boolean = false,
     count: Int,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ){
     Button(
         onClick = onClick,
         enabled = !isSigned,
-        modifier = Modifier
-            .width(180.dp)
-            .height(52.dp),
+        modifier = modifier.height(52.dp),
         shape = RoundedCornerShape(15.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Orange,
@@ -232,12 +230,13 @@ fun SignButton(
         )
     ){
         Image(
-            painter = painterResource(R.drawable.ic_notification),
-            contentDescription = null
+            painter = painterResource(R.drawable.ic_megaphone),
+            contentDescription = null,
+            Modifier.size(26.dp)
         )
         Spacer(modifier = Modifier.width(5.dp))
         Text(
-            text = "청원",
+            text = "청원 ($count)",
             fontFamily = suiteFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
@@ -300,7 +299,16 @@ fun ButtonPreview(){
             onSaveClick = {},
             onReportClick = {}
         )
-        GoNowButton(onClick = { })
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp, 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ){
+            GoNowButton(onClick = { }, modifier = Modifier.weight(1f))
+            SignButton(count = 0, onClick = { }, modifier = Modifier.weight(1f))
+        }
+
         GoNowButton(onClick = { }, state = ActionState.MOVING)
         GoNowButton(onClick = { }, state = ActionState.DONE)
         SignButton(count = 0, onClick = { })
