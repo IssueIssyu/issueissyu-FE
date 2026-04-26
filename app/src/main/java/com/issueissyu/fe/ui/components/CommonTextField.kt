@@ -64,8 +64,8 @@ fun CommonTextField(
                         .height(boxHeight)
                         .background(White, RoundedCornerShape(15.dp))
                         .border(1.dp, Gray_4, RoundedCornerShape(15.dp))
-                        .padding(horizontal = 18.dp),
-                    contentAlignment = Alignment.CenterStart
+                        .padding(18.dp),
+                    contentAlignment = Alignment.TopStart
                 ){
                     if (value.isEmpty() && placeholder.isNotEmpty()){
                         Text(
