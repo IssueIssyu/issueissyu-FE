@@ -32,7 +32,7 @@ import com.issueissyu.fe.ui.theme.White
 
 @Composable
 fun CommonTextField(
-    value: String = "",
+    value: String,
     onValueChange: (String) -> Unit,
     label: String = "",
     placeholder: String = "",
