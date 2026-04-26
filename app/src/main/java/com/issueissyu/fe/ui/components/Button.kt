@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
 import com.issueissyu.fe.ui.theme.White
@@ -53,16 +56,15 @@ fun CommonButton(
     Button(
         onClick = onClick,
         enabled = isEnabled,
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(vertical = 18.dp),
+        modifier = modifier,
         shape = RoundedCornerShape(15.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = BrandColor,
             contentColor = Gray_1,
             disabledContainerColor = Gray_3,
             disabledContentColor = Gray_5
-        )
+        ),
+        contentPadding = PaddingValues(18.dp)
     ){
         Text(
             text = text,
@@ -103,14 +105,14 @@ private fun CircleIconButton(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ){
-        Icon(
+        Image(
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
             modifier = Modifier.size(size.icon),
         )
     }
 }
-/*
+
 @Composable
 fun EditButton(
     isAuthor: Boolean,
@@ -126,13 +128,13 @@ fun EditButton(
         when{
             isAuthor && !isEditing -> {
                 CircleIconButton(
-                    iconRes = /* 값 넣어야 돼*/,
+                    iconRes = R.drawable.ic_edit,
                     contentDescription = "수정",
                     size = size,
                     onClick = onEditClick
                 )
                 CircleIconButton(
-                    iconRes = /*채워넣어*/,
+                    iconRes = R.drawable.ic_delete,
                     contentDescription = "삭제",
                     size = size,
                     onClick = onDeleteClick
@@ -140,21 +142,22 @@ fun EditButton(
             }
             isAuthor && isEditing -> {
                 CircleIconButton(
-                    iconRes = /*채워넣어*/,
+                    iconRes = R.drawable.ic_cancel,
                     contentDescription = "취소",
                     size = size,
                     onClick = onCancelClick
                 )
                 CircleIconButton(
-                    iconRes = /*채워*/,
+                    iconRes = R.drawable.ic_edit_complete,
                     contentDescription = "저장",
                     size = size,
-                    onClick = onSaveClick
+                    onClick = onSaveClick,
+                    containerColor = BrandColor
                 )
             }
             else -> {
                 CircleIconButton(
-                    iconRes = /*채워*/,
+                    iconRes = R.drawable.ic_report,
                     contentDescription = "신고",
                     size = size,
                     onClick = onReportClick
@@ -172,9 +175,9 @@ enum class ActionState(
     val bgColor: Color,
     val textColor: Color
 ){
-    DEFAULT("지금 가요", /*첩부 필요*/, Gray_1, Issue),
-    MOVING("이동중", /*첨부 필요*/, CommunicationContainerLight, BrandColor),
-    DONE("참여 완료", /*첨부 필요*/, IssueContainerLight, Orange)
+    DEFAULT("지금 가요", R.drawable.ic_fire, Gray_1, Issue),
+    MOVING("이동중", R.drawable.ic_moving, IssueContainerLight, Orange),
+    DONE("참여 완료", R.drawable.ic_complete, CommunicationContainerLight, BrandColor)
 }
 
 @Composable
@@ -194,7 +197,7 @@ fun GoNowButton(
             disabledContainerColor = state.bgColor
         ),
         ){
-        Icon(
+        Image(
             painter = painterResource(state.iconRes),
             contentDescription = null
         )
@@ -228,8 +231,8 @@ fun SignButton(
             disabledContentColor = IssueContainer
         )
     ){
-        Icon(
-            painter = painterResource(/*리소스적으셈*/),
+        Image(
+            painter = painterResource(R.drawable.ic_notification),
             contentDescription = null
         )
         Spacer(modifier = Modifier.width(5.dp))
@@ -244,15 +247,62 @@ fun SignButton(
 }
 
 
+
 @Preview(showBackground = true)
 @Composable
 fun ButtonPreview(){
     Column(){
-        CommonButton(text = "동의", onClick = {})
-        CommonButton(text = "작성 완료", onClick = {}, isEnabled = false)
-        //EditButton() 아 그만하고 싶다
-        //GoNowButton(onClick = { })
+        CommonButton(
+            text = "동의",
+            onClick = {},
+            modifier = Modifier.fillMaxWidth()
+        )
+        CommonButton(
+            text = "작성 완료",
+            onClick = {},
+            modifier = Modifier.fillMaxWidth(),
+            isEnabled = false)
+
+        EditButton(
+            isAuthor = true,
+            isEditing = false,
+            onEditClick = {},
+            onDeleteClick = {},
+            onCancelClick = {},
+            onSaveClick = {},
+            onReportClick = {},
+            size = BtnSize.Small
+        )
+        EditButton(
+            isAuthor = true,
+            isEditing = false,
+            onEditClick = {},
+            onDeleteClick = {},
+            onCancelClick = {},
+            onSaveClick = {},
+            onReportClick = {}
+        )
+        EditButton(
+            isAuthor = true,
+            isEditing = true,
+            onEditClick = {},
+            onDeleteClick = {},
+            onCancelClick = {},
+            onSaveClick = {},
+            onReportClick = {},
+        )
+        EditButton(
+            isAuthor = false,
+            isEditing = false,
+            onEditClick = {},
+            onDeleteClick = {},
+            onCancelClick = {},
+            onSaveClick = {},
+            onReportClick = {}
+        )
+        GoNowButton(onClick = { })
+        GoNowButton(onClick = { }, state = ActionState.MOVING)
+        GoNowButton(onClick = { }, state = ActionState.DONE)
         SignButton(count = 0, onClick = { })
     }
 }
- */
