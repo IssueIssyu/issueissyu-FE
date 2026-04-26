@@ -25,12 +25,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 @Composable
 fun CommonTextField(
@@ -57,7 +55,7 @@ fun CommonTextField(
             value = value,
             onValueChange = { newValue -> if (newValue.length <= maxLength) onValueChange(newValue)},
             maxLines = maxLines,
-            textStyle = IssueTypo.Regular18.copy(color = Title),
+            textStyle = textStyle.copy(color = Title),
             visualTransformation = if(isPassword) PasswordVisualTransformation() else VisualTransformation.None,
             decorationBox = {
                 innerTextField -> Box(
