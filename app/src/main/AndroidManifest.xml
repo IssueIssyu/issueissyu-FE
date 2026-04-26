@@ -10,6 +10,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.App">
 
+        <!-- 네이버 지도 클라이언트 ID 설정 (NCP_KEY_ID 사용) -->
+        <meta-data
+            android:name="com.naver.maps.map.NCP_KEY_ID"
+            android:value="${NCP_KEY_ID}" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
