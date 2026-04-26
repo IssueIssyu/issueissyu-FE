@@ -1,4 +1,3 @@
-import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
@@ -16,10 +15,7 @@ android {
 
     // Read API keys from local.properties
     val localProperties = Properties().apply {
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            load(FileInputStream(localPropertiesFile))
-        }
+        rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(::load)
     }
 
     defaultConfig {
