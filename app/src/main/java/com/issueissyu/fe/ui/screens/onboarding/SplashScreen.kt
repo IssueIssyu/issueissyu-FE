@@ -1,0 +1,72 @@
+package com.issueissyu.fe.ui.screens.onboarding
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.issueissyu.fe.R
+import com.issueissyu.fe.ui.theme.White
+import kotlinx.coroutines.delay
+
+@Composable
+fun SplashScreen(
+    navController: NavController,
+    viewModel: OnboardingViewModel = hiltViewModel()
+){
+    LaunchedEffect(Unit) {
+        delay(2000)     //2초
+
+        val isLoggedIn = viewModel.checkLoginStatus()
+        val destination = if (isLoggedIn) "main" else "login"
+
+        navController.navigate(destination) {
+            popUpTo("splash") { inclusive = true }
+        }
+    }
+
+    SplashContent()
+}
+
+@Composable
+fun SplashContent(){
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(White),
+        contentAlignment = Alignment.Center
+    ){
+            Image(
+                painter = painterResource(R.drawable.img_logo),
+                modifier = Modifier
+                    .width(150.dp)
+                    .height(200.dp),
+                contentDescription = "이슈있슈 로고",
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Image(
+                painter = painterResource(R.drawable.img_bush),
+                modifier = Modifier.align(Alignment.BottomCenter),
+                contentDescription = "덤불"
+            )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun SplashScreenPreview(){
+    SplashContent()
+}
