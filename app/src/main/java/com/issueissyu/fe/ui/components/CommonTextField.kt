@@ -40,9 +40,10 @@ fun CommonTextField(
     maxLines: Int =1,
     maxLength: Int = Int.MAX_VALUE,
     textStyle: TextStyle = IssueTypo.Bold18,
-    isPassword: Boolean = false,
-    boxHeight: Dp = 55.dp
+    isPassword: Boolean = false
 ){
+    val boxHeight = if (maxLines > 1) 152.dp else 52.dp
+
     Column(modifier=modifier){
         if(label.isNotEmpty()){
             Text(
@@ -105,8 +106,7 @@ fun CommonTextFieldPreview(){
             label = "상세 설명",
             placeholder = "상세 설명을 작성해 주세요.\n\n한 줄을 적고\n해시태그를 눌러\n이슈있슈 AI로 빠르게\n원하는 말투로 글을 작성할 수 있어요!",
             maxLines = 10,
-            textStyle = IssueTypo.Regular16,
-            boxHeight = 152.dp
+            textStyle = IssueTypo.Regular16
         )
     }
 }
