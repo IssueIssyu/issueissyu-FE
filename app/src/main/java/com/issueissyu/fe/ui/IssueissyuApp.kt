@@ -7,9 +7,9 @@ import androidx.navigation.compose.rememberNavController
 import com.issueissyu.fe.ui.navigation.AppNavGraph
 import androidx.compose.runtime.getValue
 import androidx.navigation.compose.currentBackStackEntryAsState
-import com.issueissyu.fe.ui.components.BottomNavigationBar // BottomNavigationBar 다시 활성화
+import com.issueissyu.fe.ui.components.BottomNavigationBar
 import androidx.compose.ui.Modifier
-import com.issueissyu.fe.ui.navigation.AppDestinations // AppDestinations import 추가
+import com.issueissyu.fe.ui.navigation.AppDestinations
 
 @Composable
 fun App() {
