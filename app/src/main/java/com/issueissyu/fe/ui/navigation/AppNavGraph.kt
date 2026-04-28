@@ -5,7 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.issueissyu.fe.ui.screens.home.HomeScreen
-import com.issueissyu.fe.ui.screens.map.MapScreen
+//import com.issueissyu.fe.ui.screens.map.MapScreen
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
@@ -24,27 +24,27 @@ fun AppNavGraph(
         startDestination = AppDestinations.TOWN_ROUTE
     ) {
         composable(AppDestinations.HOME_ROUTE) {
-            Box(
+            /*Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
                 HomeScreen() // modifier 파라미터 제거
-            }
+            }*/
         }
         composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
         composable(AppDestinations.TOWN_ROUTE) {
-            Box(
+            /*Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
                 MapScreen(navController = navController) // modifier 파라미터 제거
-            }
+            }*/
         }
         composable(AppDestinations.COMMUNITY_ROUTE) { /* TODO: CommunityScreen */ }
         composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }
-        composable(AppDestinations.PATCH_NOTE_ROUTE) {
+        /*composable(AppDestinations.PATCH_NOTE_ROUTE) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -63,6 +63,6 @@ fun AppNavGraph(
             ) {
                 Text("핀 생성 화면")
             }
-        }
+        }*/
     }
 }
