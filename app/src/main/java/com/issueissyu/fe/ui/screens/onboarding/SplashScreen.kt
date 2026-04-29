@@ -9,30 +9,31 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavController
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.theme.White
-import kotlinx.coroutines.delay
+import com.issueissyu.fe.ui.viewmodels.SplashViewModel
 
 @Composable
 fun SplashScreen(
-    navController: NavController,
-    viewModel: OnboardingViewModel = hiltViewModel()
+    onNavigateToMain: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    viewModel: SplashViewModel = hiltViewModel()
 ){
-    LaunchedEffect(Unit) {
-        delay(2000)     //2초
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
-        val isLoggedIn = viewModel.checkLoginStatus()
-        val destination = if (isLoggedIn) "main" else "login"
-
-        navController.navigate(destination) {
-            popUpTo("splash") { inclusive = true }
+    LaunchedEffect(isLoggedIn) {
+        when (isLoggedIn) {
+            true -> onNavigateToMain()
+            false -> onNavigateToLogin()
+            null -> { }
         }
     }
 
