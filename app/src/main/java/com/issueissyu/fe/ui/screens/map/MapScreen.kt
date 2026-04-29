@@ -1,18 +1,28 @@
 // MapScreen.kt 파일은 지도 화면의 UI와 관련 로직을 정의합니다.
-// 네이버 지도 SDK를 사용하여 지도 표시, 핀 관리, 사용자 위치 표시 등의 기능을 구현합니다.
+// 네이버 지도 SDK를 사용하여 지도 표시, 핀 관리, 사용자 현재 위치 표시 등의 기능을 구현합니다.
 
 package com.issueissyu.fe.ui.screens.map
 
 // ==============================================================================================
 // 1. Android 권한 및 Jetpack Compose 관련 Import
-//    - 현재는 위치 권한 관련 Import를 모두 제거합니다.
+//    - 위치 권한 처리를 위한 Android Manifest, Activity, Context, PackageManager 관련 클래스 임포트
 //    - Jetpack Compose UI 및 상태 관리를 위한 다양한 컴포넌트 임포트
-//    - 네이버 지도 SDK 관련 클래스 임포트
+//    - 네이버 지도 SDK의 LocationTrackingMode, FusedLocationSource 등 지도 관련 클래스 임포트
 // ==============================================================================================
 
 import android.os.Bundle
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
+import com.naver.maps.map.LocationTrackingMode
+import com.naver.maps.map.util.FusedLocationSource
+import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -89,6 +99,19 @@ import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.MapView
 import com.naver.maps.map.NaverMap
 
+// 위치 권한 요청 코드 상수
+private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
+
+// Context에서 Activity를 찾는 헬퍼 함수
+private fun Context.findActivity(): Activity? {
+    var context = this
+    while (context is ContextWrapper) {
+        if (context is Activity) return context
+        context = context.baseContext
+    }
+    return null
+}
+
 // ==============================================================================================
 // 2. Enum 및 Data Class 정의
 //    - PinCategory: 지도에 표시될 핀의 카테고리 (이슈, 소통, 가게, 축제)를 정의
@@ -138,12 +161,73 @@ fun MapScreen(
     // 현재 지도의 가시 영역(LatLngBounds) 상태
     var visibleBounds by remember { mutableStateOf<LatLngBounds?>(null) }
 
-    // 앱 실행 시 초기 위치 이동 관련 로직은 제거 (추후 요청 시 구현)
-    LaunchedEffect(naverMapInstance) {
-        if (naverMapInstance != null) {
-            // 위치 권한 관련 로직 제거됨
+    // Context와 Activity 가져오기
+    val context = LocalContext.current
+    val activity = context.findActivity()
+
+    // FusedLocationSource 준비
+    val locationSource = remember(activity) {
+        activity?.let {
+            FusedLocationSource(it, LOCATION_PERMISSION_REQUEST_CODE)
         }
     }
+
+    // 위치 권한 확인 함수
+    fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    // 권한 요청 런처
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (granted) {
+            naverMapInstance?.locationTrackingMode = LocationTrackingMode.Follow
+            naverMapInstance?.locationOverlay?.isVisible = true
+        } else {
+            naverMapInstance?.locationTrackingMode = LocationTrackingMode.None
+            // TODO: 권한 거부 안내 UI 또는 Toast 처리
+        }
+    }
+
+    // 현재 위치로 이동 함수
+    fun moveToCurrentLocation() {
+        val map = naverMapInstance ?: return
+
+        if (hasLocationPermission()) {
+            map.locationTrackingMode = LocationTrackingMode.Follow
+            map.locationOverlay.isVisible = true
+            // TODO: FusedLocationSource를 통해 받은 현재 위치로 카메라 이동
+        } else {
+            locationPermissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    // 앱 실행 시 한 번 현재 위치 이동 (권한이 이미 허용되어 있으면)
+    var hasRequestedInitialLocation by remember { mutableStateOf(false) }
+
+    LaunchedEffect(naverMapInstance) {
+        if (naverMapInstance != null && !hasRequestedInitialLocation) {
+            hasRequestedInitialLocation = true
+            moveToCurrentLocation()
+        }
+    }
+
 
     // TODO: UI 확인이 필요하면 임시로 selectedPin에 mock 데이터를 넣고 확인
     // 현재 선택된 핀에 대한 Mock 데이터 예시 (개발 및 테스트용)
@@ -165,9 +249,22 @@ fun MapScreen(
                 // 지도가 준비되면 NaverMap 인스턴스를 상태에 저장
                 naverMapInstance = map
 
-                // 위치 권한 관련 로직 제거됨 (LocationSource 연결, locationOverlay 가시성 설정 등)
+                // LocationSource 연결
+                locationSource?.let {
+                    map.locationSource = it
+                }
+
+                if (hasLocationPermission()) {
+                    map.locationOverlay.isVisible = true
+                    map.locationTrackingMode = LocationTrackingMode.Follow
+                } else {
+                    map.locationOverlay.isVisible = false
+                    map.locationTrackingMode = LocationTrackingMode.None
+                }
+
 
                 // TODO: 지도 이동/줌 변경 감지 후 showResearchButton = true 처리
+                // 현재는 모든 카메라 변경 시 재탐색 버튼이 뜨지만, 나중에는 사용자 제스처 이동일 때만 띄우도록 개선해야 합니다.
                 // 지도 이동 또는 줌 레벨 변경 시 '이 지역 내 재탐색' 버튼을 표시하는 로직이 들어갈 예정
                 map.addOnCameraChangeListener { _, _ ->
                     viewModel.showResearchAreaButton()
@@ -308,8 +405,7 @@ fun MapScreen(
                 modifier = Modifier
                     .size(48.dp)
                     .clickable {
-                        // TODO: 위치 권한 관련 로직 (추후 요청 시 구현)
-                        // 위치 권한을 확인하고 현재 위치로 지도를 이동시키는 로직이 들어갈 예정
+                        moveToCurrentLocation() // ViewModel의 함수 호출 (이전 TODO 대신 실제 함수 호출)
                     },
                 tint = Color.Unspecified
             )
@@ -404,7 +500,6 @@ private fun PinSummaryCard(
 
     Box(
         modifier = modifier
-            .fillMaxWidth()
             .shadow(elevation = 8.dp, shape = RoundedCornerShape(30.dp))
             .clip(RoundedCornerShape(30.dp))
             .background(cardBackgroundColor)
