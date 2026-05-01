@@ -4,7 +4,15 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.issueissyu.fe.ui.screens.home.HomeScreen
+//import com.issueissyu.fe.ui.screens.map.MapScreen
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
@@ -25,7 +33,7 @@ fun AppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = AppDestinations.Onboarding.SPLASH_ROUTE,
+        startDestination = AppDestinations.TOWN_ROUTE
     ) {
         //온보딩
         composable(AppDestinations.Onboarding.SPLASH_ROUTE) {
