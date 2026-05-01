@@ -27,7 +27,7 @@ class SplashViewModel @Inject constructor(
     private fun checkLoginStatus(){
         viewModelScope.launch {
             delay(2000)
-            _isLoggedIn.value = true    //더미 - 추후 유효성 체크 필요
+            _isLoggedIn.value = false    //더미 - 추후 유효성 체크 필요
         }
     }
 }
