@@ -20,88 +20,85 @@ data class SignUpUiState(
     val isIdChecking: Boolean = false,
     val isSubmitting: Boolean = false,
 
-    //회원가입 오류
     val userIdError: String? = null,
     val userPwError: String? = null,
     val userPwConfirmError: String? = null,
 
-    //회원가입 성공
     val signUpSuccess: Boolean = false,
-
-    val canSubmit: Boolean = false
-)
+){
+    val canSubmit: Boolean
+        get() = userId.isNotEmpty() &&
+                userPw.isNotEmpty() &&
+                userPwConfirm.isNotEmpty() &&
+                userIdError == null &&
+                userPwError == null &&
+                userPwConfirmError == null &&
+                isIdChecked &&
+                !isSubmitting
+}
 
 @HiltViewModel
 class SignUpViewModel @Inject constructor() : ViewModel() {
     private val _uiState = MutableStateFlow(SignUpUiState())
     val uiState: StateFlow<SignUpUiState> = _uiState.asStateFlow()
 
+    //상태 업데이트
+    private fun updateState (update: SignUpUiState. () -> SignUpUiState){
+        _uiState.update { it.update() }
+    }
+
     //아이디
     fun updateUserId(newId: String) {
-        _uiState.update {
-            val newState = it.copy(
+        updateState {
+            copy(
                 userId = newId,
                 isIdChecked = false,
                 userIdError = validateUserId(newId)
-            )
-
-            newState.copy(
-                canSubmit = calculateCanSubmit(newState)
             )
         }
     }
 
     //비밀번호
     fun updateUserPw(newPw: String){
-        _uiState.update {
-            val newSate = it.copy(
+        updateState {
+            copy(
                 userPw = newPw,
                 userPwError = validateUserPw(newPw),
                 userPwConfirmError =
-                    if(it.userPwConfirm.isNotEmpty()) {
-                        validateUserPwConfirm(newPw, it.userPwConfirm)
+                    if(userPwConfirm.isNotEmpty()) {
+                        validateUserPwConfirm(newPw, userPwConfirm)
                     } else {
-                        it.userPwConfirmError
+                        userPwConfirmError
                     }
-            )
-
-            newSate.copy(
-                canSubmit = calculateCanSubmit(newSate)
             )
         }
     }
+
     //비밀번호 확인
     fun updateUserPwConfirm(newPwConfirm: String){
-        _uiState.update {
-            val newState = it.copy(
+        updateState {
+            copy(
                 userPwConfirm = newPwConfirm,
-                userPwConfirmError = validateUserPwConfirm(it.userPw, newPwConfirm)
-            )
-
-            newState.copy(
-                canSubmit = calculateCanSubmit(newState)
+                userPwConfirmError = validateUserPwConfirm(userPw, newPwConfirm)
             )
         }
     }
 
     //아이디 중복 확인
     fun checkIdDuplicate(){
+        //id 오류 시, 중복 확인 작동 x
         if(_uiState.value.userIdError != null) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isIdChecking = true) }
+            updateState{  copy(isIdChecking = true) }
 
             delay(1000)     //더미
 
-            _uiState.update {
-                val newState = it.copy(
+            updateState {
+                copy(
                     isIdChecking = false,
                     isIdChecked = true,
                     userIdError = null
-                )
-
-                newState.copy(
-                    canSubmit = calculateCanSubmit(newState)
                 )
             }
         }
@@ -109,15 +106,16 @@ class SignUpViewModel @Inject constructor() : ViewModel() {
 
     //회원가입 완료
     fun signUp(){
+        //중복 제출 방지
         if (_uiState.value.isSubmitting) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmitting = true) }
+            updateState { copy(isSubmitting = true) }
 
             delay(2000)     //더미
 
-            _uiState.update {
-                it.copy(
+            updateState {
+                copy(
                     isSubmitting = false,
                     signUpSuccess = true
                 )
@@ -144,7 +142,7 @@ class SignUpViewModel @Inject constructor() : ViewModel() {
         }
     }
 
-    fun validatePassword(pw: String): Boolean {
+    private fun validatePassword(pw: String): Boolean {
         val hasEnglish = pw.any { it in 'a'..'z' || it in 'A'..'Z' }
         val hasDigit = pw.any { it.isDigit() }
         val hasSpecial = pw.any { it in "!@#$%^&*()_+-=[]{};\':\"\\|,.<>/?" }
@@ -163,17 +161,8 @@ class SignUpViewModel @Inject constructor() : ViewModel() {
     }
 
     fun consumeSignUpSuccess() {
-        _uiState.update { it.copy(signUpSuccess = false) }
-    }
-
-    fun calculateCanSubmit(state: SignUpUiState): Boolean {
-        return state.userId.isNotEmpty() &&
-                state.userPw.isNotEmpty() &&
-                state.userPwConfirm.isNotEmpty() &&
-                state.userIdError == null &&
-                state.userPwError == null &&
-                state.userPwConfirmError == null &&
-                state.isIdChecked &&
-                !state.isSubmitting
+        //다음 화면으로 이동 시 false로 초기화
+        //재사용 방지
+        updateState { copy(signUpSuccess = false) }
     }
 }

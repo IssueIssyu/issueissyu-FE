@@ -36,8 +36,8 @@ import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
-import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.White
+import com.issueissyu.fe.ui.viewmodels.SignUpUiState
 import com.issueissyu.fe.ui.viewmodels.SignUpViewModel
 
 @Composable
@@ -57,41 +57,29 @@ fun SignUpScreen(
     }
 
     SignUpContent(
-        userId = uiState.userId,
-        userPw = uiState.userPw,
-        userPwConfirm = uiState.userPwConfirm,
-        isIdChecked = uiState.isIdChecked,
-        isIdChecking = uiState.isIdChecking,
-        isSubmitting = uiState.isSubmitting,
-        userIdError = uiState.userIdError,
-        userPwError = uiState.userPwError,
-        userPwConfirmError = uiState.userPwConfirmError,
-        canSubmit = uiState.canSubmit,
+        uiState = uiState,
+
         onUserIdChange = viewModel::updateUserId,
         onUserPwChange = viewModel::updateUserPw,
         onUserPwConfirmChange = viewModel::updateUserPwConfirm,
+
         onCheckIdClick = viewModel::checkIdDuplicate,
         onSubmitClick = viewModel::signUp,
+        onBackClick = onBackClick
     )
 }
 
 @Composable
 fun SignUpContent(
-    userId: String,
-    userPw: String,
-    userPwConfirm: String,
-    isIdChecked: Boolean,
-    isIdChecking: Boolean,
-    isSubmitting: Boolean,
-    userIdError: String?,
-    userPwError: String?,
-    userPwConfirmError: String?,
-    canSubmit: Boolean,
+    uiState: SignUpUiState,
+
     onUserIdChange: (String) -> Unit,
     onUserPwChange: (String) -> Unit,
     onUserPwConfirmChange: (String) -> Unit,
+
     onCheckIdClick: () -> Unit,
-    onSubmitClick: () -> Unit
+    onSubmitClick: () -> Unit,
+    onBackClick: () -> Unit
 ){
     Box(
         modifier = Modifier
@@ -105,7 +93,7 @@ fun SignUpContent(
         ){
             //상단 바
             IssueissyuTopAppBar(
-                onBackClick = {},
+                onBackClick = onBackClick,
                 titleText = "회원가입"
             )
 
@@ -127,7 +115,7 @@ fun SignUpContent(
                         CommonTextField(
                             label = "아이디",
                             placeholder = "아이디를 입력하세요.",
-                            value = userId,
+                            value = uiState.userId,
                             onValueChange = onUserIdChange,
                             maxLength = 12
                         )
@@ -142,13 +130,13 @@ fun SignUpContent(
                                 Text(
                                     text = "영문 소문자와 숫자만 사용하여, 영문 소문자로\n시작하는 4~12자의 아이디를 입력해주세요.",
                                     style = IssueTypo.Regular12.copy(
-                                        color = if(userIdError != null) Issue else Gray_5)
+                                        color = if(uiState.userIdError != null) Issue else Gray_5)
 
                                 )
 
                                 Spacer(modifier = Modifier.height(5.dp))
 
-                                if (!isIdChecked && userId.isNotEmpty() && userIdError == null) {
+                                if (!uiState.isIdChecked && uiState.userId.isNotEmpty() && uiState.userIdError == null) {
                                     Text(
                                         text = "아이디 중복을 확인해주세요",
                                         style = IssueTypo.Regular12.copy(color = Issue)
@@ -158,7 +146,7 @@ fun SignUpContent(
                             //중복 확인 버튼
                             Button(
                                 onClick = onCheckIdClick,
-                                enabled = userId.isNotEmpty() && userIdError == null && !isIdChecking,
+                                enabled = uiState.userId.isNotEmpty() && uiState.userIdError == null && !uiState.isIdChecking,
                                 modifier = Modifier.size(70.dp, 30.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = BrandColor,
@@ -181,7 +169,7 @@ fun SignUpContent(
                         CommonTextField(
                             label = "비밀번호",
                             placeholder = "비밀번호를 입력하세요.",
-                            value = userPw,
+                            value = uiState.userPw,
                             onValueChange = onUserPwChange,
                             maxLength = 20,
                             isPassword = true
@@ -195,7 +183,7 @@ fun SignUpContent(
                             modifier = Modifier
                                 .padding(horizontal = 5.dp),
                             style = IssueTypo.Regular12.copy(
-                                color = if (userPwError != null) Issue else Gray_5
+                                color = if (uiState.userPwError != null) Issue else Gray_5
                             )
                         )
                     }
@@ -207,13 +195,13 @@ fun SignUpContent(
 
                             label = "비밀번호 확인",
                             placeholder = "비밀번호를 입력하세요.",
-                            value = userPwConfirm,
+                            value = uiState.userPwConfirm,
                             onValueChange = onUserPwConfirmChange,
                             maxLength = 20,
                             isPassword = true
                         )
 
-                        userPwError?.let {error ->
+                        uiState.userPwError?.let {error ->
                             Text(
                                 text = "비밀번호가 일치하지 않습니다",
                                 modifier = Modifier.padding(horizontal = 5.dp),
@@ -238,7 +226,7 @@ fun SignUpContent(
                     CommonButton(
                         text = "작성 완료",
                         onClick = onSubmitClick,
-                        isEnabled = canSubmit && !isSubmitting,
+                        isEnabled = uiState.canSubmit && !uiState.isSubmitting,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -252,20 +240,17 @@ fun SignUpContent(
 @Composable
 fun SignUpScreenPreview(){
     SignUpContent(
-        userId = "test123",
-        userPw = "Test123",
-        userPwConfirm = "Test123!",
-        isIdChecked = false,
-        isIdChecking = false,
-        isSubmitting = false,
-        userIdError = null,
-        userPwError = null,
-        userPwConfirmError = null,
-        canSubmit = false,
+        uiState = SignUpUiState(
+            userId = "test123",
+            userPw = "Test123",
+            userPwConfirm = "Test123!",
+            isIdChecked = false,
+        ),
         onUserIdChange = {},
         onUserPwChange = {},
         onUserPwConfirmChange = {},
         onCheckIdClick = {},
-        onSubmitClick = {}
+        onSubmitClick = {},
+        onBackClick = {}
     )
 }

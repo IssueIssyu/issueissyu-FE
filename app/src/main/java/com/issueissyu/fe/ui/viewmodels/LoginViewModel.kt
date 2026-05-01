@@ -14,6 +14,7 @@ import javax.inject.Inject
 data class LoginUiState(
     val userId: String = "",
     val userPw: String = "",
+
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val loginSuccess: Boolean = false
@@ -39,7 +40,7 @@ class LoginViewModel @Inject constructor(): ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            delay(2000)
+            delay(1000)
 
             if(_uiState.value.userId == "test123" && _uiState.value.userPw == "0000"){    //더미
                 _uiState.update { it.copy(isLoading = false, loginSuccess = true) }
