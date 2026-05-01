@@ -117,6 +117,18 @@ private fun Context.findActivity(): Activity? {
 //    - PinCategory: 지도에 표시될 핀의 카테고리 (이슈, 소통, 가게, 축제)를 정의
 //    - MapPin: 지도 핀의 데이터 구조 (ID, 위치, 제목, 카테고리, 설명 등)를 정의
 // ==============================================================================================
+
+// TODO: 핀 담당자가 공용 Pin 모델을 완성하면 MapPin 및 PinCategory/PinType 필드와 연결하기
+// 지도 페이지에서는 category 기준으로 핀 색상/모양을 분기해야 함
+// 패치노트 페이지에서는 ISSUE 카테고리 핀만 전달받도록 연결하기
+// ISSUE 핀은 resolutionStatus 값을 가져야 하며, 상태별 색상 분기가 필요함
+
+private enum class ResolutionStatus { // 패치노트 페이지 요구사항에 따라 추가
+    BEFORE_RESOLUTION,
+    IN_PROGRESS,
+    RESOLVED
+}
+
 private enum class PinCategory {
     ISSUE,
     COMMUNICATION,
@@ -132,6 +144,8 @@ private data class MapPin(
     val description: String,
     val locationName: String,
     val imageUrl: String? = null
+    // TODO: 핀 담당자가 resolutionStatus 필드를 IssuePin에 포함하면 여기에 반영
+    // val resolutionStatus: ResolutionStatus? = null // 현재 MapPin에 직접 추가하지 않고, TODO로 남김
 )
 
 // ==============================================================================================
@@ -491,6 +505,7 @@ private fun PinSummaryCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // TODO: 핀 담당자가 공용 Pin 모델을 완성하면 category 또는 PinType 기준으로 색상 분기 로직 업데이트
     val cardBackgroundColor = when (pin.category) {
         PinCategory.ISSUE -> IssueContainer
         PinCategory.COMMUNICATION -> CommunicationContainerLight
@@ -744,7 +759,7 @@ private fun PreviewPinSummaryCard() {
                 pin = MapPin(
                     id = "1",
                     title = "침수된 도로",
-                    category = PinCategory.ISSUE,
+                    category = PinCategory.ISSUE, // ISSUE 핀은 resolutionStatus 필요, 추후 반영
                     description = "어제 비로 도로 일부가 침수되어 통행이 어렵습니다. 우회해야 할 것 같습니다.",
                     locationName = "역삼동 테헤란로 123",
                     position = LatLng(0.0, 0.0)

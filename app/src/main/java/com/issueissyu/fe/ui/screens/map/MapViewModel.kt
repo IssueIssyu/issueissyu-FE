@@ -19,6 +19,7 @@ class MapViewModel @Inject constructor() : ViewModel() {
     private val _selectedCategory = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
 
+    // TODO: 핀 담당자가 공용 Pin 모델을 완성하면, 이 String 값을 PinCategory enum과 매핑하여 사용
     fun onCategorySelected(category: String?) {
         _selectedCategory.value = category
     }
