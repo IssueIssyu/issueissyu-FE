@@ -20,7 +20,7 @@ data class PinUser(
 )
 
 data class PinEmojiReaction(
-    val emojiId: String, // 변경됨
+    val emojiId: String,
     val count: Int,
     val reactedByMe: Boolean = false
 )
@@ -29,21 +29,26 @@ sealed interface PinDetail {
     val category: PinCategory
 }
 
+// 새롭게 추가된 인터페이스
+sealed interface AuthoredPinDetail : PinDetail {
+    val writer: PinUser
+}
+
 data class IssuePinDetail(
-    val writer: PinUser,
+    override val writer: PinUser,
     val resolutionStatus: ResolutionStatus = ResolutionStatus.BEFORE_RESOLUTION,
     val resolver: PinUser? = null,
     val resolutionProofImageUrls: List<String> = emptyList(),
     val resolvedAt: String? = null,
     val petitionCount: Int = 0,
     val isPetitionedByMe: Boolean = false
-) : PinDetail {
+) : AuthoredPinDetail { // AuthoredPinDetail 구현
     override val category = PinCategory.ISSUE
 }
 
 data class CommunicationPinDetail(
-    val writer: PinUser
-) : PinDetail {
+    override val writer: PinUser
+) : AuthoredPinDetail { // AuthoredPinDetail 구현
     override val category = PinCategory.COMMUNICATION
 }
 
@@ -110,9 +115,5 @@ data class UpdatePinRequest(
 fun Pin.canEditBy(userId: String): Boolean {
     if (communityPostId != null) return false
 
-    return when (val pinDetail = detail) {
-        is IssuePinDetail -> pinDetail.writer.id == userId
-        is CommunicationPinDetail -> pinDetail.writer.id == userId
-        else -> false
-    }
+    return (detail as? AuthoredPinDetail)?.writer?.id == userId
 }

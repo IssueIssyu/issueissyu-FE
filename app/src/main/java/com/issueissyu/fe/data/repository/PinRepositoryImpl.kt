@@ -211,11 +211,7 @@ class PinRepositoryImpl : PinRepository {
     override suspend fun getMyPins(): List<Pin> {
         // TODO: 실제 백엔드 API 호출로 내 핀 목록을 가져오도록 구현해야 합니다.
         return dummyPins.filter { pin ->
-            when (val detail = pin.detail) {
-                is IssuePinDetail -> detail.writer.id == currentUser.id
-                is CommunicationPinDetail -> detail.writer.id == currentUser.id
-                else -> false
-            }
+            (pin.detail as? AuthoredPinDetail)?.writer?.id == currentUser.id
         }
     }
 
@@ -253,20 +249,18 @@ class PinRepositoryImpl : PinRepository {
 
         val existingPin = dummyPins[index]
 
+        // 작성자가 있는 핀만 일반 사용자가 수정 가능
+        val authoredDetail = existingPin.detail as? AuthoredPinDetail
+            ?: throw IllegalArgumentException("This pin type cannot be updated by users.")
+
         // 커뮤니티 게시물인 경우 수정 불가
         if (existingPin.communityPostId != null) {
             throw IllegalArgumentException("Community posts cannot be updated.")
         }
 
-        // 작성자만 수정 가능 (IssuePinDetail, CommunicationPinDetail에 한함)
-        val canEdit = existingPin.canEditBy(currentUser.id)
-        if (!canEdit) {
+        // 작성자만 수정 가능
+        if (authoredDetail.writer.id != currentUser.id) {
             throw SecurityException("User does not have permission to edit this pin.")
-        }
-
-        // ShopPin, FestivalPin은 사용자 수정 불가
-        if (existingPin.detail is ShopPinDetail || existingPin.detail is FestivalPinDetail) {
-            throw IllegalArgumentException("Shop and Festival pins cannot be updated by users.")
         }
 
         val updatedPin = existingPin.copy(
@@ -280,6 +274,7 @@ class PinRepositoryImpl : PinRepository {
             imageUrls = request.imageUrls,
             updatedAt = Instant.now().toString()
         )
+
         // TODO: 실제 백엔드 API를 호출하여 핀을 업데이트하고, 서버로부터 반환된 실제 Pin 객체를 사용해야 합니다.
         dummyPins[index] = updatedPin
         return updatedPin
