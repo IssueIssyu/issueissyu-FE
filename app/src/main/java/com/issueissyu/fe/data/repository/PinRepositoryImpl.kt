@@ -84,7 +84,7 @@ class PinRepositoryImpl : PinRepository {
                 updatedAt = null,
                 detail = IssuePinDetail(
                     writer = user1,
-                    resolutionStatus = ResolutionStatus.BEFORE_RESOLUTION,
+                    resolutionStatus = ResolutionStatus.RESOLVED,
                     petitionCount = 8,
                     isPetitionedByMe = false
                 )
