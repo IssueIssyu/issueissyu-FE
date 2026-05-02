@@ -75,6 +75,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.google.material)
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 
     implementation(platform(libs.compose.bom))
     implementation(libs.androidx.compose.ui)
