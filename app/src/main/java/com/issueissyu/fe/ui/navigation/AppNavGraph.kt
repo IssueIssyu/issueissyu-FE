@@ -17,6 +17,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermsType
 import com.issueissyu.fe.ui.screens.onboarding.LoginScreen
@@ -33,7 +34,7 @@ fun AppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = AppDestinations.TOWN_ROUTE
+        startDestination = AppDestinations.Onboarding.SPLASH_ROUTE
     ) {
         //온보딩
         composable(AppDestinations.Onboarding.SPLASH_ROUTE) {
@@ -119,10 +120,18 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE){
-            LocalVerificationScreen(navController = rememberNavController())
+            LocalVerificationScreen(
+                onBackClick = { navController.navigateUp() },
+                onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE)}
+            )
         }
 
         composable(AppDestinations.Onboarding.COMPLETE_ROUTE){
+            CompleteScreen(
+                onBackClick = { navController.navigateUp() },
+                onNavigateToMain = { navController.navigate(AppDestinations.HOME_ROUTE) },
+                onNavigateToLanding = {}    //추후 랜딩 페이지 연결
+            )
 
         }
 
