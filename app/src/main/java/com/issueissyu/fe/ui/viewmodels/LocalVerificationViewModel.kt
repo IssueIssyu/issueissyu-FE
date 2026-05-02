@@ -45,7 +45,7 @@ class LocalVerificationViewModel @Inject constructor() : ViewModel() {
     private fun observeLocation() {
         viewModelScope.launch {
             locationFlow
-                .debounce(400)  //4초 동안 멈춰야 측정되게끔 함. 너무 많이 호출되면 비용이...
+                .debounce(400)  //0.4초 동안 멈춰야 측정되게끔 함. 너무 많이 호출되면 비용이...
                 .collect { (lat, lng) ->
                     fetchAddress(lat, lng)
                 }
