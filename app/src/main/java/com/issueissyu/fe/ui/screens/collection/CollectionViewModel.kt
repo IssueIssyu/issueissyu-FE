@@ -82,10 +82,6 @@ class CollectionViewModel : ViewModel() {
     private fun selectPin(pinId: String) {
         val pin = _uiState.value.pins.find { it.id == pinId } ?: return
 
-        if (pin.isLocked) {
-            emitToast(pin.unlockCondition ?: "잠긴 핀입니다")
-            return
-        }
         // 선택한 핀 != 내 프로필 -> 버튼 활성화
         _uiState.update { state ->
             state.copy(
@@ -157,7 +153,6 @@ class CollectionViewModel : ViewModel() {
             PinItem("pin_10", "무관심씨", R.drawable.ic_character_unconcern, "https://api.issueissyu.com/pins/unconcern.png")
         )
     }
-
     companion object {
         private const val MAX_BOOKMARKED_COUNT = 4
     }
