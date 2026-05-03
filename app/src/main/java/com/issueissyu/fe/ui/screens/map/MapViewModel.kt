@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.data.model.MapBounds
 import com.issueissyu.fe.data.model.Pin
 import com.issueissyu.fe.data.model.PinCategory
 import com.issueissyu.fe.data.repository.PinRepository
@@ -31,6 +32,9 @@ class MapViewModel @Inject constructor(
 
     private val _showPinTypeSelector = MutableStateFlow(false)
     val showPinTypeSelector: StateFlow<Boolean> = _showPinTypeSelector.asStateFlow()
+
+    private val _currentMapBounds = MutableStateFlow<MapBounds?>(null)
+    val currentMapBounds: StateFlow<MapBounds?> = _currentMapBounds.asStateFlow()
 
     init {
         loadPins()
@@ -74,5 +78,17 @@ class MapViewModel @Inject constructor(
 
     fun hideResearchAreaButton() {
         _showResearchButton.value = false
+    }
+
+    fun updateMapBounds(bounds: MapBounds) {
+        _currentMapBounds.value = bounds
+    }
+
+    fun fetchPinsInBounds() {
+        // TODO: _currentMapBounds를 사용하여 해당 영역 내 핀을 조회하는 API 호출 로직 구현
+        viewModelScope.launch {
+            // 예시: pinRepository.getPinsInBounds(_currentMapBounds.value)
+            // _pins.value = fetchedPins
+        }
     }
 }

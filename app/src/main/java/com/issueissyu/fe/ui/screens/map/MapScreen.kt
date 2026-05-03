@@ -7,7 +7,6 @@ package com.issueissyu.fe.ui.screens.map
 //    - 네이버 지도 SDK의 LocationTrackingMode, FusedLocationSource 등 지도 관련 클래스 임포트
 // ==============================================================================================
 
-import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
@@ -47,7 +46,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,13 +59,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.issueissyu.fe.R
@@ -91,9 +85,6 @@ import com.issueissyu.fe.ui.theme.ShopContainer
 import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-import com.naver.maps.geometry.LatLng
-import com.naver.maps.geometry.LatLngBounds
-import com.naver.maps.map.MapView
 import com.naver.maps.map.NaverMap
 
 import com.issueissyu.fe.data.model.Pin
@@ -106,6 +97,10 @@ import com.issueissyu.fe.data.model.PinCategory
 import com.issueissyu.fe.data.model.PinCoordinate
 import androidx.compose.runtime.mutableStateListOf
 import com.naver.maps.map.overlay.Marker
+
+import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
+import com.issueissyu.fe.ui.components.map.toLatLng
+import com.issueissyu.fe.data.model.MapBounds
 
 
 // 위치 권한 요청 코드 상수
@@ -158,9 +153,6 @@ fun MapScreen(
 
     // 지도에 표시될 마커 목록 상태
     val mapMarkers = remember { mutableStateListOf<Marker>() }
-
-    // 현재 지도의 가시 영역(LatLngBounds) 상태
-    var visibleBounds by remember { mutableStateOf<LatLngBounds?>(null) }
 
     // Context와 Activity 가져오기
     val context = LocalContext.current
@@ -251,14 +243,11 @@ fun MapScreen(
 
     // 화면 전체를 채우는 Box 레이아웃. 지도 및 다른 UI 요소들을 그 위에 쌓음
     Box(modifier = Modifier.fillMaxSize()) {
-        // NaverMapComposable: 네이버 지도 뷰를 표시하는 Composable
-        NaverMapComposable(
+        IssueissyuNaverMap(
             modifier = Modifier.fillMaxSize(),
             onMapReady = { map ->
-                // 지도가 준비되면 NaverMap 인스턴스를 상태에 저장
                 naverMapInstance = map
 
-                // LocationSource 연결
                 locationSource?.let {
                     map.locationSource = it
                 }
@@ -270,16 +259,23 @@ fun MapScreen(
                     map.locationOverlay.isVisible = false
                     map.locationTrackingMode = LocationTrackingMode.None
                 }
-
-                // TODO: 지도 이동/줌 변경 감지 후 showResearchButton = true 처리
-                // 현재는 모든 카메라 변경 시 재탐색 버튼이 뜨지만, 나중에는 사용자 제스처 이동일 때만 띄우도록 개선해야 합니다.
-                // 지도 이동 또는 줌 레벨 변경 시 '이 지역 내 재탐색' 버튼을 표시하는 로직이 들어갈 예정
-                map.addOnCameraChangeListener { _, _ ->
+            },
+            onCameraIdle = { map ->
+                map.contentBounds?.let { bounds ->
+                    viewModel.updateMapBounds(
+                        MapBounds(
+                            swLat = bounds.southWest.latitude,
+                            swLng = bounds.southWest.longitude,
+                            neLat = bounds.northEast.latitude,
+                            neLng = bounds.northEast.longitude
+                        )
+                    )
                     viewModel.showResearchAreaButton()
                 }
-
-                // TODO: 현재 지도 bounds를 visibleBounds에 저장
-                // 현재 지도의 가시 영역을 visibleBounds 상태에 저장하는 로직이 들어갈 예정
+            },
+            onMapClick = { _ ->
+                // 지도 클릭 시 핀 선택 해제
+                viewModel.clearSelectedPin()
             }
         )
 
@@ -360,8 +356,7 @@ fun MapScreen(
             Button(
                 onClick = {
                     viewModel.hideResearchAreaButton() // ViewModel의 함수 호출
-                    // TODO: visibleBounds 기준으로 핀 목록 재조회
-                    // 버튼 클릭 시 현재 지도의 visibleBounds를 기준으로 핀 목록을 다시 조회하는 로직이 들어갈 예정
+                    viewModel.fetchPinsInBounds() // 저장된 bounds 기준으로 핀 목록 재조회
                 },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -677,74 +672,6 @@ private fun PinTypeSelectorItem(
 }
 
 // ==============================================================================================
-// 8. NaverMapComposable 함수
-//    - 네이버 지도 SDK의 MapView를 Jetpack Compose에 통합하는 Composable
-//    - AndroidView를 사용하여 기존 Android View를 Compose에 렌더링
-//    - LifecycleEventObserver를 통해 MapView의 생명주기를 Compose 생명주기에 동기화
-//    - `onMapReady` 콜백을 통해 `NaverMap` 객체가 준비되면 외부로 전달
-// ==============================================================================================
-@Composable
-fun NaverMapComposable(
-    modifier: Modifier = Modifier,
-    onMapReady: (NaverMap) -> Unit
-) {
-    // LocalInspectionMode: Compose 프리뷰 모드에서 실행 중인지 확인
-    if (LocalInspectionMode.current) {
-        // 프리뷰 모드일 경우 지도를 실제 로드하지 않고 대체 UI 표시
-        Box(
-            modifier = modifier.background(Gray_3),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "지도 프리뷰 (현재 위치 설정)",
-                style = MaterialTheme.typography.bodyLarge.copy(color = Text)
-            )
-        }
-    } else {
-        // 실제 앱 실행 모드일 경우 네이버 지도 MapView 렌더링
-        val context = LocalContext.current
-        val lifecycleOwner = LocalLifecycleOwner.current
-        val mapView = remember { MapView(context) } // MapView 인스턴스 생성 및 기억
-
-        // DisposableEffect: Composable의 생명주기에 따라 MapView의 생명주기 메서드 호출
-        DisposableEffect(lifecycleOwner) {
-            val lifecycleObserver = LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_CREATE -> mapView.onCreate(Bundle())
-                    Lifecycle.Event.ON_START -> mapView.onStart()
-                    Lifecycle.Event.ON_RESUME -> mapView.onResume()
-                    Lifecycle.Event.ON_PAUSE -> mapView.onPause()
-                    Lifecycle.Event.ON_STOP -> mapView.onStop()
-                    Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
-                    else -> {}
-                }
-            }
-
-            lifecycleOwner.lifecycle.addObserver(lifecycleObserver) // 생명주기 옵저버 추가
-
-            onDispose {
-                lifecycleOwner.lifecycle.removeObserver(lifecycleObserver) // Composable 제거 시 옵저버 제거
-            }
-        }
-
-        // AndroidView: Android View (MapView)를 Compose UI에 통합
-        AndroidView(
-            modifier = modifier,
-            factory = {
-                mapView.getMapAsync { map ->
-                    onMapReady(map) // 지도가 준비되면 NaverMap 객체를 콜백으로 전달
-                }
-                mapView // 생성된 MapView 반환
-            }
-        )
-    }
-}
-
-private fun PinCoordinate.toLatLng(): LatLng {
-    return LatLng(latitude, longitude)
-}
-
-// ==============================================================================================
 // 9. Preview 함수들
 //    - Jetpack Compose의 @Preview 어노테이션을 사용하여 UI 컴포넌트를 미리보기 위한 함수들
 //    - 개발 중 UI 변경 사항을 빠르게 확인하는 데 사용
@@ -756,43 +683,3 @@ fun PreviewMapScreen() {
         MapScreen(navController = rememberNavController())
     }
 }
-
-// @Preview(showBackground = true)
-// @Composable
-// private fun PreviewPinSummaryCard() {
-//     IssueissyuTheme {
-//         Column {
-//             PinSummaryCard(
-//                 pin = Pin(
-//                     id = "1",
-//                     title = "침수된 도로",
-//                     category = PinCategory.ISSUE,
-//                     description = "어제 비로 도로 일부가 침수되어 통행이 어렵습니다. 우회해야 할 것 같습니다.",
-//                     locationName = "역삼동 테헤란로 123",
-//                     coordinate = PinCoordinate(0.0, 0.0),
-//                     detail = IssuePinDetail("Flood", ResolutionStatus.BEFORE_RESOLUTION, emptyList())
-//                 ),
-//                 onDismiss = {},
-//                 onDetailClick = {},
-//                 modifier = Modifier.padding(16.dp)
-//             )
-//
-//             Spacer(modifier = Modifier.height(16.dp))
-//
-//             PinSummaryCard(
-//                 pin = Pin(
-//                     id = "2",
-//                     title = "커뮤니티 회의",
-//                     category = PinCategory.COMMUNICATION,
-//                     description = "다음 주 월요일 저녁 7시, 주민 센터에서 다음 달 행사 논의를 위한 회의가 있습니다. 많은 참여 바랍니다.",
-//                     locationName = "강남구 주민센터",
-//                     coordinate = PinCoordinate(0.0, 0.0),
-//                     detail = CommunicationPinDetail("Meeting", "Meeting for next month event", emptyList())
-//                 ),
-//                 onDismiss = {},
-//                 onDetailClick = {},
-//                 modifier = Modifier.padding(16.dp)
-//             )
-//         }
-//     }
-// }
