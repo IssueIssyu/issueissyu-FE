@@ -1,14 +1,30 @@
 package com.issueissyu.fe.ui.screens.map
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.data.model.Pin
+import com.issueissyu.fe.data.model.PinCategory
+import com.issueissyu.fe.data.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class MapViewModel @Inject constructor() : ViewModel() {
+class MapViewModel @Inject constructor(
+    private val pinRepository: PinRepository
+) : ViewModel() {
+
+    private val _pins = MutableStateFlow<List<Pin>>(emptyList())
+    val pins: StateFlow<List<Pin>> = _pins.asStateFlow()
+
+    private val _selectedPin = MutableStateFlow<Pin?>(null)
+    val selectedPin: StateFlow<Pin?> = _selectedPin.asStateFlow()
+
+    private val _selectedCategory = MutableStateFlow<PinCategory?>(null)
+    val selectedCategory: StateFlow<PinCategory?> = _selectedCategory.asStateFlow()
 
     private val _showResearchButton = MutableStateFlow(false)
     val showResearchButton: StateFlow<Boolean> = _showResearchButton.asStateFlow()
@@ -16,12 +32,32 @@ class MapViewModel @Inject constructor() : ViewModel() {
     private val _showPinTypeSelector = MutableStateFlow(false)
     val showPinTypeSelector: StateFlow<Boolean> = _showPinTypeSelector.asStateFlow()
 
-    private val _selectedCategory = MutableStateFlow<String?>(null)
-    val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
+    init {
+        loadPins()
+    }
 
-    // TODO: 핀 담당자가 공용 Pin 모델을 완성하면, 이 String 값을 PinCategory enum과 매핑하여 사용
-    fun onCategorySelected(category: String?) {
-        _selectedCategory.value = category
+    private fun loadPins() {
+        viewModelScope.launch {
+            _pins.value = pinRepository.getPins()
+        }
+    }
+
+    fun selectPin(pin: Pin) {
+        _selectedPin.value = pin
+    }
+
+    fun clearSelectedPin() {
+        _selectedPin.value = null
+    }
+
+    fun onCategorySelected(categoryName: String?) {
+        _selectedCategory.value = when (categoryName) {
+            "이슈" -> PinCategory.ISSUE
+            "소통" -> PinCategory.COMMUNICATION
+            "가게" -> PinCategory.SHOP
+            "축제" -> PinCategory.FESTIVAL
+            else -> null
+        }
     }
 
     fun openPinTypeSelector() {

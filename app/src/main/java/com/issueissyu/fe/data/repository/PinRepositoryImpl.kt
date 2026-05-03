@@ -1,10 +1,11 @@
 package com.issueissyu.fe.data.repository
 
+import javax.inject.Inject
 import com.issueissyu.fe.data.model.*
 import java.time.Instant
 import java.util.UUID
 
-class PinRepositoryImpl : PinRepository {
+class PinRepositoryImpl @Inject constructor() : PinRepository {
 
     // TODO: 실제 백엔드와 연결 시 이 더미 데이터 대신 네트워크 호출 로직으로 대체해야 합니다.
     private val dummyPins = mutableListOf<Pin>()

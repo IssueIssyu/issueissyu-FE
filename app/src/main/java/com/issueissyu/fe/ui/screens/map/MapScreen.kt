@@ -1,6 +1,3 @@
-// MapScreen.kt 파일은 지도 화면의 UI와 관련 로직을 정의합니다.
-// 네이버 지도 SDK를 사용하여 지도 표시, 핀 관리, 사용자 현재 위치 표시 등의 기능을 구현합니다.
-
 package com.issueissyu.fe.ui.screens.map
 
 // ==============================================================================================
@@ -99,6 +96,18 @@ import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.MapView
 import com.naver.maps.map.NaverMap
 
+import com.issueissyu.fe.data.model.Pin
+import com.issueissyu.fe.data.model.PinCategory
+// import com.issueissyu.fe.data.model.ResolutionStatus
+// import com.issueissyu.fe.data.model.IssuePinDetail
+// import com.issueissyu.fe.data.model.CommunicationPinDetail
+// import com.issueissyu.fe.data.model.ShopPinDetail
+// import com.issueissyu.fe.data.model.FestivalPinDetail
+import com.issueissyu.fe.data.model.PinCoordinate
+import androidx.compose.runtime.mutableStateListOf
+import com.naver.maps.map.overlay.Marker
+
+
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
 
@@ -118,35 +127,7 @@ private fun Context.findActivity(): Activity? {
 //    - MapPin: 지도 핀의 데이터 구조 (ID, 위치, 제목, 카테고리, 설명 등)를 정의
 // ==============================================================================================
 
-// TODO: 핀 담당자가 공용 Pin 모델을 완성하면 MapPin 및 PinCategory/PinType 필드와 연결하기
-// 지도 페이지에서는 category 기준으로 핀 색상/모양을 분기해야 함
-// 패치노트 페이지에서는 ISSUE 카테고리 핀만 전달받도록 연결하기
-// ISSUE 핀은 resolutionStatus 값을 가져야 하며, 상태별 색상 분기가 필요함
-
-private enum class ResolutionStatus { // 패치노트 페이지 요구사항에 따라 추가
-    BEFORE_RESOLUTION,
-    IN_PROGRESS,
-    RESOLVED
-}
-
-private enum class PinCategory {
-    ISSUE,
-    COMMUNICATION,
-    SHOP,
-    FESTIVAL
-}
-
-private data class MapPin(
-    val id: String,
-    val position: LatLng,
-    val title: String,
-    val category: PinCategory,
-    val description: String,
-    val locationName: String,
-    val imageUrl: String? = null
-    // TODO: 핀 담당자가 resolutionStatus 필드를 IssuePin에 포함하면 여기에 반영
-    // val resolutionStatus: ResolutionStatus? = null // 현재 MapPin에 직접 추가하지 않고, TODO로 남김
-)
+// 제거된 부분: private enum class ResolutionStatus, private enum class PinCategory, private data class MapPin
 
 // ==============================================================================================
 // 3. MapScreen Composable 함수
@@ -162,16 +143,22 @@ fun MapScreen(
     // ViewModel의 상태를 관찰합니다.
     val showResearchButton by viewModel.showResearchButton.collectAsStateWithLifecycle()
     val showPinTypeSelector by viewModel.showPinTypeSelector.collectAsStateWithLifecycle()
+    val pins by viewModel.pins.collectAsStateWithLifecycle()
+    val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+
+    val visiblePins = if (selectedCategory == null) {
+        pins
+    } else {
+        pins.filter { it.category == selectedCategory }
+    }
 
     // 네이버 지도 인스턴스 (NaverMap 객체) 상태
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
 
-    // TODO: 실제 핀/마커 구현 시 API 또는 ViewModel 상태와 연결
-    // 지도에 표시될 핀 목록 상태
-    var pins by remember { mutableStateOf(emptyList<MapPin>()) }
-    // 현재 선택된 핀의 정보 상태 (MapPin은 private data class이므로 MapScreen에 유지)
-    var selectedPin by remember { mutableStateOf<MapPin?>(null) }
+    // 지도에 표시될 마커 목록 상태
+    val mapMarkers = remember { mutableStateListOf<Marker>() }
+
     // 현재 지도의 가시 영역(LatLngBounds) 상태
     var visibleBounds by remember { mutableStateOf<LatLngBounds?>(null) }
 
@@ -242,17 +229,25 @@ fun MapScreen(
         }
     }
 
+    LaunchedEffect(naverMapInstance, visiblePins) {
+        val naverMap = naverMapInstance ?: return@LaunchedEffect
 
-    // TODO: UI 확인이 필요하면 임시로 selectedPin에 mock 데이터를 넣고 확인
-    // 현재 선택된 핀에 대한 Mock 데이터 예시 (개발 및 테스트용)
-    // selectedPin = MapPin(
-    //     id = "1",
-    //     title = "침수된 도로",
-    //     category = PinCategory.ISSUE,
-    //     description = "어제 비로 도로 일부가 침수되어 통행이 어렵습니다. 우회해야 할 것 같습니다.",
-    //     locationName = "역삼동 테헤란로 123",
-    //     position = LatLng(0.0, 0.0)
-    // )
+        mapMarkers.forEach { it.map = null }
+        mapMarkers.clear()
+
+        visiblePins.forEach { pin ->
+            val marker = Marker().apply {
+                position = pin.coordinate.toLatLng()
+                captionText = pin.title
+                this.map = naverMap
+                setOnClickListener {
+                    viewModel.selectPin(pin)
+                    true
+                }
+            }
+            mapMarkers.add(marker)
+        }
+    }
 
     // 화면 전체를 채우는 Box 레이아웃. 지도 및 다른 UI 요소들을 그 위에 쌓음
     Box(modifier = Modifier.fillMaxSize()) {
@@ -276,14 +271,12 @@ fun MapScreen(
                     map.locationTrackingMode = LocationTrackingMode.None
                 }
 
-
                 // TODO: 지도 이동/줌 변경 감지 후 showResearchButton = true 처리
                 // 현재는 모든 카메라 변경 시 재탐색 버튼이 뜨지만, 나중에는 사용자 제스처 이동일 때만 띄우도록 개선해야 합니다.
                 // 지도 이동 또는 줌 레벨 변경 시 '이 지역 내 재탐색' 버튼을 표시하는 로직이 들어갈 예정
                 map.addOnCameraChangeListener { _, _ ->
                     viewModel.showResearchAreaButton()
                 }
-
 
                 // TODO: 현재 지도 bounds를 visibleBounds에 저장
                 // 현재 지도의 가시 영역을 visibleBounds 상태에 저장하는 로직이 들어갈 예정
@@ -317,14 +310,20 @@ fun MapScreen(
                 )
             }
 
+            val selectedCategoryLabel = when (selectedCategory) {
+                PinCategory.ISSUE -> "이슈"
+                PinCategory.COMMUNICATION -> "소통"
+                PinCategory.SHOP -> "가게"
+                PinCategory.FESTIVAL -> "축제"
+                null -> null
+            }
+
             // CategoryButtons Composable: 카테고리 선택 버튼들을 표시
             CategoryButtons(
                 categories = sampleCategories,
-                selectedCategory = selectedCategory,
+                selectedCategory = selectedCategoryLabel,
                 onCategorySelected = { category ->
                     viewModel.onCategorySelected(category)
-                    // TODO: 실제 핀 구현 후 선택 카테고리에 맞는 핀만 필터링
-                    // 카테고리 선택 시 해당 카테고리에 맞는 핀만 지도에 표시하는 로직이 들어갈 예정
                 },
                 onNotificationClick = {
                     // TODO: 알림 목록 UI 또는 알림 화면 연결
@@ -447,14 +446,18 @@ fun MapScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable { selectedPin = null }
+                    .clickable { viewModel.clearSelectedPin() }
             )
         }
 
         selectedPin?.let { pin ->
             PinSummaryCard(
                 pin = pin,
-                onDismiss = { selectedPin = null },
+                onDismiss = { viewModel.clearSelectedPin() },
+                onDetailClick = { pinId ->
+                    // TODO: 핀 상세 route 확정 후 이동
+                    viewModel.clearSelectedPin()
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
@@ -501,8 +504,9 @@ fun MapScreen(
 // ==============================================================================================
 @Composable
 private fun PinSummaryCard(
-    pin: MapPin,
+    pin: Pin,
     onDismiss: () -> Unit,
+    onDetailClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // TODO: 핀 담당자가 공용 Pin 모델을 완성하면 category 또는 PinType 기준으로 색상 분기 로직 업데이트
@@ -539,7 +543,7 @@ private fun PinSummaryCard(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = pin.locationName,
+                        text = pin.locationName ?: pin.address,
                         style = IssueTypo.Regular12.copy(color = Gray_7)
                     )
                 }
@@ -562,8 +566,7 @@ private fun PinSummaryCard(
                 text = "상세 보기",
                 style = IssueTypo.Bold12.copy(color = BrandColor),
                 modifier = Modifier.clickable {
-                    // TODO: 핀 상세 화면 이동
-                    // 상세 보기 클릭 시 해당 핀의 상세 화면으로 이동하는 로직이 들어갈 예정
+                    onDetailClick(pin.id) // 상세 보기 클릭 시 해당 핀의 상세 화면으로 이동하는 로직이 들어갈 예정
                 }
             )
         }
@@ -737,6 +740,10 @@ fun NaverMapComposable(
     }
 }
 
+private fun PinCoordinate.toLatLng(): LatLng {
+    return LatLng(latitude, longitude)
+}
+
 // ==============================================================================================
 // 9. Preview 함수들
 //    - Jetpack Compose의 @Preview 어노테이션을 사용하여 UI 컴포넌트를 미리보기 위한 함수들
@@ -750,38 +757,42 @@ fun PreviewMapScreen() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun PreviewPinSummaryCard() {
-    IssueissyuTheme {
-        Column {
-            PinSummaryCard(
-                pin = MapPin(
-                    id = "1",
-                    title = "침수된 도로",
-                    category = PinCategory.ISSUE, // ISSUE 핀은 resolutionStatus 필요, 추후 반영
-                    description = "어제 비로 도로 일부가 침수되어 통행이 어렵습니다. 우회해야 할 것 같습니다.",
-                    locationName = "역삼동 테헤란로 123",
-                    position = LatLng(0.0, 0.0)
-                ),
-                onDismiss = {},
-                modifier = Modifier.padding(16.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            PinSummaryCard(
-                pin = MapPin(
-                    id = "2",
-                    title = "커뮤니티 회의",
-                    category = PinCategory.COMMUNICATION,
-                    description = "다음 주 월요일 저녁 7시, 주민 센터에서 다음 달 행사 논의를 위한 회의가 있습니다. 많은 참여 바랍니다.",
-                    locationName = "강남구 주민센터",
-                    position = LatLng(0.0, 0.0)
-                ),
-                onDismiss = {},
-                modifier = Modifier.padding(16.dp)
-            )
-        }
-    }
-}
+// @Preview(showBackground = true)
+// @Composable
+// private fun PreviewPinSummaryCard() {
+//     IssueissyuTheme {
+//         Column {
+//             PinSummaryCard(
+//                 pin = Pin(
+//                     id = "1",
+//                     title = "침수된 도로",
+//                     category = PinCategory.ISSUE,
+//                     description = "어제 비로 도로 일부가 침수되어 통행이 어렵습니다. 우회해야 할 것 같습니다.",
+//                     locationName = "역삼동 테헤란로 123",
+//                     coordinate = PinCoordinate(0.0, 0.0),
+//                     detail = IssuePinDetail("Flood", ResolutionStatus.BEFORE_RESOLUTION, emptyList())
+//                 ),
+//                 onDismiss = {},
+//                 onDetailClick = {},
+//                 modifier = Modifier.padding(16.dp)
+//             )
+//
+//             Spacer(modifier = Modifier.height(16.dp))
+//
+//             PinSummaryCard(
+//                 pin = Pin(
+//                     id = "2",
+//                     title = "커뮤니티 회의",
+//                     category = PinCategory.COMMUNICATION,
+//                     description = "다음 주 월요일 저녁 7시, 주민 센터에서 다음 달 행사 논의를 위한 회의가 있습니다. 많은 참여 바랍니다.",
+//                     locationName = "강남구 주민센터",
+//                     coordinate = PinCoordinate(0.0, 0.0),
+//                     detail = CommunicationPinDetail("Meeting", "Meeting for next month event", emptyList())
+//                 ),
+//                 onDismiss = {},
+//                 onDetailClick = {},
+//                 modifier = Modifier.padding(16.dp)
+//             )
+//         }
+//     }
+// }
