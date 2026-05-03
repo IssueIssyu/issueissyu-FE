@@ -101,6 +101,8 @@ import com.naver.maps.map.overlay.Marker
 import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
 import com.issueissyu.fe.ui.components.map.toLatLng
 import com.issueissyu.fe.data.model.MapBounds
+import com.naver.maps.map.overlay.OverlayImage
+import com.issueissyu.fe.ui.screens.map.toMarkerIconRes
 
 
 // 위치 권한 요청 코드 상수
@@ -193,8 +195,7 @@ fun MapScreen(
         }
     }
 
-    // 현재 위치로 이동 함수
-    fun moveToCurrentLocation() {
+    fun moveToCurrentLocation() { //현재 위치 추적 요청
         val map = naverMapInstance ?: return
 
         if (hasLocationPermission()) {
@@ -229,9 +230,9 @@ fun MapScreen(
 
         visiblePins.forEach { pin ->
             val marker = Marker().apply {
-                position = pin.coordinate.toLatLng()
-                captionText = pin.title
-                this.map = naverMap
+    position = pin.coordinate.toLatLng()
+    icon = OverlayImage.fromResource(pin.category.toMarkerIconRes())
+    this.map = naverMap
                 setOnClickListener {
                     viewModel.selectPin(pin)
                     true
@@ -502,7 +503,6 @@ private fun PinSummaryCard(
     onDetailClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // TODO: 핀 담당자가 공용 Pin 모델을 완성하면 category 또는 PinType 기준으로 색상 분기 로직 업데이트
     val cardBackgroundColor = when (pin.category) {
         PinCategory.ISSUE -> IssueContainer
         PinCategory.COMMUNICATION -> CommunicationContainerLight
