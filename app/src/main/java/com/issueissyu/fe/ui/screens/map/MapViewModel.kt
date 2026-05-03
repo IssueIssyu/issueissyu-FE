@@ -33,8 +33,8 @@ class MapViewModel @Inject constructor(
     private val _showPinTypeSelector = MutableStateFlow(false)
     val showPinTypeSelector: StateFlow<Boolean> = _showPinTypeSelector.asStateFlow()
 
-    private val _currentMapBounds = MutableStateFlow<MapBounds?>(null)
-    val currentMapBounds: StateFlow<MapBounds?> = _currentMapBounds.asStateFlow()
+    private val _currentBounds = MutableStateFlow<MapBounds?>(null)
+    val currentBounds: StateFlow<MapBounds?> = _currentBounds.asStateFlow()
 
     init {
         loadPins()
@@ -81,14 +81,24 @@ class MapViewModel @Inject constructor(
     }
 
     fun updateMapBounds(bounds: MapBounds) {
-        _currentMapBounds.value = bounds
+        _currentBounds.value = bounds
+        showResearchAreaButton()
     }
 
     fun fetchPinsInBounds() {
-        // TODO: _currentMapBounds를 사용하여 해당 영역 내 핀을 조회하는 API 호출 로직 구현
+        val bounds = _currentBounds.value ?: return
+
         viewModelScope.launch {
-            // 예시: pinRepository.getPinsInBounds(_currentMapBounds.value)
-            // _pins.value = fetchedPins
+            // TODO: 실제 백엔드 BBox API 연결 시 아래 bounds 값을 요청 쿼리 파라미터로 전달
+            // swLat = bounds.swLat
+            // swLng = bounds.swLng
+            // neLat = bounds.neLat
+            // neLng = bounds.neLng
+
+            // 현재는 더미 Repository 단계이므로 기존 getPins()를 다시 호출하는 방식으로 유지
+            _pins.value = pinRepository.getPins()
+
+            hideResearchAreaButton()
         }
     }
 }

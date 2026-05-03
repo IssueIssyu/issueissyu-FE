@@ -270,7 +270,6 @@ fun MapScreen(
                             neLng = bounds.northEast.longitude
                         )
                     )
-                    viewModel.showResearchAreaButton()
                 }
             },
             onMapClick = { _ ->
@@ -355,7 +354,6 @@ fun MapScreen(
         if (showResearchButton) {
             Button(
                 onClick = {
-                    viewModel.hideResearchAreaButton() // ViewModel의 함수 호출
                     viewModel.fetchPinsInBounds() // 저장된 bounds 기준으로 핀 목록 재조회
                 },
                 modifier = Modifier
