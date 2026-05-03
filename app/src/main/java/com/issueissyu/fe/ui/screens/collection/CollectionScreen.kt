@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -291,7 +292,7 @@ private fun PinCard(
                 if (isSelected && !pin.isLocked) {
                     Modifier.border(
                         border = BorderStroke(3.dp, BrandColor),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(15.dp)
                     )
                 } else Modifier
             ),
@@ -392,6 +393,11 @@ fun AutoScrollingNotice(
 
     var currentNoticeIndex by remember { mutableIntStateOf(0) }
 
+    LaunchedEffect(notices) {
+        if (currentNoticeIndex >= notices.size){
+            currentNoticeIndex = 0
+        }
+    }
     LaunchedEffect(key1 = notices) {
         if (notices.size > 1) {
             while (true) {
