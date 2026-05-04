@@ -311,10 +311,26 @@ fun MapScreen(
             )
 
             AutoScrollingNotice(
-                notices = remember { listOf("오늘의 공지: 새로운 업데이트가 있습니다!", "두 번째 공지: 버그 수정 및 성능 개선", "세 번째 공지: 새로운 이벤트가 시작됩니다!") },
+                notices = remember {
+                    listOf(
+                        NoticeUiModel(
+                            id = "notice_1",
+                            title = "오늘의 공지: 새로운 업데이트가 있습니다!"
+                        ),
+                        NoticeUiModel(
+                            id = "notice_2",
+                            title = "두 번째 공지: 버그 수정 및 성능 개선"
+                        ),
+                        NoticeUiModel(
+                            id = "notice_3",
+                            title = "세 번째 공지: 새로운 이벤트가 시작됩니다!"
+                        )
+                    )
+                },
                 iconResId = R.drawable.ic_megaphone,
                 onClick = { clickedNotice ->
-                    // TODO: 클릭된 공지 상세 보기 또는 이동
+                    // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
+                    // clickedNotice.title은 화면 표시용
                 },
                 modifier = Modifier
                     .fillMaxWidth()
