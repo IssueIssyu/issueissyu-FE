@@ -24,7 +24,7 @@ class MyPageViewModel @Inject constructor() : ViewModel() {
 
     private val _myPins = MutableStateFlow<List<Pin>>(
         listOf(
-            Pin("1", "바게트씨", R.drawable.ic_fire),
+            Pin("1", "바게트씨", R.drawable.img_character_butter),
             Pin("2", "움공씨", R.drawable.ic_megaphone),
             Pin("3", "버터떡", R.drawable.ic_moving),
             Pin("4", "으쓱씨", R.drawable.ic_report)
