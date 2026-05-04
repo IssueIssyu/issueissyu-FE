@@ -137,13 +137,14 @@ fun MapScreen(
     val showResearchButton by viewModel.showResearchButton.collectAsStateWithLifecycle()
     val showPinTypeSelector by viewModel.showPinTypeSelector.collectAsStateWithLifecycle()
     val pins by viewModel.pins.collectAsStateWithLifecycle()
+    val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
 
-    val visiblePins = if (selectedCategory == null) {
-        pins
+    val visibleMapPins = if (selectedCategory == null) {
+        mapPins
     } else {
-        pins.filter { it.category == selectedCategory }
+        mapPins.filter { it.category == selectedCategory }
     }
 
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
@@ -209,19 +210,19 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(naverMapInstance, visiblePins) {
+    LaunchedEffect(naverMapInstance, visibleMapPins) {
         val naverMap = naverMapInstance ?: return@LaunchedEffect
 
         mapMarkers.forEach { it.map = null }
         mapMarkers.clear()
 
-        visiblePins.forEach { pin ->
+        visibleMapPins.forEach { mapPin ->
             val marker = Marker().apply {
-                position = pin.coordinate.toLatLng()
-                icon = OverlayImage.fromResource(pin.category.toMarkerIconRes())
+                position = mapPin.coordinate.toLatLng()
+                icon = OverlayImage.fromResource(mapPin.category.toMarkerIconRes())
                 this.map = naverMap
                 setOnClickListener {
-                    viewModel.selectPin(pin)
+                    viewModel.selectPinById(mapPin.pinId)
                     true
                 }
             }
