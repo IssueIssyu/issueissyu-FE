@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -33,9 +34,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -80,7 +85,8 @@ fun MyPageScreen(
     Column(
         modifier = modifier
             .background(White)
-            .fillMaxSize(),
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.SpaceBetween
     ){
         //상단 바
@@ -97,9 +103,20 @@ fun MyPageScreen(
             verticalArrangement = Arrangement.SpaceBetween
         ){
             //프로필 이미지
+            //프로필 사진
             Image(
-                painter = painterResource(R.drawable.ic_megaphone),
-                contentDescription = "프로필 이미지"
+                painter = painterResource(R.drawable.img_character_butter),
+                contentDescription = "프로필 사진",
+                modifier = Modifier
+                    .size(100.dp)
+                    .background(White, CircleShape)
+                    .clip(CircleShape)
+                    .scale(1.5f),
+                contentScale = ContentScale.Crop,
+                alignment = BiasAlignment(
+                    horizontalBias = 0f,     // 가로는 중앙
+                    verticalBias = -0.3f     // 세로는 top과 center 중간
+                )
             )
 
             Spacer(modifier = Modifier.size(30.dp))
@@ -138,8 +155,6 @@ fun MyPageScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
-                .verticalScroll(rememberScrollState())
         ){
             navBar(
                 icon = Icons.Outlined.LocationOn,
@@ -249,7 +264,7 @@ private fun PinCard(pin: Pin) {
         Image(
             painter = painterResource(pin.imageRes),
             contentDescription = pin.name,
-            modifier = Modifier.size(60.dp)
+            modifier = Modifier.size(100.dp)
         )
 
         Spacer(modifier = Modifier.height(8.dp))
