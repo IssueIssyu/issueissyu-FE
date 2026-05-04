@@ -36,6 +36,9 @@ class MapViewModel @Inject constructor(
     private val _currentBounds = MutableStateFlow<MapBounds?>(null)
     val currentBounds: StateFlow<MapBounds?> = _currentBounds.asStateFlow()
 
+    private val _emojiTargetPinId = MutableStateFlow<String?>(null)
+    val emojiTargetPinId: StateFlow<String?> = _emojiTargetPinId.asStateFlow()
+
     init {
         loadPins()
     }
@@ -100,5 +103,43 @@ class MapViewModel @Inject constructor(
 
             hideResearchAreaButton()
         }
+    }
+
+    fun toggleSympathy(pinId: String) {
+        _pins.value = _pins.value.map { pin ->
+            if (pin.id != pinId) return@map pin
+
+            val nextIsSympathized = !pin.isSympathizedByMe
+            val nextCount = if (nextIsSympathized) {
+                pin.sympathyCount + 1
+            } else {
+                (pin.sympathyCount - 1).coerceAtLeast(0)
+            }
+
+            pin.copy(
+                isSympathizedByMe = nextIsSympathized,
+                sympathyCount = nextCount
+            )
+        }
+
+        _selectedPin.value = _pins.value.firstOrNull { it.id == pinId }
+    }
+
+    fun deletePinLocally(pinId: String) {
+        _pins.value = _pins.value.filterNot { it.id == pinId }
+
+        if (_selectedPin.value?.id == pinId) {
+            _selectedPin.value = null
+        }
+        // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
+    }
+
+    fun openEmojiSelector(pinId: String) {
+        _emojiTargetPinId.value = pinId
+        // TODO: 이모지 선택 BottomSheet 표시 상태 연결
+    }
+
+    fun closeEmojiSelector() {
+        _emojiTargetPinId.value = null
     }
 }
