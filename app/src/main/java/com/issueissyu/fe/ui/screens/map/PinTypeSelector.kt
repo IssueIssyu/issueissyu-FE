@@ -26,8 +26,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.issueissyu.fe.R
-import com.issueissyu.fe.ui.theme.Communication
-import com.issueissyu.fe.ui.theme.Issue
+import com.issueissyu.fe.ui.theme.IssueContainer
+import com.issueissyu.fe.ui.theme.CommunicationContainerLight
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
@@ -57,14 +57,14 @@ fun PinTypeSelector(
             PinTypeSelectorItem(
                 iconResId = R.drawable.issue,
                 label = "이슈 생성",
-                backgroundColor = Color(0xFFFFC9B3),
+                backgroundColor = IssueContainer,
                 onClick = onIssueClick
             )
 
             PinTypeSelectorItem(
                 iconResId = R.drawable.communicate,
                 label = "소통 생성",
-                backgroundColor = Color(0xFFD8EEFF),
+                backgroundColor = CommunicationContainerLight,
                 onClick = onCommunicationClick
             )
         }

@@ -1,24 +1,12 @@
 package com.issueissyu.fe.ui.screens.map
 
-// ==============================================================================================
-// 1. Android 권한 및 Jetpack Compose 관련 Import
-//    - 위치 권한 처리를 위한 Android Manifest, Activity, Context, PackageManager 관련 클래스 임포트
-//    - Jetpack Compose UI 및 상태 관리를 위한 다양한 컴포넌트 임포트
-//    - 네이버 지도 SDK의 LocationTrackingMode, FusedLocationSource 등 지도 관련 클래스 임포트
-// ==============================================================================================
-
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
-import com.naver.maps.map.LocationTrackingMode
-import com.naver.maps.map.util.FusedLocationSource
 import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
-import androidx.core.content.ContextCompat
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,31 +34,36 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.issueissyu.fe.ui.screens.map.MapViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.issueissyu.fe.R
+import com.issueissyu.fe.data.model.MapBounds
+import com.issueissyu.fe.data.model.Pin
+import com.issueissyu.fe.data.model.PinCategory
+import com.issueissyu.fe.data.model.PinCoordinate
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
+import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
+import com.issueissyu.fe.ui.components.map.toLatLng
 import com.issueissyu.fe.ui.navigation.AppDestinations
-import com.issueissyu.fe.ui.screens.map.AutoScrollingNotice
-import com.issueissyu.fe.ui.screens.map.PinSummaryCard
-import com.issueissyu.fe.ui.screens.map.PinTypeSelector
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
@@ -86,21 +79,12 @@ import com.issueissyu.fe.ui.theme.Shop
 import com.issueissyu.fe.ui.theme.ShopContainer
 import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.Title
-import com.issueissyu.fe.ui.theme.White
+import com.naver.maps.map.LocationTrackingMode
 import com.naver.maps.map.NaverMap
-
-import com.issueissyu.fe.data.model.Pin
-import com.issueissyu.fe.data.model.PinCategory
-import com.issueissyu.fe.data.model.PinCoordinate
-import androidx.compose.runtime.mutableStateListOf
 import com.naver.maps.map.overlay.Marker
-
-import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
-import com.issueissyu.fe.ui.components.map.toLatLng
-import com.issueissyu.fe.data.model.MapBounds
 import com.naver.maps.map.overlay.OverlayImage
-import com.issueissyu.fe.ui.screens.map.toMarkerIconRes
-
+import com.naver.maps.map.util.FusedLocationSource
+import com.issueissyu.fe.ui.theme.White
 
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
@@ -201,6 +185,7 @@ fun MapScreen(
         }
     }
 
+    @Suppress("unused") // TODO: 초기 위치 요청 로직에서 사용될 예정
     var hasRequestedInitialLocation by remember { mutableStateOf(false) }
 
     LaunchedEffect(naverMapInstance) {
@@ -249,7 +234,7 @@ fun MapScreen(
                 }
             },
             onCameraIdle = { map ->
-                map.contentBounds?.let { bounds ->
+                map.contentBounds.let { bounds -> 
                     viewModel.updateMapBounds(
                         MapBounds(
                             swLat = bounds.southWest.latitude,
@@ -310,6 +295,8 @@ fun MapScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            // AutoScrollingNotice는 NoticeUiModel 정의 필요 -> 다음 단계에서 처리 또는 별도 파일로 분리
+            /*
             AutoScrollingNotice(
                 notices = remember {
                     listOf(
@@ -328,7 +315,7 @@ fun MapScreen(
                     )
                 },
                 iconResId = R.drawable.ic_megaphone,
-                onClick = { clickedNotice ->
+                onClick = { _ -> 
                     // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
                     // clickedNotice.title은 화면 표시용
                 },
@@ -336,6 +323,7 @@ fun MapScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
+            */
         }
 
         if (showResearchButton) {
@@ -428,16 +416,15 @@ fun MapScreen(
             PinSummaryCard(
                 pin = pin,
                 currentUserId = "user1", // TODO: 실제 로그인 사용자 ID로 교체
-                onDismiss = { viewModel.clearSelectedPin() },
-                onDetailClick = { pinId ->
+                onDetailClick = { _ -> 
                     // TODO: 핀 상세 route 확정 후 이동
                     viewModel.clearSelectedPin()
                 },
-                onCommunityClick = { communityPostId ->
+                onCommunityClick = { _ -> 
                     // TODO: 커뮤니티 상세 route 확정 후 이동
                     viewModel.clearSelectedPin()
                 },
-                onEditClick = { pinId ->
+                onEditClick = { _ -> 
                     // TODO: 핀 수정 화면 route 확정 후 이동
                 },
                 onDeleteClick = { pinId ->

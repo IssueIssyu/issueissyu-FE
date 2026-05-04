@@ -7,6 +7,7 @@ fun PinCoordinate.toLatLng(): LatLng {
     return LatLng(latitude, longitude)
 }
 
+@Suppress("unused")
 fun LatLng.toPinCoordinate(): PinCoordinate {
     return PinCoordinate(latitude, longitude)
 }

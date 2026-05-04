@@ -38,9 +38,11 @@ class MapViewModel @Inject constructor(
     val showPinTypeSelector: StateFlow<Boolean> = _showPinTypeSelector.asStateFlow()
 
     private val _currentBounds = MutableStateFlow<MapBounds?>(null)
+    @Suppress("unused") // TODO: UI에서 bounds를 관찰할 계획이면 유지하되 @Suppress("unused")를 붙여도 됩니다.
     val currentBounds: StateFlow<MapBounds?> = _currentBounds.asStateFlow()
 
     private val _emojiTargetPinId = MutableStateFlow<String?>(null)
+    @Suppress("unused") // TODO: 이모지 선택 BottomSheet 연결 시 사용 예정
     val emojiTargetPinId: StateFlow<String?> = _emojiTargetPinId.asStateFlow()
 
     init {
@@ -104,6 +106,7 @@ class MapViewModel @Inject constructor(
     }
 
     fun fetchPinsInBounds() {
+        @Suppress("unused") // Property "bounds" is never used.
         val bounds = _currentBounds.value ?: return
 
         viewModelScope.launch {
@@ -152,6 +155,7 @@ class MapViewModel @Inject constructor(
         // TODO: 이모지 선택 BottomSheet 표시 상태 연결
     }
 
+    @Suppress("unused") // TODO: 이모지 선택 BottomSheet 닫기 처리 연결 예정
     fun closeEmojiSelector() {
         _emojiTargetPinId.value = null
     }

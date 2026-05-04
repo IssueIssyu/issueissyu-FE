@@ -1,6 +1,5 @@
 package com.issueissyu.fe.ui.screens.map
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,25 +7,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.ThumbUp // ThumbUp 아이콘 추가
+import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider // 변경됨: Divider -> HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
-import com.issueissyu.fe.R
 import com.issueissyu.fe.data.model.*
 import com.issueissyu.fe.ui.theme.*
 
@@ -34,7 +31,6 @@ import com.issueissyu.fe.ui.theme.*
 fun PinSummaryCard(
     pin: Pin,
     currentUserId: String,
-    onDismiss: () -> Unit,
     onDetailClick: (String) -> Unit,
     onCommunityClick: (String) -> Unit,
     onEditClick: (String) -> Unit,
@@ -194,7 +190,6 @@ fun PinSummaryCard(
                                 // 상점/축제는 작성자 정보 없음, 공감 버튼만 자연스럽게 배치
                                 CompactSympathyButton(pin.id, pin.sympathyCount, pin.isSympathizedByMe, onSympathyClick)
                             }
-                            else -> {} // 다른 핀 타입 또는 detail이 없는 경우
                         }
                     }
                 }
@@ -210,7 +205,7 @@ fun PinSummaryCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // 4) Divider
-            Divider(color = Gray_3, thickness = 1.dp)
+            HorizontalDivider(color = Gray_3, thickness = 1.dp) 
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -237,8 +232,10 @@ fun PinSummaryCard(
                         Spacer(modifier = Modifier.height(12.dp))
                     }
                 }
-                else -> {
-                    // IssuePin, CommunicationPin은 표시하지 않음
+
+                is IssuePinDetail,
+                is CommunicationPinDetail -> {
+                    // 이슈/소통 핀은 이 영역에 추가 정보 표시 없음
                 }
             }
 
@@ -539,7 +536,6 @@ fun PreviewPinSummaryCard() {
                 )
             ),
             currentUserId = "user_preview",
-            onDismiss = { },
             onDetailClick = { },
             onCommunityClick = { },
             onEditClick = { },
@@ -588,7 +584,6 @@ fun PreviewPinSummaryCardCommunication() {
                 )
             ),
             currentUserId = "user_preview",
-            onDismiss = { },
             onDetailClick = { },
             onCommunityClick = { },
             onEditClick = { },
@@ -628,7 +623,6 @@ fun PreviewPinSummaryCardShop() {
                 )
             ),
             currentUserId = "user_preview_shop",
-            onDismiss = { },
             onDetailClick = { },
             onCommunityClick = { },
             onEditClick = { },
@@ -669,7 +663,6 @@ fun PreviewPinSummaryCardFestival() {
                 )
             ),
             currentUserId = "user_preview_festival",
-            onDismiss = { },
             onDetailClick = { },
             onCommunityClick = { },
             onEditClick = { },
