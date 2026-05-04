@@ -31,8 +31,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -50,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.R
+import com.issueissyu.fe.ui.components.Dialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
 import com.issueissyu.fe.ui.theme.Gray_1
@@ -81,6 +86,24 @@ fun MyPageScreen(
 ){
     val nickname by viewModel.userNickname.collectAsState()
     val myPins by viewModel.myPins.collectAsStateWithLifecycle()
+    val logoutState by viewModel.logoutState.collectAsStateWithLifecycle()
+
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showWithdrawDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(logoutState) {
+        when (logoutState) {
+            is MyPageViewModel.LogoutState.Success -> {
+                onEvent(MyPageEvent.NavigateToLanding)
+                viewModel.resetLohoutState()
+            }
+            is MyPageViewModel.LogoutState.Error -> {
+                viewModel.resetLohoutState()
+            }
+            else -> {}
+        }
+    }
+
 
     Column(
         modifier = modifier
@@ -184,7 +207,7 @@ fun MyPageScreen(
             navBar(
                 icon = Icons.Outlined.Logout,
                 title = "로그아웃",
-                onNavClick = { onEvent(MyPageEvent.Logout) }
+                onNavClick = { showLogoutDialog = true }
             )
 
             Text(
@@ -193,12 +216,41 @@ fun MyPageScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
-                    .clickable(onClick = { onEvent(MyPageEvent.Withdraw) }),
+                    .clickable(onClick = { showWithdrawDialog = true }),
                 textAlign = TextAlign.Center
 
             )
-
         }
+    }
+
+    // 로그아웃 모달
+    if (showLogoutDialog) {
+        Dialog(
+            title = "로그아웃",
+            message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
+            confirmText = "로그아웃",
+            onDismiss = { showLogoutDialog = false },
+            onConfirm = {
+                showLogoutDialog = false
+                viewModel.logout() // 로그아웃
+            }
+        )
+    }
+
+    // 회원탈퇴 모달
+    if (showWithdrawDialog) {
+        Dialog(
+            title = "회원탈퇴",
+            message = "정말 탈퇴하시겠어요?\n그동안 모은 핀과 활동 기록이\n모두 삭제돼요",
+            confirmText = "탈퇴하기",
+            isWarning = true,
+            onDismiss = { showWithdrawDialog = false },
+            onConfirm = {
+                showWithdrawDialog = false
+                viewModel.withdraw()    //회원 탈퇴
+                onEvent(MyPageEvent.Withdraw)
+            }
+        )
     }
 }
 
