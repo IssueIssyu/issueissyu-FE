@@ -54,7 +54,7 @@ fun PinSummaryCard(
 
     Box(
         modifier = modifier
-            .height(290.dp) // 카드 높이 290.dp로 고정
+            .height(260.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(cardBackgroundColor)
             .clickable { /* 카드 내부 클릭 시 이벤트 소비 */ }
@@ -77,7 +77,7 @@ fun PinSummaryCard(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // 2. 장소 + 해결 상태
                     Row(
@@ -100,14 +100,14 @@ fun PinSummaryCard(
 
                         val issueDetail = pin.detail as? IssuePinDetail
                         if (issueDetail != null) {
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             ResolutionStatusPill(
                                 resolutionStatus = issueDetail.resolutionStatus
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // 3. 사용자 프로필 + 사용자 이름 + 액션 버튼 + 공감 버튼
                     Row(
@@ -130,7 +130,7 @@ fun PinSummaryCard(
                                     modifier = Modifier.widthIn(max = 80.dp)
                                 )
 
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
 
                                 if (canEdit) {
                                     CompactCircleIconButton(
