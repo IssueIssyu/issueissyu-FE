@@ -1,0 +1,127 @@
+package com.issueissyu.fe.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Gray_3
+import com.issueissyu.fe.ui.theme.Gray_5
+import com.issueissyu.fe.ui.theme.Issue
+import com.issueissyu.fe.ui.theme.IssueTypo
+import com.issueissyu.fe.ui.theme.Text
+import com.issueissyu.fe.ui.theme.Title
+import com.issueissyu.fe.ui.theme.White
+
+@Composable
+fun Dialog(
+    title: String,
+    message: String,
+    confirmText: String = "확인",
+    dismissText: String = "취소",
+    isWarning: Boolean = false, // 경고성 여부 (회원탈퇴 등)
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(White)
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 타이틀
+                Text(
+                    text = title,
+                    style = IssueTypo.Bold18.copy(
+                        color = if (isWarning) Issue else Title
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 메시지
+                Text(
+                    text = message,
+                    style = IssueTypo.Regular16.copy(color = Text),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 버튼들
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 취소 버튼
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Gray_3
+                        )
+                    ) {
+                        Text(
+                            text = dismissText,
+                            style = IssueTypo.Bold18.copy(color = Gray_5)
+                        )
+                    }
+
+                    // 확인 버튼
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isWarning) Issue else BrandColor  //기본은 브랜드 컬러,  warning -> 붉은 컬러
+                        )
+                    ) {
+                        Text(
+                            text = confirmText,
+                            style = IssueTypo.Bold18.copy(color = White)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewIssueDialog() {
+    Dialog(
+        title = "회원탈퇴",
+        message = "정말로 탈퇴하시겠습니까?\n탈퇴 후에는 복구할 수 없습니다.\n할래말래\n\n할래말래\n할래말래\n할래말래",
+        onDismiss = {},
+        onConfirm = {}
+    )
+}
