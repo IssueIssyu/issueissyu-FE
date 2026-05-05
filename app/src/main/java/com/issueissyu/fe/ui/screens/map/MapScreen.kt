@@ -74,13 +74,9 @@ import com.naver.maps.map.NaverMap
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
 import com.naver.maps.map.util.FusedLocationSource
-import com.naver.maps.map.overlay.CircleOverlay
-import android.graphics.Color as AndroidColor
 import com.issueissyu.fe.ui.theme.White
-import androidx.compose.runtime.DisposableEffect
 
 // 위치 권한 요청 코드 상수
-private const val LOCATION_AUTH_RADIUS_METERS = 100.0
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
 
 // Context에서 Activity를 찾는 헬퍼 함수
@@ -119,7 +115,6 @@ fun MapScreen(
     }
 
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
-    var locationAuthCircle by remember { mutableStateOf<CircleOverlay?>(null) }
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
 
@@ -203,50 +198,16 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(naverMapInstance, isLocationSelectionMode) {
-        val map = naverMapInstance
-
-        locationAuthCircle?.map = null
-        locationAuthCircle = null
-
-        if (map != null && isLocationSelectionMode) {
-            val currentLatLng = map.locationOverlay.position
-
-            locationAuthCircle = CircleOverlay().apply {
-                center = currentLatLng
-                radius = LOCATION_AUTH_RADIUS_METERS
-
-                color = AndroidColor.argb(
-                    45,
-                    29,
-                    135,
-                    255
-                )
-
-                outlineColor = AndroidColor.argb(
-                    180,
-                    29,
-                    135,
-                    255
-                )
-
-                outlineWidth = 2
-                this.map = map
-            }
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            locationAuthCircle?.map = null
-            locationAuthCircle = null
-        }
-    }
     // 핀 생성 화면으로 내비게이션 트리거
     LaunchedEffect(viewModel.navigateToPinCreation) {
-        viewModel.navigateToPinCreation.collectLatest { (category, coordinate, verification) ->
+        viewModel.navigateToPinCreation.collectLatest { event ->
             navController.navigate(
-                "${AppDestinations.PIN_CREATION_ROUTE}?type=${category.name.lowercase()}&lat=${coordinate.latitude}&lng=${coordinate.longitude}&verification=$verification"
+                "${AppDestinations.PIN_CREATION_ROUTE}" +
+                    "?type=${event.category.name.lowercase()}" +
+                    "&pinLat=${event.pinCoordinate.latitude}" +
+                    "&pinLng=${event.pinCoordinate.longitude}" +
+                    "&userLat=${event.userCoordinate.latitude}" +
+                    "&userLng=${event.userCoordinate.longitude}"
             )
         }
     }
@@ -270,7 +231,7 @@ fun MapScreen(
                 }
             },
             onCameraIdle = { map ->
-                map.contentBounds.let { bounds -> 
+                map.contentBounds.let { bounds ->
                     viewModel.updateMapBounds(
                         MapBounds(
                             swLat = bounds.southWest.latitude,
@@ -291,7 +252,6 @@ fun MapScreen(
                     val currentLatLng = naverMapInstance?.locationOverlay?.position
                     if (currentLatLng == null) {
                         // TODO: 현재 위치를 가져오지 못한 경우 안내 UI 표시
-                        // viewModel.exitLocationSelectionMode() // 필요하다면 위치 선택 모드 취소
                         return@IssueissyuNaverMap
                     }
 
@@ -310,7 +270,6 @@ fun MapScreen(
             }
         )
 
-        // 핀 생성 위치 선택 모드 안내 UI
         if (isLocationSelectionMode) {
             val guideText = when (selectedPinCategory) {
                 PinCategory.ISSUE -> "이슈 핀을 생성할 위치를 선택해주세요"
@@ -406,8 +365,6 @@ fun MapScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // AutoScrollingNotice는 NoticeUiModel 정의 필요 -> 다음 단계에서 처리 또는 별도 파일로 분리
-
             AutoScrollingNotice(
                 notices = remember {
                     listOf(
@@ -426,15 +383,13 @@ fun MapScreen(
                     )
                 },
                 iconResId = R.drawable.ic_megaphone,
-                onClick = { _ -> 
-                     //TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
-                     //clickedNotice.title은 화면 표시용
+                onClick = { _ ->
+                    // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
-
         }
 
         if (showResearchButton) {
@@ -527,16 +482,13 @@ fun MapScreen(
             PinSummaryCard(
                 pin = pin,
                 currentUserId = "user1", // TODO: 실제 로그인 사용자 ID로 교체
-                onDetailClick = { _ -> 
-                    // TODO: 핀 상세 route 확정 후 이동
+                onDetailClick = { _ ->
                     viewModel.clearSelectedPin()
                 },
-                onCommunityClick = { _ -> 
-                    // TODO: 커뮤니티 상세 route 확정 후 이동
+                onCommunityClick = { _ ->
                     viewModel.clearSelectedPin()
                 },
-                onEditClick = { _ -> 
-                    // TODO: 핀 수정 화면 route 확정 후 이동
+                onEditClick = { _ ->
                 },
                 onDeleteClick = { pinId ->
                     viewModel.deletePinLocally(pinId)

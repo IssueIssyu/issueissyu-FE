@@ -16,10 +16,13 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import com.naver.maps.geometry.LatLng
-import com.issueissyu.fe.util.distanceTo
 import javax.inject.Inject
 
-private const val LOCATION_AUTH_RADIUS_METERS = 100.0
+data class PinCreationNavigationEvent(
+    val category: PinCategory,
+    val pinCoordinate: PinCoordinate,
+    val userCoordinate: PinCoordinate
+)
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
@@ -64,7 +67,7 @@ class MapViewModel @Inject constructor(
     private val _currentLocation = MutableStateFlow<PinCoordinate?>(null)
     val currentLocation: StateFlow<PinCoordinate?> = _currentLocation.asStateFlow()
 
-    private val _navigateToPinCreation = MutableSharedFlow<Triple<PinCategory, PinCoordinate, String>>()
+    private val _navigateToPinCreation = MutableSharedFlow<PinCreationNavigationEvent>()
     val navigateToPinCreation = _navigateToPinCreation.asSharedFlow()
 
     init {
@@ -203,25 +206,19 @@ fun selectPinById(pinId: String) {
 
     fun onMapCoordinateSelected(selectedCoordinate: PinCoordinate, currentCoordinate: PinCoordinate?) {
         if (!_isLocationSelectionMode.value || _selectedPinCategory.value == null) return
-
-        _selectedPinCoordinate.value = selectedCoordinate
+        if (currentCoordinate == null) {
+            // TODO: 현재 위치를 가져오지 못한 경우 안내 UI 표시
+            return
+        }
 
         viewModelScope.launch {
-            val verificationType = if (currentCoordinate != null) {
-                val distance = currentCoordinate.distanceTo(selectedCoordinate)
-                if (distance <= LOCATION_AUTH_RADIUS_METERS) {
-                    "location"
-                } else {
-                    // TODO: 동네인증 백엔드 API 연결 후 선택 좌표가 인증 동네 범위에 포함되는지 검증 필요
-                    "neighborhood"
-                }
-            } else {
-                // 현재 위치를 알 수 없으면 기본적으로 neighborhood 인증 필요
-                // TODO: 현재 위치를 가져오지 못한 경우 안내 UI 표시 또는 처리
-                "neighborhood"
-            }
-
-            _navigateToPinCreation.emit(Triple(_selectedPinCategory.value!!, selectedCoordinate, verificationType))
+            _navigateToPinCreation.emit(
+                PinCreationNavigationEvent(
+                    category = _selectedPinCategory.value!!,
+                    pinCoordinate = selectedCoordinate,
+                    userCoordinate = currentCoordinate
+                )
+            )
             exitLocationSelectionMode()
         }
     }
