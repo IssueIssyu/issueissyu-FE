@@ -1,8 +1,5 @@
 package com.issueissyu.fe.ui.screens.map
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,36 +35,29 @@ fun PinTypeSelector(
     onCommunicationClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    AnimatedVisibility(
-        visible = true,
-        enter = slideInVertically(initialOffsetY = { it }),
-        exit = slideOutVertically(targetOffsetY = { it }),
+    Column(
         modifier = modifier
+            .width(82.dp)
+            .height(172.dp)
+            .clip(RoundedCornerShape(30.dp))
+            .background(White)
+            .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Column(
-            modifier = Modifier
-                .width(82.dp)
-                .height(172.dp)
-                .clip(RoundedCornerShape(30.dp))
-                .background(White)
-                .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            PinTypeSelectorItem(
-                iconResId = R.drawable.issue,
-                label = "이슈 생성",
-                backgroundColor = IssueContainer,
-                onClick = onIssueClick
-            )
+        PinTypeSelectorItem(
+            iconResId = R.drawable.issue,
+            label = "이슈 생성",
+            backgroundColor = IssueContainer,
+            onClick = onIssueClick
+        )
 
-            PinTypeSelectorItem(
-                iconResId = R.drawable.communicate,
-                label = "소통 생성",
-                backgroundColor = CommunicationContainerLight,
-                onClick = onCommunicationClick
-            )
-        }
+        PinTypeSelectorItem(
+            iconResId = R.drawable.communicate,
+            label = "소통 생성",
+            backgroundColor = CommunicationContainerLight,
+            onClick = onCommunicationClick
+        )
     }
 }
 

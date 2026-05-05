@@ -61,7 +61,7 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("type") {
                     type = NavType.StringType
-                    nullable = false // type은 null이 아니어야 함을 명시
+                    defaultValue = "issue"
                 }
             )
         ) { backStackEntry ->

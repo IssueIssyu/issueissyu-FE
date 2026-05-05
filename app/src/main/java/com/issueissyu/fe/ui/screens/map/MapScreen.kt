@@ -273,7 +273,7 @@ fun MapScreen(
             )
 
             // AutoScrollingNotice는 NoticeUiModel 정의 필요 -> 다음 단계에서 처리 또는 별도 파일로 분리
-            /*
+
             AutoScrollingNotice(
                 notices = remember {
                     listOf(
@@ -293,14 +293,14 @@ fun MapScreen(
                 },
                 iconResId = R.drawable.ic_megaphone,
                 onClick = { _ -> 
-                    // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
-                    // clickedNotice.title은 화면 표시용
+                     //TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
+                     //clickedNotice.title은 화면 표시용
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
-            */
+
         }
 
         if (showResearchButton) {

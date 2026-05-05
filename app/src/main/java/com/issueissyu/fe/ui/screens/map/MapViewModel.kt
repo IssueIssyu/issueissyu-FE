@@ -75,6 +75,7 @@ class MapViewModel @Inject constructor(
     }
 
     fun onCategorySelected(categoryName: String?) {
+        // TODO: 추후 CategoryButtons에서 PinCategory를 직접 전달하도록 변경
         _selectedCategory.value = when (categoryName) {
             "이슈" -> PinCategory.ISSUE
             "소통" -> PinCategory.COMMUNICATION
@@ -141,14 +142,15 @@ class MapViewModel @Inject constructor(
         _selectedPin.value = _pins.value.firstOrNull { it.id == pinId }
     }
 
-    fun deletePinLocally(pinId: String) {
-        _pins.value = _pins.value.filterNot { it.id == pinId }
+fun deletePinLocally(pinId: String) {
+    _pins.value = _pins.value.filterNot { it.id == pinId }
+    _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
 
-        if (_selectedPin.value?.id == pinId) {
-            _selectedPin.value = null
-        }
-        // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
+    if (_selectedPin.value?.id == pinId) {
+        _selectedPin.value = null
     }
+    // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
+}
 
     fun openEmojiSelector(pinId: String) {
         _emojiTargetPinId.value = pinId
