@@ -27,6 +27,7 @@ import com.issueissyu.fe.ui.screens.onboarding.TermDetailScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermsType
 import com.issueissyu.fe.ui.screens.onboarding.UserVerificationScreen
+import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 
 @Composable
 fun AppNavGraph(
@@ -183,10 +184,16 @@ fun AppNavGraph(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
+                    .padding(paddingValues)
             ) {
-                Text("패치노트 화면")
+                PatchNotesRoute(
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onPatchNoteClick = { pinId ->
+                        // TODO: 핀 상세 화면 route 확정 후 이동
+                    }
+                )
             }
         }
         composable(

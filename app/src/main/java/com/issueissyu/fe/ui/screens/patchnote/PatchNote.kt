@@ -23,27 +23,36 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Issue
+import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
-import com.issueissyu.fe.ui.theme.Gray_8
+import com.issueissyu.fe.ui.theme.IssueContainerLight
+import com.issueissyu.fe.ui.theme.CommunicationContainerLight
 import com.issueissyu.fe.ui.theme.Gray_7
+import com.issueissyu.fe.ui.theme.Gray_6
 import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
+import com.issueissyu.fe.data.model.ResolutionStatus
+import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 
 @Composable
 fun PatchNotesRoute(
-    viewModel: PatchNotesViewModel = hiltViewModel()
+    viewModel: PatchNotesViewModel = hiltViewModel(),
+    onBackClick: () -> Unit = {},
+    onPatchNoteClick: (String) -> Unit = {}
 ) {
     val patchNotes by viewModel.patchNotes.collectAsStateWithLifecycle()
 
     PatchNotesScreen(
         patchNotes = patchNotes,
-        onPatchNoteClick = viewModel::onPatchNoteClick
+        onBackClick = onBackClick,
+        onPatchNoteClick = onPatchNoteClick
     )
 }
 
@@ -53,16 +62,9 @@ data class PatchNoteItem(
     val viewCount: Int,
     val locationName: String,
     val writerName: String,
-    val writerLevelText: String? = null,
     val writerImageUrl: String? = null,
     val resolutionStatus: ResolutionStatus
 )
-
-enum class ResolutionStatus {
-    BEFORE_RESOLUTION, // 해결 전
-    IN_PROGRESS,       // 해결 중
-    RESOLVED           // 해결 완료
-}
 
 fun getResolutionStatusText(status: ResolutionStatus): String {
     return when (status) {
@@ -75,14 +77,14 @@ fun getResolutionStatusText(status: ResolutionStatus): String {
 fun getPatchNoteCardColor(status: ResolutionStatus): Color {
     return when (status) {
         ResolutionStatus.BEFORE_RESOLUTION -> White
-        ResolutionStatus.IN_PROGRESS -> Issue.copy(alpha = 0.2f)
-        ResolutionStatus.RESOLVED -> BrandColor.copy(alpha = 0.2f)
+        ResolutionStatus.IN_PROGRESS -> IssueContainerLight
+        ResolutionStatus.RESOLVED -> CommunicationContainerLight
     }
 }
 
 fun getPatchNoteBadgeColor(status: ResolutionStatus): Color {
     return when (status) {
-        ResolutionStatus.BEFORE_RESOLUTION -> Gray_8
+        ResolutionStatus.BEFORE_RESOLUTION -> Color.Black
         ResolutionStatus.IN_PROGRESS -> Issue
         ResolutionStatus.RESOLVED -> BrandColor
     }
@@ -94,19 +96,21 @@ fun PatchNoteStatusBadge(
     modifier: Modifier = Modifier
 ) {
     val badgeColor = getPatchNoteBadgeColor(resolutionStatus)
-    val badgeTextColor = White
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(17.dp))
+            .defaultMinSize(minWidth = 80.dp, minHeight = 30.dp)
+            .height(40.dp)
+            .clip(RoundedCornerShape(28.dp))
             .background(badgeColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 20.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = getResolutionStatusText(resolutionStatus),
-            style = MaterialTheme.typography.labelSmall,
-            color = badgeTextColor
+            style = IssueTypo.Bold18,
+            color = White,
+            maxLines = 1
         )
     }
 }
@@ -118,84 +122,58 @@ fun PatchNoteCard(
     modifier: Modifier = Modifier
 ) {
     val cardBackgroundColor = getPatchNoteCardColor(patchNote.resolutionStatus)
-    
-    val writerInfoText = patchNote.writerLevelText?.let {
-        "${patchNote.writerName} $it"
-    } ?: patchNote.writerName
+    val cardShape = RoundedCornerShape(26.dp)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(92.dp)
-            .shadow(elevation = 4.dp, shape = RoundedCornerShape(15.dp))
-            .clip(RoundedCornerShape(15.dp))
+            .height(128.dp)
+            .shadow(elevation = 4.dp, shape = cardShape)
+            .clip(cardShape)
             .background(cardBackgroundColor)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 26.dp, vertical = 20.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxSize(),
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
                         text = patchNote.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = IssueTypo.Bold18,
+                        fontSize = 22.sp,
                         color = Title,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                        modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = "조회 ${patchNote.viewCount}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Gray_7
+                        style = IssueTypo.Regular15,
+                        color = Gray_6
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Location",
-                        modifier = Modifier.size(16.dp),
-                        tint = Gray_7
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = patchNote.locationName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Gray_7,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .widthIn(min = 88.dp, max = 120.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.widthIn(max = 168.dp)
+                ) {
                     if (patchNote.writerImageUrl != null) {
                         // TODO: Coil 또는 Glide 라이브러리로 이미지 로드
-                        // AsyncImage(
-                        //     model = patchNote.writerImageUrl,
-                        //     contentDescription = "Writer Profile",
-                        //     modifier = Modifier
-                        //         .size(24.dp)
-                        //         .clip(CircleShape)
-                        // )
                         Box(
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(32.dp)
                                 .clip(CircleShape)
                                 .background(Gray_3)
                         )
@@ -203,20 +181,50 @@ fun PatchNoteCard(
                         Icon(
                             imageVector = Icons.Filled.Person,
                             contentDescription = "Writer Profile",
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(32.dp),
                             tint = Gray_5
                         )
                     }
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = writerInfoText,
-                        style = MaterialTheme.typography.labelSmall,
+                        text = patchNote.writerName,
+                        style = IssueTypo.Bold12,
+                        fontSize = 14.sp,
                         color = Gray_7,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 120.dp)
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.LocationOn,
+                        contentDescription = "Location",
+                        modifier = Modifier.size(30.dp),
+                        tint = Gray_7
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = patchNote.locationName,
+                        style = IssueTypo.Regular16,
+                        color = Gray_7,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
                 PatchNoteStatusBadge(resolutionStatus = patchNote.resolutionStatus)
             }
         }
@@ -226,6 +234,7 @@ fun PatchNoteCard(
 @Composable
 fun PatchNotesScreen(
     patchNotes: List<PatchNoteItem>,
+    onBackClick: () -> Unit,
     onPatchNoteClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -233,18 +242,17 @@ fun PatchNotesScreen(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "패치노트",
-            style = MaterialTheme.typography.headlineMedium,
-            color = Title,
-            modifier = Modifier.padding(bottom = 16.dp)
+        IssueissyuTopAppBar(
+            titleText = "패치노트",
+            onBackClick = onBackClick
         )
 
         LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -272,7 +280,6 @@ fun PreviewPatchNotesScreenContent() {
                     viewCount = 125,
                     locationName = "역삼동 테헤란로 123",
                     writerName = "관리자",
-                    writerLevelText = "Level 5",
                     resolutionStatus = ResolutionStatus.RESOLVED
                 ),
                 PatchNoteItem(
@@ -281,7 +288,6 @@ fun PreviewPatchNotesScreenContent() {
                     viewCount = 30,
                     locationName = "강남대로 456",
                     writerName = "홍길동",
-                    writerLevelText = "Level 2",
                     resolutionStatus = ResolutionStatus.IN_PROGRESS
                 ),
                 PatchNoteItem(
@@ -290,10 +296,10 @@ fun PreviewPatchNotesScreenContent() {
                     viewCount = 200,
                     locationName = "선릉역 사거리",
                     writerName = "익명",
-                    writerLevelText = null,
                     resolutionStatus = ResolutionStatus.BEFORE_RESOLUTION
                 )
             ),
+            onBackClick = {},
             onPatchNoteClick = {}
         )
     }
@@ -316,7 +322,6 @@ fun PreviewPatchNoteCardStates() {
                     viewCount = 125,
                     locationName = "역삼동 테헤란로 123",
                     writerName = "관리자",
-                    writerLevelText = "Level 5",
                     resolutionStatus = ResolutionStatus.RESOLVED
                 )
             )
@@ -329,7 +334,6 @@ fun PreviewPatchNoteCardStates() {
                     viewCount = 30,
                     locationName = "강남대로 456",
                     writerName = "홍길동",
-                    writerLevelText = "Level 2",
                     resolutionStatus = ResolutionStatus.IN_PROGRESS
                 )
             )
@@ -342,7 +346,6 @@ fun PreviewPatchNoteCardStates() {
                     viewCount = 200,
                     locationName = "선릉역 사거리",
                     writerName = "익명",
-                    writerLevelText = null,
                     resolutionStatus = ResolutionStatus.BEFORE_RESOLUTION
                 )
             )
