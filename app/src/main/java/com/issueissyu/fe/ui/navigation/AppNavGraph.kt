@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.issueissyu.fe.ui.screens.home.HomeScreen
 import com.issueissyu.fe.ui.screens.map.MapScreen
+import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Text
@@ -50,10 +51,16 @@ fun AppNavGraph(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
+                    .padding(paddingValues)
             ) {
-                Text("패치노트 화면")
+                PatchNotesRoute(
+                    onBackClick = {
+                        navController.popBackStack()
+                    },
+                    onPatchNoteClick = { pinId ->
+                        // TODO: 핀 상세 화면 route 확정 후 이동
+                    }
+                )
             }
         }
         composable(
