@@ -1,5 +1,4 @@
-// presentation/screens/mypage/MyIssueViewModel.kt
-package com.issueissyu.fe.presentation.screens.mypage
+package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -93,6 +92,42 @@ class MyIssueViewModel @Inject constructor() : ViewModel() {
                 address = "서울특별시 중구 을지로 66",
                 pinType = PinType.ISSUE,
                 status = IssueStatus.RESOLVED,
+                latitude = 37.5600,
+                longitude = 126.9900
+            ),
+            MyIssueItem(
+                id = "issue_4",
+                title = "불법 주정차",
+                address = "서울 마포구 잔다리로 12",
+                pinType = PinType.ISSUE,
+                status = IssueStatus.BEFORE_RESOLUTION,
+                latitude = 37.5600,
+                longitude = 126.9900
+            ),
+            MyIssueItem(
+                id = "issue_5",
+                title = "불법 광고물 부착",
+                address = "서울특별시 중구 을지로 66",
+                pinType = PinType.ISSUE,
+                status = IssueStatus.BEFORE_RESOLUTION,
+                latitude = 37.5600,
+                longitude = 126.9900
+            ),
+            MyIssueItem(
+                id = "issue_6",
+                title = "도로 배수구 막힘",
+                address = "서울특별시 중구 을지로 66",
+                pinType = PinType.ISSUE,
+                status = IssueStatus.IN_PROGRESS,
+                latitude = 37.5600,
+                longitude = 126.9900
+            ),
+            MyIssueItem(
+                id = "comm_4",
+                title = "우리 동네 느좋 스팟",
+                address = "서울특별시 중구 을지로 66",
+                pinType = PinType.COMMUNICATION,
+                status = null,
                 latitude = 37.5600,
                 longitude = 126.9900
             )
