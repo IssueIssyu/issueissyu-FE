@@ -52,6 +52,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.collectLatest
+import com.naver.maps.geometry.LatLng
+import kotlinx.coroutines.flow.collectLatest
 import com.issueissyu.fe.R
 import com.issueissyu.fe.data.model.MapBounds
 import com.issueissyu.fe.data.model.PinCategory
@@ -482,13 +484,16 @@ fun MapScreen(
             PinSummaryCard(
                 pin = pin,
                 currentUserId = "user1", // TODO: 실제 로그인 사용자 ID로 교체
-                onDetailClick = { _ ->
+                onDetailClick = { _ -> 
+                    // TODO: 핀 상세 route 확정 후 이동
                     viewModel.clearSelectedPin()
                 },
-                onCommunityClick = { _ ->
+                onCommunityClick = { _ -> 
+                    // TODO: 커뮤니티 상세 route 확정 후 이동
                     viewModel.clearSelectedPin()
                 },
-                onEditClick = { _ ->
+                onEditClick = { _ -> 
+                    // TODO: 핀 수정 화면 route 확정 후 이동
                 },
                 onDeleteClick = { pinId ->
                     viewModel.deletePinLocally(pinId)
