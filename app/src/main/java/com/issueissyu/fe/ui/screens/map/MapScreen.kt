@@ -38,8 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,7 +51,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.naver.maps.geometry.LatLng
 import kotlinx.coroutines.flow.collectLatest
 import com.issueissyu.fe.R
 import com.issueissyu.fe.data.model.MapBounds
@@ -109,7 +106,6 @@ fun MapScreen(
 ) {
     val showResearchButton by viewModel.showResearchButton.collectAsStateWithLifecycle()
     val showPinTypeSelector by viewModel.showPinTypeSelector.collectAsStateWithLifecycle()
-    val pins by viewModel.pins.collectAsStateWithLifecycle()
     val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()

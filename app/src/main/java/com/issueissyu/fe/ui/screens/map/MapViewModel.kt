@@ -88,9 +88,6 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun selectPin(pin: Pin) {
-        _selectedPin.value = pin
-    }
 
     fun clearSelectedPin() {
         _selectedPin.value = null
