@@ -160,7 +160,10 @@ class MapViewModel @Inject constructor(
         _emojiTargetPinId.value = null
     }
 
-    fun selectPinById(pinId: String) {
-        _selectedPin.value = _pins.value.firstOrNull { it.id == pinId }
+fun selectPinById(pinId: String) {
+    viewModelScope.launch {
+        val cachedPin = _pins.value.firstOrNull { it.id == pinId }
+        _selectedPin.value = cachedPin ?: pinRepository.getPinById(pinId)
     }
+}
 }
