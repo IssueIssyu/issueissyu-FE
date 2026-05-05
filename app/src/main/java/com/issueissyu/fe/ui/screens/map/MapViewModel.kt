@@ -6,13 +6,20 @@ import com.issueissyu.fe.data.model.MapBounds
 import com.issueissyu.fe.data.model.Pin
 import com.issueissyu.fe.data.model.PinCategory
 import com.issueissyu.fe.data.model.MapPinMarker
+import com.issueissyu.fe.data.model.PinCoordinate
 import com.issueissyu.fe.data.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import com.naver.maps.geometry.LatLng
+import com.issueissyu.fe.util.distanceTo
 import javax.inject.Inject
+
+private const val LOCATION_AUTH_RADIUS_METERS = 100.0
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
@@ -44,6 +51,21 @@ class MapViewModel @Inject constructor(
     private val _emojiTargetPinId = MutableStateFlow<String?>(null)
     @Suppress("unused") // TODO: 이모지 선택 BottomSheet 연결 시 사용 예정
     val emojiTargetPinId: StateFlow<String?> = _emojiTargetPinId.asStateFlow()
+
+    private val _isLocationSelectionMode = MutableStateFlow(false)
+    val isLocationSelectionMode: StateFlow<Boolean> = _isLocationSelectionMode.asStateFlow()
+
+    private val _selectedPinCategory = MutableStateFlow<PinCategory?>(null)
+    val selectedPinCategory: StateFlow<PinCategory?> = _selectedPinCategory.asStateFlow()
+
+    private val _selectedPinCoordinate = MutableStateFlow<PinCoordinate?>(null)
+    val selectedPinCoordinate: StateFlow<PinCoordinate?> = _selectedPinCoordinate.asStateFlow()
+
+    private val _currentLocation = MutableStateFlow<PinCoordinate?>(null)
+    val currentLocation: StateFlow<PinCoordinate?> = _currentLocation.asStateFlow()
+
+    private val _navigateToPinCreation = MutableSharedFlow<Triple<PinCategory, PinCoordinate, String>>()
+    val navigateToPinCreation = _navigateToPinCreation.asSharedFlow()
 
     init {
         loadPins()
@@ -168,4 +190,46 @@ fun selectPinById(pinId: String) {
         _selectedPin.value = cachedPin ?: pinRepository.getPinById(pinId)
     }
 }
+
+    fun enterLocationSelectionMode(category: PinCategory) {
+        _isLocationSelectionMode.value = true
+        _selectedPinCategory.value = category
+        _selectedPinCoordinate.value = null
+    }
+
+    fun exitLocationSelectionMode() {
+        _isLocationSelectionMode.value = false
+        _selectedPinCategory.value = null
+        _selectedPinCoordinate.value = null
+        closePinTypeSelector()
+    }
+
+    fun onMapCoordinateSelected(selectedCoordinate: PinCoordinate, currentCoordinate: PinCoordinate?) {
+        if (!_isLocationSelectionMode.value || _selectedPinCategory.value == null) return
+
+        _selectedPinCoordinate.value = selectedCoordinate
+
+        viewModelScope.launch {
+            val verificationType = if (currentCoordinate != null) {
+                val distance = currentCoordinate.distanceTo(selectedCoordinate)
+                if (distance <= LOCATION_AUTH_RADIUS_METERS) {
+                    "location"
+                } else {
+                    // TODO: 동네인증 백엔드 API 연결 후 선택 좌표가 인증 동네 범위에 포함되는지 검증 필요
+                    "neighborhood"
+                }
+            } else {
+                // 현재 위치를 알 수 없으면 기본적으로 neighborhood 인증 필요
+                // TODO: 현재 위치를 가져오지 못한 경우 안내 UI 표시 또는 처리
+                "neighborhood"
+            }
+
+            _navigateToPinCreation.emit(Triple(_selectedPinCategory.value!!, selectedCoordinate, verificationType))
+            exitLocationSelectionMode()
+        }
+    }
+
+    fun updateCurrentLocation(latLng: LatLng) {
+        _currentLocation.value = PinCoordinate(latitude = latLng.latitude, longitude = latLng.longitude)
+    }
 }

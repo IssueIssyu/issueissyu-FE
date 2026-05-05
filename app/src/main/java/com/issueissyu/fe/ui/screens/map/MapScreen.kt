@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -18,8 +19,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddLocation
 import androidx.compose.material.icons.filled.Refresh
@@ -35,6 +38,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,9 +53,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.naver.maps.geometry.LatLng
+import kotlinx.coroutines.flow.collectLatest
 import com.issueissyu.fe.R
 import com.issueissyu.fe.data.model.MapBounds
 import com.issueissyu.fe.data.model.PinCategory
+import com.issueissyu.fe.data.model.PinCoordinate
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
 import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
@@ -69,9 +77,13 @@ import com.naver.maps.map.NaverMap
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
 import com.naver.maps.map.util.FusedLocationSource
+import com.naver.maps.map.overlay.CircleOverlay
+import android.graphics.Color as AndroidColor
 import com.issueissyu.fe.ui.theme.White
+import androidx.compose.runtime.DisposableEffect
 
 // 위치 권한 요청 코드 상수
+private const val LOCATION_AUTH_RADIUS_METERS = 100.0
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
 
 // Context에서 Activity를 찾는 헬퍼 함수
@@ -101,6 +113,8 @@ fun MapScreen(
     val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
+    val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
 
     val visibleMapPins = if (selectedCategory == null) {
         mapPins
@@ -109,6 +123,7 @@ fun MapScreen(
     }
 
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
+    var locationAuthCircle by remember { mutableStateOf<CircleOverlay?>(null) }
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
 
@@ -192,6 +207,54 @@ fun MapScreen(
         }
     }
 
+    LaunchedEffect(naverMapInstance, isLocationSelectionMode) {
+        val map = naverMapInstance
+
+        locationAuthCircle?.map = null
+        locationAuthCircle = null
+
+        if (map != null && isLocationSelectionMode) {
+            val currentLatLng = map.locationOverlay.position
+
+            locationAuthCircle = CircleOverlay().apply {
+                center = currentLatLng
+                radius = LOCATION_AUTH_RADIUS_METERS
+
+                color = AndroidColor.argb(
+                    45,
+                    29,
+                    135,
+                    255
+                )
+
+                outlineColor = AndroidColor.argb(
+                    180,
+                    29,
+                    135,
+                    255
+                )
+
+                outlineWidth = 2
+                this.map = map
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            locationAuthCircle?.map = null
+            locationAuthCircle = null
+        }
+    }
+    // 핀 생성 화면으로 내비게이션 트리거
+    LaunchedEffect(viewModel.navigateToPinCreation) {
+        viewModel.navigateToPinCreation.collectLatest { (category, coordinate, verification) ->
+            navController.navigate(
+                "${AppDestinations.PIN_CREATION_ROUTE}?type=${category.name.lowercase()}&lat=${coordinate.latitude}&lng=${coordinate.longitude}&verification=$verification"
+            )
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         IssueissyuNaverMap(
             modifier = Modifier.fillMaxSize(),
@@ -222,10 +285,85 @@ fun MapScreen(
                     )
                 }
             },
-            onMapClick = { _ ->
-                viewModel.clearSelectedPin()
+            onMapClick = { clickedLatLng ->
+                if (isLocationSelectionMode) {
+                    val selectedCoordinate = PinCoordinate(
+                        latitude = clickedLatLng.latitude,
+                        longitude = clickedLatLng.longitude
+                    )
+
+                    val currentLatLng = naverMapInstance?.locationOverlay?.position
+                    if (currentLatLng == null) {
+                        // TODO: 현재 위치를 가져오지 못한 경우 안내 UI 표시
+                        // viewModel.exitLocationSelectionMode() // 필요하다면 위치 선택 모드 취소
+                        return@IssueissyuNaverMap
+                    }
+
+                    val currentCoordinate = PinCoordinate(
+                        latitude = currentLatLng.latitude,
+                        longitude = currentLatLng.longitude
+                    )
+
+                    viewModel.onMapCoordinateSelected(
+                        selectedCoordinate = selectedCoordinate,
+                        currentCoordinate = currentCoordinate
+                    )
+                } else {
+                    viewModel.clearSelectedPin()
+                }
             }
         )
+
+        // 핀 생성 위치 선택 모드 안내 UI
+        if (isLocationSelectionMode) {
+            val guideText = when (selectedPinCategory) {
+                PinCategory.ISSUE -> "이슈 핀을 생성할 위치를 선택해주세요"
+                PinCategory.COMMUNICATION -> "소통 핀을 생성할 위치를 선택해주세요"
+                else -> "핀을 생성할 위치를 선택해주세요"
+            }
+            val interactionSource = remember { MutableInteractionSource() }
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 124.dp)
+                    .background(
+                        color = Gray_7.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(22.dp)
+                    )
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null
+                    ) {
+                        // 배너 영역 클릭이 지도 클릭으로 처리되지 않게 소비
+                    }
+                    .padding(start = 14.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = guideText,
+                    style = IssueTypo.Bold12.copy(color = White)
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = { viewModel.exitLocationSelectionMode() },
+                    modifier = Modifier.height(32.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = White,
+                        contentColor = BrandColor
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+                ) {
+                    Text(
+                        text = "취소",
+                        style = IssueTypo.Bold12.copy(color = BrandColor)
+                    )
+                }
+            }
+        }
 
         Column(
             modifier = Modifier
@@ -420,7 +558,7 @@ fun MapScreen(
             )
         }
 
-        if (showPinTypeSelector) {
+        if (showPinTypeSelector && !isLocationSelectionMode) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -428,15 +566,13 @@ fun MapScreen(
             )
         }
 
-        if (showPinTypeSelector) {
+        if (showPinTypeSelector && !isLocationSelectionMode) {
             PinTypeSelector(
                 onIssueClick = {
-                    viewModel.closePinTypeSelector()
-                    navController.navigate("${AppDestinations.PIN_CREATION_ROUTE}?type=issue")
+                    viewModel.enterLocationSelectionMode(PinCategory.ISSUE)
                 },
                 onCommunicationClick = {
-                    viewModel.closePinTypeSelector()
-                    navController.navigate("${AppDestinations.PIN_CREATION_ROUTE}?type=communication")
+                    viewModel.enterLocationSelectionMode(PinCategory.COMMUNICATION)
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)

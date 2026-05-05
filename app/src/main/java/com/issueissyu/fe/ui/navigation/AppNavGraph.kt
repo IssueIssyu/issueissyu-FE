@@ -57,15 +57,32 @@ fun AppNavGraph(
             }
         }
         composable(
-            route = "${AppDestinations.PIN_CREATION_ROUTE}?type={type}",
+            route = "${AppDestinations.PIN_CREATION_ROUTE}?type={type}&lat={lat}&lng={lng}&verification={verification}",
             arguments = listOf(
                 navArgument("type") {
                     type = NavType.StringType
                     defaultValue = "issue"
+                },
+                navArgument("lat") {
+                    type = NavType.FloatType
+                    defaultValue = 0f
+                    nullable = false
+                },
+                navArgument("lng") {
+                    type = NavType.FloatType
+                    defaultValue = 0f
+                    nullable = false
+                },
+                navArgument("verification") {
+                    type = NavType.StringType
+                    defaultValue = "neighborhood"
                 }
             )
         ) { backStackEntry ->
-            val pinType = backStackEntry.arguments!!.getString("type") // type은 필수로 제공되므로 !! 사용
+            val pinType = backStackEntry.arguments!!.getString("type")
+            val lat = backStackEntry.arguments!!.getFloat("lat")
+            val lng = backStackEntry.arguments!!.getFloat("lng")
+            val verificationType = backStackEntry.arguments!!.getString("verification")
 
             Box(
                 modifier = Modifier
@@ -73,7 +90,7 @@ fun AppNavGraph(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("핀 생성 화면: $pinType")
+                Text("핀 생성 화면: $pinType, Lat: $lat, Lng: $lng, Verification: $verificationType")
             }
         }
     }
