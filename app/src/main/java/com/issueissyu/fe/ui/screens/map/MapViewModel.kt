@@ -9,8 +9,10 @@ import com.issueissyu.fe.data.model.MapPinMarker
 import com.issueissyu.fe.data.model.PinCoordinate
 import com.issueissyu.fe.data.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -60,9 +62,6 @@ class MapViewModel @Inject constructor(
 
     private val _selectedPinCoordinate = MutableStateFlow<PinCoordinate?>(null)
     val selectedPinCoordinate: StateFlow<PinCoordinate?> = _selectedPinCoordinate.asStateFlow()
-
-    private val _currentLocation = MutableStateFlow<PinCoordinate?>(null)
-    val currentLocation: StateFlow<PinCoordinate?> = _currentLocation.asStateFlow()
 
     private val _navigateToPinCreation = MutableSharedFlow<PinCreationNavigationEvent>()
     val navigateToPinCreation = _navigateToPinCreation.asSharedFlow()
@@ -161,15 +160,15 @@ class MapViewModel @Inject constructor(
         _selectedPin.value = _pins.value.firstOrNull { it.id == pinId }
     }
 
-fun deletePinLocally(pinId: String) {
-    _pins.value = _pins.value.filterNot { it.id == pinId }
-    _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
+    fun deletePinLocally(pinId: String) {
+        _pins.value = _pins.value.filterNot { it.id == pinId }
+        _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
 
-    if (_selectedPin.value?.id == pinId) {
-        _selectedPin.value = null
+        if (_selectedPin.value?.id == pinId) {
+            _selectedPin.value = null
+        }
+        // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
     }
-    // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
-}
 
     fun openEmojiSelector(pinId: String) {
         _emojiTargetPinId.value = pinId
@@ -181,12 +180,12 @@ fun deletePinLocally(pinId: String) {
         _emojiTargetPinId.value = null
     }
 
-fun selectPinById(pinId: String) {
-    viewModelScope.launch {
-        val cachedPin = _pins.value.firstOrNull { it.id == pinId }
-        _selectedPin.value = cachedPin ?: pinRepository.getPinById(pinId)
+    fun selectPinById(pinId: String) {
+        viewModelScope.launch {
+            val cachedPin = _pins.value.firstOrNull { it.id == pinId }
+            _selectedPin.value = cachedPin ?: pinRepository.getPinById(pinId)
+        }
     }
-}
 
     fun enterLocationSelectionMode(category: PinCategory) {
         _isLocationSelectionMode.value = true
@@ -218,9 +217,5 @@ fun selectPinById(pinId: String) {
             )
             exitLocationSelectionMode()
         }
-    }
-
-    fun updateCurrentLocation(latLng: LatLng) {
-        _currentLocation.value = PinCoordinate(latitude = latLng.latitude, longitude = latLng.longitude)
     }
 }
