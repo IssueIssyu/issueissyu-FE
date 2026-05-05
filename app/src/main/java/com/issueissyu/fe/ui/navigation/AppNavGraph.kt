@@ -57,32 +57,39 @@ fun AppNavGraph(
             }
         }
         composable(
-            route = "${AppDestinations.PIN_CREATION_ROUTE}?type={type}&lat={lat}&lng={lng}&verification={verification}",
+            route = "${AppDestinations.PIN_CREATION_ROUTE}?type={type}&pinLat={pinLat}&pinLng={pinLng}&userLat={userLat}&userLng={userLng}",
             arguments = listOf(
                 navArgument("type") {
                     type = NavType.StringType
                     defaultValue = "issue"
                 },
-                navArgument("lat") {
+                navArgument("pinLat") {
                     type = NavType.FloatType
                     defaultValue = 0f
                     nullable = false
                 },
-                navArgument("lng") {
+                navArgument("pinLng") {
                     type = NavType.FloatType
                     defaultValue = 0f
                     nullable = false
                 },
-                navArgument("verification") {
-                    type = NavType.StringType
-                    defaultValue = "neighborhood"
+                navArgument("userLat") {
+                    type = NavType.FloatType
+                    defaultValue = 0f
+                    nullable = false
+                },
+                navArgument("userLng") {
+                    type = NavType.FloatType
+                    defaultValue = 0f
+                    nullable = false
                 }
             )
         ) { backStackEntry ->
             val pinType = backStackEntry.arguments!!.getString("type")
-            val lat = backStackEntry.arguments!!.getFloat("lat")
-            val lng = backStackEntry.arguments!!.getFloat("lng")
-            val verificationType = backStackEntry.arguments!!.getString("verification")
+            val pinLat = backStackEntry.arguments!!.getFloat("pinLat")
+            val pinLng = backStackEntry.arguments!!.getFloat("pinLng")
+            val userLat = backStackEntry.arguments!!.getFloat("userLat")
+            val userLng = backStackEntry.arguments!!.getFloat("userLng")
 
             Box(
                 modifier = Modifier
@@ -90,7 +97,7 @@ fun AppNavGraph(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Text("핀 생성 화면: $pinType, Lat: $lat, Lng: $lng, Verification: $verificationType")
+                Text("핀 생성 화면: $pinType, PinLat: $pinLat, PinLng: $pinLng, UserLat: $userLat, UserLng: $userLng")
             }
         }
     }
