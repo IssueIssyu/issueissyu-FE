@@ -35,10 +35,10 @@ class MyPageViewModel @Inject constructor(
 
     private val _myPins = MutableStateFlow<List<Pin>>(
         listOf(
-            Pin("1", "바게트씨", R.drawable.img_character_bread),
-            Pin("2", "돌이곰", R.drawable.img_character_bear),
-            Pin("3", "버터떡", R.drawable.img_character_butter),
-            Pin("4", "감자빵", R.drawable.img_character_potato)
+            Pin("1", "바게트씨", R.drawable.ic_report),
+            Pin("2", "돌이곰", R.drawable.ic_fire),
+            Pin("3", "버터떡", R.drawable.ic_edit),
+            Pin("4", "감자빵", R.drawable.ic_megaphone)
         )
     )
     val myPins = _myPins.asStateFlow()
