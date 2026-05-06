@@ -3,10 +3,14 @@ package com.issueissyu.fe.ui.screens.mypage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.R
+import com.issueissyu.fe.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,10 +22,16 @@ data class Pin(
 )
 
 @HiltViewModel
-class MyPageViewModel @Inject constructor() : ViewModel() {
-
-    private val _userNickname = MutableStateFlow("뱌삐우소로소1세")
-    val userNickname = _userNickname.asStateFlow()
+class MyPageViewModel @Inject constructor(
+    private val userRepository: UserRepository
+) : ViewModel() {
+    val userNickname = userRepository.getProfile()
+        .map { it.nickname }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ""
+        )
 
     private val _myPins = MutableStateFlow<List<Pin>>(
         listOf(
@@ -32,16 +42,6 @@ class MyPageViewModel @Inject constructor() : ViewModel() {
         )
     )
     val myPins = _myPins.asStateFlow()
-
-    // 유저 정보 - API 호출? 데이터 관리?
-    fun loadUserData() {
-        viewModelScope.launch {
-            // TODO: API 호출
-            // val profile = userRepository.getUserProfile()
-            // _userNickname.value = profile.nickname
-            // _myPins.value = userRepository.getMyPins()
-        }
-    }
 
     //로그아웃 상태
     private val _logoutState = MutableStateFlow<LogoutState>(LogoutState.Idle)

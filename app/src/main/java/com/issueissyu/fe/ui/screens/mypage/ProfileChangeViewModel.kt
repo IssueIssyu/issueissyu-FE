@@ -2,18 +2,20 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ProfileChangeViewModel @Inject constructor() : ViewModel() {
+class ProfileChangeViewModel @Inject constructor(
+    private val userRepository: UserRepository
+) : ViewModel() {
 
     // 현재 닉네임 (MyPageViewModel과 동일)
-    private val _currentNickname = MutableStateFlow("뱌삐우소로소1세")
+    private val _currentNickname = MutableStateFlow("")
     val currentNickname = _currentNickname.asStateFlow()
 
     // 입력 중인 닉네임
@@ -35,12 +37,25 @@ class ProfileChangeViewModel @Inject constructor() : ViewModel() {
     private val _isCheckButtonEnabled = MutableStateFlow(false)
     val isCheckButtonEnabled = _isCheckButtonEnabled.asStateFlow()
 
+    init {
+        loadProfile()
+    }
+
+    //데이터 로드
+    private fun loadProfile(){
+        viewModelScope.launch {
+            userRepository.getProfile().collect { profile ->
+                _currentNickname.value = profile.nickname
+            }
+        }
+    }
+
+    //이벤트
     fun onNicknameChange(nickname: String) {
         _inputNickname.value = nickname
         _isNicknameAvailable.value = null // 입력 변경되면 중복 확인 초기화
         updateCompleteButtonState()
     }
-
     fun checkNicknameDuplicate() {
         if (_inputNickname.value.isBlank()) return
 
@@ -48,12 +63,8 @@ class ProfileChangeViewModel @Inject constructor() : ViewModel() {
             _isCheckingNickname.value = true
 
             try {
-                // TODO: API 호출
-
-
-                delay(500)
-                _isNicknameAvailable.value = true
-
+                val isAvailable = userRepository.checkNicknameDuplicate(_inputNickname.value)
+                _isNicknameAvailable.value = isAvailable
             } catch (e: Exception) {
                 _isNicknameAvailable.value = false
             } finally {
@@ -63,6 +74,17 @@ class ProfileChangeViewModel @Inject constructor() : ViewModel() {
         }
     }
 
+    fun updateProfile(onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                userRepository.updateNickname(_inputNickname.value)
+                _currentNickname.value = _inputNickname.value
+                onSuccess()
+            } catch (e: Exception) { }
+        }
+    }
+
+    //기타 로직
     private fun updateCompleteButtonState() {
         // 중복 확인 버튼: 입력값이 있고, 기존 닉네임과 다를 때
         _isCheckButtonEnabled.value =
@@ -74,19 +96,5 @@ class ProfileChangeViewModel @Inject constructor() : ViewModel() {
             _inputNickname.value.isNotBlank() &&
                     _isNicknameAvailable.value == true &&
                     _inputNickname.value != _currentNickname.value
-    }
-
-    fun updateProfile(onSuccess: () -> Unit) {
-        viewModelScope.launch {
-            try {
-                // TODO: API 호출
-
-                delay(300)
-                _currentNickname.value = _inputNickname.value
-                onSuccess()
-
-            } catch (e: Exception) {
-            }
-        }
     }
 }
