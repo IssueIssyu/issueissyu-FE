@@ -43,7 +43,6 @@ import com.issueissyu.fe.ui.theme.suiteFontFamily
 @Composable
 fun TermScreen(
     onAgreeClick: () -> Unit = {},
-    onBackClick: () -> Unit ={},
     onTermsDetailClick: (TermsType) -> Unit = {},
     viewModel: TermViewModel = hiltViewModel()
 ) {
@@ -51,9 +50,7 @@ fun TermScreen(
 
     Scaffold(
         topBar = {
-            IssueissyuTopAppBar(
-                onBackClick = onBackClick
-            )
+            IssueissyuTopAppBar()
         },
         bottomBar = {
             CommonButton(

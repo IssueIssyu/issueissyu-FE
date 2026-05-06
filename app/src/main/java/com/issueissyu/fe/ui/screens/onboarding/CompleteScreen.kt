@@ -35,7 +35,6 @@ import com.issueissyu.fe.ui.theme.White
 
 @Composable
 fun CompleteScreen(
-    onBackClick: () -> Unit,
     onNavigateToMain: () -> Unit,
     onNavigateToLanding: () -> Unit
 ){
@@ -46,9 +45,7 @@ fun CompleteScreen(
     ) {
         Scaffold(
             topBar = {
-                IssueissyuTopAppBar(
-                    onBackClick = onBackClick,
-                )
+                IssueissyuTopAppBar()
             },
             bottomBar = {
                 CommonButton(
@@ -116,7 +113,6 @@ fun CompleteScreen(
 @Composable
 fun CompleteScreenPreview(){
     CompleteScreen(
-        onBackClick = {},
         onNavigateToMain = {},
         onNavigateToLanding = {}
     )

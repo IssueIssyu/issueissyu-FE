@@ -43,7 +43,6 @@ import com.issueissyu.fe.ui.viewmodels.SignUpViewModel
 @Composable
 fun SignUpScreen(
     viewModel: SignUpViewModel = hiltViewModel(),
-    onBackClick: () -> Unit = {},
     onNavigateToVerification: () -> Unit
 ){
     val uiState by viewModel.uiState.collectAsState()
@@ -64,8 +63,7 @@ fun SignUpScreen(
         onUserPwConfirmChange = viewModel::updateUserPwConfirm,
 
         onCheckIdClick = viewModel::checkIdDuplicate,
-        onSubmitClick = viewModel::signUp,
-        onBackClick = onBackClick
+        onSubmitClick = viewModel::signUp
     )
 }
 
@@ -78,8 +76,7 @@ fun SignUpContent(
     onUserPwConfirmChange: (String) -> Unit,
 
     onCheckIdClick: () -> Unit,
-    onSubmitClick: () -> Unit,
-    onBackClick: () -> Unit
+    onSubmitClick: () -> Unit
 ){
     Box(
         modifier = Modifier
@@ -93,7 +90,6 @@ fun SignUpContent(
         ){
             //상단 바
             IssueissyuTopAppBar(
-                onBackClick = onBackClick,
                 titleText = "회원가입"
             )
 
@@ -250,7 +246,6 @@ fun SignUpScreenPreview(){
         onUserPwChange = {},
         onUserPwConfirmChange = {},
         onCheckIdClick = {},
-        onSubmitClick = {},
-        onBackClick = {}
+        onSubmitClick = {}
     )
 }

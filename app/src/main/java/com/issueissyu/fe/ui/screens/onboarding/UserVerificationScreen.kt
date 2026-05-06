@@ -29,7 +29,6 @@ import com.issueissyu.fe.ui.viewmodels.UserVerificationViewModel.Companion.PHONE
 @Composable
 fun UserVerificationScreen(
     viewModel: UserVerificationViewModel = hiltViewModel(),
-    onNavigateBack: () -> Unit,
     onVerificationComplete: (nickname: String, email: String, phoneNumber: String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -76,8 +75,7 @@ fun UserVerificationScreen(
                 viewModel.getFullEmail(),
                 uiState.phoneNumber
             )
-        },
-        onBackClick = onNavigateBack
+        }
     )
 }
 
@@ -111,14 +109,12 @@ fun UserVerificationContent(
     onPhoneNumberChange: (String) -> Unit,
     onSendVerificationCode: () -> Unit,
     onVerificationCodeChange: (String) -> Unit,
-    onSignupClick: () -> Unit,
-    onBackClick: () -> Unit = {}
+    onSignupClick: () -> Unit
 ) {
     Scaffold(
         containerColor = White,
         topBar = {
             IssueissyuTopAppBar(
-                onBackClick = onBackClick,
                 titleText = "본인인증"
             )
         },

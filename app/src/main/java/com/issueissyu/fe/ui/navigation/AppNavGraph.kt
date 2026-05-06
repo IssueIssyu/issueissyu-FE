@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -17,6 +18,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermsType
@@ -67,21 +69,31 @@ fun AppNavGraph(
             )
         }
 
+        //회원 가입
         composable(AppDestinations.Onboarding.SIGNUP_ROUTE) {
+            BackHandler {
+                navController.navigate(LOGIN_ROUTE) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+
             SignUpScreen(
                 viewModel = hiltViewModel(),
-                onBackClick = {navController.navigateUp()},
                 onNavigateToVerification = {
-                    navController.navigate(AppDestinations.Onboarding.TERM_ROUTE){
-                        popUpTo(AppDestinations.Onboarding.SIGNUP_ROUTE) { inclusive = true }
-                    }
+                    navController.navigate(AppDestinations.Onboarding.TERM_ROUTE)
                 }
             )
         }
 
+        //온보딩 시작
         composable(AppDestinations.Onboarding.TERM_ROUTE){
+            BackHandler {
+                navController.navigate(LOGIN_ROUTE) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+
             TermScreen(
-                onBackClick = { navController.navigateUp() },
                 onAgreeClick = { navController.navigate(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) },
                 onTermsDetailClick = {  termsType ->
                     navController.navigate(
@@ -109,27 +121,43 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE){
+            BackHandler {
+                navController.navigate(LOGIN_ROUTE) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+
             UserVerificationScreen(
-                onNavigateBack = { navController.navigateUp() },
                 onVerificationComplete = { nickname, email, phoneNumber ->
-                    navController.navigate(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE){
-                        popUpTo(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) { inclusive = true }
-                    }
+                    navController.navigate(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE)
                 }
             )
         }
 
         composable(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE){
+            BackHandler {
+                navController.navigate(LOGIN_ROUTE) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+
             LocalVerificationScreen(
-                onBackClick = { navController.navigateUp() },
                 onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE)}
             )
         }
 
+        //완료 - 메인화면 이동 시 전체 스택 제거
         composable(AppDestinations.Onboarding.COMPLETE_ROUTE){
+            BackHandler {
+                navController.navigate(LOGIN_ROUTE) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+
             CompleteScreen(
-                onBackClick = { navController.navigateUp() },
-                onNavigateToMain = { navController.navigate(AppDestinations.HOME_ROUTE) },
+                onNavigateToMain = { navController.navigate(AppDestinations.HOME_ROUTE){
+                    popUpTo(0) { inclusive = true }
+                } },
                 onNavigateToLanding = {}    //추후 랜딩 페이지 연결
             )
 
