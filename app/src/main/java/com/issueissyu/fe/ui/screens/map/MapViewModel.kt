@@ -129,16 +129,10 @@ class MapViewModel @Inject constructor(
     }
 
     fun fetchPinsInBounds() {
-        @Suppress("unused") // Property "bounds" is never used.
         val bounds = _currentBounds.value ?: return
 
         viewModelScope.launch {
-            _mapPins.value = pinRepository.getMapPinsInBounds(
-                swLat = bounds.swLat,
-                swLng = bounds.swLng,
-                neLat = bounds.neLat,
-                neLng = bounds.neLng
-            )
+            _mapPins.value = pinRepository.getMapPinsInBounds(bounds)
 
             hideResearchAreaButton()
         }

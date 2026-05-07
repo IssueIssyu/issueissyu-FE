@@ -1,6 +1,7 @@
 package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.model.CreatePinRequest
+import com.issueissyu.fe.data.model.MapBounds
 import com.issueissyu.fe.data.model.Pin
 import com.issueissyu.fe.data.model.UpdatePinRequest
 import com.issueissyu.fe.data.model.MapPinMarker
@@ -14,10 +15,5 @@ interface PinRepository {
     suspend fun createPin(request: CreatePinRequest): Pin
     suspend fun updatePin(pinId: String, request: UpdatePinRequest): Pin
 
-    suspend fun getMapPinsInBounds(
-        swLat: Double,
-        swLng: Double,
-        neLat: Double,
-        neLng: Double
-    ): List<MapPinMarker>
+    suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker>
 }

@@ -3,7 +3,9 @@ package com.issueissyu.fe.ui.components.map
 import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -24,6 +26,10 @@ fun IssueissyuNaverMap(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember { MapView(context) }
+
+    val currentOnMapReady by rememberUpdatedState(onMapReady)
+    val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
+    val currentOnMapClick by rememberUpdatedState(onMapClick)
 
     DisposableEffect(lifecycleOwner) {
         val lifecycleObserver = LifecycleEventObserver { _, event ->
@@ -49,12 +55,12 @@ fun IssueissyuNaverMap(
         modifier = modifier,
         factory = {
             mapView.getMapAsync { map ->
-                onMapReady(map)
-                onCameraIdle?.let { callback ->
-                    map.addOnCameraIdleListener { callback(map) } // map 객체 자체를 넘기도록 변경
+                currentOnMapReady(map)
+                map.addOnCameraIdleListener {
+                    currentOnCameraIdle?.invoke(map)
                 }
-                onMapClick?.let { callback ->
-                    map.setOnMapClickListener { _, latLng -> callback(latLng) } // addOnMapClickListener -> setOnMapClickListener
+                map.setOnMapClickListener { _, latLng ->
+                    currentOnMapClick?.invoke(latLng)
                 }
             }
             mapView

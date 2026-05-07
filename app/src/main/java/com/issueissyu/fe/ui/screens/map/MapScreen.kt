@@ -108,6 +108,8 @@ fun MapScreen(
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
 
+    // TODO: ViewModel에서 combine(_mapPins, _selectedCategory)로 visibleMapPins StateFlow를 노출하고, UI는 collect만 하도록 정리
+
     val visibleMapPins = if (selectedCategory == null) {
         mapPins
     } else {
@@ -168,7 +170,6 @@ fun MapScreen(
         }
     }
 
-    @Suppress("unused") // TODO: 초기 위치 요청 로직에서 사용될 예정
     var hasRequestedInitialLocation by remember { mutableStateOf(false) }
 
     LaunchedEffect(naverMapInstance) {

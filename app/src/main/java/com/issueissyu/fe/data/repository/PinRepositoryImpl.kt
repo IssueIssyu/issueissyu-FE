@@ -282,16 +282,11 @@ class PinRepositoryImpl @Inject constructor() : PinRepository {
         return updatedPin
     }
 
-    override suspend fun getMapPinsInBounds(
-        swLat: Double,
-        swLng: Double,
-        neLat: Double,
-        neLng: Double
-    ): List<MapPinMarker> {
+    override suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker> {
         return dummyPins
             .filter { pin ->
-                pin.coordinate.latitude in swLat..neLat &&
-                pin.coordinate.longitude in swLng..neLng
+                pin.coordinate.latitude in bounds.swLat..bounds.neLat &&
+                pin.coordinate.longitude in bounds.swLng..bounds.neLng
             }
             .map { pin ->
                 MapPinMarker(
