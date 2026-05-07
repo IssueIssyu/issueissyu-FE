@@ -1,10 +1,12 @@
 package com.issueissyu.fe.data.repository
 
+import javax.inject.Inject
 import com.issueissyu.fe.data.model.*
+import com.issueissyu.fe.data.model.MapPinMarker
 import java.time.Instant
 import java.util.UUID
 
-class PinRepositoryImpl : PinRepository {
+class PinRepositoryImpl @Inject constructor() : PinRepository {
 
     // TODO: 실제 백엔드와 연결 시 이 더미 데이터 대신 네트워크 호출 로직으로 대체해야 합니다.
     private val dummyPins = mutableListOf<Pin>()
@@ -278,5 +280,22 @@ class PinRepositoryImpl : PinRepository {
         // TODO: 실제 백엔드 API를 호출하여 핀을 업데이트하고, 서버로부터 반환된 실제 Pin 객체를 사용해야 합니다.
         dummyPins[index] = updatedPin
         return updatedPin
+    }
+
+    override suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker> {
+        return dummyPins
+            .filter { pin ->
+                pin.coordinate.latitude in bounds.swLat..bounds.neLat &&
+                pin.coordinate.longitude in bounds.swLng..bounds.neLng
+            }
+            .map { pin ->
+                MapPinMarker(
+                    pinId = pin.id,
+                    category = pin.category,
+                    coordinate = pin.coordinate,
+                    address = pin.address,
+                    locationName = pin.locationName ?: pin.address
+                )
+            }
     }
 }

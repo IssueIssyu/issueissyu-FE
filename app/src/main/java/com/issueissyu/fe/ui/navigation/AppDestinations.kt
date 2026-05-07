@@ -2,7 +2,7 @@ package com.issueissyu.fe.ui.navigation
 
 object AppDestinations {
 
-    //온보딩
+    // 온보딩
     object Onboarding {
         const val SPLASH_ROUTE = "splash_route"
         const val LOGIN_ROUTE = "login_route"
@@ -13,12 +13,19 @@ object AppDestinations {
         const val LOCAL_VERIFICATION_ROUTE = "local_verification_route"
         const val COMPLETE_ROUTE = "onboarding_complete_route"
 
-        fun termDetailRoute(termsType: String) = "term_detail_route/$termsType"
+        fun termDetailRoute(termsType: String): String {
+            return "term_detail_route/$termsType"
+        }
     }
 
+    // 메인 탭 / 일반 화면
     const val HOME_ROUTE = "home_route"
     const val COLLECTION_ROUTE = "collection_route"
     const val TOWN_ROUTE = "town_route"
     const val COMMUNITY_ROUTE = "community_route"
-    const val MYPAGE_ROUTE = "mypage_route" 
+    const val MYPAGE_ROUTE = "mypage_route"
+
+    // 지도 관련
+    const val PATCH_NOTE_ROUTE = "patch_note_route"
+    const val PIN_CREATION_ROUTE = "pin_creation_route"
 }

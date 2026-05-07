@@ -79,6 +79,7 @@ data class Pin(
     val imageUrls: List<String> = emptyList(),
     val viewCount: Int = 0,
     val sympathyCount: Int = 0,
+    val isSympathizedByMe: Boolean = false,
     val emojiReactions: List<PinEmojiReaction> = emptyList(),
     val communityPostId: String? = null,
     val createdAt: String,
