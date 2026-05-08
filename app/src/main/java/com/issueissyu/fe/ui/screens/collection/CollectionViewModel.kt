@@ -3,8 +3,10 @@ package com.issueissyu.fe.ui.screens.collection
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.R
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 // 핀 데이터
 data class PinItem(
@@ -42,7 +44,8 @@ sealed class CollectionEffect {
     object ProfileUpdatedSuccess : CollectionEffect()
 }
 
-class CollectionViewModel : ViewModel() {
+@HiltViewModel
+class CollectionViewModel @Inject constructor() : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectionUiState())
     val uiState: StateFlow<CollectionUiState> = _uiState.asStateFlow()
