@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
@@ -47,8 +48,8 @@ fun CommonButton(
     onClick: () -> Unit,
     text: String,
     modifier: Modifier = Modifier,
-    isEnabled: Boolean = true
-
+    isEnabled: Boolean = true,
+    textStyle: TextStyle = IssueTypo.Bold18
 ){
     Button(
         onClick = onClick,
@@ -63,7 +64,7 @@ fun CommonButton(
         ),
         contentPadding = PaddingValues(18.dp)
     ){
-        Text( text = text, style = IssueTypo.Bold18 )
+        Text( text = text, style = textStyle )
     }
 }
 
