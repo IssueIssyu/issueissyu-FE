@@ -58,6 +58,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.screens.map.AutoScrollingNotice
+import com.issueissyu.fe.ui.screens.map.NoticeUiModel
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.CommunicationContainer
 import com.issueissyu.fe.ui.theme.Gray_3
@@ -122,14 +124,6 @@ private fun CollectionContent(
     onEvent: (CollectionEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    //지도 브랜치에서 가져온 공지 관련 데이터들
-    val mockNotices = remember {
-        listOf(
-            "[공지] 지연 없이 어제가 지켜지는 오늘을 만들어요",
-            "두 번째 공지: 버그 수정 및 성능 개선",
-            "세 번째 공지: 새로운 이벤트가 시작됩니다!"
-        )
-    }
 
     Box(
         modifier = modifier
@@ -158,12 +152,29 @@ private fun CollectionContent(
 
             // 공지사항
             AutoScrollingNotice(
-                notices = mockNotices,
+                notices = remember {
+                    listOf(
+                        NoticeUiModel(
+                            id = "notice_1",
+                            title = "오늘의 공지: 새로운 업데이트가 있습니다!"
+                        ),
+                        NoticeUiModel(
+                            id = "notice_2",
+                            title = "두 번째 공지: 버그 수정 및 성능 개선"
+                        ),
+                        NoticeUiModel(
+                            id = "notice_3",
+                            title = "세 번째 공지: 새로운 이벤트가 시작됩니다!"
+                        )
+                    )
+                },
                 iconResId = R.drawable.ic_megaphone,
-                onClick = { onEvent(CollectionEvent.NoticeClicked(it)) },
+                onClick = { _ ->
+                    // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
 
@@ -381,81 +392,7 @@ private fun PinCard(
     }
 }
 
-// 공지사항 - 자동 스크롤 관련
-@Composable
-fun AutoScrollingNotice(
-    notices: List<String>,
-    iconResId: Int,
-    onClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    if (notices.isEmpty()) return
 
-    var currentNoticeIndex by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(notices) {
-        if (currentNoticeIndex >= notices.size){
-            currentNoticeIndex = 0
-        }
-    }
-    LaunchedEffect(key1 = notices) {
-        if (notices.size > 1) {
-            while (true) {
-                delay(5000)
-                currentNoticeIndex = (currentNoticeIndex + 1) % notices.size
-            }
-        }
-    }
-
-    val currentNotice = notices[currentNoticeIndex]
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                color = Gray_7.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .clickable { onClick(currentNotice) }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            painter = painterResource(id = iconResId),
-            contentDescription = "공지",
-            tint = Color.Unspecified,
-            modifier = Modifier
-                .size(32.dp)
-                .padding(end = 8.dp)
-        )
-
-        AnimatedContent(
-            targetState = currentNotice,
-            transitionSpec = {
-                (slideInVertically(
-                    animationSpec = tween(durationMillis = 300)
-                ) { height -> height } + fadeIn(
-                    animationSpec = tween(durationMillis = 300)
-                )).togetherWith(
-                    slideOutVertically(
-                        animationSpec = tween(durationMillis = 300)
-                    ) { height -> -height } + fadeOut(
-                        animationSpec = tween(durationMillis = 300)
-                    )
-                )
-            },
-            label = "Notice Animation"
-        ) { targetNotice ->
-            Text(
-                text = targetNotice,
-                style = IssueTypo.Regular15.copy(
-                    color = MaterialTheme.colorScheme.onSurface
-                ),
-                maxLines = 1
-            )
-        }
-    }
-}
 
 //---프리뷰
 @Preview(showBackground = true)
