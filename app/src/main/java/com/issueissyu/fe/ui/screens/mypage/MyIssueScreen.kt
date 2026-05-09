@@ -66,27 +66,27 @@ fun MyIssueScreen(
             }
         } else {
 
-        // 본문
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 31.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(uiState.issues) { issue ->
-                MyIssueCard(
-                    issue = issue,
-                    onNavClick = {
-                        onPinClick(
-                            issue.id,
-                            issue.latitude,
-                            issue.longitude
-                        )
-                    }
-                )
+            // 본문
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 31.dp, vertical = 20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(uiState.issues) { issue ->
+                    MyIssueCard(
+                        issue = issue,
+                        onNavClick = {
+                            onPinClick(
+                                issue.id,
+                                issue.latitude,
+                                issue.longitude
+                            )
+                        }
+                    )
+                }
             }
         }
     }
-        }
 }
 
 // 알림 카드
