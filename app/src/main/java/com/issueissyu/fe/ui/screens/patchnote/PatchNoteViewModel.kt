@@ -8,37 +8,57 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class PatchNotesUiState(
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val patchNotes: List<PatchNoteItem> = emptyList()
+)
 
 @HiltViewModel
 class PatchNotesViewModel @Inject constructor(
     private val pinRepository: PinRepository
 ) : ViewModel() {
 
-    private val _patchNotes = MutableStateFlow<List<PatchNoteItem>>(emptyList())
-    val patchNotes: StateFlow<List<PatchNoteItem>> = _patchNotes.asStateFlow()
+    private val _uiState = MutableStateFlow(PatchNotesUiState(isLoading = true))
+    val uiState: StateFlow<PatchNotesUiState> = _uiState.asStateFlow()
 
     init {
         loadPatchNotes()
     }
 
-    private fun loadPatchNotes() {
+    fun loadPatchNotes() {
         viewModelScope.launch {
-            val issuePins = pinRepository.getIssuePins()
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                val issuePins = pinRepository.getIssuePins()
+                val items = issuePins.mapNotNull { pin ->
+                    val detail = pin.detail as? IssuePinDetail ?: return@mapNotNull null
 
-            _patchNotes.value = issuePins.mapNotNull { pin ->
-                val detail = pin.detail as? IssuePinDetail ?: return@mapNotNull null
-
-                PatchNoteItem(
-                    id = pin.id,
-                    title = pin.title,
-                    viewCount = pin.viewCount,
-                    locationName = pin.locationName ?: pin.address,
-                    writerName = detail.writer.name,
-                    writerImageUrl = null, // TODO: 작성자 프로필 이미지 필드 확정 시 연결
-                    resolutionStatus = detail.resolutionStatus
-                )
+                    PatchNoteItem(
+                        id = pin.id,
+                        title = pin.title,
+                        viewCount = pin.viewCount,
+                        locationName = pin.locationName ?: pin.address,
+                        writerName = detail.writer.name,
+                        writerImageUrl = null,
+                        resolutionStatus = detail.resolutionStatus
+                    )
+                }
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = null, patchNotes = items)
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message?.takeIf { msg -> msg.isNotBlank() }
+                            ?: "목록을 불러오지 못했습니다"
+                    )
+                }
             }
         }
     }
