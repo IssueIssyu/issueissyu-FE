@@ -128,7 +128,7 @@ fun MyPageScreen(
             //프로필 이미지
             //프로필 사진
             Image(
-                painter = painterResource(R.drawable.img_character_butter),
+                painter = painterResource(R.drawable.ic_fire),
                 contentDescription = "프로필 사진",
                 modifier = Modifier
                     .size(100.dp)

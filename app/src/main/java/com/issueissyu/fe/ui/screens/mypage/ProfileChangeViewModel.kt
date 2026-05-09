@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -36,6 +38,9 @@ class ProfileChangeViewModel @Inject constructor(
     // 중복 확인 버튼 활성화 여부
     private val _isCheckButtonEnabled = MutableStateFlow(false)
     val isCheckButtonEnabled = _isCheckButtonEnabled.asStateFlow()
+
+    private val _showToast = MutableSharedFlow<String>()
+    val showToast = _showToast.asSharedFlow()
 
     init {
         loadProfile()
@@ -80,7 +85,9 @@ class ProfileChangeViewModel @Inject constructor(
                 userRepository.updateNickname(_inputNickname.value)
                 _currentNickname.value = _inputNickname.value
                 onSuccess()
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+                _showToast.emit("프로필 변경에 실패했습니다")
+            }
         }
     }
 

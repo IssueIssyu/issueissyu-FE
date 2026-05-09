@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.screens.mypage
 
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +21,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
@@ -27,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -60,7 +63,13 @@ fun ProfileChangeScreen(
     val isCheckingNickname by viewModel.isCheckingNickname.collectAsStateWithLifecycle()
     val isCompleteEnabled by viewModel.isCompleteEnabled.collectAsStateWithLifecycle()
     val isCheckButtonEnabled by viewModel.isCheckButtonEnabled.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        viewModel.showToast.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -85,7 +94,7 @@ fun ProfileChangeScreen(
             ){
                 //프로필 사진
                 Image(
-                    painter = painterResource(R.drawable.img_character_butter),
+                    painter = painterResource(R.drawable.ic_fire),
                     contentDescription = "프로필 사진",
                     modifier = Modifier
                         .size(130.dp)
