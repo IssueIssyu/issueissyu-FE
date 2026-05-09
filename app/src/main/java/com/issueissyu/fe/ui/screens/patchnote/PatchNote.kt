@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -47,11 +49,12 @@ fun PatchNotesRoute(
     onBackClick: () -> Unit = {},
     onPatchNoteClick: (String) -> Unit = {}
 ) {
-    val patchNotes by viewModel.patchNotes.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     PatchNotesScreen(
-        patchNotes = patchNotes,
+        uiState = uiState,
         onBackClick = onBackClick,
+        onRetry = viewModel::loadPatchNotes,
         onPatchNoteClick = onPatchNoteClick
     )
 }
@@ -150,9 +153,7 @@ fun PatchNoteCard(
                 ) {
                     Text(
                         text = patchNote.title,
-                        style = IssueTypo.Bold18,
-                        fontSize = 22.sp,
-                        color = Title,
+                        style = IssueTypo.Bold18.copy(color = Title),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
@@ -233,8 +234,9 @@ fun PatchNoteCard(
 
 @Composable
 fun PatchNotesScreen(
-    patchNotes: List<PatchNoteItem>,
+    uiState: PatchNotesUiState,
     onBackClick: () -> Unit,
+    onRetry: () -> Unit,
     onPatchNoteClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -248,21 +250,56 @@ fun PatchNotesScreen(
             onBackClick = onBackClick
         )
 
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            items(items = patchNotes, key = { it.id }) { patchNote ->
-                PatchNoteCard(
-                    patchNote = patchNote,
-                    modifier = Modifier.clickable {
-                        onPatchNoteClick(patchNote.id)
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+
+                uiState.errorMessage != null -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = uiState.errorMessage ?: "",
+                            style = IssueTypo.Regular16,
+                            color = Gray_7
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onRetry) {
+                            Text("다시 시도")
+                        }
                     }
-                )
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp, vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        items(items = uiState.patchNotes, key = { it.id }) { patchNote ->
+                            PatchNoteCard(
+                                patchNote = patchNote,
+                                modifier = Modifier.clickable {
+                                    onPatchNoteClick(patchNote.id)
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -273,33 +310,36 @@ fun PatchNotesScreen(
 fun PreviewPatchNotesScreenContent() {
     IssueissyuTheme {
         PatchNotesScreen(
-            patchNotes = listOf(
-                PatchNoteItem(
-                    id = "1",
-                    title = "도로 침수 복구 완료",
-                    viewCount = 125,
-                    locationName = "역삼동 테헤란로 123",
-                    writerName = "관리자",
-                    resolutionStatus = ResolutionStatus.RESOLVED
-                ),
-                PatchNoteItem(
-                    id = "2",
-                    title = "맨홀 파손 신고 접수",
-                    viewCount = 30,
-                    locationName = "강남대로 456",
-                    writerName = "홍길동",
-                    resolutionStatus = ResolutionStatus.IN_PROGRESS
-                ),
-                PatchNoteItem(
-                    id = "3",
-                    title = "신호등 고장 발생",
-                    viewCount = 200,
-                    locationName = "선릉역 사거리",
-                    writerName = "익명",
-                    resolutionStatus = ResolutionStatus.BEFORE_RESOLUTION
+            uiState = PatchNotesUiState(
+                patchNotes = listOf(
+                    PatchNoteItem(
+                        id = "1",
+                        title = "도로 침수 복구 완료",
+                        viewCount = 125,
+                        locationName = "역삼동 테헤란로 123",
+                        writerName = "관리자",
+                        resolutionStatus = ResolutionStatus.RESOLVED
+                    ),
+                    PatchNoteItem(
+                        id = "2",
+                        title = "맨홀 파손 신고 접수",
+                        viewCount = 30,
+                        locationName = "강남대로 456",
+                        writerName = "홍길동",
+                        resolutionStatus = ResolutionStatus.IN_PROGRESS
+                    ),
+                    PatchNoteItem(
+                        id = "3",
+                        title = "신호등 고장 발생",
+                        viewCount = 200,
+                        locationName = "선릉역 사거리",
+                        writerName = "익명",
+                        resolutionStatus = ResolutionStatus.BEFORE_RESOLUTION
+                    )
                 )
             ),
             onBackClick = {},
+            onRetry = {},
             onPatchNoteClick = {}
         )
     }
