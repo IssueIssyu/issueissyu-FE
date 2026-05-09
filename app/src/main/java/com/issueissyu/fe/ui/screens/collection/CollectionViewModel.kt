@@ -95,6 +95,8 @@ class CollectionViewModel @Inject constructor() : ViewModel() {
     }
 
     private fun toggleBookmark(pinId: String) {
+        val shouldShowMaxToast = _uiState.value.bookmarkedPinIds.size >= MAX_BOOKMARKED_COUNT && pinId !in _uiState.value.bookmarkedPinIds
+
         _uiState.update { state ->
             val currentIds = state.bookmarkedPinIds.toMutableSet()
 
@@ -102,13 +104,17 @@ class CollectionViewModel @Inject constructor() : ViewModel() {
                 currentIds.remove(pinId)
             } else {
                 if (currentIds.size >= MAX_BOOKMARKED_COUNT) {     //임시로 설정
-                    emitToast("최대 ${MAX_BOOKMARKED_COUNT}개까지 북마크 가능합니다")
                     return@update state
                 }
                 currentIds.add(pinId)
             }
 
             state.copy(bookmarkedPinIds = currentIds)
+        }
+
+        if(shouldShowMaxToast) {
+
+            emitToast("최대 ${MAX_BOOKMARKED_COUNT}개까지 북마크 가능합니다")
         }
     }
 
