@@ -28,6 +28,7 @@ import com.issueissyu.fe.ui.screens.onboarding.TermScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermsType
 import com.issueissyu.fe.ui.screens.onboarding.UserVerificationScreen
 import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
+import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 
 @Composable
 fun AppNavGraph(
@@ -193,6 +194,27 @@ fun AppNavGraph(
                     onPatchNoteClick = { pinId ->
                         // TODO: 핀 상세 화면 route 확정 후 이동
                     }
+                )
+            }
+        }
+        composable(
+            route = AppDestinations.PIN_DETAIL_ROUTE,
+            arguments = listOf(
+                navArgument("pinId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                PinDetailScreen(
+                    pinId = pinId,
+                    onBackClick = { navController.popBackStack() }
                 )
             }
         }
