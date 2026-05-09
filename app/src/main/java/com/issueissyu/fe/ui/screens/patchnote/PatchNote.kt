@@ -271,7 +271,7 @@ fun PatchNotesScreen(
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = uiState.errorMessage ?: "",
+                            text = uiState.errorMessage,
                             style = IssueTypo.Regular16,
                             color = Gray_7
                         )
