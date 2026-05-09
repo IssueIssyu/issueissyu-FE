@@ -62,10 +62,7 @@ object NotificationHelper {
 
             //TODO: 타입값은 백엔드랑 맞춰야 함
             "PIN_LIKED" -> 1001
-            "EVENT" -> System.currentTimeMillis().toInt()
-            "POPULAR_POST" -> System.currentTimeMillis().toInt()
-            "STORE_PROMO" -> System.currentTimeMillis().toInt()
-            else -> System.currentTimeMillis().toInt()
+            else -> (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
         }
     }
 }
