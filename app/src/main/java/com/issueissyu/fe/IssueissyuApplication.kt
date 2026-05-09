@@ -16,9 +16,6 @@ class IssueissyuApplication : Application() {
         //비동기로 처리
         FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
             //토큰 발급 완료되면 실행되는 블록
-            //백엔트 한테 토큰 전송 예정
-            //테스트
-            android.util.Log.d("FCM", "토큰: $token")
         }
     }
 }

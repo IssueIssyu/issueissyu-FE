@@ -67,15 +67,15 @@ import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 sealed class MyPageEvent {
-    object NavigateBack: MyPageEvent()
-    object NavigateToProfile: MyPageEvent()
-    object NavigateToLocal: MyPageEvent()
-    object NavigateToIssue: MyPageEvent()
-    object NavigateToSettingAlarm: MyPageEvent()
-    object NavigateToLanding: MyPageEvent()
-    object NavigateToTerm: MyPageEvent()
-    object Logout: MyPageEvent()
-    object Withdraw: MyPageEvent()
+    data object NavigateBack: MyPageEvent()
+    data object NavigateToProfile: MyPageEvent()
+    data object NavigateToLocal: MyPageEvent()
+    data object NavigateToIssue: MyPageEvent()
+    data object NavigateToSettingAlarm: MyPageEvent()
+    data object NavigateToLanding: MyPageEvent()
+    data object NavigateToTerm: MyPageEvent()
+    data object Logout: MyPageEvent()
+    data object Withdraw: MyPageEvent()
 }
 
 @Composable
@@ -84,7 +84,7 @@ fun MyPageScreen(
     modifier: Modifier,
     viewModel: MyPageViewModel = hiltViewModel()
 ){
-    val nickname by viewModel.userNickname.collectAsState()
+    val nickname by viewModel.userNickname.collectAsStateWithLifecycle()
     val myPins by viewModel.myPins.collectAsStateWithLifecycle()
     val logoutState by viewModel.logoutState.collectAsStateWithLifecycle()
 
@@ -95,10 +95,10 @@ fun MyPageScreen(
         when (logoutState) {
             is MyPageViewModel.LogoutState.Success -> {
                 onEvent(MyPageEvent.NavigateToLanding)
-                viewModel.resetLohoutState()
+                viewModel.resetLogoutState()
             }
             is MyPageViewModel.LogoutState.Error -> {
-                viewModel.resetLohoutState()
+                viewModel.resetLogoutState()
             }
             else -> {}
         }
@@ -179,32 +179,32 @@ fun MyPageScreen(
             modifier = Modifier
                 .fillMaxWidth()
         ){
-            navBar(
+            NavBar(
                 icon = Icons.Outlined.LocationOn,
                 title = "동네 변경",
                 onNavClick = { onEvent(MyPageEvent.NavigateToLocal)}
             )
-            navBar(
+            NavBar(
                 icon = Icons.Default.LocationOn,
                 title = "내 이슈",
                 onNavClick = { onEvent(MyPageEvent.NavigateToIssue) }
             )
-            navBar(
+            NavBar(
                 icon = Icons.Outlined.Notifications,
                 title = "알림 설정",
                 onNavClick = { onEvent(MyPageEvent.NavigateToSettingAlarm)}
             )
-            navBar(
+            NavBar(
                 icon = Icons.Outlined.MenuBook,
                 title = "도움말",
                 onNavClick = {onEvent(MyPageEvent.NavigateToLanding)}
             )
-            navBar(
+            NavBar(
                 icon = Icons.Outlined.Assignment,
                 title = "이용 약관",
                 onNavClick = {onEvent(MyPageEvent.NavigateToTerm)}
             )
-            navBar(
+            NavBar(
                 icon = Icons.Outlined.Logout,
                 title = "로그아웃",
                 onNavClick = { showLogoutDialog = true }
@@ -334,7 +334,7 @@ private fun PinCard(pin: Pin) {
 }
 
 @Composable
-private fun navBar(
+private fun NavBar(
     icon: ImageVector,
     title: String,
     onNavClick: () -> Unit

@@ -67,7 +67,7 @@ class MyPageViewModel @Inject constructor(
         }
     }
 
-    fun resetLohoutState(){
+    fun resetLogoutState(){
         _logoutState.value = LogoutState.Idle
     }
 
