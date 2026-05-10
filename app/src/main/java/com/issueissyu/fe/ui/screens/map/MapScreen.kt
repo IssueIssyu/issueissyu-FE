@@ -483,8 +483,9 @@ fun MapScreen(
             PinSummaryCard(
                 pin = pin,
                 currentUserId = "user1", // TODO: 실제 로그인 사용자 ID로 교체
-                onDetailClick = { _ ->
+                onDetailClick = { pinId ->
                     viewModel.clearSelectedPin()
+                    navController.navigate(AppDestinations.pinDetailRoute(pinId))
                 },
                 onCommunityClick = { _ ->
                     viewModel.clearSelectedPin()

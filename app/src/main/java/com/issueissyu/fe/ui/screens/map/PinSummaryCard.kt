@@ -53,7 +53,7 @@ fun PinSummaryCard(
             .height(260.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(cardBackgroundColor)
-            .clickable { /* 카드 내부 클릭 시 이벤트 소비 */ }
+            .clickable { onDetailClick(pin.id) }
             .padding(16.dp)
     ) {
         Column {
