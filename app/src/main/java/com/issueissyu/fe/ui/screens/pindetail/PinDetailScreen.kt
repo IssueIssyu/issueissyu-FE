@@ -34,6 +34,9 @@ fun PinDetailScreen(
         viewModel.loadPin(pinId)
     }
 
+    // TODO: 로그인 연동 후 실제 currentUserId로 교체.
+    val currentUserId = "user_1"
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -65,8 +68,21 @@ fun PinDetailScreen(
             pin != null -> {
                 PinDetailTabs(
                     pin = pin,
+                    currentUserId = currentUserId,
                     selectedTab = uiState.selectedTab,
                     onSelectTab = viewModel::selectTab,
+                    onReportClick = {
+                        // TODO: 신고 이유 선택 화면으로 이동
+                    },
+                    onEditClick = {
+                        // TODO: 핀 수정 화면으로 이동
+                    },
+                    onDeleteClick = {
+                        // TODO: 핀 삭제 확인 Dialog 또는 삭제 API 연결
+                    },
+                    onCommunityClick = {
+                        // TODO: 커뮤니티 상세 화면으로 이동
+                    },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -84,8 +100,13 @@ fun PinDetailScreen(
 @Composable
 private fun PinDetailTabs(
     pin: Pin,
+    currentUserId: String,
     selectedTab: PinDetailTab,
     onSelectTab: (PinDetailTab) -> Unit,
+    onReportClick: (String) -> Unit,
+    onEditClick: (String) -> Unit,
+    onDeleteClick: (String) -> Unit,
+    onCommunityClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // RESOLVED 상태여도 해결하기 탭 자체는 표시한다.
@@ -112,16 +133,31 @@ private fun PinDetailTabs(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            when (effectiveTab) {
-                PinDetailTab.HOME -> Text(text = "홈 탭은 추후 구현 예정입니다.")
-                PinDetailTab.POST -> Text(text = "포스트 탭은 추후 구현 예정입니다.")
-                PinDetailTab.RESOLUTION -> Text(text = "해결하기 탭은 추후 구현 예정입니다.")
+        when (effectiveTab) {
+            PinDetailTab.HOME -> {
+                PinHomeTab(
+                    pin = pin,
+                    currentUserId = currentUserId,
+                    onReportClick = onReportClick,
+                    onEditClick = onEditClick,
+                    onDeleteClick = onDeleteClick,
+                    onCommunityClick = onCommunityClick,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            PinDetailTab.POST -> {
+                CenteredPlaceholder(
+                    modifier = Modifier.fillMaxSize(),
+                    text = "포스트 탭은 추후 구현 예정입니다."
+                )
+            }
+
+            PinDetailTab.RESOLUTION -> {
+                CenteredPlaceholder(
+                    modifier = Modifier.fillMaxSize(),
+                    text = "해결하기 탭은 추후 구현 예정입니다."
+                )
             }
         }
     }
