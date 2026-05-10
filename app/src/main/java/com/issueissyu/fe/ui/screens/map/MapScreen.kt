@@ -170,11 +170,8 @@ fun MapScreen(
         }
     }
 
-    var hasRequestedInitialLocation by remember { mutableStateOf(false) }
-
     LaunchedEffect(naverMapInstance) {
-        if (naverMapInstance != null && !hasRequestedInitialLocation) {
-            hasRequestedInitialLocation = true
+        if (naverMapInstance != null) {
             moveToCurrentLocation()
         }
     }
@@ -203,7 +200,7 @@ fun MapScreen(
     LaunchedEffect(viewModel.navigateToPinCreation) {
         viewModel.navigateToPinCreation.collectLatest { event ->
             navController.navigate(
-                "${AppDestinations.PIN_CREATION_ROUTE}" +
+                AppDestinations.PIN_CREATION_ROUTE +
                     "?type=${event.category.name.lowercase()}" +
                     "&pinLat=${event.pinCoordinate.latitude}" +
                     "&pinLng=${event.pinCoordinate.longitude}" +
