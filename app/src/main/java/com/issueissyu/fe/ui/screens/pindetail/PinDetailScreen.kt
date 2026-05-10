@@ -147,9 +147,19 @@ private fun PinDetailTabs(
             }
 
             PinDetailTab.POST -> {
-                CenteredPlaceholder(
-                    modifier = Modifier.fillMaxSize(),
-                    text = "포스트 탭은 추후 구현 예정입니다."
+                PinPostTab(
+                    pin = pin,
+                    currentUserId = currentUserId,
+                    onSympathyClick = {
+                        // TODO: 공감 API 연결
+                    },
+                    onEmojiClick = {
+                        // TODO: 이모지 반응 API 연결 (이모지 선택 UI 포함)
+                    },
+                    onCommentSubmit = { _, _ ->
+                        // TODO: 댓글 작성 API 연결 (PinCommentRepository.addComment 등)
+                    },
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
