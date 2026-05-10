@@ -154,10 +154,26 @@ private fun PinDetailTabs(
             }
 
             PinDetailTab.RESOLUTION -> {
-                CenteredPlaceholder(
-                    modifier = Modifier.fillMaxSize(),
-                    text = "해결하기 탭은 추후 구현 예정입니다."
-                )
+                val issueDetail = pin.detail as? IssuePinDetail
+                if (issueDetail != null) {
+                    PinResolutionTab(
+                        pin = pin,
+                        issueDetail = issueDetail,
+                        currentUserId = currentUserId,
+                        onGoNowClick = {
+                            // TODO: 지금가요 API 연결 (PinResolutionRepository.joinAsResolver 등)
+                        },
+                        onPetitionClick = {
+                            // TODO: 청원 API 연결 (PinPetitionRepository.petition 등)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    CenteredPlaceholder(
+                        modifier = Modifier.fillMaxSize(),
+                        text = "해결하기는 이슈 핀에서만 사용할 수 있습니다."
+                    )
+                }
             }
         }
     }
