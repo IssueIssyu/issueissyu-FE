@@ -1,6 +1,7 @@
 package com.issueissyu.fe.di
 
 import com.issueissyu.fe.core.constants.NetworkConstants
+import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import dagger.Module
 import dagger.Provides
@@ -48,4 +49,11 @@ object NetworkModule {
     fun provideIssueApiService(retrofit: Retrofit): IssueApiService {
         return retrofit.create(IssueApiService::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideAuthApiService(retrofit: Retrofit): AuthApi {
+        return retrofit.create(AuthApi::class.java)
+    }
+
 }
