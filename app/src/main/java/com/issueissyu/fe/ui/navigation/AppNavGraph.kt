@@ -27,7 +27,9 @@ import com.issueissyu.fe.ui.screens.onboarding.TermDetailScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermsType
 import com.issueissyu.fe.ui.screens.onboarding.UserVerificationScreen
+import com.issueissyu.fe.data.model.PinCategory
 import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
+import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 
@@ -274,18 +276,42 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val pinType = backStackEntry.arguments?.getString("type")
-            val pinLat = backStackEntry.arguments?.getFloat("pinLat") ?: 0f
-            val pinLng = backStackEntry.arguments?.getFloat("pinLng") ?: 0f
-            val userLat = backStackEntry.arguments?.getFloat("userLat") ?: 0f
-            val userLng = backStackEntry.arguments?.getFloat("userLng") ?: 0f
+            // route는 Float로 정의되어 있어 Double로 변환해 PinCreateScreen에 넘긴다.
+            // TODO: NavType.Float → 사용자 정의 NavType 또는 String 인코딩으로 정밀도 손실을 줄이는 방안 검토.
+            val pinLat = (backStackEntry.arguments?.getFloat("pinLat") ?: 0f).toDouble()
+            val pinLng = (backStackEntry.arguments?.getFloat("pinLng") ?: 0f).toDouble()
+            val userLat = (backStackEntry.arguments?.getFloat("userLat") ?: 0f).toDouble()
+            val userLng = (backStackEntry.arguments?.getFloat("userLng") ?: 0f).toDouble()
+
+            // 일반 유저 생성 대상은 ISSUE / COMMUNICATION 두 가지. 그 외는 화면 진입을 차단한다.
+            val category = when (pinType?.lowercase()) {
+                "issue" -> PinCategory.ISSUE
+                "communication" -> PinCategory.COMMUNICATION
+                else -> null
+            }
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
+                    .padding(paddingValues)
             ) {
-                Text("핀 생성 화면: $pinType, PinLat: $pinLat, PinLng: $pinLng, UserLat: $userLat, UserLng: $userLng")
+                if (category == null) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("지원하지 않는 핀 종류입니다: ${pinType.orEmpty()}")
+                    }
+                } else {
+                    PinCreateScreen(
+                        category = category,
+                        pinLat = pinLat,
+                        pinLng = pinLng,
+                        userLat = userLat,
+                        userLng = userLng,
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }
