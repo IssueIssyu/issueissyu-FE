@@ -24,6 +24,7 @@ androidxJunit = "1.2.1"
 espressoCore = "3.6.1"
 googleServices = "4.4.4"
 firebaseBom = "34.11.0"
+securityCrypto = "1.1.0"
 
 [libraries]
 naver-map-sdk = { group = "com.naver.maps", name = "map-sdk", version.ref = "navermaps" }
@@ -67,6 +68,9 @@ androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espres
 
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging"}
+
+androidx-security-crypto = { group = "androidx.security", name="security-crypto", version.ref = "securityCrypto" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
