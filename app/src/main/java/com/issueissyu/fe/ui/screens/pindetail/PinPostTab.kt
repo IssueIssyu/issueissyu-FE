@@ -331,6 +331,8 @@ private fun AddEmojiChip(onClick: () -> Unit) {
     }
 }
 
+// TODO: PinCommentRepository 연결 후 실제 댓글 목록 전달
+@Suppress("SameParameterValue")
 @Composable
 private fun CommentList(
     comments: List<CommentPlaceholder>,
