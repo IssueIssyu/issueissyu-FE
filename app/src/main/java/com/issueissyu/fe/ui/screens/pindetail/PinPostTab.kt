@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,10 +17,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -101,11 +102,10 @@ fun PinPostTab(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // 댓글 입력창은 화면 하단 고정. 그 위 영역만 스크롤된다.
+        // 고정 영역: 작성자/공감 요청/이모지 — 항상 보이도록 스크롤에서 제외.
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .fillMaxWidth()
                 .padding(horizontal = 28.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
@@ -121,13 +121,17 @@ fun PinPostTab(
                 reactions = pin.emojiReactions,
                 onAddEmojiClick = { onEmojiClick(pin.id) }
             )
-
-            HorizontalDivider(color = Gray_3, thickness = 1.dp)
-
-            CommentList(currentUserId = currentUserId)
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
+
+        HorizontalDivider(color = Gray_3, thickness = 1.dp)
+
+        // 댓글 영역: 남는 공간을 차지하며 내부에서만 스크롤. 0개일 때는 빈 안내.
+        CommentList(
+            currentUserId = currentUserId,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        )
 
         // 시안 기준: 화면 하단(=PinDetailScreen 내부 BottomNavigationBar 위)에서 30dp 떨어진 위치 고정.
         CommentInputBar(
@@ -341,29 +345,54 @@ private fun AddEmojiChip(onClick: () -> Unit) {
 
 // TODO: PinCommentRepository 연결 후 댓글 목록 조회 (Pin 내부에 댓글을 두지 않고 별도 모델/Repository로 분리 예정)
 @Composable
-private fun CommentList(currentUserId: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+private fun CommentList(
+    currentUserId: String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.padding(horizontal = 28.dp)) {
+        Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "댓글",
             style = IssueTypo.Bold18.copy(color = Title)
         )
-        Text(
-            text = "댓글 기능은 추후 구현 예정입니다.",
-            style = IssueTypo.Regular12.copy(color = Gray_6)
-        )
-        DummyComments.forEach { comment ->
-            CommentItem(
-                authorName = comment.authorName,
-                authorImageUrl = comment.authorImageUrl,
-                content = comment.content,
-                isMine = comment.authorId == currentUserId,
-                onEditClick = {
-                    // TODO: 댓글 수정 흐름 연결 (PinCommentRepository.update 등)
-                },
-                onDeleteClick = {
-                    // TODO: 댓글 삭제 흐름 연결 (PinCommentRepository.delete 등)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // TODO: PinComment 연결 후 실제 댓글 수에 따라 분기 (현재는 더미 데이터 기준).
+        if (DummyComments.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "첫 댓글을 남겨보세요!",
+                    style = IssueTypo.Regular15.copy(color = Gray_5)
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                items(DummyComments) { comment ->
+                    CommentItem(
+                        authorName = comment.authorName,
+                        authorImageUrl = comment.authorImageUrl,
+                        content = comment.content,
+                        isMine = comment.authorId == currentUserId,
+                        onEditClick = {
+                            // TODO: 댓글 수정 흐름 연결 (PinCommentRepository.update 등)
+                        },
+                        onDeleteClick = {
+                            // TODO: 댓글 삭제 흐름 연결 (PinCommentRepository.delete 등)
+                        }
+                    )
                 }
-            )
+            }
         }
     }
 }

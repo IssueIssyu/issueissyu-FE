@@ -79,121 +79,122 @@ fun PinHomeTab(
     val canEdit = pin.canEditBy(currentUserId)
     val issueDetail = pin.detail as? IssuePinDetail
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 20.dp)
-    ) {
-        if (issueDetail != null) {
-            ResolutionStatusBadge(resolutionStatus = issueDetail.resolutionStatus)
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+    Column(modifier = modifier.fillMaxSize()) {
+        // 고정 영역: 메타 정보(badge ~ 작성자 Row)는 항상 보이도록 스크롤에서 제외.
+        Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp)) {
+            if (issueDetail != null) {
+                ResolutionStatusBadge(resolutionStatus = issueDetail.resolutionStatus)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = pin.title,
-                style = IssueTypo.Bold18.copy(color = Title),
-                fontSize = 22.sp,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // TODO: EditButton/CommonButton과 공통화 검토.
-            //       현재 Button.kt의 EditButton은 (작성자 + 수정 가능)일 때만 [수정+삭제]를 묶어 보여주고,
-            //       (작성자 + 수정 불가)에서 [삭제만] 노출하는 케이스를 다루지 않아 여기서는 로컬 버튼 Row로 처리.
-            PinDetailActionButtons(
-                isAuthor = isAuthor,
-                canEdit = canEdit,
-                onReportClick = { onReportClick(pin.id) },
-                onEditClick = { onEditClick(pin.id) },
-                onDeleteClick = { onDeleteClick(pin.id) }
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = pin.locationName?.takeIf { it.isNotBlank() } ?: pin.address,
-            style = IssueTypo.Regular15.copy(color = Gray_7),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
-        Text(
-            text = listOf(
-                formatCreatedAt(pin.createdAt),
-                "조회 ${pin.viewCount}",
-                "공감 ${pin.sympathyCount}"
-            ).joinToString(" · "),
-            style = IssueTypo.Regular12.copy(color = Gray_6)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (writer != null || pin.communityPostId != null) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (writer != null) {
-                    WriterAvatar(imageUrl = writer.imageUrl)
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = writer.name,
-                        style = IssueTypo.Bold12.copy(color = Title),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                } else {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+                Text(
+                    text = pin.title,
+                    style = IssueTypo.Bold18.copy(color = Title),
+                    fontSize = 22.sp,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
 
-                if (pin.communityPostId != null) {
-                    CommunityChip(
-                        onClick = { onCommunityClick(pin.communityPostId) }
-                    )
-                }
+                // TODO: EditButton/CommonButton과 공통화 검토.
+                //       현재 Button.kt의 EditButton은 (작성자 + 수정 가능)일 때만 [수정+삭제]를 묶어 보여주고,
+                //       (작성자 + 수정 불가)에서 [삭제만] 노출하는 케이스를 다루지 않아 여기서는 로컬 버튼 Row로 처리.
+                PinDetailActionButtons(
+                    isAuthor = isAuthor,
+                    canEdit = canEdit,
+                    onReportClick = { onReportClick(pin.id) },
+                    onEditClick = { onEditClick(pin.id) },
+                    onDeleteClick = { onDeleteClick(pin.id) }
+                )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = pin.locationName?.takeIf { it.isNotBlank() } ?: pin.address,
+                style = IssueTypo.Regular15.copy(color = Gray_7),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = listOf(
+                    formatCreatedAt(pin.createdAt),
+                    "조회 ${pin.viewCount}",
+                    "공감 ${pin.sympathyCount}"
+                ).joinToString(" · "),
+                style = IssueTypo.Regular12.copy(color = Gray_6)
+            )
+
+            if (writer != null || pin.communityPostId != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (writer != null) {
+                        WriterAvatar(imageUrl = writer.imageUrl)
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = writer.name,
+                            style = IssueTypo.Bold12.copy(color = Title),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    if (pin.communityPostId != null) {
+                        CommunityChip(
+                            onClick = { onCommunityClick(pin.communityPostId) }
+                        )
+                    }
+                }
+            }
         }
 
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-        Spacer(modifier = Modifier.height(16.dp))
+        // 스크롤 영역: 본문 + 이미지만 길어질 수 있으므로 이쪽만 verticalScroll로 처리.
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 28.dp, vertical = 16.dp)
+        ) {
+            Text(
+                text = pin.description,
+                style = IssueTypo.Regular15.copy(color = TextColor),
+                lineHeight = 22.sp
+            )
 
-        Text(
-            text = pin.description,
-            style = IssueTypo.Regular15.copy(color = TextColor),
-            lineHeight = 22.sp
-        )
-
-        if (pin.imageUrls.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(16.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                pin.imageUrls.forEach { url ->
-                    AsyncImage(
-                        model = url,
-                        contentDescription = "핀 이미지",
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 200.dp, max = 320.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Gray_3),
-                        contentScale = ContentScale.Crop
-                    )
+            if (pin.imageUrls.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    pin.imageUrls.forEach { url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "핀 이미지",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 200.dp, max = 320.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Gray_3),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+        }
     }
 }
 

@@ -2,9 +2,11 @@ package com.issueissyu.fe.ui.screens.pindetail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,10 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
@@ -44,10 +46,10 @@ import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.SignButton
 import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
-import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueContainerLight
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
@@ -97,33 +99,33 @@ fun PinResolutionTab(
         null
     }
 
+    // 시안 기준: 화면 전체는 스크롤하지 않고, 시민해결사 카드가 남는 공간을 모두 차지하며
+    //         그 내부에서만 참여자 목록이 스크롤되도록 한다.
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .padding(horizontal = 28.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        ResolutionStatusSection(
-            resolutionStatus = issueDetail.resolutionStatus,
-            resolvedAt = issueDetail.resolvedAt
-        )
-
-        ResolverParticipationSection(
+        ResolverParticipationCard(
             participations = issueDetail.resolverParticipations,
             resolvedBy = issueDetail.resolvedBy,
-            currentUserId = currentUserId
+            currentUserId = currentUserId,
+            resolutionStatus = issueDetail.resolutionStatus,
+            resolvedAt = issueDetail.resolvedAt,
+            modifier = Modifier.weight(1f)
         )
 
-        PetitionStatusSection(
+        PetitionStatusCard(
             petitionCount = issueDetail.petitionCount,
             targetCount = targetCount,
             remainingCount = remainingCount,
             progress = petitionProgress
         )
 
-        ResolutionGuideSection()
+        ResolutionGuideCard()
 
+        // TODO: 추후 입력/액션이 많아지면 PinPostTab처럼 화면 하단 고정 버튼 영역 분리 검토.
         ResolutionActionRow(
             pinId = pin.id,
             canGoNow = canGoNow,
@@ -139,62 +141,108 @@ fun PinResolutionTab(
     }
 }
 
+// 시안 기준: 각 정보 영역을 흰색 카드 + 옅은 회색 stroke로 구분.
 @Composable
-private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = IssueTypo.Bold18.copy(color = Title)
+private fun SectionCard(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(White)
+            .border(1.dp, Gray_3, RoundedCornerShape(16.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content
     )
 }
 
 @Composable
-private fun ResolutionStatusSection(
-    resolutionStatus: ResolutionStatus,
-    resolvedAt: String?
+private fun SectionHeader(
+    text: String,
+    trailing: @Composable (() -> Unit)? = null
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionHeader("해결 상태")
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            ResolutionStatusBadge(resolutionStatus = resolutionStatus)
-            if (resolutionStatus == ResolutionStatus.RESOLVED && !resolvedAt.isNullOrBlank()) {
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "${formatTimestamp(resolvedAt)} 해결",
-                    style = IssueTypo.Regular12.copy(color = Gray_6)
-                )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            style = IssueTypo.Bold18.copy(color = Title),
+            modifier = Modifier.weight(1f)
+        )
+        trailing?.invoke()
+    }
+}
+
+@Composable
+private fun ResolverParticipationCard(
+    participations: List<IssueResolverParticipation>,
+    resolvedBy: PinUser?,
+    currentUserId: String,
+    resolutionStatus: ResolutionStatus,
+    resolvedAt: String?,
+    modifier: Modifier = Modifier
+) {
+    SectionCard(modifier = modifier) {
+        SectionHeader(
+            text = "시민해결사 참여 현황 (${participations.size}명)",
+            trailing = {
+                // RESOLVED일 때만 헤더 우측에 해결 시각을 작게 표기.
+                if (resolutionStatus == ResolutionStatus.RESOLVED && !resolvedAt.isNullOrBlank()) {
+                    Text(
+                        text = "${formatTimestamp(resolvedAt)} 해결",
+                        style = IssueTypo.Regular12.copy(color = Gray_6)
+                    )
+                }
+            }
+        )
+        // 카드가 부모로부터 weight(1f)를 받으므로 내부 컨텐츠도 남는 공간을 모두 차지하도록 처리한다.
+        // 참여자가 있을 때는 LazyColumn으로 내부 스크롤을, 없을 때는 빈 안내가 영역을 채우도록 한다.
+        when {
+            participations.isEmpty() && resolvedBy == null -> {
+                EmptyResolverPlaceholder(modifier = Modifier.weight(1f))
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(participations) { participation ->
+                        ResolverParticipationItem(
+                            participation = participation,
+                            isFinalResolver = resolvedBy?.id == participation.user.id,
+                            isMe = participation.user.id == currentUserId
+                        )
+                    }
+                    // 방어: resolvedBy가 participations에 포함되지 않은 경우에도 최종 해결자는 표시한다.
+                    if (resolvedBy != null && participations.none { it.user.id == resolvedBy.id }) {
+                        item { ResolvedByHighlight(user = resolvedBy) }
+                    }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun ResolverParticipationSection(
-    participations: List<IssueResolverParticipation>,
-    resolvedBy: PinUser?,
-    currentUserId: String
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SectionHeader("시민해결사 참여 현황 (${participations.size}명)")
-        if (participations.isEmpty()) {
-            Text(
-                text = "아직 참여한 시민해결사가 없습니다.",
-                style = IssueTypo.Regular15.copy(color = Gray_6)
-            )
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                participations.forEach { participation ->
-                    ResolverParticipationItem(
-                        participation = participation,
-                        isFinalResolver = resolvedBy?.id == participation.user.id,
-                        isMe = participation.user.id == currentUserId
-                    )
-                }
-            }
-        }
-        // 방어: resolvedBy가 어떤 이유로 participations에 포함되지 않은 경우에도 최종 해결자는 표시한다.
-        if (resolvedBy != null && participations.none { it.user.id == resolvedBy.id }) {
-            ResolvedByHighlight(user = resolvedBy)
-        }
+private fun EmptyResolverPlaceholder(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Gray_1)
+            .padding(vertical = 20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "아직 참여한 시민해결사가 없어요.",
+            style = IssueTypo.Regular15.copy(color = Gray_6)
+        )
     }
 }
 
@@ -210,7 +258,7 @@ private fun ResolverParticipationItem(
         else -> "인증 대기"
     }
 
-    val backgroundColor = if (isFinalResolver) IssueContainerLight else Gray_3.copy(alpha = 0.3f)
+    val backgroundColor = if (isFinalResolver) IssueContainerLight else Gray_1
 
     Row(
         modifier = Modifier
@@ -275,14 +323,14 @@ private fun ResolvedByHighlight(user: PinUser) {
 }
 
 @Composable
-private fun PetitionStatusSection(
+private fun PetitionStatusCard(
     petitionCount: Int,
     targetCount: Int?,
     remainingCount: Int?,
     progress: Float
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionHeader("청원 현황")
+    SectionCard {
+        SectionHeader(text = "청원 현황")
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "참여 ${petitionCount}명",
@@ -310,27 +358,38 @@ private fun PetitionStatusSection(
     }
 }
 
+// 시안 기준: 안내 영역은 회색 카드 + 작은 본문으로 시각적 강도를 낮춘다.
 @Composable
-private fun ResolutionGuideSection() {
+private fun ResolutionGuideCard() {
     val guides = listOf(
-        "지금가요를 누르면 시민해결사로 참여할 수 있습니다.",
-        "참여 후 해결 인증 사진을 제출할 수 있습니다.",
-        "작성자가 인증을 확인하면 해결 완료 상태가 됩니다.",
-        "청원은 해결 상태와 별개로 참여할 수 있습니다."
+        "지금가요를 누르면 시민해결사로 참여할 수 있어요.",
+        "인증 사진을 제출하면 작성자가 확인 후 해결 완료 처리해요.",
+        "청원은 해결 상태와 별개로 참여할 수 있어요."
     )
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SectionHeader("진행 방식")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Gray_1)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "진행 방식",
+            style = IssueTypo.Bold12.copy(color = Title)
+        )
         guides.forEach { line ->
             Row(verticalAlignment = Alignment.Top) {
                 Text(
                     text = "•",
-                    style = IssueTypo.Regular15.copy(color = Gray_6)
+                    style = IssueTypo.Regular12.copy(color = Gray_6)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = line,
-                    style = IssueTypo.Regular15.copy(color = TextColor),
-                    lineHeight = 22.sp
+                    style = IssueTypo.Regular12.copy(color = TextColor),
+                    lineHeight = 18.sp,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }
@@ -413,25 +472,6 @@ private fun DisabledGoNowFallback(modifier: Modifier = Modifier) {
             style = IssueTypo.Bold18.copy(color = Gray_5)
         )
     }
-}
-
-@Composable
-private fun ResolutionStatusBadge(
-    resolutionStatus: ResolutionStatus
-) {
-    val (label, backgroundColor) = when (resolutionStatus) {
-        ResolutionStatus.BEFORE_RESOLUTION -> "해결 전" to Issue
-        ResolutionStatus.IN_PROGRESS -> "해결 중" to Orange
-        ResolutionStatus.RESOLVED -> "해결 완료" to BrandColor
-    }
-    Text(
-        text = label,
-        style = IssueTypo.Bold12.copy(color = White),
-        modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(backgroundColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    )
 }
 
 @Composable
