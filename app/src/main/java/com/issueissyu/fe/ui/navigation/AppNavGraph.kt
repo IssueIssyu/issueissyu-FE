@@ -29,6 +29,7 @@ import com.issueissyu.fe.ui.screens.onboarding.TermsType
 import com.issueissyu.fe.ui.screens.onboarding.UserVerificationScreen
 import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
+import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 
 @Composable
 fun AppNavGraph(
@@ -214,7 +215,36 @@ fun AppNavGraph(
             ) {
                 PinDetailScreen(
                     pinId = pinId,
-                    onBackClick = { navController.popBackStack() }
+                    onBackClick = { navController.popBackStack() },
+                    onReportClick = { reportPinId ->
+                        navController.navigate(AppDestinations.pinReportRoute(reportPinId))
+                    }
+                )
+            }
+        }
+        composable(
+            route = AppDestinations.PIN_REPORT_ROUTE,
+            arguments = listOf(
+                navArgument("pinId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                PinReportScreen(
+                    pinId = pinId,
+                    onBackClick = { navController.popBackStack() },
+                    onSubmitClick = { _ ->
+                        // TODO: 신고 API 연결 (PinReportRepository.reportPin 등)
+                        // TODO: 성공 시 신고 완료 Dialog 노출 후 popBackStack
+                        navController.popBackStack()
+                    }
                 )
             }
         }

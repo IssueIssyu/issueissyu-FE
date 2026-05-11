@@ -31,6 +31,7 @@ import com.issueissyu.fe.ui.theme.IssueissyuTheme
 fun PinDetailScreen(
     pinId: String,
     onBackClick: () -> Unit,
+    onReportClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinDetailViewModel = hiltViewModel()
 ) {
@@ -77,9 +78,7 @@ fun PinDetailScreen(
                     currentUserId = currentUserId,
                     selectedTab = uiState.selectedTab,
                     onSelectTab = viewModel::selectTab,
-                    onReportClick = {
-                        // TODO: 신고 이유 선택 화면으로 이동
-                    },
+                    onReportClick = onReportClick,
                     onEditClick = {
                         // TODO: 핀 수정 화면으로 이동
                     },
