@@ -1,13 +1,17 @@
 package com.issueissyu.fe.ui.screens.pindetail
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -17,6 +21,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -25,7 +31,12 @@ import com.issueissyu.fe.data.model.IssuePinDetail
 import com.issueissyu.fe.data.model.Pin
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.theme.Gray_3
+import com.issueissyu.fe.ui.theme.Gray_5
+import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
+import com.issueissyu.fe.ui.theme.Orange
+import com.issueissyu.fe.ui.theme.Title
 
 @Composable
 fun PinDetailScreen(
@@ -51,7 +62,7 @@ fun PinDetailScreen(
     ) {
         IssueissyuTopAppBar(
             onBackClick = onBackClick,
-            titleText = "핀 상세"
+            titleText = ""
         )
 
         val pin = uiState.pin
@@ -128,15 +139,11 @@ private fun PinDetailTabs(
     val effectiveTab = tabs[selectedTabIndex]
 
     Column(modifier = modifier.fillMaxSize()) {
-        PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-            tabs.forEach { tab ->
-                Tab(
-                    selected = effectiveTab == tab,
-                    onClick = { onSelectTab(tab) },
-                    text = { Text(text = tab.label()) }
-                )
-            }
-        }
+        PinDetailTabBar(
+            tabs = tabs,
+            effectiveTab = effectiveTab,
+            onSelectTab = onSelectTab
+        )
 
         when (effectiveTab) {
             PinDetailTab.HOME -> {
@@ -195,6 +202,59 @@ private fun PinDetailTabs(
 }
 
 @Composable
+private fun PinDetailTabBar(
+    tabs: List<PinDetailTab>,
+    effectiveTab: PinDetailTab,
+    onSelectTab: (PinDetailTab) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            tabs.forEach { tab ->
+                PinDetailTabItem(
+                    label = tab.label(),
+                    selected = effectiveTab == tab,
+                    onClick = { onSelectTab(tab) },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+        HorizontalDivider(color = Gray_3, thickness = 1.dp)
+    }
+}
+
+@Composable
+private fun PinDetailTabItem(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val textStyle = if (selected) {
+        IssueTypo.Regular15.copy(color = Title, fontWeight = FontWeight.Bold)
+    } else {
+        IssueTypo.Regular15.copy(color = Gray_5)
+    }
+
+    Column(
+        modifier = modifier
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(text = label, style = textStyle)
+        // 시안 기준: 선택 탭 아래만 주황 underline.
+        Box(
+            modifier = Modifier
+                .height(2.dp)
+                .fillMaxWidth(0.5f)
+                .background(if (selected) Orange else Color.Transparent)
+        )
+    }
+}
+
+@Composable
 private fun CenteredPlaceholder(
     text: String,
     modifier: Modifier = Modifier
@@ -232,7 +292,7 @@ private fun PinDetailScreenPreview_IssueLoaded() {
         ) {
             IssueissyuTopAppBar(
                 onBackClick = {},
-                titleText = "핀 상세"
+                titleText = ""
             )
             PinDetailTabs(
                 pin = PinSamples.findById(PinSamples.IssueInProgressPinId),
@@ -260,7 +320,7 @@ private fun PinDetailScreenPreview_Loading() {
         ) {
             IssueissyuTopAppBar(
                 onBackClick = {},
-                titleText = "핀 상세"
+                titleText = ""
             )
             CenteredPlaceholder(
                 modifier = Modifier.weight(1f),
@@ -281,7 +341,7 @@ private fun PinDetailScreenPreview_Error() {
         ) {
             IssueissyuTopAppBar(
                 onBackClick = {},
-                titleText = "핀 상세"
+                titleText = ""
             )
             CenteredPlaceholder(
                 modifier = Modifier.weight(1f),
