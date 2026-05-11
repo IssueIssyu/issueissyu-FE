@@ -374,29 +374,7 @@ private fun ToneChip(
 
 // PinCreateScreen 본체는 hiltViewModel 의존이 있어 IDE Preview에서 직접 mount 하기 어렵다.
 // 대신 stateless PinCreateContent를 직접 호출해 입력 상태별 외관을 미리본다.
-
-// Preview는 위경도 표시 차단 정책에 따라 address/locationName을 모두 채워 보여 준다.
 // (pinLat/pinLng는 화면에 표시되지 않으므로 Preview에서도 전달하지 않는다.)
-
-@Preview(name = "PinCreate · ISSUE 빈 입력", showBackground = true, heightDp = 900)
-@Composable
-private fun PinCreateScreenPreview_IssueEmpty() {
-    IssueissyuTheme {
-        PinCreateContent(
-            category = PinCategory.ISSUE,
-            uiState = PinCreateUiState(
-                category = PinCategory.ISSUE,
-                address = "서울 광진구 능동로 120",
-                locationName = "건국대학교 입구"
-            ),
-            onBackClick = {},
-            onTitleChange = {},
-            onDescriptionChange = {},
-            onToneChange = {},
-            onSubmit = {}
-        )
-    }
-}
 
 @Preview(name = "PinCreate · ISSUE 입력 채워짐", showBackground = true, heightDp = 900)
 @Composable

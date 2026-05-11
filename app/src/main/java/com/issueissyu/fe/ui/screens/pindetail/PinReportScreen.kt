@@ -129,22 +129,3 @@ private fun PinReportScreenPreview() {
         )
     }
 }
-
-@Preview(name = "PinReport · 단일 Row", showBackground = true)
-@Composable
-private fun PinReportReasonItemPreview() {
-    IssueissyuTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 28.dp)
-        ) {
-            HorizontalDivider(color = Gray_3, thickness = 1.dp)
-            PinReportReasonItem(
-                reason = "거짓 정보를 포함한 글이에요",
-                onClick = {}
-            )
-            HorizontalDivider(color = Gray_3, thickness = 1.dp)
-        }
-    }
-}
