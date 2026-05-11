@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.pindetail
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,7 +48,6 @@ import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_6
 import com.issueissyu.fe.ui.theme.Gray_7
-import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
@@ -200,8 +201,12 @@ fun PinHomeTab(
 private fun ResolutionStatusBadge(
     resolutionStatus: ResolutionStatus
 ) {
+    // 시안 기준:
+    // - BEFORE_RESOLUTION: 검정/짙은 회색 계열 (Title)
+    // - IN_PROGRESS: 주황 계열 (Orange)
+    // - RESOLVED: 파란 계열 (BrandColor)
     val (label, backgroundColor) = when (resolutionStatus) {
-        ResolutionStatus.BEFORE_RESOLUTION -> "해결 전" to Issue
+        ResolutionStatus.BEFORE_RESOLUTION -> "해결 전" to Title
         ResolutionStatus.IN_PROGRESS -> "해결 중" to Orange
         ResolutionStatus.RESOLVED -> "해결 완료" to BrandColor
     }
@@ -211,7 +216,7 @@ private fun ResolutionStatusBadge(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(backgroundColor)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .padding(horizontal = 10.dp, vertical = 5.dp)
     )
 }
 
@@ -233,7 +238,8 @@ private fun PinDetailActionButtons(
                 CircleActionIcon(
                     iconRes = R.drawable.ic_edit,
                     contentDescription = "수정",
-                    onClick = onEditClick
+                    onClick = onEditClick,
+                    iconTint = Gray_6
                 )
             }
             // TODO: 삭제 정책 확정 후 canDelete 조건을 별도로 분리.
@@ -241,13 +247,15 @@ private fun PinDetailActionButtons(
             CircleActionIcon(
                 iconRes = R.drawable.ic_delete,
                 contentDescription = "삭제",
-                onClick = onDeleteClick
+                onClick = onDeleteClick,
+                iconTint = Gray_6
             )
         } else {
             CircleActionIcon(
                 iconRes = R.drawable.ic_report,
                 contentDescription = "신고",
-                onClick = onReportClick
+                onClick = onReportClick,
+                iconTint = Orange
             )
         }
     }
@@ -260,25 +268,29 @@ private fun CircleActionIcon(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     size: Dp = 36.dp,
+    iconTint: Color? = null,
     containerColor: Color = White
 ) {
     Box(
         modifier = modifier
             .size(size)
             .shadow(
-                elevation = 3.dp,
+                elevation = 2.dp,
                 shape = CircleShape,
-                ambientColor = Color.Black.copy(alpha = 0.3f)
+                ambientColor = Color.Black.copy(alpha = 0.15f),
+                spotColor = Color.Black.copy(alpha = 0.15f)
             )
             .clip(CircleShape)
             .background(containerColor)
+            .border(width = 1.dp, color = Gray_3, shape = CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Image(
             painter = painterResource(iconRes),
             contentDescription = contentDescription,
-            modifier = Modifier.size(size * 0.56f)
+            modifier = Modifier.size(size * 0.5f),
+            colorFilter = iconTint?.let { ColorFilter.tint(it) }
         )
     }
 }
@@ -310,10 +322,11 @@ private fun CommunityChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 시안 기준 주황 계열 rounded button.
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(BrandColor)
+            .background(Orange)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
