@@ -49,19 +49,19 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToLogin = {
-                    navController.navigate(AppDestinations.Onboarding.LOGIN_ROUTE) {
+                    navController.navigate(LOGIN_ROUTE) {
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
                 }
             )
         }
 
-        composable(AppDestinations.Onboarding.LOGIN_ROUTE) {
+        composable(LOGIN_ROUTE) {
             LoginScreen(
                 viewModel = hiltViewModel(),
                 onNavigateToMain = {
                     navController.navigate(AppDestinations.HOME_ROUTE) {
-                        popUpTo(AppDestinations.Onboarding.LOGIN_ROUTE) { inclusive = true }
+                        popUpTo(LOGIN_ROUTE) { inclusive = true }
                     }
                 },
                 onNavigateToSignUp = {
@@ -192,8 +192,8 @@ fun AppNavGraph(
                     onBackClick = {
                         navController.popBackStack()
                     },
-                    onPatchNoteClick = { pinId ->
-                        // TODO: 핀 상세 화면 route 확정 후 이동
+                    onPatchNoteClick = { _ ->
+                        // TODO: 핀 상세 화면 route 확정 후 pinId 기반으로 navigate
                     }
                 )
             }

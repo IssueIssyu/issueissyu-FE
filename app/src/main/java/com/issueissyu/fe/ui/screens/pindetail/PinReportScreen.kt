@@ -52,17 +52,14 @@ private val PinReportReasons = listOf(
 
 // TODO: 실제 신고 API 연결 시 PinReportRepository / PinReportViewModel 분리 검토.
 //       현재는 selectedReason String을 onSubmitClick으로 그대로 전달하는 구조만 유지.
+//       pinId는 시그니처 안정성을 위해 받아 두지만, Repository 연결 전까지 직접 사용처가 없다.
 @Composable
 fun PinReportScreen(
-    pinId: String,
+    @Suppress("UNUSED_PARAMETER") pinId: String,
     onBackClick: () -> Unit,
     onSubmitClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // pinId는 추후 PinReportRepository 호출 시 사용 예정.
-    @Suppress("UNUSED_PARAMETER")
-    val unusedPinId = pinId
-
     var selectedReason by remember { mutableStateOf<String?>(null) }
 
     Column(
