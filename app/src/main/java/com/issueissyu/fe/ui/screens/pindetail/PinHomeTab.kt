@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,12 +41,14 @@ import com.issueissyu.fe.data.model.IssuePinDetail
 import com.issueissyu.fe.data.model.Pin
 import com.issueissyu.fe.data.model.ResolutionStatus
 import com.issueissyu.fe.data.model.canEditBy
+import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_6
 import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
+import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
@@ -332,5 +335,65 @@ private fun formatCreatedAt(raw: String): String {
                 .atZone(ZoneId.systemDefault())
                 .format(pattern)
         }.getOrDefault(raw)
+    }
+}
+
+@Preview(name = "Issue · 다른 사용자", showBackground = true, heightDp = 800)
+@Composable
+private fun PinHomeTabPreview_IssueOtherUser() {
+    IssueissyuTheme {
+        PinHomeTab(
+            pin = PinSamples.findById(PinSamples.IssuePinId),
+            currentUserId = PinSamples.user2.id,
+            onReportClick = {},
+            onEditClick = {},
+            onDeleteClick = {},
+            onCommunityClick = {}
+        )
+    }
+}
+
+@Preview(name = "Issue · 작성자 본인", showBackground = true, heightDp = 800)
+@Composable
+private fun PinHomeTabPreview_IssueAuthor() {
+    IssueissyuTheme {
+        PinHomeTab(
+            pin = PinSamples.findById(PinSamples.IssuePinId),
+            currentUserId = PinSamples.user1.id,
+            onReportClick = {},
+            onEditClick = {},
+            onDeleteClick = {},
+            onCommunityClick = {}
+        )
+    }
+}
+
+@Preview(name = "Communication · 커뮤니티 포스트 있음", showBackground = true, heightDp = 800)
+@Composable
+private fun PinHomeTabPreview_CommunicationWithCommunity() {
+    IssueissyuTheme {
+        PinHomeTab(
+            pin = PinSamples.findById(PinSamples.CommunicationPinId),
+            currentUserId = PinSamples.user2.id,
+            onReportClick = {},
+            onEditClick = {},
+            onDeleteClick = {},
+            onCommunityClick = {}
+        )
+    }
+}
+
+@Preview(name = "Shop · 작성자 없음", showBackground = true, heightDp = 800)
+@Composable
+private fun PinHomeTabPreview_Shop() {
+    IssueissyuTheme {
+        PinHomeTab(
+            pin = PinSamples.findById(PinSamples.ShopPinId),
+            currentUserId = PinSamples.user2.id,
+            onReportClick = {},
+            onEditClick = {},
+            onDeleteClick = {},
+            onCommunityClick = {}
+        )
     }
 }

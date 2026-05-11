@@ -12,14 +12,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.data.model.IssuePinDetail
 import com.issueissyu.fe.data.model.Pin
+import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.theme.IssueissyuTheme
 
 @Composable
 fun PinDetailScreen(
@@ -209,5 +215,79 @@ private fun PinDetailTab.label(): String {
         PinDetailTab.HOME -> "홈"
         PinDetailTab.POST -> "포스트"
         PinDetailTab.RESOLUTION -> "해결하기"
+    }
+}
+
+// PinDetailScreen 본체는 hiltViewModel/PinRepository 의존이 있어 IDE Preview에서 직접 mount 하기 어렵다.
+// 대신 같은 파일 안에 있는 PinDetailTabs / CenteredPlaceholder 를 직접 호출해 화면 골격(상단바 + 탭/Placeholder)을 미리본다.
+
+@Preview(name = "PinDetail · 이슈 핀 로드 완료", showBackground = true, heightDp = 900)
+@Composable
+private fun PinDetailScreenPreview_IssueLoaded() {
+    IssueissyuTheme {
+        var selectedTab by remember { mutableStateOf(PinDetailTab.HOME) }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            IssueissyuTopAppBar(
+                onBackClick = {},
+                titleText = "핀 상세"
+            )
+            PinDetailTabs(
+                pin = PinSamples.findById(PinSamples.IssueInProgressPinId),
+                currentUserId = PinSamples.user1.id,
+                selectedTab = selectedTab,
+                onSelectTab = { selectedTab = it },
+                onReportClick = {},
+                onEditClick = {},
+                onDeleteClick = {},
+                onCommunityClick = {},
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Preview(name = "PinDetail · 로딩", showBackground = true, heightDp = 900)
+@Composable
+private fun PinDetailScreenPreview_Loading() {
+    IssueissyuTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            IssueissyuTopAppBar(
+                onBackClick = {},
+                titleText = "핀 상세"
+            )
+            CenteredPlaceholder(
+                modifier = Modifier.weight(1f),
+                text = "핀 정보를 불러오는 중..."
+            )
+        }
+    }
+}
+
+@Preview(name = "PinDetail · 에러", showBackground = true, heightDp = 900)
+@Composable
+private fun PinDetailScreenPreview_Error() {
+    IssueissyuTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            IssueissyuTopAppBar(
+                onBackClick = {},
+                titleText = "핀 상세"
+            )
+            CenteredPlaceholder(
+                modifier = Modifier.weight(1f),
+                text = "핀 정보를 불러오지 못했습니다."
+            )
+        }
     }
 }

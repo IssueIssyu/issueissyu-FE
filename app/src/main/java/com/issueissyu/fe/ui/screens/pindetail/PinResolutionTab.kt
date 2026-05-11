@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -38,6 +39,7 @@ import com.issueissyu.fe.data.model.IssueResolverParticipation
 import com.issueissyu.fe.data.model.Pin
 import com.issueissyu.fe.data.model.PinUser
 import com.issueissyu.fe.data.model.ResolutionStatus
+import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.SignButton
@@ -48,6 +50,7 @@ import com.issueissyu.fe.ui.theme.Gray_6
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueContainerLight
 import com.issueissyu.fe.ui.theme.IssueTypo
+import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
@@ -478,5 +481,67 @@ private fun formatTimestamp(raw: String): String {
                 .atZone(ZoneId.systemDefault())
                 .format(pattern)
         }.getOrDefault(raw)
+    }
+}
+
+@Preview(name = "RESOLUTION · 해결 전 (참여자 없음)", showBackground = true, heightDp = 1000)
+@Composable
+private fun PinResolutionTabPreview_BeforeResolution() {
+    IssueissyuTheme {
+        val pin = PinSamples.findById(PinSamples.IssuePinId)
+        PinResolutionTab(
+            pin = pin,
+            issueDetail = pin.detail as IssuePinDetail,
+            currentUserId = PinSamples.user2.id,
+            onGoNowClick = {},
+            onPetitionClick = {}
+        )
+    }
+}
+
+@Preview(name = "RESOLUTION · 해결 중 (내가 참여)", showBackground = true, heightDp = 1000)
+@Composable
+private fun PinResolutionTabPreview_InProgressMyParticipation() {
+    IssueissyuTheme {
+        // PinSamples.IssueInProgressPinId의 resolverParticipations에 user1이 포함되어 있어 user1 시점 사용.
+        val pin = PinSamples.findById(PinSamples.IssueInProgressPinId)
+        PinResolutionTab(
+            pin = pin,
+            issueDetail = pin.detail as IssuePinDetail,
+            currentUserId = PinSamples.user1.id,
+            onGoNowClick = {},
+            onPetitionClick = {}
+        )
+    }
+}
+
+@Preview(name = "RESOLUTION · 해결 완료", showBackground = true, heightDp = 1000)
+@Composable
+private fun PinResolutionTabPreview_Resolved() {
+    IssueissyuTheme {
+        val pin = PinSamples.findById(PinSamples.IssueResolvedPinId)
+        PinResolutionTab(
+            pin = pin,
+            issueDetail = pin.detail as IssuePinDetail,
+            currentUserId = PinSamples.user2.id,
+            onGoNowClick = {},
+            onPetitionClick = {}
+        )
+    }
+}
+
+@Preview(name = "RESOLUTION · 작성자 본인 시점", showBackground = true, heightDp = 1000)
+@Composable
+private fun PinResolutionTabPreview_AuthorView() {
+    IssueissyuTheme {
+        // PinSamples.IssueInProgressPinId의 writer가 user2이므로 user2 시점 = 작성자 본인 시점.
+        val pin = PinSamples.findById(PinSamples.IssueInProgressPinId)
+        PinResolutionTab(
+            pin = pin,
+            issueDetail = pin.detail as IssuePinDetail,
+            currentUserId = PinSamples.user2.id,
+            onGoNowClick = {},
+            onPetitionClick = {}
+        )
     }
 }

@@ -29,16 +29,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.issueissyu.fe.data.model.Pin
 import com.issueissyu.fe.data.model.PinEmojiReaction
+import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
 import com.issueissyu.fe.ui.theme.IssueTypo
+import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
@@ -289,6 +292,36 @@ private fun CommentListPlaceholder() {
             text = "댓글 목록 자리",
             style = IssueTypo.Regular15.copy(color = Gray_6),
             lineHeight = 20.sp
+        )
+    }
+}
+
+@Preview(name = "POST · 빈 상태", showBackground = true, heightDp = 800)
+@Composable
+private fun PinPostTabPreview_Empty() {
+    // 공감 0명 / 이모지 반응 없음 케이스로 PinSamples.CommunicationPlainPinId 사용.
+    IssueissyuTheme {
+        PinPostTab(
+            pin = PinSamples.findById(PinSamples.CommunicationPlainPinId),
+            currentUserId = PinSamples.user1.id,
+            onSympathyClick = {},
+            onEmojiClick = {},
+            onCommentSubmit = { _, _ -> }
+        )
+    }
+}
+
+@Preview(name = "POST · 데이터 있음", showBackground = true, heightDp = 800)
+@Composable
+private fun PinPostTabPreview_Filled() {
+    // 공감 + 이모지 4종 케이스로 PinSamples.IssuePinId 사용 (isSympathizedByMe=true 보강됨).
+    IssueissyuTheme {
+        PinPostTab(
+            pin = PinSamples.findById(PinSamples.IssuePinId),
+            currentUserId = PinSamples.user2.id,
+            onSympathyClick = {},
+            onEmojiClick = {},
+            onCommentSubmit = { _, _ -> }
         )
     }
 }
