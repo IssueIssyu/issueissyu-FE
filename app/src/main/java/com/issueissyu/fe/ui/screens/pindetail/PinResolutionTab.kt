@@ -77,8 +77,6 @@ fun PinResolutionTab(
         .firstOrNull { it.user.id == currentUserId }
     val isAlreadyResolver = myParticipation != null
 
-    // 시민해결사 상호작용은 RESOLVED 상태에서만 막는다.
-    // 작성자 본인은 자기 핀에 지금가요를 누르지 않는 정책이라 비활성화 처리한다.
     val canGoNow = !isResolved && !isAlreadyResolver && !isWriter
 
     val goNowState = when {
@@ -99,8 +97,6 @@ fun PinResolutionTab(
         null
     }
 
-    // 시안 기준: 화면 전체는 스크롤하지 않고, 시민해결사 카드가 남는 공간을 모두 차지하며
-    //         그 내부에서만 참여자 목록이 스크롤되도록 한다.
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -125,7 +121,6 @@ fun PinResolutionTab(
 
         ResolutionGuideCard()
 
-        // TODO: 추후 입력/액션이 많아지면 PinPostTab처럼 화면 하단 고정 버튼 영역 분리 검토.
         ResolutionActionRow(
             pinId = pin.id,
             canGoNow = canGoNow,
@@ -141,7 +136,6 @@ fun PinResolutionTab(
     }
 }
 
-// 시안 기준: 각 정보 영역을 흰색 카드 + 옅은 회색 stroke로 구분.
 @Composable
 private fun SectionCard(
     modifier: Modifier = Modifier,
@@ -190,7 +184,6 @@ private fun ResolverParticipationCard(
         SectionHeader(
             text = "시민해결사 참여 현황 (${participations.size}명)",
             trailing = {
-                // RESOLVED일 때만 헤더 우측에 해결 시각을 작게 표기.
                 if (resolutionStatus == ResolutionStatus.RESOLVED && !resolvedAt.isNullOrBlank()) {
                     Text(
                         text = "${formatTimestamp(resolvedAt)} 해결",
@@ -199,8 +192,6 @@ private fun ResolverParticipationCard(
                 }
             }
         )
-        // 카드가 부모로부터 weight(1f)를 받으므로 내부 컨텐츠도 남는 공간을 모두 차지하도록 처리한다.
-        // 참여자가 있을 때는 LazyColumn으로 내부 스크롤을, 없을 때는 빈 안내가 영역을 채우도록 한다.
         when {
             participations.isEmpty() && resolvedBy == null -> {
                 EmptyResolverPlaceholder(modifier = Modifier.weight(1f))
@@ -219,7 +210,6 @@ private fun ResolverParticipationCard(
                             isMe = participation.user.id == currentUserId
                         )
                     }
-                    // 방어: resolvedBy가 participations에 포함되지 않은 경우에도 최종 해결자는 표시한다.
                     if (resolvedBy != null && participations.none { it.user.id == resolvedBy.id }) {
                         item { ResolvedByHighlight(user = resolvedBy) }
                     }
@@ -358,7 +348,6 @@ private fun PetitionStatusCard(
     }
 }
 
-// 시안 기준: 안내 영역은 회색 카드 + 작은 본문으로 시각적 강도를 낮춘다.
 @Composable
 private fun ResolutionGuideCard() {
     val guides = listOf(
@@ -411,7 +400,6 @@ private fun ResolutionActionRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 작성자 본인은 지금가요 버튼을 숨겨 노출 자체를 차단한다.
         if (!isWriter) {
             ResolutionGoNowButton(
                 canGoNow = canGoNow,
@@ -420,8 +408,6 @@ private fun ResolutionActionRow(
                 modifier = Modifier.weight(1f)
             )
         }
-        // 청원은 시민해결사 흐름과 별개라 RESOLVED 여부와 무관하게 노출한다.
-        // 중복 청원 차단은 SignButton 내부 isSigned로 처리.
         SignButton(
             isSigned = isPetitionedByMe,
             count = petitionCount,
@@ -438,9 +424,7 @@ private fun ResolutionGoNowButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 공통 GoNowButton은 enabled를 외부에서 강제할 수 없고 state==DEFAULT일 때만 활성화된다.
-    // RESOLVED + 비참여자처럼 시각적으로 disabled DEFAULT가 필요한 케이스만 로컬 fallback으로 처리한다.
-    // TODO: 공통 GoNowButton에 외부 enabled 파라미터 노출 후 통합 검토.
+    // TODO: GoNowButton에 외부 enabled 파라미터 추가 후 공통화 검토
     if (!canGoNow && goNowState == ActionState.DEFAULT) {
         DisabledGoNowFallback(modifier = modifier)
     } else {
@@ -543,7 +527,6 @@ private fun PinResolutionTabPreview_BeforeResolution() {
 @Composable
 private fun PinResolutionTabPreview_InProgressMyParticipation() {
     IssueissyuTheme {
-        // PinSamples.IssueInProgressPinId의 resolverParticipations에 user1이 포함되어 있어 user1 시점 사용.
         val pin = PinSamples.findById(PinSamples.IssueInProgressPinId)
         PinResolutionTab(
             pin = pin,
@@ -574,7 +557,6 @@ private fun PinResolutionTabPreview_Resolved() {
 @Composable
 private fun PinResolutionTabPreview_AuthorView() {
     IssueissyuTheme {
-        // PinSamples.IssueInProgressPinId의 writer가 user2이므로 user2 시점 = 작성자 본인 시점.
         val pin = PinSamples.findById(PinSamples.IssueInProgressPinId)
         PinResolutionTab(
             pin = pin,

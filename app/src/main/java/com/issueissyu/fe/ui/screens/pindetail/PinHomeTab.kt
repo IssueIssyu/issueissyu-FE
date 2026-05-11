@@ -69,7 +69,6 @@ fun PinHomeTab(
     onCommunityClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // writer는 Pin 공통 필드가 아니다. detail 타입 기준으로 가져온다.
     val writer = when (val detail = pin.detail) {
         is IssuePinDetail -> detail.writer
         is CommunicationPinDetail -> detail.writer
@@ -80,7 +79,6 @@ fun PinHomeTab(
     val issueDetail = pin.detail as? IssuePinDetail
 
     Column(modifier = modifier.fillMaxSize()) {
-        // 고정 영역: 메타 정보(badge ~ 작성자 Row)는 항상 보이도록 스크롤에서 제외.
         Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp)) {
             if (issueDetail != null) {
                 ResolutionStatusBadge(resolutionStatus = issueDetail.resolutionStatus)
@@ -99,9 +97,7 @@ fun PinHomeTab(
                 )
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // TODO: EditButton/CommonButton과 공통화 검토.
-                //       현재 Button.kt의 EditButton은 (작성자 + 수정 가능)일 때만 [수정+삭제]를 묶어 보여주고,
-                //       (작성자 + 수정 불가)에서 [삭제만] 노출하는 케이스를 다루지 않아 여기서는 로컬 버튼 Row로 처리.
+                // TODO: 공통 EditButton과 통합 검토 (작성자+수정 불가에서 삭제만 노출하는 케이스 미지원)
                 PinDetailActionButtons(
                     isAuthor = isAuthor,
                     canEdit = canEdit,
@@ -162,7 +158,6 @@ fun PinHomeTab(
 
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-        // 스크롤 영역: 본문 + 이미지만 길어질 수 있으므로 이쪽만 verticalScroll로 처리.
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -202,10 +197,6 @@ fun PinHomeTab(
 private fun ResolutionStatusBadge(
     resolutionStatus: ResolutionStatus
 ) {
-    // 시안 기준:
-    // - BEFORE_RESOLUTION: 검정/짙은 회색 계열 (Title)
-    // - IN_PROGRESS: 주황 계열 (Orange)
-    // - RESOLVED: 파란 계열 (BrandColor)
     val (label, backgroundColor) = when (resolutionStatus) {
         ResolutionStatus.BEFORE_RESOLUTION -> "해결 전" to Title
         ResolutionStatus.IN_PROGRESS -> "해결 중" to Orange
@@ -243,8 +234,7 @@ private fun PinDetailActionButtons(
                     iconTint = Gray_6
                 )
             }
-            // TODO: 삭제 정책 확정 후 canDelete 조건을 별도로 분리.
-            //       현재는 작성자 본인에게만 노출하고 실제 삭제 동작은 연결하지 않는다.
+            // TODO: 삭제 가능 조건은 서버 정책 확정 후 canDeleteBy 또는 권한 응답값으로 분리
             CircleActionIcon(
                 iconRes = R.drawable.ic_delete,
                 contentDescription = "삭제",
@@ -323,7 +313,6 @@ private fun CommunityChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 시안 기준 주황 계열 rounded button.
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))

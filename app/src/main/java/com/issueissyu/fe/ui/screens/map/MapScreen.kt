@@ -44,13 +44,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.collectLatest
 import com.issueissyu.fe.R
 import com.issueissyu.fe.data.model.MapBounds
@@ -67,7 +65,6 @@ import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
-import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Shop
 import com.naver.maps.map.LocationTrackingMode
 import com.naver.maps.map.NaverMap
@@ -479,7 +476,7 @@ fun MapScreen(
         selectedPin?.let { pin ->
             PinSummaryCard(
                 pin = pin,
-                currentUserId = "user1", // TODO: 실제 로그인 사용자 ID로 교체
+                currentUserId = "user1_id", // TODO: 로그인 연동 후 실제 currentUserId로 교체
                 onDetailClick = { pinId ->
                     viewModel.clearSelectedPin()
                     navController.navigate(AppDestinations.pinDetailRoute(pinId))
@@ -526,13 +523,5 @@ fun MapScreen(
                     .padding(end = 4.dp, bottom = 88.dp)
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewMapScreen() {
-    IssueissyuTheme {
-        MapScreen(navController = rememberNavController())
     }
 }

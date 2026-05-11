@@ -52,8 +52,7 @@ fun PinDetailScreen(
         viewModel.loadPin(pinId)
     }
 
-    // TODO: 로그인 연동 후 실제 currentUserId로 교체.
-    val currentUserId = "user_1"
+    val currentUserId = "user1_id" // TODO: 로그인 연동 후 실제 currentUserId로 교체
 
     Column(
         modifier = modifier
@@ -125,8 +124,6 @@ private fun PinDetailTabs(
     onCommunityClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // RESOLVED 상태여도 해결하기 탭 자체는 표시한다.
-    // RESOLVED 이후 막아야 하는 것은 해결하기 탭 내부의 시민해결사 상호작용이다.
     val tabs = buildList {
         add(PinDetailTab.HOME)
         add(PinDetailTab.POST)
@@ -166,10 +163,10 @@ private fun PinDetailTabs(
                         // TODO: 공감 API 연결
                     },
                     onEmojiClick = {
-                        // TODO: 이모지 반응 API 연결 (이모지 선택 UI 포함)
+                        // TODO: 이모지 반응 API 연결
                     },
                     onCommentSubmit = { _, _ ->
-                        // TODO: 댓글 작성 API 연결 (PinCommentRepository.addComment 등)
+                        // TODO: PinCommentRepository.addComment 연결
                     },
                     modifier = Modifier.fillMaxSize()
                 )
@@ -183,10 +180,10 @@ private fun PinDetailTabs(
                         issueDetail = issueDetail,
                         currentUserId = currentUserId,
                         onGoNowClick = {
-                            // TODO: 지금가요 API 연결 (PinResolutionRepository.joinAsResolver 등)
+                            // TODO: PinResolutionRepository.joinResolver 연결
                         },
                         onPetitionClick = {
-                            // TODO: 청원 API 연결 (PinPetitionRepository.petition 등)
+                            // TODO: PinPetitionRepository.petition 연결
                         },
                         modifier = Modifier.fillMaxSize()
                     )
@@ -244,7 +241,6 @@ private fun PinDetailTabItem(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(text = label, style = textStyle)
-        // 시안 기준: 선택 탭 아래만 주황 underline.
         Box(
             modifier = Modifier
                 .height(2.dp)
@@ -276,9 +272,6 @@ private fun PinDetailTab.label(): String {
         PinDetailTab.RESOLUTION -> "해결하기"
     }
 }
-
-// PinDetailScreen 본체는 hiltViewModel/PinRepository 의존이 있어 IDE Preview에서 직접 mount 하기 어렵다.
-// 대신 같은 파일 안에 있는 PinDetailTabs / CenteredPlaceholder 를 직접 호출해 화면 골격(상단바 + 탭/Placeholder)을 미리본다.
 
 @Preview(name = "PinDetail · 이슈 핀 로드 완료", showBackground = true, heightDp = 900)
 @Composable

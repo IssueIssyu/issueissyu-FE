@@ -53,10 +53,7 @@ import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 import androidx.compose.ui.tooling.preview.Preview
 
-// TODO: AI 초안 생성 기능 추후 구현.
-//       - AI 초안 응답을 받으면 title/description을 update해서 CommonTextField에 반영.
-//       - 작성자가 같은 CommonTextField에서 직접 수정 가능하도록 양방향 바인딩 유지.
-//       - 요청 진행 중에는 uiState.isGeneratingAiContent로 로딩 상태 표시 예정.
+// TODO: AI 초안 응답을 title/description 상태에 반영
 @Composable
 fun PinCreateScreen(
     category: PinCategory,
@@ -86,9 +83,6 @@ fun PinCreateScreen(
     )
 }
 
-// hiltViewModel 의존을 제거한 stateless 본체. Preview 및 단위 테스트 친화.
-// pinLat/pinLng는 화면에 표시하지 않으므로 PinCreateContent 시그니처에서 제외한다
-// (route argument는 PinCreateScreen에서 LaunchedEffect → viewModel.initialize로만 사용).
 @Composable
 private fun PinCreateContent(
     category: PinCategory,
@@ -100,8 +94,6 @@ private fun PinCreateContent(
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 일반 유저 생성 대상은 ISSUE / COMMUNICATION 두 가지이며, 그 외 카테고리는 NavGraph에서 차단된다.
-    // SHOP / FESTIVAL은 가드용 디폴트만 두고 실제로는 도달하지 않는다.
     val titleText = when (category) {
         PinCategory.ISSUE -> "이슈 작성"
         PinCategory.COMMUNICATION -> "소통 작성"
@@ -118,7 +110,6 @@ private fun PinCreateContent(
             titleText = titleText
         )
 
-        // 본문 영역: 작성 완료 버튼은 화면 하단 고정, 그 위 입력 영역만 스크롤.
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -141,8 +132,6 @@ private fun PinCreateContent(
                 maxLength = 50
             )
 
-            // TODO: CommonTextField가 multiline 입력 시 시안의 본문 영역 높이를 완전히 맞추지 못하면,
-            //       PinCreateScreen 전용 multiline 컴포넌트 분리 검토.
             CommonTextField(
                 value = uiState.description,
                 onValueChange = onDescriptionChange,
@@ -158,15 +147,12 @@ private fun PinCreateContent(
                 onToneChange = onToneChange
             )
 
-            // 하단 버튼과의 사이 여백.
             Spacer(modifier = Modifier.height(4.dp))
         }
 
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-        // TODO: createPin API 연결 (PinRepository.createPin(CreatePinRequest(...))).
-        // TODO: 이미지 업로드 후 반환된 imageUrls로 생성 요청 구성.
-        // TODO: AI 초안 적용 여부와 최종 title/description 값 검증.
+        // TODO: PinRepository.createPin 연결
         CommonButton(
             onClick = onSubmit,
             text = "작성 완료",
@@ -180,7 +166,6 @@ private fun PinCreateContent(
     }
 }
 
-// 시안 기준: 섹션 라벨은 CommonTextField의 label 스타일과 동일하게 정렬한다.
 @Composable
 private fun SectionLabel(
     text: String,
@@ -201,8 +186,7 @@ private fun SectionLabel(
     }
 }
 
-// TODO: 이미지 선택/업로드 기능 연결 후 imageUris 갱신.
-// TODO: 최대 5장 제한 적용 (현재는 placeholder만 노출).
+// TODO: 이미지 선택/업로드 기능 연결 (최대 5장)
 @Composable
 private fun PhotoUploadSection(imageCount: Int) {
     Column {
@@ -218,10 +202,9 @@ private fun PhotoUploadSection(imageCount: Int) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PhotoAddBox(
                 onClick = {
-                    // TODO: 사진 선택 launcher 호출 후 viewModel에 반영.
+                    // TODO: 사진 선택 launcher 호출 후 viewModel에 반영
                 }
             )
-            // TODO: imageUris를 thumbnail로 PhotoAddBox 우측에 나열.
         }
     }
 }
@@ -252,9 +235,7 @@ private fun PhotoAddBox(onClick: () -> Unit) {
     }
 }
 
-// TODO: 지도에서 선택한 위경도를 백엔드에 전달해 생성 가능 여부와 주소를 검증한다.
-// TODO: 백엔드가 반환한 주소를 address/locationName에 반영한다.
-// TODO: 등록 장소는 사용자 수정 불가 상태로 유지한다.
+// TODO: 좌표 기반 주소 변환 결과를 address/locationName으로 표시 (readonly 유지)
 @Composable
 private fun LocationSection(
     address: String,
@@ -272,8 +253,6 @@ private fun LocationSection(
                 .padding(horizontal = 15.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            // 등록 장소 영역에는 절대로 pinLat/pinLng 같은 좌표를 노출하지 않는다.
-            // 좌표는 생성 요청/검증용 데이터이고, 사용자에게는 주소 문자열만 보여 준다.
             val placeText = when {
                 !locationName.isNullOrBlank() -> locationName
                 address.isNotBlank() -> address
@@ -307,8 +286,7 @@ private fun LocationSection(
     }
 }
 
-// 말투 옵션 임시 목록.
-// TODO: 서버/기획 확정 후 enum 또는 서버 응답 기반으로 교체.
+// TODO: 서버/기획 확정 후 enum 또는 서버 응답 기반으로 교체
 private val PinToneOptions = listOf(
     "#가볍게",
     "#공손하게",
@@ -318,9 +296,7 @@ private val PinToneOptions = listOf(
     "#공식적으로"
 )
 
-// TODO: 선택된 말투를 AI 초안 요청 파라미터에 포함.
-// TODO: AI 초안 응답은 title/description 상태에 반영.
-// TODO: 작성자가 CommonTextField에서 직접 수정 가능해야 함.
+// TODO: 선택된 말투를 AI 초안 요청 파라미터에 포함
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ToneSelectionSection(
@@ -329,7 +305,6 @@ private fun ToneSelectionSection(
 ) {
     Column {
         SectionLabel(text = "말투 설정")
-        // 시안 기준: 말투는 드롭다운이 아니라 chip 선택형. 사용자가 직접 보고 하나를 고른다.
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -372,10 +347,6 @@ private fun ToneChip(
     }
 }
 
-// PinCreateScreen 본체는 hiltViewModel 의존이 있어 IDE Preview에서 직접 mount 하기 어렵다.
-// 대신 stateless PinCreateContent를 직접 호출해 입력 상태별 외관을 미리본다.
-// (pinLat/pinLng는 화면에 표시되지 않으므로 Preview에서도 전달하지 않는다.)
-
 @Preview(name = "PinCreate · ISSUE 입력 채워짐", showBackground = true, heightDp = 900)
 @Composable
 private fun PinCreateScreenPreview_IssueFilled() {
@@ -411,7 +382,7 @@ private fun PinCreateScreenPreview_Communication() {
                 description = "어린이대공원 근처 살아요. 가볍게 한 바퀴 도실 분 모집합니다.",
                 address = "서울 광진구 화양동",
                 locationName = "화양동 주민센터 앞",
-                selectedTone = "친근하게"
+                selectedTone = "#친근하게"
             ),
             onBackClick = {},
             onTitleChange = {},

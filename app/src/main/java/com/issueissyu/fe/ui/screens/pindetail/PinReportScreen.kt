@@ -31,8 +31,7 @@ import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Title
 
-// 신고 사유 임시 목록 (시안 기준).
-// TODO: 서버 신고 사유 enum 확정 후 String 대신 PinReportReason으로 교체.
+// TODO: 서버 신고 사유 enum 확정 후 PinReportReason으로 교체
 private val PinReportReasons = listOf(
     "거짓 정보를 포함한 글이에요",
     "욕설 또는 비하 표현이 포함된 글이에요",
@@ -41,9 +40,7 @@ private val PinReportReasons = listOf(
     "종교 포교 목적의 글이에요"
 )
 
-// TODO: 실제 신고 API 연결 시 PinReportRepository / PinReportViewModel 분리 검토.
-//       현재는 신고 사유 String을 onSubmitClick으로 그대로 전달하는 구조만 유지.
-//       pinId는 시그니처 안정성을 위해 받아 두지만, Repository 연결 전까지 직접 사용처가 없다.
+// TODO: PinReportRepository 연결 후 실제 신고 요청 전송
 @Composable
 fun PinReportScreen(
     @Suppress("UNUSED_PARAMETER") pinId: String,

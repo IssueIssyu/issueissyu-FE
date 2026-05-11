@@ -57,10 +57,9 @@ import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 
-// 더미 댓글 작성자 id. PinDetailScreen 임시 currentUserId("user_1")와 매칭해 "내 댓글" 케이스를 보여준다.
-// TODO: PinComment 모델 / PinCommentRepository 연결 후 제거.
-private const val DummyMyAuthorId = "user_1"
-private const val DummyOtherAuthorId = "user_other"
+// TODO: PinCommentRepository 연결 후 댓글 목록 조회
+private const val DummyMyAuthorId = "user1_id"
+private const val DummyOtherAuthorId = "user2_id"
 
 private data class CommentPlaceholder(
     val authorId: String,
@@ -69,7 +68,6 @@ private data class CommentPlaceholder(
     val content: String
 )
 
-// TODO: PinComment 모델 / PinCommentRepository 연결 후 더미 댓글 제거.
 private val DummyComments = listOf(
     CommentPlaceholder(
         authorId = DummyMyAuthorId,
@@ -83,8 +81,6 @@ private val DummyComments = listOf(
     )
 )
 
-// TODO: onCommentSubmit은 CommonTextField 기반 댓글 입력 UI 연결 시 onCommentSubmit(pin.id, content) 형태로 호출.
-//       현재는 placeholder 단계라 직접 호출처가 없다.
 @Composable
 fun PinPostTab(
     pin: Pin,
@@ -94,7 +90,6 @@ fun PinPostTab(
     @Suppress("UNUSED_PARAMETER") onCommentSubmit: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // writer는 Pin 공통 필드가 아니다. detail 타입 기준으로 가져온다.
     val writer = when (val detail = pin.detail) {
         is IssuePinDetail -> detail.writer
         is CommunicationPinDetail -> detail.writer
@@ -102,7 +97,6 @@ fun PinPostTab(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // 고정 영역: 작성자/공감 요청/이모지 — 항상 보이도록 스크롤에서 제외.
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -125,19 +119,17 @@ fun PinPostTab(
 
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-        // 댓글 영역: 남는 공간을 차지하며 내부에서만 스크롤. 0개일 때는 빈 안내.
         CommentList(
+            comments = DummyComments,
             currentUserId = currentUserId,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         )
 
-        // 시안 기준: 화면 하단(=PinDetailScreen 내부 BottomNavigationBar 위)에서 30dp 떨어진 위치 고정.
         CommentInputBar(
             onSubmit = {
-                // TODO: 실제 입력값을 캡처해 onCommentSubmit(pin.id, content)으로 전달.
-                //       현재는 입력 상태(CommonTextField 등) 미연결이라 callback 호출은 보류.
+                // TODO: 입력값을 캡처해 onCommentSubmit(pin.id, content)으로 전달
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -154,8 +146,6 @@ private fun SympathyRequestSection(
     isSympathizedByMe: Boolean,
     onSympathyClick: () -> Unit
 ) {
-    // 시안 기준: 프로필 사진과 말풍선이 같은 Row에 있고,
-    // 말풍선 좌상단 corner를 작게 깎아 프로필에서 이어지는 chat bubble 모양으로 보이게 한다.
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -204,7 +194,7 @@ private fun WriterAvatar(
     modifier: Modifier = Modifier,
     size: Dp = 40.dp
 ) {
-    // TODO: PinHomeTab의 WriterAvatar와 공통화 검토 (현재는 시안 변경 폭 최소화를 위해 로컬 유지).
+    // TODO: PinHomeTab WriterAvatar와 공통화 검토
     val avatarModifier = modifier
         .size(size)
         .clip(CircleShape)
@@ -222,9 +212,7 @@ private fun WriterAvatar(
     }
 }
 
-// 시안 기준: PinSummaryCard.CompactSympathyButton과 동일 디자인.
-// TODO: PinSummaryCard.CompactSympathyButton과 공통 컴포넌트(예: SympathyButton)로 통합 검토.
-// TODO: 공감 토글 후 상태(서버 응답)를 반영하는 ViewModel 흐름 연결.
+// TODO: PinSummaryCard.CompactSympathyButton과 공통 컴포넌트로 통합 검토
 @Composable
 private fun SympathyPill(
     sympathyCount: Int,
@@ -271,7 +259,7 @@ private fun EmojiReactionRow(
                 style = IssueTypo.Regular12.copy(color = Gray_5)
             )
         }
-        // TODO: 이모지 선택 BottomSheet 연결 (AddEmojiChip 클릭 → 이모지 선택 시트 → onEmojiClick).
+        // TODO: 이모지 선택 BottomSheet 연결
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -304,7 +292,7 @@ private fun EmojiReactionChip(reaction: PinEmojiReaction) {
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // TODO: emojiId → 실제 이모지 이미지/유니코드 매핑이 정해지면 placeholder를 교체.
+        // TODO: emojiId → 실제 이모지 이미지/유니코드 매핑
         Box(
             modifier = Modifier
                 .size(16.dp)
@@ -343,9 +331,9 @@ private fun AddEmojiChip(onClick: () -> Unit) {
     }
 }
 
-// TODO: PinCommentRepository 연결 후 댓글 목록 조회 (Pin 내부에 댓글을 두지 않고 별도 모델/Repository로 분리 예정)
 @Composable
 private fun CommentList(
+    comments: List<CommentPlaceholder>,
     currentUserId: String,
     modifier: Modifier = Modifier
 ) {
@@ -357,8 +345,7 @@ private fun CommentList(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        // TODO: PinComment 연결 후 실제 댓글 수에 따라 분기 (현재는 더미 데이터 기준).
-        if (DummyComments.isEmpty()) {
+        if (comments.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -378,17 +365,17 @@ private fun CommentList(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 contentPadding = PaddingValues(bottom = 16.dp)
             ) {
-                items(DummyComments) { comment ->
+                items(comments) { comment ->
                     CommentItem(
                         authorName = comment.authorName,
                         authorImageUrl = comment.authorImageUrl,
                         content = comment.content,
                         isMine = comment.authorId == currentUserId,
                         onEditClick = {
-                            // TODO: 댓글 수정 흐름 연결 (PinCommentRepository.update 등)
+                            // TODO: PinCommentRepository.update 연결
                         },
                         onDeleteClick = {
-                            // TODO: 댓글 삭제 흐름 연결 (PinCommentRepository.delete 등)
+                            // TODO: PinCommentRepository.delete 연결
                         }
                     )
                 }
@@ -461,8 +448,7 @@ private fun CommentItem(
     }
 }
 
-// TODO: CommonTextField 기반 댓글 입력 UI 연결 후, 내부 입력 칸을 실제 TextField로 교체하고
-//       전송 버튼 클릭 시 onSubmit 람다로 입력값을 흘려보내도록 변경.
+// TODO: CommonTextField 기반 입력 칸으로 교체 후 onSubmit으로 입력값 전달
 @Composable
 private fun CommentInputBar(
     onSubmit: () -> Unit,
@@ -473,7 +459,6 @@ private fun CommentInputBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 입력 칸: BrandColor 스트로크 + "댓글 입력" placeholder.
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -489,7 +474,6 @@ private fun CommentInputBar(
                 style = IssueTypo.Regular15.copy(color = Gray_5)
             )
         }
-        // 전송 버튼: BrandColor 원 + 흰색 위 화살표.
         Box(
             modifier = Modifier
                 .size(48.dp)
@@ -511,8 +495,6 @@ private fun CommentInputBar(
 @Preview(name = "POST · 빈 상태", showBackground = true, heightDp = 900)
 @Composable
 private fun PinPostTabPreview_Empty() {
-    // 공감 0명 / 이모지 반응 없음 케이스로 PinSamples.CommunicationPlainPinId 사용.
-    // 더미 댓글 중 첫 번째가 "내 댓글"로 보이도록 currentUserId를 DummyMyAuthorId와 맞춘다.
     IssueissyuTheme {
         PinPostTab(
             pin = PinSamples.findById(PinSamples.CommunicationPlainPinId),
@@ -527,8 +509,6 @@ private fun PinPostTabPreview_Empty() {
 @Preview(name = "POST · 데이터 있음", showBackground = true, heightDp = 900)
 @Composable
 private fun PinPostTabPreview_Filled() {
-    // 공감 + 이모지 4종 케이스로 PinSamples.IssuePinId 사용 (isSympathizedByMe=true 보강됨).
-    // 다른 사용자 시점으로 보고 싶다면 currentUserId를 DummyOtherAuthorId로 바꾸면 된다.
     IssueissyuTheme {
         PinPostTab(
             pin = PinSamples.findById(PinSamples.IssuePinId),
