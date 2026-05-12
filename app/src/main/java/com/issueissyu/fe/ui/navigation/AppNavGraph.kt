@@ -309,7 +309,11 @@ fun AppNavGraph(
                         pinLng = pinLng,
                         userLat = userLat,
                         userLng = userLng,
-                        onBackClick = { navController.popBackStack() }
+                        onBackClick = { navController.popBackStack() },
+                        onCreated = {
+                            // TODO: 실제 생성 API 연결 후 생성된 pinId 기반 상세 화면 이동 또는 지도 새로고침 처리.
+                            navController.popBackStack()
+                        }
                     )
                 }
             }

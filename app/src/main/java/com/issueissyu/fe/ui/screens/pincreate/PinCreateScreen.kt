@@ -62,6 +62,7 @@ fun PinCreateScreen(
     userLat: Double,
     userLng: Double,
     onBackClick: () -> Unit,
+    onCreated: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinCreateViewModel = hiltViewModel()
 ) {
@@ -69,6 +70,14 @@ fun PinCreateScreen(
 
     LaunchedEffect(category, pinLat, pinLng, userLat, userLng) {
         viewModel.initialize(category, pinLat, pinLng, userLat, userLng)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.event.collect { event ->
+            when (event) {
+                PinCreateEvent.Created -> onCreated()
+            }
+        }
     }
 
     PinCreateContent(
@@ -152,13 +161,21 @@ private fun PinCreateContent(
 
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-        // TODO: PinRepository.createPin 연결
+        uiState.errorMessage?.let { message ->
+            Text(
+                text = message,
+                style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.error),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 28.dp, end = 28.dp, top = 12.dp)
+            )
+        }
+
+        // TODO: 실제 생성 API 연결 후 생성 결과에 따라 상세 화면 이동 또는 지도 새로고침 처리
         CommonButton(
             onClick = onSubmit,
-            text = "작성 완료",
-            isEnabled = uiState.title.isNotBlank() &&
-                uiState.description.isNotBlank() &&
-                !uiState.isSubmitting,
+            text = if (uiState.isSubmitting) "작성 중..." else "작성 완료",
+            isEnabled = !uiState.isSubmitting,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 28.dp, vertical = 16.dp)
