@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.naver.maps.geometry.LatLng
 import javax.inject.Inject
@@ -139,25 +140,23 @@ class MapViewModel @Inject constructor(
     }
 
     fun toggleSympathy(pinId: String) {
-        _pins.value = _pins.value.map { pin ->
-            if (pin.id != pinId) return@map pin
-
-            val nextIsSympathized = !pin.isSympathizedByMe
-            val nextCount = if (nextIsSympathized) {
-                pin.sympathyCount + 1
-            } else {
-                (pin.sympathyCount - 1).coerceAtLeast(0)
+        viewModelScope.launch {
+            val updated = runCatching { pinRepository.toggleSympathy(pinId) }.getOrNull() ?: return@launch
+            _pins.update { current ->
+                val index = current.indexOfFirst { it.id == pinId }
+                if (index >= 0) {
+                    current.mapIndexed { i, pin -> if (i == index) updated else pin }
+                } else {
+                    current + updated
+                }
             }
-
-            pin.copy(
-                isSympathizedByMe = nextIsSympathized,
-                sympathyCount = nextCount
-            )
+            _selectedPin.update { selected ->
+                if (selected?.id == pinId) updated else selected
+            }
         }
-
-        _selectedPin.value = _pins.value.firstOrNull { it.id == pinId }
     }
 
+    // TODO: Repository에 시연용 delete가 생기면 동기화. 현재는 메모리만 제거해 getPinById와 불일치할 수 있음.
 fun deletePinLocally(pinId: String) {
     _pins.value = _pins.value.filterNot { it.id == pinId }
     _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
