@@ -220,7 +220,8 @@ fun AppNavGraph(
                     onBackClick = { navController.popBackStack() },
                     onReportClick = { reportPinId ->
                         navController.navigate(AppDestinations.pinReportRoute(reportPinId))
-                    }
+                    },
+                    onDeleted = { navController.popBackStack() }
                 )
             }
         }

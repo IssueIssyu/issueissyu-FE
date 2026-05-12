@@ -43,6 +43,7 @@ fun PinDetailScreen(
     pinId: String,
     onBackClick: () -> Unit,
     onReportClick: (String) -> Unit,
+    onDeleted: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinDetailViewModel = hiltViewModel()
 ) {
@@ -50,6 +51,14 @@ fun PinDetailScreen(
 
     LaunchedEffect(pinId) {
         viewModel.loadPin(pinId)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.event.collect { event ->
+            when (event) {
+                PinDetailEvent.Deleted -> onDeleted()
+            }
+        }
     }
 
     val currentUserId = "user1_id" // TODO: 로그인 연동 후 실제 currentUserId로 교체
@@ -90,11 +99,13 @@ fun PinDetailScreen(
                     comments = uiState.demoComments,
                     onSelectTab = viewModel::selectTab,
                     onReportClick = onReportClick,
-                    onEditClick = {
-                        // TODO: 핀 수정 화면으로 이동
+                    onEditClick = { editPinId ->
+                        // TODO: 실제 수정 화면 또는 PinCreateScreen edit mode로 교체
+                        viewModel.updatePinForDemo(editPinId)
                     },
-                    onDeleteClick = {
-                        // TODO: 핀 삭제 확인 Dialog 또는 삭제 API 연결
+                    onDeleteClick = { deletePinId ->
+                        // TODO: 실제 삭제 흐름에서는 확인 Dialog 추가
+                        viewModel.deletePinForDemo(deletePinId)
                     },
                     onCommunityClick = {
                         // TODO: 커뮤니티 상세 화면으로 이동

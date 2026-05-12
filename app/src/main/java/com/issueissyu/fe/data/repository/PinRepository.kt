@@ -25,4 +25,10 @@ interface PinRepository {
 
     /** 시연용: 이슈 핀에 시민해결사로 참여. 작성자·해결 완료·중복 참여는 변경 없이 반환하거나 예외를 던집니다. */
     suspend fun joinResolver(pinId: String, currentUserId: String): Pin
+
+    /** 시연용: 실제 수정 화면 없이 제목/본문에 수정 표시를 남기고 갱신된 핀을 반환합니다. */
+    suspend fun updatePinForDemo(pinId: String): Pin
+
+    /** 시연용: `dummyPins`에서 핀을 제거합니다. */
+    suspend fun deletePinForDemo(pinId: String)
 }

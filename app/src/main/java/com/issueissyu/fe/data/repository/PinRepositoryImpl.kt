@@ -238,4 +238,40 @@ class PinRepositoryImpl @Inject constructor() : PinRepository {
             return updated
         }
     }
+
+    override suspend fun updatePinForDemo(pinId: String): Pin {
+        synchronized(dummyPins) {
+            val index = dummyPins.indexOfFirst { it.id == pinId }
+            if (index == -1) {
+                throw NoSuchElementException("핀을 찾을 수 없습니다: $pinId")
+            }
+
+            val pin = dummyPins[index]
+            if (!pin.canEditBy(currentUser.id)) {
+                throw SecurityException("이 핀은 수정할 수 없습니다.")
+            }
+
+            // TODO: 실제 수정 화면 또는 PinCreateScreen edit mode로 교체.
+            val updatedPin = pin.copy(
+                title = pin.title.takeUnless { it.endsWith(" (수정됨)") }
+                    ?.let { "$it (수정됨)" }
+                    ?: pin.title,
+                description = pin.description.takeUnless { it.contains("시연용으로 수정된 내용입니다.") }
+                    ?.let { "$it\n\n시연용으로 수정된 내용입니다." }
+                    ?: pin.description,
+                updatedAt = Instant.now().toString()
+            )
+            dummyPins[index] = updatedPin
+            return updatedPin
+        }
+    }
+
+    override suspend fun deletePinForDemo(pinId: String) {
+        synchronized(dummyPins) {
+            val removed = dummyPins.removeIf { it.id == pinId }
+            if (!removed) {
+                throw NoSuchElementException("핀을 찾을 수 없습니다: $pinId")
+            }
+        }
+    }
 }
