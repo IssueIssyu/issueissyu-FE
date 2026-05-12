@@ -1,6 +1,9 @@
 package com.issueissyu.fe.di
 
+import com.google.gson.Gson
 import com.issueissyu.fe.core.constants.NetworkConstants
+import com.issueissyu.fe.core.network.AuthInterceptor
+import com.issueissyu.fe.core.network.TokenAuthenticator
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import dagger.Module
@@ -11,6 +14,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -18,16 +22,28 @@ import javax.inject.Singleton
 object NetworkModule {
     @Provides
     @Singleton
-    fun provideLoggingInterceptor(): HttpLoggingInterceptor {
-        return HttpLoggingInterceptor().apply {
-            level = if (com.issueissyu.fe.BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
-        }
-    }
+    fun provideGson(): Gson = Gson()
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(
-        loggingInterceptor: HttpLoggingInterceptor
+    fun provideLoggingInterceptor(): HttpLoggingInterceptor {
+        return HttpLoggingInterceptor().apply {
+            level = if (com.issueissyu.fe.BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BODY
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
+        }
+    }
+
+    /**
+     * No auth interceptors — used for token refresh to avoid circular calls.
+     */
+    @Provides
+    @Singleton
+    @Named("auth_plain")
+    fun providePlainOkHttpClient(
+        loggingInterceptor: HttpLoggingInterceptor,
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
@@ -36,11 +52,49 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
+    @Named("auth_plain")
+    fun providePlainRetrofit(
+        @Named("auth_plain") okHttpClient: OkHttpClient,
+        gson: Gson,
+    ): Retrofit {
         return Retrofit.Builder()
             .baseUrl(NetworkConstants.BASE_URL)
             .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("auth_plain")
+    fun providePlainAuthApi(@Named("auth_plain") retrofit: Retrofit): AuthApi {
+        return retrofit.create(AuthApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(
+        loggingInterceptor: HttpLoggingInterceptor,
+        authInterceptor: AuthInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
+            .addInterceptor(loggingInterceptor)
+            .authenticator(tokenAuthenticator)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideRetrofit(
+        okHttpClient: OkHttpClient,
+        gson: Gson,
+    ): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(NetworkConstants.BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
 
@@ -55,5 +109,4 @@ object NetworkModule {
     fun provideAuthApiService(retrofit: Retrofit): AuthApi {
         return retrofit.create(AuthApi::class.java)
     }
-
 }
