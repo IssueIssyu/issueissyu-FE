@@ -2,7 +2,10 @@ package com.issueissyu.fe.ui.screens.pincreate
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.data.model.CreatePinRequest
+import com.issueissyu.fe.data.model.PinCoordinate
 import com.issueissyu.fe.data.model.PinCategory
+import com.issueissyu.fe.data.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,6 +15,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+private const val DemoAddress = "서울 광진구 능동로 120"
+private const val DemoLocationName = "건국대학교 입구"
 
 data class PinCreateUiState(
     val category: PinCategory? = null,
@@ -31,11 +37,13 @@ data class PinCreateUiState(
 )
 
 sealed interface PinCreateEvent {
-    data object Created : PinCreateEvent
+    data class Created(val pinId: String) : PinCreateEvent
 }
 
 @HiltViewModel
-class PinCreateViewModel @Inject constructor() : ViewModel() {
+class PinCreateViewModel @Inject constructor(
+    private val pinRepository: PinRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PinCreateUiState())
     val uiState: StateFlow<PinCreateUiState> = _uiState.asStateFlow()
@@ -66,7 +74,10 @@ class PinCreateViewModel @Inject constructor() : ViewModel() {
                 pinLat = pinLat,
                 pinLng = pinLng,
                 userLat = userLat,
-                userLng = userLng
+                userLng = userLng,
+                // TODO: 실제 구현에서는 선택 좌표를 기반으로 주소를 조회해 표시한다.
+                address = it.address.ifBlank { DemoAddress },
+                locationName = it.locationName ?: DemoLocationName
             )
         }
     }
@@ -98,18 +109,47 @@ class PinCreateViewModel @Inject constructor() : ViewModel() {
             return
         }
 
+        val category = state.category
+        if (category == null) {
+            _uiState.update { it.copy(errorMessage = "핀 종류를 확인하지 못했습니다.") }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update {
                 it.copy(isSubmitting = true, errorMessage = null)
             }
 
-            // TODO: PinRepository.createPin 연결 후 생성된 pinId 기반 상세 이동 또는 지도 새로고침 처리.
-            // TODO: 이미지 업로드 후 반환된 imageUrls로 생성 요청 구성.
-            // TODO: 선택된 말투를 AI 초안 요청/생성 요청 파라미터에 포함.
-            _event.emit(PinCreateEvent.Created)
+            runCatching {
+                val request = CreatePinRequest(
+                    category = category,
+                    title = state.title.trim(),
+                    description = state.description.trim(),
+                    coordinate = PinCoordinate(
+                        latitude = state.pinLat ?: 0.0,
+                        longitude = state.pinLng ?: 0.0
+                    ),
+                    address = state.address.ifBlank { DemoAddress },
+                    locationName = state.locationName ?: DemoLocationName,
+                    imageUrls = emptyList()
+                )
 
-            _uiState.update {
-                it.copy(isSubmitting = false)
+                // TODO: 실제 API 연결 시 이미지 업로드 후 반환된 imageUrls로 생성 요청 구성.
+                // TODO: 선택된 말투를 AI 초안 요청/생성 요청 파라미터에 포함.
+                pinRepository.createPin(request)
+            }.onSuccess { createdPin ->
+                _event.emit(PinCreateEvent.Created(createdPin.id))
+            }.onFailure { throwable ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = throwable.message?.takeIf { message -> message.isNotBlank() }
+                            ?: "핀 생성에 실패했습니다."
+                    )
+                }
+            }.also {
+                _uiState.update {
+                    it.copy(isSubmitting = false)
+                }
             }
         }
     }

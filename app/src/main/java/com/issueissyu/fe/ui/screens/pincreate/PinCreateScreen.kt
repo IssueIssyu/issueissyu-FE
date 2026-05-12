@@ -62,7 +62,7 @@ fun PinCreateScreen(
     userLat: Double,
     userLng: Double,
     onBackClick: () -> Unit,
-    onCreated: () -> Unit,
+    onCreated: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinCreateViewModel = hiltViewModel()
 ) {
@@ -75,7 +75,7 @@ fun PinCreateScreen(
     LaunchedEffect(Unit) {
         viewModel.event.collect { event ->
             when (event) {
-                PinCreateEvent.Created -> onCreated()
+                is PinCreateEvent.Created -> onCreated(event.pinId)
             }
         }
     }

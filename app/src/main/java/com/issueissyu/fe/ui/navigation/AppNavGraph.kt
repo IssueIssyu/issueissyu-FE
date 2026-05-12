@@ -310,9 +310,10 @@ fun AppNavGraph(
                         userLat = userLat,
                         userLng = userLng,
                         onBackClick = { navController.popBackStack() },
-                        onCreated = {
-                            // TODO: 실제 생성 API 연결 후 생성된 pinId 기반 상세 화면 이동 또는 지도 새로고침 처리.
+                        onCreated = { createdPinId ->
+                            // TODO: 실제 생성 API 연결 후 지도 목록 새로고침까지 함께 처리.
                             navController.popBackStack()
+                            navController.navigate(AppDestinations.pinDetailRoute(createdPinId))
                         }
                     )
                 }
