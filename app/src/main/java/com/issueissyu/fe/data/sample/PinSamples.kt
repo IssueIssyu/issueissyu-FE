@@ -43,8 +43,35 @@ internal object PinSamples {
     const val CommunicationPlainPinId = "comm_pin_2"
     const val ShopPinId = "shop_pin_1"
     const val FestivalPinId = "festival_pin_1"
+    const val IssueJoinTestPinId = "issue_pin_test_join"
 
     val pins: List<Pin> = listOf(
+        // 지금가요(시민해결사 참여) 테스트용 핀
+        Pin(
+            id = IssueJoinTestPinId,
+            title = "테스트: 지금가요 가능 핀",
+            description = "이 핀은 시민해결사 참여 테스트를 위해 작성되었습니다. 작성자가 user2이며, 현재 사용자가 참여하지 않은 상태입니다.",
+            coordinate = PinCoordinate(latitude = 37.5600, longitude = 126.9700),
+            address = "서울특별시 중구 태평로1가",
+            locationName = "서울광장 인근",
+            neighborhoodId = "nbh001",
+            neighborhoodName = "명동",
+            imageUrls = emptyList(),
+            viewCount = 10,
+            sympathyCount = 5,
+            isSympathizedByMe = false,
+            emojiReactions = emptyList(),
+            communityPostId = null,
+            createdAt = "2023-05-01T10:00:00Z",
+            updatedAt = null,
+            detail = IssuePinDetail(
+                writer = user2,
+                resolutionStatus = ResolutionStatus.BEFORE_RESOLUTION,
+                petitionCount = 0,
+                isPetitionedByMe = false,
+                petitionTargetCount = 10
+            )
+        ),
         // 이슈 핀 · BEFORE_RESOLUTION + 공감/이모지 다양성 (POST 탭 데이터 케이스 겸용)
         Pin(
             id = IssuePinId,
@@ -77,8 +104,7 @@ internal object PinSamples {
             )
         ),
 
-        // 이슈 핀 · IN_PROGRESS + 시민해결사 2명 + 청원 진행 중
-        // user1은 단순 참여(인증 미제출), resolverHelper는 인증 사진 제출.
+        // 이슈 핀 · IN_PROGRESS 시나리오용 (현재 사용자가 참여 가능한 상태로 조정)
         Pin(
             id = IssueInProgressPinId,
             title = "길거리 쓰레기 무단 투기",
@@ -99,11 +125,6 @@ internal object PinSamples {
                 writer = user2,
                 resolutionStatus = ResolutionStatus.IN_PROGRESS,
                 resolverParticipations = listOf(
-                    IssueResolverParticipation(
-                        user = user1,
-                        joinedAt = "2023-04-14T17:00:00Z",
-                        proofImageUrls = emptyList()
-                    ),
                     IssueResolverParticipation(
                         user = resolverHelper,
                         joinedAt = "2023-04-14T15:30:00Z",

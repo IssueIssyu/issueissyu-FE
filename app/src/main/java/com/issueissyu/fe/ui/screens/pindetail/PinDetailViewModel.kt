@@ -69,7 +69,7 @@ class PinDetailViewModel @Inject constructor(
                 pinRepository.toggleSympathy(pinId)
             }.onSuccess { updatedPin ->
                 _uiState.update {
-                    it.copy(pin = updatedPin)
+                    it.copy(pin = updatedPin, errorMessage = null)
                 }
             }.onFailure { throwable ->
                 _uiState.update {
@@ -85,7 +85,7 @@ class PinDetailViewModel @Inject constructor(
                 pinRepository.petitionPin(pinId)
             }.onSuccess { updatedPin ->
                 _uiState.update {
-                    it.copy(pin = updatedPin)
+                    it.copy(pin = updatedPin, errorMessage = null)
                 }
             }.onFailure { throwable ->
                 _uiState.update {
@@ -101,7 +101,7 @@ class PinDetailViewModel @Inject constructor(
                 pinRepository.joinResolver(pinId, currentUserId)
             }.onSuccess { updatedPin ->
                 _uiState.update {
-                    it.copy(pin = updatedPin)
+                    it.copy(pin = updatedPin, errorMessage = null)
                 }
             }.onFailure { throwable ->
                 _uiState.update {
