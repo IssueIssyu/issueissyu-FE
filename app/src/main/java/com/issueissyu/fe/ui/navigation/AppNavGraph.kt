@@ -40,7 +40,7 @@ fun AppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = AppDestinations.Onboarding.SPLASH_ROUTE
+        startDestination = AppDestinations.TOWN_ROUTE
     ) {
         composable(AppDestinations.Onboarding.SPLASH_ROUTE) {
             SplashScreen(

@@ -98,6 +98,9 @@ fun PinDetailScreen(
                     onCommunityClick = {
                         // TODO: 커뮤니티 상세 화면으로 이동
                     },
+                    onSympathyClick = viewModel::toggleSympathy,
+                    onGoNowClick = { pinId -> viewModel.joinResolver(pinId, currentUserId) },
+                    onPetitionClick = viewModel::petitionPin,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -122,6 +125,9 @@ private fun PinDetailTabs(
     onEditClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
     onCommunityClick: (String) -> Unit,
+    onSympathyClick: (String) -> Unit,
+    onGoNowClick: (String) -> Unit,
+    onPetitionClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabs = buildList {
@@ -159,9 +165,7 @@ private fun PinDetailTabs(
                 PinPostTab(
                     pin = pin,
                     currentUserId = currentUserId,
-                    onSympathyClick = {
-                        // TODO: 공감 API 연결
-                    },
+                    onSympathyClick = onSympathyClick,
                     onEmojiClick = {
                         // TODO: 이모지 반응 API 연결
                     },
@@ -179,12 +183,8 @@ private fun PinDetailTabs(
                         pin = pin,
                         issueDetail = issueDetail,
                         currentUserId = currentUserId,
-                        onGoNowClick = {
-                            // TODO: PinResolutionRepository.joinResolver 연결
-                        },
-                        onPetitionClick = {
-                            // TODO: PinPetitionRepository.petition 연결
-                        },
+                        onGoNowClick = onGoNowClick,
+                        onPetitionClick = onPetitionClick,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
@@ -296,6 +296,9 @@ private fun PinDetailScreenPreview_IssueLoaded() {
                 onEditClick = {},
                 onDeleteClick = {},
                 onCommunityClick = {},
+                onSympathyClick = {},
+                onGoNowClick = {},
+                onPetitionClick = {},
                 modifier = Modifier.weight(1f)
             )
         }

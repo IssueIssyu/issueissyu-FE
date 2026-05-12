@@ -62,4 +62,52 @@ class PinDetailViewModel @Inject constructor(
     fun selectTab(tab: PinDetailTab) {
         _uiState.update { it.copy(selectedTab = tab) }
     }
+
+    fun toggleSympathy(pinId: String) {
+        viewModelScope.launch {
+            runCatching {
+                pinRepository.toggleSympathy(pinId)
+            }.onSuccess { updatedPin ->
+                _uiState.update {
+                    it.copy(pin = updatedPin)
+                }
+            }.onFailure { throwable ->
+                _uiState.update {
+                    it.copy(errorMessage = throwable.message ?: "공감 처리에 실패했습니다.")
+                }
+            }
+        }
+    }
+
+    fun petitionPin(pinId: String) {
+        viewModelScope.launch {
+            runCatching {
+                pinRepository.petitionPin(pinId)
+            }.onSuccess { updatedPin ->
+                _uiState.update {
+                    it.copy(pin = updatedPin)
+                }
+            }.onFailure { throwable ->
+                _uiState.update {
+                    it.copy(errorMessage = throwable.message ?: "청원 처리에 실패했습니다.")
+                }
+            }
+        }
+    }
+
+    fun joinResolver(pinId: String, currentUserId: String) {
+        viewModelScope.launch {
+            runCatching {
+                pinRepository.joinResolver(pinId, currentUserId)
+            }.onSuccess { updatedPin ->
+                _uiState.update {
+                    it.copy(pin = updatedPin)
+                }
+            }.onFailure { throwable ->
+                _uiState.update {
+                    it.copy(errorMessage = throwable.message ?: "시민해결사 참여에 실패했습니다.")
+                }
+            }
+        }
+    }
 }
