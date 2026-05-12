@@ -87,6 +87,7 @@ fun PinDetailScreen(
                     pin = pin,
                     currentUserId = currentUserId,
                     selectedTab = uiState.selectedTab,
+                    comments = uiState.demoComments,
                     onSelectTab = viewModel::selectTab,
                     onReportClick = onReportClick,
                     onEditClick = {
@@ -101,6 +102,7 @@ fun PinDetailScreen(
                     onSympathyClick = viewModel::toggleSympathy,
                     onGoNowClick = { pinId -> viewModel.joinResolver(pinId, currentUserId) },
                     onPetitionClick = viewModel::petitionPin,
+                    onCommentSubmit = { _, content -> viewModel.submitDemoComment(content) },
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -120,6 +122,7 @@ private fun PinDetailTabs(
     pin: Pin,
     currentUserId: String,
     selectedTab: PinDetailTab,
+    comments: List<DemoCommentUiModel>,
     onSelectTab: (PinDetailTab) -> Unit,
     onReportClick: (String) -> Unit,
     onEditClick: (String) -> Unit,
@@ -128,6 +131,7 @@ private fun PinDetailTabs(
     onSympathyClick: (String) -> Unit,
     onGoNowClick: (String) -> Unit,
     onPetitionClick: (String) -> Unit,
+    onCommentSubmit: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val tabs = buildList {
@@ -165,13 +169,12 @@ private fun PinDetailTabs(
                 PinPostTab(
                     pin = pin,
                     currentUserId = currentUserId,
+                    comments = comments,
                     onSympathyClick = onSympathyClick,
                     onEmojiClick = {
                         // TODO: 이모지 반응 API 연결
                     },
-                    onCommentSubmit = { _, _ ->
-                        // TODO: PinCommentRepository.addComment 연결
-                    },
+                    onCommentSubmit = onCommentSubmit,
                     modifier = Modifier.fillMaxSize()
                 )
             }
@@ -291,6 +294,7 @@ private fun PinDetailScreenPreview_IssueLoaded() {
                 pin = PinSamples.findById(PinSamples.IssueInProgressPinId),
                 currentUserId = PinSamples.user1.id,
                 selectedTab = selectedTab,
+                comments = InitialDemoComments,
                 onSelectTab = { selectedTab = it },
                 onReportClick = {},
                 onEditClick = {},
@@ -299,6 +303,7 @@ private fun PinDetailScreenPreview_IssueLoaded() {
                 onSympathyClick = {},
                 onGoNowClick = {},
                 onPetitionClick = {},
+                onCommentSubmit = { _, _ -> },
                 modifier = Modifier.weight(1f)
             )
         }

@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -29,6 +30,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,26 +63,32 @@ import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 
 // TODO: PinCommentRepository 연결 후 댓글 목록 조회
-private const val DummyMyAuthorId = "user1_id"
-private const val DummyOtherAuthorId = "user2_id"
+const val DemoMyAuthorId = "user1_id"
+private const val DemoOtherAuthorId = "user2_id"
 
-private data class CommentPlaceholder(
+data class DemoCommentUiModel(
+    val id: String,
     val authorId: String,
     val authorName: String,
     val authorImageUrl: String? = null,
-    val content: String
+    val content: String,
+    val createdAt: String = ""
 )
 
-private val DummyComments = listOf(
-    CommentPlaceholder(
-        authorId = DummyMyAuthorId,
+val InitialDemoComments = listOf(
+    DemoCommentUiModel(
+        id = "demo_comment_1",
+        authorId = DemoMyAuthorId,
         authorName = "현재 사용자",
-        content = "여기에 내가 쓴 댓글이 표시될 예정이에요."
+        content = "여기에 내가 쓴 댓글이 표시될 예정이에요.",
+        createdAt = "방금 전"
     ),
-    CommentPlaceholder(
-        authorId = DummyOtherAuthorId,
+    DemoCommentUiModel(
+        id = "demo_comment_2",
+        authorId = DemoOtherAuthorId,
         authorName = "다른 사용자",
-        content = "여기에 다른 사람 댓글이 표시될 예정이에요."
+        content = "여기에 다른 사람 댓글이 표시될 예정이에요.",
+        createdAt = "방금 전"
     )
 )
 
@@ -85,9 +96,10 @@ private val DummyComments = listOf(
 fun PinPostTab(
     pin: Pin,
     currentUserId: String,
+    comments: List<DemoCommentUiModel>,
     onSympathyClick: (String) -> Unit,
     onEmojiClick: (String) -> Unit,
-    @Suppress("UNUSED_PARAMETER") onCommentSubmit: (String, String) -> Unit,
+    onCommentSubmit: (String, String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val writer = when (val detail = pin.detail) {
@@ -120,7 +132,7 @@ fun PinPostTab(
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
         CommentList(
-            comments = DummyComments,
+            comments = comments,
             currentUserId = currentUserId,
             modifier = Modifier
                 .weight(1f)
@@ -128,9 +140,7 @@ fun PinPostTab(
         )
 
         CommentInputBar(
-            onSubmit = {
-                // TODO: 입력값을 캡처해 onCommentSubmit(pin.id, content)으로 전달
-            },
+            onSubmit = { content -> onCommentSubmit(pin.id, content) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 28.dp, end = 28.dp, bottom = 30.dp)
@@ -335,7 +345,7 @@ private fun AddEmojiChip(onClick: () -> Unit) {
 @Suppress("SameParameterValue")
 @Composable
 private fun CommentList(
-    comments: List<CommentPlaceholder>,
+    comments: List<DemoCommentUiModel>,
     currentUserId: String,
     modifier: Modifier = Modifier
 ) {
@@ -450,12 +460,15 @@ private fun CommentItem(
     }
 }
 
-// TODO: CommonTextField 기반 입력 칸으로 교체 후 onSubmit으로 입력값 전달
+// TODO: 실제 댓글 API 연결 시 PinCommentRepository 기반 입력 흐름으로 교체.
 @Composable
 private fun CommentInputBar(
-    onSubmit: () -> Unit,
+    onSubmit: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var input by rememberSaveable { mutableStateOf("") }
+    val canSubmit = input.isNotBlank()
+
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -471,23 +484,40 @@ private fun CommentInputBar(
                 .padding(horizontal = 18.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            Text(
-                text = "댓글 입력",
-                style = IssueTypo.Regular15.copy(color = Gray_5)
+            BasicTextField(
+                value = input,
+                onValueChange = { input = it },
+                singleLine = true,
+                textStyle = IssueTypo.Regular15.copy(color = TextColor),
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    if (input.isEmpty()) {
+                        Text(
+                            text = "댓글 입력",
+                            style = IssueTypo.Regular15.copy(color = Gray_5)
+                        )
+                    }
+                    innerTextField()
+                }
             )
         }
         Box(
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(BrandColor)
-                .clickable(onClick = onSubmit),
+                .background(if (canSubmit) BrandColor else Gray_3)
+                .clickable {
+                    val content = input.trim()
+                    if (content.isBlank()) return@clickable
+                    onSubmit(content)
+                    input = ""
+                },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.ArrowUpward,
                 contentDescription = "댓글 전송",
-                tint = White,
+                tint = if (canSubmit) White else Gray_5,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -500,7 +530,8 @@ private fun PinPostTabPreview_Empty() {
     IssueissyuTheme {
         PinPostTab(
             pin = PinSamples.findById(PinSamples.CommunicationPlainPinId),
-            currentUserId = DummyMyAuthorId,
+            currentUserId = DemoMyAuthorId,
+            comments = InitialDemoComments,
             onSympathyClick = {},
             onEmojiClick = {},
             onCommentSubmit = { _, _ -> }
@@ -514,7 +545,8 @@ private fun PinPostTabPreview_Filled() {
     IssueissyuTheme {
         PinPostTab(
             pin = PinSamples.findById(PinSamples.IssuePinId),
-            currentUserId = DummyMyAuthorId,
+            currentUserId = DemoMyAuthorId,
+            comments = InitialDemoComments,
             onSympathyClick = {},
             onEmojiClick = {},
             onCommentSubmit = { _, _ -> }

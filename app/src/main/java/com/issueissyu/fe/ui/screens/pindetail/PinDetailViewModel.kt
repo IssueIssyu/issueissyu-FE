@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 import javax.inject.Inject
 
 enum class PinDetailTab {
@@ -22,7 +23,8 @@ data class PinDetailUiState(
     val isLoading: Boolean = false,
     val pin: Pin? = null,
     val selectedTab: PinDetailTab = PinDetailTab.HOME,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val demoComments: List<DemoCommentUiModel> = InitialDemoComments
 )
 
 @HiltViewModel
@@ -108,6 +110,23 @@ class PinDetailViewModel @Inject constructor(
                     it.copy(errorMessage = throwable.message ?: "시민해결사 참여에 실패했습니다.")
                 }
             }
+        }
+    }
+
+    fun submitDemoComment(content: String) {
+        val trimmed = content.trim()
+        if (trimmed.isBlank()) return
+
+        val newComment = DemoCommentUiModel(
+            id = UUID.randomUUID().toString(),
+            authorId = DemoMyAuthorId,
+            authorName = "나",
+            content = trimmed,
+            createdAt = "방금 전"
+        )
+
+        _uiState.update {
+            it.copy(demoComments = it.demoComments + newComment)
         }
     }
 }
