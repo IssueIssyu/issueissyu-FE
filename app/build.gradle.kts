@@ -32,6 +32,10 @@ android {
         }
         val naverMapNcpKeyId = localProperties.getProperty("naver.map.client.id") ?: ""
         manifestPlaceholders["NCP_KEY_ID"] = naverMapNcpKeyId
+
+        val apiBaseUrl = localProperties.getProperty("api.base.url")
+            ?: "https://api.example.com/"
+        buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
     }
 
     buildTypes {
