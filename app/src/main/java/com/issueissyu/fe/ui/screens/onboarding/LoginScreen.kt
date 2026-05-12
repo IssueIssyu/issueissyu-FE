@@ -45,14 +45,15 @@ import com.issueissyu.fe.ui.viewmodels.LoginViewModel
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
-    onNavigateToMain: () -> Unit,
-    onNavigateToSignUp: () -> Unit
+    onLoginSuccess: (isNew: Boolean) -> Unit,
+    onNavigateToSignUp: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LaunchedEffect(uiState.loginSuccess) {
-        if (uiState.loginSuccess) {
-            onNavigateToMain()
+    LaunchedEffect(uiState.navigateWithIsNew) {
+        uiState.navigateWithIsNew?.let { isNew ->
+            onLoginSuccess(isNew)
+            viewModel.consumeLoginNavigation()
         }
     }
 
