@@ -29,10 +29,15 @@ object AppDestinations {
     const val PATCH_NOTE_ROUTE = "patch_note_route"
     const val PIN_CREATION_ROUTE = "pin_creation_route"
     const val PIN_DETAIL_ROUTE = "pin_detail_route/{pinId}"
+    const val PIN_EDIT_ROUTE = "pin_edit_route/{pinId}"
     const val PIN_REPORT_ROUTE = "pin_report_route/{pinId}"
 
     fun pinDetailRoute(pinId: String): String {
         return "pin_detail_route/$pinId"
+    }
+
+    fun pinEditRoute(pinId: String): String {
+        return "pin_edit_route/$pinId"
     }
 
     fun pinReportRoute(pinId: String): String {

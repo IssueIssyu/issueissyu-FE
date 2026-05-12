@@ -32,6 +32,7 @@ import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
+import com.issueissyu.fe.ui.screens.pinedit.PinEditScreen
 
 @Composable
 fun AppNavGraph(
@@ -221,7 +222,38 @@ fun AppNavGraph(
                     onReportClick = { reportPinId ->
                         navController.navigate(AppDestinations.pinReportRoute(reportPinId))
                     },
+                    onEditClick = { editPinId ->
+                        navController.navigate(AppDestinations.pinEditRoute(editPinId))
+                    },
                     onDeleted = { navController.popBackStack() }
+                )
+            }
+        }
+        composable(
+            route = AppDestinations.PIN_EDIT_ROUTE,
+            arguments = listOf(
+                navArgument("pinId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val editPinId = backStackEntry.arguments?.getString("pinId").orEmpty()
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                PinEditScreen(
+                    pinId = editPinId,
+                    onBackClick = { navController.popBackStack() },
+                    onEdited = { editedPinId ->
+                        navController.navigate(AppDestinations.pinDetailRoute(editedPinId)) {
+                            popUpTo(AppDestinations.PIN_DETAIL_ROUTE) {
+                                inclusive = true
+                            }
+                        }
+                    }
                 )
             }
         }

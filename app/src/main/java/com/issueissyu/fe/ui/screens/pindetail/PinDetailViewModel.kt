@@ -139,22 +139,6 @@ class PinDetailViewModel @Inject constructor(
         }
     }
 
-    fun updatePinForDemo(pinId: String) {
-        viewModelScope.launch {
-            runCatching {
-                pinRepository.updatePinForDemo(pinId)
-            }.onSuccess { updatedPin ->
-                _uiState.update {
-                    it.copy(pin = updatedPin, errorMessage = null)
-                }
-            }.onFailure { throwable ->
-                _uiState.update {
-                    it.copy(errorMessage = throwable.message ?: "핀 수정에 실패했습니다.")
-                }
-            }
-        }
-    }
-
     fun deletePinForDemo(pinId: String) {
         viewModelScope.launch {
             runCatching {

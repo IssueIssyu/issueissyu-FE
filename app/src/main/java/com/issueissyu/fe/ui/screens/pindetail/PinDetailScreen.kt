@@ -43,6 +43,7 @@ fun PinDetailScreen(
     pinId: String,
     onBackClick: () -> Unit,
     onReportClick: (String) -> Unit,
+    onEditClick: (String) -> Unit,
     onDeleted: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinDetailViewModel = hiltViewModel()
@@ -99,10 +100,7 @@ fun PinDetailScreen(
                     comments = uiState.demoComments,
                     onSelectTab = viewModel::selectTab,
                     onReportClick = onReportClick,
-                    onEditClick = { editPinId ->
-                        // TODO: 실제 수정 화면 또는 PinCreateScreen edit mode로 교체
-                        viewModel.updatePinForDemo(editPinId)
-                    },
+                    onEditClick = onEditClick,
                     onDeleteClick = { deletePinId ->
                         // TODO: 실제 삭제 흐름에서는 확인 Dialog 추가
                         viewModel.deletePinForDemo(deletePinId)

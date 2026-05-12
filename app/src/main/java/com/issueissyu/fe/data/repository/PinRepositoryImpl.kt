@@ -239,7 +239,11 @@ class PinRepositoryImpl @Inject constructor() : PinRepository {
         }
     }
 
-    override suspend fun updatePinForDemo(pinId: String): Pin {
+    override suspend fun updatePinContentForDemo(
+        pinId: String,
+        title: String,
+        description: String
+    ): Pin {
         synchronized(dummyPins) {
             val index = dummyPins.indexOfFirst { it.id == pinId }
             if (index == -1) {
@@ -251,14 +255,10 @@ class PinRepositoryImpl @Inject constructor() : PinRepository {
                 throw SecurityException("이 핀은 수정할 수 없습니다.")
             }
 
-            // TODO: 실제 수정 화면 또는 PinCreateScreen edit mode로 교체.
+            // TODO: 실제 수정 API 연결 시 서버 성공 응답으로 dummy 갱신 로직을 대체.
             val updatedPin = pin.copy(
-                title = pin.title.takeUnless { it.endsWith(" (수정됨)") }
-                    ?.let { "$it (수정됨)" }
-                    ?: pin.title,
-                description = pin.description.takeUnless { it.contains("시연용으로 수정된 내용입니다.") }
-                    ?.let { "$it\n\n시연용으로 수정된 내용입니다." }
-                    ?: pin.description,
+                title = title,
+                description = description,
                 updatedAt = Instant.now().toString()
             )
             dummyPins[index] = updatedPin
