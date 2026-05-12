@@ -9,6 +9,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -39,6 +41,8 @@ fun AppNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues
 ) {
+    val context = LocalContext.current // LocalContext 추가
+
     NavHost(
         navController = navController,
         startDestination = AppDestinations.TOWN_ROUTE
@@ -266,6 +270,7 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
+            val context = LocalContext.current // LocalContext 선언
 
             Box(
                 modifier = Modifier
@@ -277,7 +282,8 @@ fun AppNavGraph(
                     onBackClick = { navController.popBackStack() },
                     onSubmitClick = { _ ->
                         // TODO: 신고 API 연결 (PinReportRepository.reportPin 등)
-                        // TODO: 성공 시 신고 완료 Dialog 노출 후 popBackStack
+                        // TODO: 실제 API 연결 후 성공 시 피드백 표시 및 화면 복귀 처리
+                        Toast.makeText(context, "신고가 접수되었습니다.", Toast.LENGTH_SHORT).show()
                         navController.popBackStack()
                     }
                 )
