@@ -1,11 +1,13 @@
 package com.issueissyu.fe.di
 
+import android.util.Log
 import com.google.gson.Gson
 import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
+import com.issueissyu.fe.data.remote.api.LocationApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,7 +29,11 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideLoggingInterceptor(): HttpLoggingInterceptor {
-        return HttpLoggingInterceptor().apply {
+        val logger = HttpLoggingInterceptor.Logger { message ->
+            // Logcat에서 확실하게 잡히도록 별도 태그 사용
+            Log.d("ISSUE_HTTP", message)
+        }
+        return HttpLoggingInterceptor(logger).apply {
             level = if (com.issueissyu.fe.BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
             } else {
@@ -105,5 +111,11 @@ object NetworkModule {
     @Singleton
     fun provideAuthApiService(retrofit: Retrofit): AuthApi {
         return retrofit.create(AuthApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLocationApi(retrofit: Retrofit): LocationApi {
+        return retrofit.create(LocationApi::class.java)
     }
 }

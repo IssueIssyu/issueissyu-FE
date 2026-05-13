@@ -38,14 +38,28 @@ class TokenAuthenticator @Inject constructor(
             runCatching {
                 val body = RefreshTokenRequest(refreshToken)
                 val apiResponse = plainAuthApi.refreshToken(body)
-                if (apiResponse.isSuccess && apiResponse.result != null) {
-                    tokenManager.saveTokens(
-                        accessToken = apiResponse.result.accessToken,
-                        refreshToken = apiResponse.result.refreshToken,
-                    )
-                    true
-                } else {
-                    false
+                when (apiResponse.code) {
+                    "REFRESH_200" -> {
+                        val result = apiResponse.result ?: return@runCatching false
+                        tokenManager.saveTokens(
+                            accessToken = result.accessToken,
+                            refreshToken = result.refreshToken,
+                        )
+                        true
+                    }
+
+                    "REFRESH_401" -> false
+
+                    else ->
+                        if (apiResponse.isSuccess && apiResponse.result != null) {
+                            tokenManager.saveTokens(
+                                accessToken = apiResponse.result.accessToken,
+                                refreshToken = apiResponse.result.refreshToken,
+                            )
+                            true
+                        } else {
+                            false
+                        }
                 }
             }.getOrElse { false }
         }

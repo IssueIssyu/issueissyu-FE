@@ -32,12 +32,16 @@ class TokenManager @Inject constructor(
         accessToken: String,
         refreshToken: String,
         isNewUser: Boolean? = null,
+        tempUuid: String? = null,
     ) {
         sharedPreferences.edit().apply {
             putString(KEY_ACCESS_TOKEN, accessToken)
             putString(KEY_REFRESH_TOKEN, refreshToken)
             if (isNewUser != null) {
                 putBoolean(KEY_IS_NEW_USER, isNewUser)
+            }
+            if (tempUuid != null) {
+                putString(KEY_TEMP_UUID, tempUuid)
             }
             apply()
         }
@@ -51,12 +55,17 @@ class TokenManager @Inject constructor(
         return sharedPreferences.getString(KEY_REFRESH_TOKEN, null)
     }
 
+    fun getTempUuid(): String? {
+        return sharedPreferences.getString(KEY_TEMP_UUID, null)
+    }
+
     // 로그아웃 시 사용
     fun clearTokens() {
         sharedPreferences.edit().apply {
             remove(KEY_ACCESS_TOKEN)
             remove(KEY_REFRESH_TOKEN)
             remove(KEY_IS_NEW_USER)
+            remove(KEY_TEMP_UUID)
             apply()
         }
     }
@@ -79,5 +88,6 @@ class TokenManager @Inject constructor(
         private const val KEY_ACCESS_TOKEN = "access_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
         private const val KEY_IS_NEW_USER = "is_new_user"
+        private const val KEY_TEMP_UUID = "temp_uuid"
     }
 }
