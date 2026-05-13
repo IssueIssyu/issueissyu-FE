@@ -165,16 +165,13 @@ class UserVerificationViewModel @Inject constructor(
     }
 
     fun onPhoneNumberChange(phoneNumber: String) {
-        val digits = phoneNumber.filter { it.isDigit() }.take(11)
-        val formatted = when {
-            digits.length <= 3 -> digits
-            digits.length <= 7 -> "${digits.substring(0, 3)}-${digits.substring(3)}"
-            else -> "${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7)}"
-        }
+        val sanitized = phoneNumber
+            .filter { it.isDigit() || it == '-' }
+            .take(PHONE_NUMBER_LENGTH)
 
         _uiState.update {
             it.copy(
-                phoneNumber = formatted,
+                phoneNumber = sanitized,
                 phoneError = null,
                 isVerificationCodeSent = false,
                 isCodeVerified = false,
