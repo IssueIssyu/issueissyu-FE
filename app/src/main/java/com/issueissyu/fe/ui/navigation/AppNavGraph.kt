@@ -50,7 +50,7 @@ fun AppNavGraph(
 ) {
     NavHost(
         navController = navController,
-        startDestination = AppDestinations.TOWN_ROUTE
+        startDestination = AppDestinations.TOWN_ROUTE // TODO: 정식 브랜치 이동 시 SPLASH_ROUTE로 변경
     ) {
         composable(AppDestinations.Onboarding.SPLASH_ROUTE) {
             SplashScreen(
@@ -70,6 +70,7 @@ fun AppNavGraph(
 
         composable(AppDestinations.Onboarding.LANDING_ROUTE) {
             // 랜딩 페이지가 아직 없으므로 로그인 화면으로 대체하거나 빈 화면 표시
+            // TODO: 도움말이 실제 랜딩이 아니라 로그인으로 대체됨
             LoginScreen(
                 viewModel = hiltViewModel(),
                 onNavigateToMain = {
@@ -300,10 +301,9 @@ fun AppNavGraph(
             ) {
                 MyPageTermScreen(
                     onBackClick = { navController.popBackStack() },
-                    onTermsDetailClick = { _ ->
-                    // MyPageTermScreen의 TermsType은 LocalVerificationScreen 등과 다를 수 있으므로 확인 필요
-                    // 여기서는 단순 popBackStack 또는 상세 이동 처리
-                }
+                    onTermsDetailClick = { termsType ->
+                        navController.navigate(AppDestinations.Onboarding.termDetailRoute(termsType.name))
+                    }
                 )
             }
         }

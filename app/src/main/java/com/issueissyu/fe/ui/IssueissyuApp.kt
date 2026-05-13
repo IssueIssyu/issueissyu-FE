@@ -52,6 +52,15 @@ private fun shouldShowBottomBar(route: String?): Boolean {
 
     if (isOnboardingOrAuth) return false
 
+    // 상세성 화면(핀 생성, 상세, 수정, 신고) 및 패치노트에서는 하단바를 숨김 (시연 시 어색함 방지)
+    val isDetailScreen = route == AppDestinations.PATCH_NOTE_ROUTE ||
+            route.startsWith(AppDestinations.PIN_CREATION_ROUTE) ||
+            route.startsWith("pin_detail_route") ||
+            route.startsWith("pin_edit_route") ||
+            route.startsWith("pin_report_route")
+
+    if (isDetailScreen) return false
+
     return route == AppDestinations.HOME_ROUTE ||
         route == AppDestinations.COLLECTION_ROUTE ||
         route == AppDestinations.TOWN_ROUTE ||
