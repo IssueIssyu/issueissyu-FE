@@ -39,7 +39,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.data.model.PinCategory
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
+import com.issueissyu.fe.ui.components.Dialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
@@ -87,6 +89,9 @@ fun PinCreateScreen(
         onTitleChange = viewModel::onTitleChange,
         onDescriptionChange = viewModel::onDescriptionChange,
         onToneChange = viewModel::onToneChange,
+        onAiWritingClick = viewModel::openAiWritingDialog,
+        onAiWritingConfirm = viewModel::generateAiDraftForDemo,
+        onAiWritingDismiss = viewModel::dismissAiWritingDialog,
         onSubmit = viewModel::submitPin,
         modifier = modifier
     )
@@ -100,6 +105,9 @@ private fun PinCreateContent(
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onToneChange: (String) -> Unit,
+    onAiWritingClick: () -> Unit,
+    onAiWritingConfirm: () -> Unit,
+    onAiWritingDismiss: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -107,6 +115,17 @@ private fun PinCreateContent(
         PinCategory.ISSUE -> "이슈 작성"
         PinCategory.COMMUNICATION -> "소통 작성"
         PinCategory.SHOP, PinCategory.FESTIVAL -> ""
+    }
+
+    if (uiState.showAiWritingDialog) {
+        Dialog(
+            title = "남은 자동 글쓰기 횟수",
+            message = "오늘 남은 자동 글쓰기 횟수는 ${uiState.remainingAiWriteCount}회입니다.",
+            confirmText = "확인",
+            dismissText = "취소",
+            onDismiss = onAiWritingDismiss,
+            onConfirm = onAiWritingConfirm
+        )
     }
 
     Column(
@@ -153,7 +172,9 @@ private fun PinCreateContent(
 
             ToneSelectionSection(
                 selectedTone = uiState.selectedTone,
-                onToneChange = onToneChange
+                isGeneratingAiContent = uiState.isGeneratingAiContent,
+                onToneChange = onToneChange,
+                onAiWritingClick = onAiWritingClick
             )
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -318,10 +339,29 @@ private val PinToneOptions = listOf(
 @Composable
 private fun ToneSelectionSection(
     selectedTone: String?,
-    onToneChange: (String) -> Unit
+    isGeneratingAiContent: Boolean,
+    onToneChange: (String) -> Unit,
+    onAiWritingClick: () -> Unit
 ) {
     Column {
-        SectionLabel(text = "말투 설정")
+        SectionLabel(
+            text = "말투 설정",
+            trailing = {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isGeneratingAiContent) Gray_4 else BrandColor)
+                        .clickable(enabled = !isGeneratingAiContent) { onAiWritingClick() }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (isGeneratingAiContent) "작성 중..." else "AI 글쓰기",
+                        style = IssueTypo.Bold12.copy(color = White)
+                    )
+                }
+            }
+        )
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -382,6 +422,9 @@ private fun PinCreateScreenPreview_IssueFilled() {
             onTitleChange = {},
             onDescriptionChange = {},
             onToneChange = {},
+            onAiWritingClick = {},
+            onAiWritingConfirm = {},
+            onAiWritingDismiss = {},
             onSubmit = {}
         )
     }
@@ -405,6 +448,9 @@ private fun PinCreateScreenPreview_Communication() {
             onTitleChange = {},
             onDescriptionChange = {},
             onToneChange = {},
+            onAiWritingClick = {},
+            onAiWritingConfirm = {},
+            onAiWritingDismiss = {},
             onSubmit = {}
         )
     }

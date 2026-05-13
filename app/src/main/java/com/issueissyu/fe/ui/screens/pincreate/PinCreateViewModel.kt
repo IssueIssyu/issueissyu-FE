@@ -7,6 +7,7 @@ import com.issueissyu.fe.data.model.PinCoordinate
 import com.issueissyu.fe.data.model.PinCategory
 import com.issueissyu.fe.data.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +34,8 @@ data class PinCreateUiState(
     val selectedTone: String? = null,
     val isSubmitting: Boolean = false,
     val isGeneratingAiContent: Boolean = false,
+    val showAiWritingDialog: Boolean = false,
+    val remainingAiWriteCount: Int = 3,
     val errorMessage: String? = null
 )
 
@@ -92,6 +95,42 @@ class PinCreateViewModel @Inject constructor(
 
     fun onToneChange(value: String) {
         _uiState.update { it.copy(selectedTone = value) }
+    }
+
+    fun openAiWritingDialog() {
+        _uiState.update { it.copy(showAiWritingDialog = true) }
+    }
+
+    fun dismissAiWritingDialog() {
+        _uiState.update { it.copy(showAiWritingDialog = false) }
+    }
+
+    fun generateAiDraftForDemo() {
+        val current = _uiState.value
+        if (current.remainingAiWriteCount <= 0) return
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    showAiWritingDialog = false,
+                    isGeneratingAiContent = true,
+                    errorMessage = null
+                )
+            }
+
+            // 시연용 딜레이
+            delay(1500)
+
+            val aiDraft = "주변 주민들이 불편을 겪고 있는 문제입니다. 빠른 확인과 조치가 필요합니다."
+
+            _uiState.update {
+                it.copy(
+                    description = aiDraft,
+                    isGeneratingAiContent = false,
+                    remainingAiWriteCount = (it.remainingAiWriteCount - 1).coerceAtLeast(0)
+                )
+            }
+        }
     }
 
     fun submitPin() {
