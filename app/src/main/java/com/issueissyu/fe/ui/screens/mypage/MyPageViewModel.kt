@@ -2,7 +2,7 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.R
+import com.issueissyu.fe.data.model.DemoPin
 import com.issueissyu.fe.data.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -13,13 +13,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-
-data class Pin(
-    val id: String,
-    val name: String,
-    val imageRes: Int,
-)
 
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
@@ -33,15 +26,19 @@ class MyPageViewModel @Inject constructor(
             initialValue = ""
         )
 
-    private val _myPins = MutableStateFlow<List<Pin>>(
-        listOf(
-            Pin("1", "바게트씨", R.drawable.ic_report),
-            Pin("2", "돌이곰", R.drawable.ic_fire),
-            Pin("3", "버터떡", R.drawable.ic_edit),
-            Pin("4", "감자빵", R.drawable.ic_megaphone)
+    val userProfileImageRes = userRepository.getProfileImageRes()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = com.issueissyu.fe.R.drawable.ic_character_default
         )
-    )
-    val myPins = _myPins.asStateFlow()
+
+    val myPins = userRepository.getBookmarkedPins()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     //로그아웃 상태
     private val _logoutState = MutableStateFlow<LogoutState>(LogoutState.Idle)

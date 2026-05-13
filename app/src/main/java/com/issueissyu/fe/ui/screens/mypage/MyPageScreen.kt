@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.R
+import com.issueissyu.fe.data.model.DemoPin
 import com.issueissyu.fe.ui.components.Dialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
@@ -85,6 +86,7 @@ fun MyPageScreen(
     viewModel: MyPageViewModel = hiltViewModel()
 ){
     val nickname by viewModel.userNickname.collectAsStateWithLifecycle()
+    val userProfileImageRes by viewModel.userProfileImageRes.collectAsStateWithLifecycle()
     val myPins by viewModel.myPins.collectAsStateWithLifecycle()
     val logoutState by viewModel.logoutState.collectAsStateWithLifecycle()
 
@@ -128,7 +130,7 @@ fun MyPageScreen(
             //프로필 이미지
             //프로필 사진
             Image(
-                painter = painterResource(R.drawable.ic_fire),
+                painter = painterResource(userProfileImageRes),
                 contentDescription = "프로필 사진",
                 modifier = Modifier
                     .size(100.dp)
@@ -255,7 +257,7 @@ fun MyPageScreen(
 }
 
 @Composable
-private fun MyPinsSection(pins: List<Pin>) {
+private fun MyPinsSection(pins: List<DemoPin>) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -298,7 +300,7 @@ private fun MyPinsSection(pins: List<Pin>) {
 }
 
 @Composable
-private fun PinCard(pin: Pin) {
+private fun PinCard(pin: DemoPin) {
     Column(
         modifier = Modifier
             .size(100.dp, 170.dp)
@@ -314,7 +316,7 @@ private fun PinCard(pin: Pin) {
     ) {
         // 핀 이미지
         Image(
-            painter = painterResource(pin.imageRes),
+            painter = painterResource(pin.imageResId),
             contentDescription = pin.name,
             modifier = Modifier.size(100.dp)
         )

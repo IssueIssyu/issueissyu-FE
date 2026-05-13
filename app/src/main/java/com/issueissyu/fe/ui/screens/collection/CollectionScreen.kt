@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.R
+import com.issueissyu.fe.data.model.DemoPin
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.screens.map.AutoScrollingNotice
 import com.issueissyu.fe.ui.screens.map.NoticeUiModel
@@ -262,7 +263,7 @@ private fun CollectionContent(
                         PinCard(
                             pin = pin,
                             isSelected = pin.id == uiState.selectedPin?.id,
-                            isCurrentProfile = pin.id == uiState.currentProfilePin?.id,
+                            isCurrentProfile = pin.imageResId == uiState.currentProfilePinResId,
                             isBookmarked = pin.id in uiState.bookmarkedPinIds,
                             onPinClick = { onEvent(CollectionEvent.SelectPin(pin.id)) },
                             onBookmarkClick = { onEvent(CollectionEvent.ToggleBookmark(pin.id)) }
@@ -277,7 +278,7 @@ private fun CollectionContent(
 //핀 카드
 @Composable
 private fun PinCard(
-    pin: PinItem,
+    pin: DemoPin,
     isSelected: Boolean,
     isCurrentProfile: Boolean,
     isBookmarked: Boolean,
