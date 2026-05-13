@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -49,8 +48,6 @@ fun AppNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues
 ) {
-    val context = LocalContext.current // LocalContext 추가
-
     NavHost(
         navController = navController,
         startDestination = AppDestinations.TOWN_ROUTE
@@ -303,10 +300,10 @@ fun AppNavGraph(
             ) {
                 MyPageTermScreen(
                     onBackClick = { navController.popBackStack() },
-                    onTermsDetailClick = { termsType ->
-                        // MyPageTermScreen의 TermsType은 LocalVerificationScreen 등과 다를 수 있으므로 확인 필요
-                        // 여기서는 단순 popBackStack 또는 상세 이동 처리
-                    }
+                    onTermsDetailClick = { _ ->
+                    // MyPageTermScreen의 TermsType은 LocalVerificationScreen 등과 다를 수 있으므로 확인 필요
+                    // 여기서는 단순 popBackStack 또는 상세 이동 처리
+                }
                 )
             }
         }

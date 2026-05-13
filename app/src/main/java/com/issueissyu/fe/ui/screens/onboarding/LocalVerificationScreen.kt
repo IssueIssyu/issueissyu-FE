@@ -17,7 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -39,10 +39,9 @@ import com.naver.maps.map.NaverMap
 
 private object MapDefaults {
     val SEOUL_CITY_HALL = LatLng(37.5665, 126.9780)
-    const val PIN_SIZE = 48
+    const     val PIN_SIZE = 48
     const val CARD_RADIUS = 30
     const val BUTTON_RADIUS = 12
-    const val BUTTON_HEIGHT = 56
     const val ADDRESS_BOX_HEIGHT = 56
 }
 
@@ -85,7 +84,7 @@ fun LocalVerificationScreen(
                 naverMapInstance?.moveCamera(CameraUpdate.scrollTo(targetLocation))
                 viewModel.onMapMoved(targetLocation.latitude, targetLocation.longitude)
             }
-        } catch (e: SecurityException) {
+        } catch (_: SecurityException) {
             // 권한 있어도 예외 발생 가능
             naverMapInstance?.moveCamera(CameraUpdate.scrollTo(MapDefaults.SEOUL_CITY_HALL))
             viewModel.onMapMoved(
@@ -175,7 +174,6 @@ fun LocalVerificationScreen(
                 // 하단 정보 카드
                 AddressInfoCard(
                     address = uiState.currentAddress.ifEmpty { "위치를 불러오는 중..." },
-                    isLoading = uiState.isLoading,
                     isConfirmEnabled = !uiState.isLoading && uiState.currentAddress.isNotEmpty(),
                     onConfirmClick = viewModel::registerLocation
                 )
@@ -210,7 +208,6 @@ private fun MapSection(
 @Composable
 private fun AddressInfoCard(
     address: String,
-    isLoading: Boolean,
     isConfirmEnabled: Boolean,
     onConfirmClick: () -> Unit
 ) {
