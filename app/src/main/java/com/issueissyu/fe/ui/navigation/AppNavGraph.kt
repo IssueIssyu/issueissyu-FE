@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,6 +36,13 @@ import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 import com.issueissyu.fe.ui.screens.pinedit.PinEditScreen
+import com.issueissyu.fe.ui.screens.mypage.AlarmSettingScreen
+import com.issueissyu.fe.ui.screens.mypage.MyIssueScreen
+import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
+import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
+import com.issueissyu.fe.ui.screens.mypage.MyPageTermScreen
+import com.issueissyu.fe.ui.screens.mypage.ProfileChangeScreen
+import com.issueissyu.fe.ui.screens.collection.CollectionScreen
 
 @Composable
 fun AppNavGraph(
@@ -59,6 +67,21 @@ fun AppNavGraph(
                     navController.navigate(LOGIN_ROUTE) {
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
+                }
+            )
+        }
+
+        composable(AppDestinations.Onboarding.LANDING_ROUTE) {
+            // 랜딩 페이지가 아직 없으므로 로그인 화면으로 대체하거나 빈 화면 표시
+            LoginScreen(
+                viewModel = hiltViewModel(),
+                onNavigateToMain = {
+                    navController.navigate(AppDestinations.HOME_ROUTE) {
+                        popUpTo(AppDestinations.Onboarding.LANDING_ROUTE) { inclusive = true }
+                    }
+                },
+                onNavigateToSignUp = {
+                    navController.navigate(AppDestinations.Onboarding.SIGNUP_ROUTE)
                 }
             )
         }
@@ -177,7 +200,15 @@ fun AppNavGraph(
                 HomeScreen()
             }
         }
-        composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
+        composable(AppDestinations.COLLECTION_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                CollectionScreen()
+            }
+        }
         composable(AppDestinations.TOWN_ROUTE) {
             Box(
                 modifier = Modifier
@@ -187,8 +218,123 @@ fun AppNavGraph(
                 MapScreen(navController = navController)
             }
         }
-        composable(AppDestinations.COMMUNITY_ROUTE) { /* TODO: CommunityScreen */ }
-        composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }
+        composable(AppDestinations.COMMUNITY_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("커뮤니티 화면 (준비 중)")
+            }
+        }
+        composable(AppDestinations.MyPage.MYPAGE_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                MyPageScreen(
+                    onEvent = { event ->
+                        when (event) {
+                            MyPageEvent.NavigateBack -> navController.navigateUp()
+                            MyPageEvent.NavigateToProfile -> {
+                                navController.navigate(AppDestinations.MyPage.PROFILE_CHANGE_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLocal -> {
+                                navController.navigate(AppDestinations.MyPage.LOCAL_CHANGE_ROUTE)
+                            }
+                            MyPageEvent.NavigateToIssue -> {
+                                navController.navigate(AppDestinations.MyPage.MY_ISSUES_ROUTE)
+                            }
+                            MyPageEvent.NavigateToSettingAlarm -> {
+                                navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLanding -> {
+                                navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                            }
+                            MyPageEvent.NavigateToTerm -> {
+                                navController.navigate(AppDestinations.MyPage.TERMS_ROUTE)
+                            }
+                            MyPageEvent.Logout -> {
+                                // TODO: 로그아웃 처리
+                            }
+                            MyPageEvent.Withdraw -> {
+                                // TODO: 회원탈퇴 처리
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        composable(AppDestinations.MyPage.PROFILE_CHANGE_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                ProfileChangeScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onCollectionClick = {
+                        navController.navigate(AppDestinations.COLLECTION_ROUTE)
+                    },
+                    onCompleteClick = { navController.popBackStack() }
+                )
+            }
+        }
+        composable(AppDestinations.MyPage.LOCAL_CHANGE_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                LocalVerificationScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onCompleteRegisterClick = { navController.popBackStack() }
+                )
+            }
+        }
+        composable(AppDestinations.MyPage.TERMS_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                MyPageTermScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onTermsDetailClick = { termsType ->
+                        // MyPageTermScreen의 TermsType은 LocalVerificationScreen 등과 다를 수 있으므로 확인 필요
+                        // 여기서는 단순 popBackStack 또는 상세 이동 처리
+                    }
+                )
+            }
+        }
+        composable(AppDestinations.MyPage.MY_ISSUES_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                MyIssueScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onPinClick = { pinId, _, _ ->
+                        navController.navigate(AppDestinations.pinDetailRoute(pinId))
+                    }
+                )
+            }
+        }
+        composable(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                AlarmSettingScreen(
+                    onBackClick = { navController.popBackStack() }
+                )
+            }
+        }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
             Box(
                 modifier = Modifier

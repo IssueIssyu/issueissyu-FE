@@ -49,6 +49,7 @@ private object MapDefaults {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LocalVerificationScreen(
+    onBackClick: () -> Unit = {},
     onCompleteRegisterClick: () -> Unit = {},
     viewModel: LocalVerificationViewModel = hiltViewModel()
 ) {
@@ -148,7 +149,8 @@ fun LocalVerificationScreen(
     Scaffold(
         topBar = {
             IssueissyuTopAppBar(
-                titleText = "동네 설정"
+                titleText = "동네 설정",
+                onBackClick = onBackClick
             )
         },
         containerColor = White

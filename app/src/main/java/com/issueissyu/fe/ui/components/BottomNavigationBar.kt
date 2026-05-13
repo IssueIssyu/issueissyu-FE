@@ -34,8 +34,11 @@ data class BottomNavItem(
 @Composable
 fun BottomNavigationBar(
     navController: NavHostController,
-    currentRoute: String?
+    currentRoute: String?,
+    /** 하단 탭 선택 표시용. null이면 [currentRoute]와 탭 route를 비교합니다. */
+    highlightRoute: String? = null
 ) {
+    val selectionRoute = highlightRoute ?: currentRoute
     val items = remember {
         listOf(
             BottomNavItem(
@@ -60,24 +63,24 @@ fun BottomNavigationBar(
                 label = "마이페이지",
                 icon = R.drawable.mypagedefault,
                 selectedIcon = R.drawable.mypageselected,
-                route = AppDestinations.MYPAGE_ROUTE
+                route = AppDestinations.MyPage.MYPAGE_ROUTE
             )
         )
     }
 
     NavigationBar {
         items.forEach { item ->
-            val selected = currentRoute == item.route
+            val selected = selectionRoute == item.route
             NavigationBarItem(
                 selected = selected,
                 onClick = {
                     if (currentRoute != item.route) {
                         navController.navigate(item.route) {
                             popUpTo(navController.graph.startDestinationId) {
-                                saveState = true
+                                saveState = false
                             }
                             launchSingleTop = true
-                            restoreState = true
+                            restoreState = false
                         }
                     }
                 },

@@ -5,6 +5,7 @@ object AppDestinations {
     // 온보딩
     object Onboarding {
         const val SPLASH_ROUTE = "splash_route"
+        const val LANDING_ROUTE = "landing_route"
         const val LOGIN_ROUTE = "login_route"
         const val SIGNUP_ROUTE = "signup_route"
         const val TERM_ROUTE = "term_route"
@@ -23,7 +24,15 @@ object AppDestinations {
     const val COLLECTION_ROUTE = "collection_route"
     const val TOWN_ROUTE = "town_route"
     const val COMMUNITY_ROUTE = "community_route"
-    const val MYPAGE_ROUTE = "mypage_route"
+
+    object MyPage {
+        const val MYPAGE_ROUTE = "mypage_route"
+        const val PROFILE_CHANGE_ROUTE = "mypage/profile_change"
+        const val LOCAL_CHANGE_ROUTE = "mypage/local_change"
+        const val TERMS_ROUTE = "mypage/terms"
+        const val MY_ISSUES_ROUTE = "mypage/my_issues"
+        const val ALARM_SETTINGS_ROUTE = "mypage/alarm_settings"
+    }
 
     // 지도 관련
     const val PATCH_NOTE_ROUTE = "patch_note_route"

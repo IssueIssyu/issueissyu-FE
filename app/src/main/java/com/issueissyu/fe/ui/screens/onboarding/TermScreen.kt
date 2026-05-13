@@ -42,6 +42,7 @@ import com.issueissyu.fe.ui.theme.suiteFontFamily
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TermScreen(
+    onBackClick: () -> Unit = {},
     onAgreeClick: () -> Unit = {},
     onTermsDetailClick: (TermsType) -> Unit = {},
     viewModel: TermViewModel = hiltViewModel()
@@ -50,7 +51,10 @@ fun TermScreen(
 
     Scaffold(
         topBar = {
-            IssueissyuTopAppBar()
+            IssueissyuTopAppBar(
+                titleText = "이용약관",
+                onBackClick = onBackClick
+            )
         },
         bottomBar = {
             CommonButton(
