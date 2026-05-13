@@ -75,22 +75,7 @@ data class DemoCommentUiModel(
     val createdAt: String = ""
 )
 
-val InitialDemoComments = listOf(
-    DemoCommentUiModel(
-        id = "demo_comment_1",
-        authorId = DemoMyAuthorId,
-        authorName = "현재 사용자",
-        content = "여기에 내가 쓴 댓글이 표시될 예정이에요.",
-        createdAt = "방금 전"
-    ),
-    DemoCommentUiModel(
-        id = "demo_comment_2",
-        authorId = DemoOtherAuthorId,
-        authorName = "다른 사용자",
-        content = "여기에 다른 사람 댓글이 표시될 예정이에요.",
-        createdAt = "방금 전"
-    )
-)
+val InitialDemoComments = emptyList<DemoCommentUiModel>()
 
 @Composable
 fun PinPostTab(
