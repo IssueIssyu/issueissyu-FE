@@ -1,6 +1,11 @@
 // TermsAgreementScreen.kt
 package com.issueissyu.fe.ui.screens.onboarding
 
+import android.Manifest
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -13,6 +18,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -24,6 +30,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.ui.viewmodels.TermViewModel
@@ -46,7 +53,47 @@ fun TermScreen(
     onTermsDetailClick: (TermsType) -> Unit = {},
     viewModel: TermViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    fun hasNotificationPermission(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val granted = permissions.values.any { it }
+        viewModel.onLocationAgreementChanged(granted)
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        viewModel.onMarketingAgreementChanged(granted)
+    }
+
+    LaunchedEffect(uiState.submitError) {
+        uiState.submitError?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            viewModel.consumeSubmitError()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -54,12 +101,12 @@ fun TermScreen(
         },
         bottomBar = {
             CommonButton(
-                onClick = onAgreeClick,
+                onClick = { viewModel.submitTerms(onAgreeClick) },
                 modifier =Modifier
                     .fillMaxWidth()
                     .padding(31.dp, 45.dp),
                 text = "동의",
-                isEnabled = uiState.isServiceAgreed && uiState.isPrivacyAgreed
+                isEnabled = uiState.isServiceAgreed && uiState.isPrivacyAgreed && !uiState.isSubmitting
             )
         },
         containerColor = Color.White
@@ -103,7 +150,28 @@ fun TermScreen(
             TermsCheckboxItem(
                 text = "전체 동의",
                 isChecked = uiState.isAllAgreed,
-                onCheckedChange = { viewModel.onAllAgreementChanged(it) },
+                onCheckedChange = { checked ->
+                    if (!checked) {
+                        viewModel.onAllAgreementChanged(false)
+                    } else {
+                        viewModel.onAllAgreementChanged(true)
+                        if (hasLocationPermission()) {
+                            viewModel.onLocationAgreementChanged(true)
+                        } else {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                ),
+                            )
+                        }
+                        if (hasNotificationPermission()) {
+                            viewModel.onMarketingAgreementChanged(true)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                },
                 labelType = null,
                 showArrow = false,
                 modifier = Modifier
@@ -139,7 +207,19 @@ fun TermScreen(
                 TermsCheckboxItem(
                     text = "위치기반 서비스 이용약관 동의",
                     isChecked = uiState.isLocationAgreed,
-                    onCheckedChange = { viewModel.onLocationChanged(it) },
+                    onCheckedChange = { checked ->
+                        if (!checked) return@TermsCheckboxItem
+                        if (hasLocationPermission()) {
+                            viewModel.onLocationAgreementChanged(true)
+                        } else {
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                ),
+                            )
+                        }
+                    },
                     labelType = LabelType.OPTIONAL,
                     onArrowClick = { onTermsDetailClick(TermsType.LOCATION) }
                 )
@@ -147,7 +227,16 @@ fun TermScreen(
                 TermsCheckboxItem(
                     text = "푸시 알림 수신 동의",
                     isChecked = uiState.isMarketingAgreed,
-                    onCheckedChange = { viewModel.onMarketingChanged(it)},
+                    onCheckedChange = { checked ->
+                        if (!checked) return@TermsCheckboxItem
+                        if (hasNotificationPermission()) {
+                            viewModel.onMarketingAgreementChanged(true)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            viewModel.onMarketingAgreementChanged(true)
+                        }
+                    },
                     labelType = LabelType.OPTIONAL,
                     showArrow = false
                 )

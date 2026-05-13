@@ -2,8 +2,10 @@ package com.issueissyu.fe.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.data.local.OnboardingSessionStore
+import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
+import com.issueissyu.fe.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,7 +14,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class UserVerificationUiState(
-    val nickname: String ="",
+    val nickname: String = "",
     val isNicknameChecked: Boolean = false,
     val nicknameError: String? = null,
     val isCheckingNickName: Boolean = false,
@@ -32,26 +34,32 @@ data class UserVerificationUiState(
     val codeError: String? = null,
     val isVerifyingCode: Boolean = false,
 
-    val isSignupEnabled: Boolean = false
+    val isSignupEnabled: Boolean = false,
+
+    val showAccountLinkDialog: Boolean = false,
+    val isLinkingAccount: Boolean = false,
+    val accountLinkError: String? = null,
 )
 
 @HiltViewModel
-class UserVerificationViewModel @Inject constructor(): ViewModel() {
+class UserVerificationViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
+    private val onboardingSessionStore: OnboardingSessionStore,
+) : ViewModel() {
+
     private val _uiState = MutableStateFlow(UserVerificationUiState())
     val uiState: StateFlow<UserVerificationUiState> = _uiState.asStateFlow()
 
-    //조건-길이
     companion object {
         const val MIN_NICKNAME_LENGTH = 2
         const val MAX_NIXKNAME_LENGTH = 10
-        const val PHONE_NUMBER_LENGTH = 11
-        const val VERIFIED_CODE = "123456"
+        const val PHONE_NUMBER_LENGTH = 13
+        const val VerificationCodeLength = 6
     }
 
-    //회원가입 상태 업데이트
     private fun updateSignupEnabled() {
         val state = _uiState.value
-        val isEmailValid = state.emailId.isNotBlank() && when(state.emailDomain){
+        val isEmailValid = state.emailId.isNotBlank() && when (state.emailDomain) {
             "선택" -> false
             "직접 입력" -> state.customDomain.isNotBlank()
             else -> true
@@ -60,46 +68,39 @@ class UserVerificationViewModel @Inject constructor(): ViewModel() {
         _uiState.update {
             it.copy(
                 isSignupEnabled = state.isNicknameChecked
-                        && isEmailValid
-                        && state.isCodeVerified
+                    && isEmailValid
+                    && state.isCodeVerified,
             )
         }
     }
 
-    //닉네임
-    fun onNicknameChange(nickname: String){
-        _uiState.update{
+    fun onNicknameChange(nickname: String) {
+        _uiState.update {
             it.copy(
                 nickname = nickname,
                 isNicknameChecked = false,
-                nicknameError = null
+                nicknameError = null,
             )
         }
         updateSignupEnabled()
     }
 
-
-    fun checkNicknameDuplicate(){
+    fun checkNicknameDuplicate() {
         val nickname = _uiState.value.nickname
 
         when {
-            //1. 닉네임 입력 x
             nickname.isEmpty() -> {
-                _uiState.update { it.copy(nicknameError = "닉네임을 입력해주세요")
-                }
+                _uiState.update { it.copy(nicknameError = "닉네임을 입력해주세요") }
                 return
             }
-            //2. 닉네임 길이
             nickname.length < MIN_NICKNAME_LENGTH || nickname.length > MAX_NIXKNAME_LENGTH -> {
                 _uiState.update {
                     it.copy(nicknameError = "닉네임은 ${MIN_NICKNAME_LENGTH}~${MAX_NIXKNAME_LENGTH}자 내로 입력해주세요")
                 }
                 return
             }
-            //3. 닉네임 문자 (특수기호 제한)
             !nickname.matches(Regex("^[가-힣a-zA-Z0-9]+$")) -> {
-                _uiState.update { it.copy(nicknameError = "닉네임은 한글, 영문, 숫자만 사용 가능합니다")
-                }
+                _uiState.update { it.copy(nicknameError = "닉네임은 한글, 영문, 숫자만 사용 가능합니다") }
                 return
             }
         }
@@ -107,58 +108,55 @@ class UserVerificationViewModel @Inject constructor(): ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isCheckingNickName = true) }
 
-            try {
-                //중복 확인 API
-
-                delay(500)
-                _uiState.update {
-                    it.copy(
-                        isNicknameChecked = true,
-                        nicknameError = null,
-                        isCheckingNickName = false
-                    )
-                }
-                updateSignupEnabled()
-            } catch(e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        nicknameError = "오류가 발생했습니다",
-                        isCheckingNickName = false
-                    )
-                }
-            }
+            authRepository.checkNicknameAvailable(nickname).fold(
+                onSuccess = { available ->
+                    _uiState.update {
+                        it.copy(
+                            isCheckingNickName = false,
+                            isNicknameChecked = available,
+                            nicknameError = if (available) null else "이미 사용 중인 닉네임입니다",
+                        )
+                    }
+                    updateSignupEnabled()
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            nicknameError = e.message ?: "오류가 발생했습니다",
+                            isCheckingNickName = false,
+                        )
+                    }
+                },
+            )
         }
     }
 
-    //이메일
-    fun onEmailIdChange(emailId: String){
-        _uiState.update { it.copy(emailId = emailId)}
+    fun onEmailIdChange(emailId: String) {
+        _uiState.update { it.copy(emailId = emailId) }
         updateSignupEnabled()
     }
 
-    //이메일 도메인 선택
     fun onEmailDomainChange(domain: String) {
         _uiState.update {
             it.copy(
                 emailDomain = domain,
-                showDomainDropdown = false  //누르면 활성화
+                showDomainDropdown = false,
             )
         }
         updateSignupEnabled()
     }
 
-    fun onCustomDomainChange(customDomain: String){
+    fun onCustomDomainChange(customDomain: String) {
         _uiState.update { it.copy(customDomain = customDomain) }
         updateSignupEnabled()
     }
 
-    fun toggleDomainDropdown(){
+    fun toggleDomainDropdown() {
         _uiState.update { it.copy(showDomainDropdown = !it.showDomainDropdown) }
     }
 
     fun getFullEmail(): String {
         val state = _uiState.value
-
         return if (state.emailDomain == "직접 입력") {
             "${state.emailId}@${state.customDomain}"
         } else {
@@ -167,100 +165,174 @@ class UserVerificationViewModel @Inject constructor(): ViewModel() {
     }
 
     fun onPhoneNumberChange(phoneNumber: String) {
-        val filtered = phoneNumber.filter { it.isDigit() }
+        val digits = phoneNumber.filter { it.isDigit() }.take(11)
+        val formatted = when {
+            digits.length <= 3 -> digits
+            digits.length <= 7 -> "${digits.substring(0, 3)}-${digits.substring(3)}"
+            else -> "${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7)}"
+        }
 
         _uiState.update {
             it.copy(
-                phoneNumber = filtered,
+                phoneNumber = formatted,
                 phoneError = null,
                 isVerificationCodeSent = false,
                 isCodeVerified = false,
-                verificationCode = ""
+                verificationCode = "",
+                showAccountLinkDialog = false,
+                accountLinkError = null,
             )
         }
+        updateSignupEnabled()
     }
 
     fun sendVerificationCode() {
         val phoneNumber = _uiState.value.phoneNumber
-        //전화번호 입력 실패 -> "올바른 전화번호 입력해주세요
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSendingCode = true)}
+            _uiState.update { it.copy(isSendingCode = true, phoneError = null) }
 
-            try{
-                //인증 번호 API 호출
-                delay(500)
-                _uiState.update {
-                    it.copy(
-                        isVerificationCodeSent = true,
-                        phoneError = null,
-                        isSendingCode = false
-                    )
-                }
-            } catch(e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        phoneError = "오류가 발생했습니다",
-                        isSendingCode = false
-                    )
-                }
-            }
-        }
-    }
-
-    fun onVerificationCodeChange(code: String){
-        _uiState.update {
-            it.copy(
-                verificationCode = code,
-                isCodeVerified = false,
-                codeError = null
+            authRepository.sendPhoneVerificationCode(phoneNumber).fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isVerificationCodeSent = true,
+                            phoneError = null,
+                            isSendingCode = false,
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            phoneError = e.message ?: "오류가 발생했습니다",
+                            isSendingCode = false,
+                        )
+                    }
+                },
             )
         }
     }
 
-    fun verifyCode(){
-        val code = _uiState.value.verificationCode
+    fun onVerificationCodeChange(code: String) {
+        _uiState.update {
+            it.copy(
+                verificationCode = code,
+                isCodeVerified = false,
+                codeError = null,
+            )
+        }
+    }
 
-        if(code.isEmpty()){
-            _uiState.update { it.copy(codeError = "인증번호를 입력해주세요")}
+    /**
+     * [api/auth/phone] 전화번호 인증 확인.
+     * 화면에서 **확인** 버튼으로 호출하거나, 6자리 입력 완료 시 자동 호출됩니다.
+     */
+    fun verifyCode() {
+        if (_uiState.value.isVerifyingCode) return
+
+        val code = _uiState.value.verificationCode
+        val phone = _uiState.value.phoneNumber
+
+        if (!_uiState.value.isVerificationCodeSent) {
+            _uiState.update { it.copy(codeError = "먼저 인증번호를 받아주세요") }
+            return
+        }
+
+        if (code.length != VerificationCodeLength) {
+            _uiState.update { it.copy(codeError = "인증번호 6자리를 입력해주세요") }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isVerifyingCode = true)}
+            _uiState.update { it.copy(isVerifyingCode = true) }
 
-            try {
-                //API 호출
-
-                delay(500)
-
-                if (code == VERIFIED_CODE) {
+            authRepository.verifyPhoneCode(
+                phoneDigits = phone,
+                code = code,
+                isAvailableNickname = _uiState.value.isNicknameChecked,
+            ).fold(
+                onSuccess = {
                     _uiState.update {
                         it.copy(
                             isCodeVerified = true,
                             codeError = null,
-                            isVerifyingCode = false
+                            isVerifyingCode = false,
                         )
                     }
                     updateSignupEnabled()
-                } else {
+                },
+                onFailure = { e ->
+                    if (e is ExistingPhoneRequiresLinkException) {
+                        _uiState.update {
+                            it.copy(
+                                isCodeVerified = false,
+                                isVerifyingCode = false,
+                                showAccountLinkDialog = true,
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isCodeVerified = false,
+                                codeError = e.message ?: "인증에 실패했습니다",
+                                isVerifyingCode = false,
+                            )
+                        }
+                    }
+                    updateSignupEnabled()
+                },
+            )
+        }
+    }
+
+    fun dismissAccountLinkDialog() {
+        _uiState.update {
+            it.copy(
+                showAccountLinkDialog = false,
+                accountLinkError = null,
+            )
+        }
+    }
+
+    fun confirmAccountLink() {
+        val phone = _uiState.value.phoneNumber
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLinkingAccount = true, accountLinkError = null) }
+            authRepository.linkLogin(phone).fold(
+                onSuccess = {
                     _uiState.update {
                         it.copy(
-                            isCodeVerified = false,
-                            codeError = "인증번호가 일치하지 않습니다",
-                            isVerifyingCode = false
+                            showAccountLinkDialog = false,
+                            isLinkingAccount = false,
+                            isCodeVerified = true,
+                            codeError = null,
+                            phoneError = null,
                         )
                     }
                     updateSignupEnabled()
-                }
-            } catch(e: Exception){
-                _uiState.update {
-                    it.copy(
-                        codeError = "오류가 발생했습니다",
-                        isVerifyingCode = false
-                    )
-                }
-            }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLinkingAccount = false,
+                            accountLinkError = e.message ?: "연동에 실패했습니다",
+                        )
+                    }
+                },
+            )
         }
+    }
+
+    fun onSignupClick(onComplete: (nickname: String, email: String, phoneNumber: String) -> Unit) {
+        if (!_uiState.value.isSignupEnabled) return
+        val s = _uiState.value
+        val email = getFullEmail()
+        onboardingSessionStore.setPendingProfile(
+            nickname = s.nickname,
+            email = email,
+            phone = s.phoneNumber,
+        )
+        onComplete(s.nickname, email, s.phoneNumber)
     }
 }
