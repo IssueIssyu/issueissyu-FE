@@ -19,7 +19,7 @@ class TokenAuthenticator @Inject constructor(
 ) : Authenticator {
 
     override fun authenticate(route: Route?, response: Response): Request? {
-        if (response.request.url.encodedPath.contains("/auth/refresh", ignoreCase = true)) {
+        if (response.request.url.encodedPath.endsWith("/auth/refresh")) {
             return null
         }
         if (response.request.header("Authorization") == null) {

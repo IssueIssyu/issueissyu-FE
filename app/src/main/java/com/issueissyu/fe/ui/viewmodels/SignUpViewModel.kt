@@ -2,8 +2,8 @@ package com.issueissyu.fe.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,144 +25,187 @@ data class SignUpUiState(
     val userPwConfirmError: String? = null,
 
     val signUpSuccess: Boolean = false,
-){
+) {
     val canSubmit: Boolean
-        get() = userId.isNotEmpty() &&
-                userPw.isNotEmpty() &&
-                userPwConfirm.isNotEmpty() &&
-                userIdError == null &&
-                userPwError == null &&
-                userPwConfirmError == null &&
-                isIdChecked &&
-                !isSubmitting
+        get() = userId.isNotBlank() &&
+            isIdChecked &&
+            !isIdChecking &&
+            userIdError == null &&
+            userPw.isNotBlank() &&
+            SignUpUiState.validateUserPwStatic(userPw) == null &&
+            userPwError == null &&
+            userPwConfirm.isNotBlank() &&
+            userPw == userPwConfirm &&
+            userPwConfirmError == null &&
+            !isSubmitting
+
+    companion object {
+        /** 비밀번호: 8~20자, 영문(대소문 무관)·숫자·특수문자 각 1자 이상 */
+        fun validateUserPwStatic(pw: String): String? {
+            if (pw.isEmpty()) return null
+            if (pw.length < 8 || pw.length > 20) return "8~20자로 입력해주세요"
+            val hasEng = pw.any { it in 'a'..'z' || it in 'A'..'Z' }
+            val hasDigit = pw.any { it.isDigit() }
+            val hasSpecial = pw.any { ch ->
+                ch !in 'a'..'z' && ch !in 'A'..'Z' && ch !in '0'..'9'
+            }
+            return if (hasEng && hasDigit && hasSpecial) {
+                null
+            } else {
+                "영문·숫자·특수문자를 각각 1자 이상 포함해주세요"
+            }
+        }
+    }
 }
 
 @HiltViewModel
-class SignUpViewModel @Inject constructor() : ViewModel() {
+class SignUpViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
+) : ViewModel() {
     private val _uiState = MutableStateFlow(SignUpUiState())
     val uiState: StateFlow<SignUpUiState> = _uiState.asStateFlow()
 
-    //상태 업데이트
-    private fun updateState (update: SignUpUiState. () -> SignUpUiState){
+    private fun updateState(update: SignUpUiState.() -> SignUpUiState) {
         _uiState.update { it.update() }
     }
 
-    //아이디
     fun updateUserId(newId: String) {
         updateState {
             copy(
                 userId = newId,
                 isIdChecked = false,
-                userIdError = validateUserId(newId)
+                userIdError = null,
             )
         }
     }
 
-    //비밀번호
-    fun updateUserPw(newPw: String){
+    fun updateUserPw(newPw: String) {
         updateState {
             copy(
                 userPw = newPw,
-                userPwError = validateUserPw(newPw),
+                userPwError = SignUpUiState.validateUserPwStatic(newPw),
                 userPwConfirmError =
-                    if(userPwConfirm.isNotEmpty()) {
+                    if (userPwConfirm.isNotEmpty()) {
                         validateUserPwConfirm(newPw, userPwConfirm)
                     } else {
                         userPwConfirmError
-                    }
+                    },
             )
         }
     }
 
-    //비밀번호 확인
-    fun updateUserPwConfirm(newPwConfirm: String){
+    fun updateUserPwConfirm(newPwConfirm: String) {
         updateState {
             copy(
                 userPwConfirm = newPwConfirm,
-                userPwConfirmError = validateUserPwConfirm(userPw, newPwConfirm)
+                userPwConfirmError = validateUserPwConfirm(userPw, newPwConfirm),
             )
         }
     }
 
-    //아이디 중복 확인
-    fun checkIdDuplicate(){
-        //id 오류 시, 중복 확인 작동 x
-        if(_uiState.value.userIdError != null) return
+    /**
+     * [AuthRepository.checkLocalUsernameAvailable] — 성공 시 [isIdChecked] true, 아이디 수정 시 [updateUserId]에서 false로 초기화.
+     */
+    fun checkIdDuplicate() {
+        val id = _uiState.value.userId.trim()
+        if (id.isEmpty()) {
+            updateState { copy(userIdError = "아이디를 입력해주세요") }
+            return
+        }
 
         viewModelScope.launch {
-            updateState{  copy(isIdChecking = true) }
+            updateState { copy(isIdChecking = true, userIdError = null) }
 
-            delay(1000)     //더미
-
-            updateState {
-                copy(
-                    isIdChecking = false,
-                    isIdChecked = true,
-                    userIdError = null
-                )
-            }
+            authRepository.checkLocalUsernameAvailable(id).fold(
+                onSuccess = { available ->
+                    updateState {
+                        copy(
+                            isIdChecking = false,
+                            isIdChecked = available,
+                            userIdError = if (available) {
+                                null
+                            } else {
+                                "이미 사용 중인 아이디입니다"
+                            },
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    updateState {
+                        copy(
+                            isIdChecking = false,
+                            isIdChecked = false,
+                            userIdError = e.message ?: "중복 확인에 실패했습니다",
+                        )
+                    }
+                },
+            )
         }
     }
 
-    //회원가입 완료
-    fun signUp(){
-        //중복 제출 방지
-        if (_uiState.value.isSubmitting) return
+    fun signUp() {
+        if (_uiState.value.isSubmitting || !_uiState.value.canSubmit) return
 
         viewModelScope.launch {
-            updateState { copy(isSubmitting = true) }
-
-            delay(2000)     //더미
-
             updateState {
                 copy(
-                    isSubmitting = false,
-                    signUpSuccess = true
+                    isSubmitting = true,
+                    userIdError = null,
+                    userPwError = null,
+                    userPwConfirmError = null,
                 )
             }
+
+            val id = _uiState.value.userId.trim()
+            val pw = _uiState.value.userPw
+
+            val signUpResult = authRepository.signUpLocal(id, pw)
+            signUpResult.fold(
+                onSuccess = {
+                    val loginResult = authRepository.loginLocal(id, pw)
+                    loginResult.fold(
+                        onSuccess = {
+                            updateState {
+                                copy(
+                                    isSubmitting = false,
+                                    signUpSuccess = true,
+                                )
+                            }
+                        },
+                        onFailure = { e ->
+                            updateState {
+                                copy(
+                                    isSubmitting = false,
+                                    userPwError = e.message ?: "자동 로그인에 실패했습니다",
+                                )
+                            }
+                        },
+                    )
+                },
+                onFailure = { e ->
+                    val msg = e.message ?: "회원가입에 실패했습니다"
+                    val treatAsPw = msg.contains("비밀번호") || msg.contains("형식") || msg.contains("유효")
+                    updateState {
+                        copy(
+                            isSubmitting = false,
+                            userIdError = if (treatAsPw) null else msg,
+                            userPwError = if (treatAsPw) msg else null,
+                        )
+                    }
+                },
+            )
         }
     }
 
-    //검증
-    private fun validateUserId(id: String): String? {
+    private fun validateUserPwConfirm(pw: String, pwConfirm: String): String? {
         return when {
-            id.isEmpty() -> null
-            id.length < 4 -> "4자 이상 입력해주세요"
-            !id.matches(Regex("^[a-z][a-z0-9]*\$")) -> "영문 소문자로 시작해야 합니다"
-            else -> null
-        }
-    }
-
-    private fun validateUserPw(pw:String): String?{
-        return when{
-            pw.isEmpty() -> null
-            pw.length < 6 -> "6자 이상 입력해주세요"
-            !validatePassword(pw)-> "2가지 이상 조합이 필요합니다."
-            else -> null
-        }
-    }
-
-    private fun validatePassword(pw: String): Boolean {
-        val hasEnglish = pw.any { it in 'a'..'z' || it in 'A'..'Z' }
-        val hasDigit = pw.any { it.isDigit() }
-        val hasSpecial = pw.any { it in "!@#$%^&*()_+-=[]{};\':\"\\|,.<>/?" }
-
-        val count = listOf(hasEnglish, hasDigit, hasSpecial).count { it }
-
-        return count >= 2
-    }
-
-    private fun validateUserPwConfirm(pw: String, pwConfirm:String): String?{
-        return when{
             pwConfirm.isEmpty() -> null
-            pwConfirm != pw -> "비밀번호 불일치"
+            pwConfirm != pw -> "비밀번호가 일치하지 않습니다"
             else -> null
         }
     }
 
     fun consumeSignUpSuccess() {
-        //다음 화면으로 이동 시 false로 초기화
-        //재사용 방지
         updateState { copy(signUpSuccess = false) }
     }
 }

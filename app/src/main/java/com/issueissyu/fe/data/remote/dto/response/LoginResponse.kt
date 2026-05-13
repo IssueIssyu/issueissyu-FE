@@ -5,6 +5,6 @@ data class LoginResponse(
     val refreshToken: String,
     val expiresIn: Int,
     val user: UserDto,
-    val isNew: Boolean,
-    val socialType: String
+    val socialType: String,
+    val isNew: Boolean
 )

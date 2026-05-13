@@ -43,12 +43,27 @@ class LoginViewModel @Inject constructor(
     }
 
     fun localLogin() {
+        if (_uiState.value.isLoading) return
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
+            val id = _uiState.value.userId.trim()
+            val pw = _uiState.value.userPw
+
+            if (id.isEmpty() || pw.isEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "아이디와 비밀번호를 입력해주세요",
+                    )
+                }
+                return@launch
+            }
+
             val result = authRepository.loginLocal(
-                userName = _uiState.value.userId,
-                password = _uiState.value.userPw,
+                userName = id,
+                password = pw,
             )
 
             result.fold(
@@ -57,6 +72,8 @@ class LoginViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             errorMessage = null,
+                            userId = id,
+                            userPw = "",
                             navigateWithIsNew = user.isNew,
                         )
                     }
@@ -73,6 +90,7 @@ class LoginViewModel @Inject constructor(
         }
     }
 
+    //TODO: 네이버 SDK 연동 후 AuthRepository 및 동일한 navigate 규칙 적용
     fun naverLogin() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }

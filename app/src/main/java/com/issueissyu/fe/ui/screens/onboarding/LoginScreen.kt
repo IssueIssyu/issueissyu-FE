@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -48,7 +48,7 @@ fun LoginScreen(
     onLoginSuccess: (isNew: Boolean) -> Unit,
     onNavigateToSignUp: () -> Unit,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(uiState.navigateWithIsNew) {
         uiState.navigateWithIsNew?.let { isNew ->
@@ -130,8 +130,8 @@ fun LoginContent(
                     CommonTextField(
                         value = userId,
                         onValueChange = onUserIdChange,
-                        placeholder = "아이디 입력",
-                        maxLength = 20
+                        placeholder = "이메일(아이디) 입력",
+                        maxLength = 80,
                     )
                 }
                 //비번

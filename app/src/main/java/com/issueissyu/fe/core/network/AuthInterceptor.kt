@@ -26,9 +26,12 @@ class AuthInterceptor @Inject constructor(
 
     private fun Request.shouldAttachAccessToken(): Boolean {
         val path = url.encodedPath
-        if (path.contains("/auth/login", ignoreCase = true)) return false
-        if (path.contains("/auth/signup", ignoreCase = true)) return false
-        if (path.contains("/auth/refresh", ignoreCase = true)) return false
+        if (path.endsWith("/auth/signup/local")) return false
+        // 회원가입 전 아이디 중복 확인(비로그인)
+        if (path.contains("/api/auth/check/username/")) return false
+        if (path.endsWith("/auth/login/local")) return false
+        if (path.endsWith("/auth/login/naver")) return false
+        if (path.endsWith("/auth/refresh")) return false
         return true
     }
 }

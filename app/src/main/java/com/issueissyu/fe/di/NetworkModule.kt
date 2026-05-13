@@ -36,9 +36,6 @@ object NetworkModule {
         }
     }
 
-    /**
-     * No auth interceptors — used for token refresh to avoid circular calls.
-     */
     @Provides
     @Singleton
     @Named("auth_plain")
