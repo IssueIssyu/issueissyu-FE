@@ -27,7 +27,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.google.android.gms.location.Priority
 import com.google.android.gms.location.LocationServices
+import com.google.android.gms.tasks.CancellationTokenSource
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.*
@@ -72,18 +74,28 @@ fun LocalVerificationScreen(
     // 현재 위치로 이동
     fun moveToCurrentLocation() {
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+        val cts = CancellationTokenSource()
 
         try {
-            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                val targetLocation = if (location != null) {
-                    LatLng(location.latitude, location.longitude)
-                } else {
-                    MapDefaults.SEOUL_CITY_HALL
+            fusedLocationClient
+                .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        val targetLocation = LatLng(location.latitude, location.longitude)
+                        naverMapInstance?.moveCamera(CameraUpdate.scrollTo(targetLocation))
+                        viewModel.onMapMoved(targetLocation.latitude, targetLocation.longitude)
+                    } else {
+                        fusedLocationClient.lastLocation.addOnSuccessListener { lastKnown ->
+                            val targetLocation = if (lastKnown != null) {
+                                LatLng(lastKnown.latitude, lastKnown.longitude)
+                            } else {
+                                MapDefaults.SEOUL_CITY_HALL
+                            }
+                            naverMapInstance?.moveCamera(CameraUpdate.scrollTo(targetLocation))
+                            viewModel.onMapMoved(targetLocation.latitude, targetLocation.longitude)
+                        }
+                    }
                 }
-
-                naverMapInstance?.moveCamera(CameraUpdate.scrollTo(targetLocation))
-                viewModel.onMapMoved(targetLocation.latitude, targetLocation.longitude)
-            }
         } catch (e: SecurityException) {
             // 권한 있어도 예외 발생 가능
             naverMapInstance?.moveCamera(CameraUpdate.scrollTo(MapDefaults.SEOUL_CITY_HALL))
@@ -172,9 +184,9 @@ fun LocalVerificationScreen(
 
                 // 하단 정보 카드
                 AddressInfoCard(
-                    address = uiState.currentAddress.ifEmpty { "위치를 불러오는 중..." },
+                    address = uiState.currentAddress.ifEmpty { "지도를 움직여 동네 주소를 확인해 주세요" },
                     isLoading = uiState.isLoading,
-                    isConfirmEnabled = !uiState.isLoading && uiState.currentAddress.isNotEmpty(),
+                    isConfirmEnabled = !uiState.isLoading && uiState.isAddressResolved,
                     onConfirmClick = viewModel::registerLocation
                 )
             }
