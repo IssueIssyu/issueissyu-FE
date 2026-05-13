@@ -1,4 +1,4 @@
-package com.issueissyu.fe.data.remote.dto.response
+package com.issueissyu.fe.data.remote.dto.response.auth
 
 data class LoginResponse(
     val accessToken: String,

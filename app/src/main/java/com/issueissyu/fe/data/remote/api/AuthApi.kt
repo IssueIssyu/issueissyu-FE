@@ -1,16 +1,22 @@
 package com.issueissyu.fe.data.remote.api
 
 import com.issueissyu.fe.data.remote.dto.request.AuthLocalRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.OnboardingRequest
 import com.issueissyu.fe.data.remote.dto.request.LoginLinkRequest
 import com.issueissyu.fe.data.remote.dto.request.PhoneSendCodeRequest
 import com.issueissyu.fe.data.remote.dto.request.PhoneVerifyRequest
 import com.issueissyu.fe.data.remote.dto.request.RefreshTokenRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.TermRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
-import com.issueissyu.fe.data.remote.dto.response.LoginLinkResultDto
-import com.issueissyu.fe.data.remote.dto.response.LoginResponse
-import com.issueissyu.fe.data.remote.dto.response.SignUpResponse
-import com.issueissyu.fe.data.remote.dto.response.TokenResponse
-import com.issueissyu.fe.data.remote.dto.response.UsernameAvailabilityDto
+import com.issueissyu.fe.data.remote.dto.response.auth.LoginLinkResultDto
+import com.issueissyu.fe.data.remote.dto.response.auth.OnboardingResponse
+import com.issueissyu.fe.data.remote.dto.response.auth.LoginResponse
+import com.issueissyu.fe.data.remote.dto.response.auth.NicknameAvailabilityResponse
+import com.issueissyu.fe.data.remote.dto.response.auth.PhoneAuthEmptyResult
+import com.issueissyu.fe.data.remote.dto.response.auth.SignUpResponse
+import com.issueissyu.fe.data.remote.dto.response.auth.TermResponse
+import com.issueissyu.fe.data.remote.dto.response.auth.TokenResponse
+import com.issueissyu.fe.data.remote.dto.response.auth.UsernameAvailabilityDto
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -24,10 +30,10 @@ interface AuthApi {
     @GET("api/auth/check/nickname/{nickname}")
     suspend fun checkNickname(
         @Path("nickname") nickname: String,
-    ): BaseResponse<Boolean>
+    ): BaseResponse<NicknameAvailabilityResponse>
 
     //아이디 중복 확인
-    @GET("api/auth/check/username/{username}")
+    @GET("auth/check/username/{username}")
     suspend fun checkLocalUsernameAvailable(
         @Path("username") userName: String,
     ): BaseResponse<UsernameAvailabilityDto>
@@ -52,22 +58,30 @@ interface AuthApi {
     ): BaseResponse<LoginResponse>
 
     //약관 동의
+    @POST("api/auth/term")
+    suspend fun termAgree(
+        @Body request: TermRequest,
+    ): BaseResponse<TermResponse?>
 
     //전화 번호 인증
     @POST("api/auth/phone")
     suspend fun verifyPhone(
         @Body request: PhoneVerifyRequest,
-    ): BaseResponse<Map<String, Any>?>
+    ): BaseResponse<PhoneAuthEmptyResult?>
 
     //전화 번호 인증 번호 전송
     @POST("api/auth/phone/send")
     suspend fun sendPhoneVerificationCode(
         @Body request: PhoneSendCodeRequest,
-    ): BaseResponse<Map<String, Any>?>
+    ): BaseResponse<PhoneAuthEmptyResult?>
 
-    //온보딩
+    //온보딩 (프로필)
+    @POST("api/auth/onboarding")
+    suspend fun submitOnboarding(
+        @Body request: OnboardingRequest,
+    ): BaseResponse<OnboardingResponse?>
 
-    //로그 아웃
+    // 로그인 연동
     @POST("api/auth/login/link")
     suspend fun linkLoginAccount(
         @Body request: LoginLinkRequest,

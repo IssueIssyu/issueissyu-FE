@@ -27,7 +27,7 @@ class AuthInterceptor @Inject constructor(
     private fun Request.shouldAttachAccessToken(): Boolean {
         val path = url.encodedPath
         if (path.endsWith("/auth/signup/local")) return false
-        // 회원가입 전 아이디 중복 확인(비로그인)
+        // 회원가입 전 아이디(username) 중복 확인은 비로그인 호출
         if (path.contains("/api/auth/check/username/")) return false
         if (path.endsWith("/auth/login/local")) return false
         if (path.endsWith("/auth/login/naver")) return false
