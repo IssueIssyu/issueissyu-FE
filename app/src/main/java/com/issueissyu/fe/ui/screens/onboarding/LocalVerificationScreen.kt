@@ -39,7 +39,7 @@ import com.naver.maps.map.NaverMap
 
 private object MapDefaults {
     val SEOUL_CITY_HALL = LatLng(37.5665, 126.9780)
-    const     val PIN_SIZE = 48
+    const val PIN_SIZE = 48
     const val CARD_RADIUS = 30
     const val BUTTON_RADIUS = 12
     const val ADDRESS_BOX_HEIGHT = 56
