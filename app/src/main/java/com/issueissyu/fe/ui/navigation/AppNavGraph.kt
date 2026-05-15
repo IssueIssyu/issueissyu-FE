@@ -189,7 +189,11 @@ fun AppNavGraph(
                     .fillMaxSize()
                     .padding(paddingValues)
             ) {
-                CommunityScreen()
+                CommunityScreen(
+                    onBackClick = {
+                        navController.navigateUp()
+                    }
+                )
             }
         }
         composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }

@@ -34,6 +34,31 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
             val communityId = (index + 1).toLong()
             val kind = targetKind ?: sampleKinds[index % sampleKinds.size]
 
+            val eventStartTime = if (
+                kind == CommunityItemKind.FESTIVAL ||
+                kind == CommunityItemKind.STORE ||
+                kind == CommunityItemKind.CONTEST
+            ) {
+                "2026-05-14T00:00:00.000Z"
+            } else {
+                null
+            }
+
+            val eventEndTime = if (eventStartTime != null) {
+                "2026-05-20T00:00:00.000Z"
+            } else {
+                null
+            }
+
+            val content = when (kind) {
+                CommunityItemKind.STORE -> "신메뉴 출시 기념 할인 이벤트 진행 중"
+                CommunityItemKind.FESTIVAL -> "이번 주말 진행되는 지역 축제입니다."
+                CommunityItemKind.POLICY -> "마포구 청년 지원 정책 안내"
+                CommunityItemKind.CONTEST -> "지역 주민 대상 아이디어 공모전"
+                CommunityItemKind.CARDNEWS -> "생활 정보 카드뉴스"
+                else -> "이것은 ${tab.displayName} 탭의 ${index}번째 게시글 상세 내용입니다."
+            }
+
             CommunityFeedItem(
                 communityId = communityId,
                 pinId = when (kind) {
@@ -45,7 +70,7 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                 },
                 kind = kind,
                 title = "[${kind.name}] ${region}의 고정 소식 $index",
-                content = "이것은 ${tab.displayName} 탭의 ${index}번째 게시글 상세 내용입니다.",
+                content = content,
                 thumbnailUrl = if (index % 3 == 0) {
                     "https://picsum.photos/400/300?random=$index"
                 } else {
@@ -60,16 +85,8 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                 address = "${region} 어느 길 $index",
                 viewCount = index * 10,
                 likeCount = index * 5,
-                eventStartTime = if (kind == CommunityItemKind.FESTIVAL) {
-                    "2026-05-14T00:00:00.000Z"
-                } else {
-                    null
-                },
-                eventEndTime = if (kind == CommunityItemKind.FESTIVAL) {
-                    "2026-05-20T00:00:00.000Z"
-                } else {
-                    null
-                },
+                eventStartTime = eventStartTime,
+                eventEndTime = eventEndTime,
                 discount = if (kind == CommunityItemKind.STORE) {
                     "${(index % 5 + 1) * 10}%"
                 } else {
