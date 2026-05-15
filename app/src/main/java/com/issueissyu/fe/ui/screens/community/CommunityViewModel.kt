@@ -52,6 +52,8 @@ class CommunityViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             feedItems = feed.items,
+                            nextCursor = feed.nextCursor,
+                            hasNext = feed.hasNext,
                             isLoading = false,
                             isRefreshing = false,
                             error = null

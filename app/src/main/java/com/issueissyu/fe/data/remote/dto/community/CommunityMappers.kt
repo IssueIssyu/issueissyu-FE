@@ -17,11 +17,7 @@ fun CommunityFeedItemResponse.toCommunityFeedItem(): CommunityFeedItem {
     return CommunityFeedItem(
         communityId = this.communityId ?: 0L, // TODO: communityId null 처리 정책 확정 필요
         pinId = this.pinId,
-        kind = try {
-            this.kind?.let { CommunityItemKind.valueOf(it.uppercase()) } ?: CommunityItemKind.UNKNOWN
-        } catch (e: IllegalArgumentException) {
-            CommunityItemKind.UNKNOWN
-        },
+        kind = this.kind.toCommunityItemKind(),
         title = this.title ?: this.pinTitle ?: "제목 없음",
         content = this.content,
         thumbnailUrl = this.pinImageUrl ?: this.thumbnailUrl ?: this.storeImageUrl,
@@ -35,4 +31,17 @@ fun CommunityFeedItemResponse.toCommunityFeedItem(): CommunityFeedItem {
         discount = this.discount,
         isHot = false // TODO: isHot 필드 서버 응답 확정 시 처리 필요 (현재 false로 fallback)
     )
+}
+
+private fun String?.toCommunityItemKind(): CommunityItemKind {
+    return when (this?.trim()?.uppercase()) {
+        "ISSUE" -> CommunityItemKind.ISSUE
+        "COMMUNICATION" -> CommunityItemKind.COMMUNICATION
+        "STORE", "SHOP" -> CommunityItemKind.STORE
+        "FESTIVAL" -> CommunityItemKind.FESTIVAL
+        "POLICY" -> CommunityItemKind.POLICY
+        "CONTEST" -> CommunityItemKind.CONTEST
+        "CARDNEWS", "CARD_NEWS" -> CommunityItemKind.CARDNEWS
+        else -> CommunityItemKind.UNKNOWN
+    }
 }
