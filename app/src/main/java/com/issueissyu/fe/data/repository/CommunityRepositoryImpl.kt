@@ -51,11 +51,11 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
             }
 
             val content = when (kind) {
-                CommunityItemKind.STORE -> "신메뉴 출시 기념 할인 이벤트 진행 중"
-                CommunityItemKind.FESTIVAL -> "이번 주말 진행되는 지역 축제입니다."
-                CommunityItemKind.POLICY -> "마포구 청년 지원 정책 안내"
-                CommunityItemKind.CONTEST -> "지역 주민 대상 아이디어 공모전"
-                CommunityItemKind.CARDNEWS -> "생활 정보 카드뉴스"
+                CommunityItemKind.STORE -> "신메뉴 출시 기념 할인 이벤트 진행 중! 지금 방문하시면 혜택을 드립니다."
+                CommunityItemKind.FESTIVAL -> "이번 주말 마포아트센터에서 열리는 지역 축제입니다. 가족과 함께 오세요."
+                CommunityItemKind.POLICY -> "2026년 마포구 청년 월세 지원 정책 안내입니다. 대상자를 확인하세요."
+                CommunityItemKind.CONTEST -> "제 3회 지역 주민 대상 아이디어 공모전. 총 상금 500만원!"
+                CommunityItemKind.CARDNEWS -> "한눈에 보는 마포구 생활 정보 카드뉴스"
                 else -> "이것은 ${tab.displayName} 탭의 ${index}번째 게시글 상세 내용입니다."
             }
 
@@ -69,7 +69,14 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                     else -> null
                 },
                 kind = kind,
-                title = "[${kind.name}] ${region}의 고정 소식 $index",
+                title = when (kind) {
+                    CommunityItemKind.STORE -> "[할인] ${region} 맛집 오픈 이벤트"
+                    CommunityItemKind.FESTIVAL -> "[축제] 2026 ${region} 봄꽃 축제"
+                    CommunityItemKind.POLICY -> "[정책] ${region} 청년 지원 사업"
+                    CommunityItemKind.CONTEST -> "[공모전] ${region} 캐릭터 디자인 공모"
+                    CommunityItemKind.CARDNEWS -> "[카드뉴스] ${region} 주간 소식"
+                    else -> "[${kind.name}] ${region}의 고정 소식 $index"
+                },
                 content = content,
                 thumbnailUrl = if (index % 3 == 0) {
                     "https://picsum.photos/400/300?random=$index"
@@ -83,12 +90,12 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                 },
                 writerProfileUrl = null,
                 address = "${region} 어느 길 $index",
-                viewCount = index * 10,
-                likeCount = index * 5,
+                viewCount = index * 10 + 5,
+                likeCount = index * 5 + 2,
                 eventStartTime = eventStartTime,
                 eventEndTime = eventEndTime,
                 discount = if (kind == CommunityItemKind.STORE) {
-                    "${(index % 5 + 1) * 10}%"
+                    "${(index % 3 + 1) * 10}% 할인"
                 } else {
                     null
                 },

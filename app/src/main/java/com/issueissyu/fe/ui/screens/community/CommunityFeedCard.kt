@@ -302,8 +302,9 @@ fun PreviewCommunityFeedCardIssue() {
     CommunityFeedCard(
         item = createPreviewItem(
             kind = CommunityItemKind.ISSUE,
-            writerNickname = "이슈작성자",
-            title = "우리 동네 새로운 이슈가 발생했습니다"
+            writerNickname = "이슈알리미",
+            title = "우리 동네 새로운 이슈가 발생했습니다",
+            content = "마포구 성산동 부근에 새로운 공원이 조성될 예정입니다. 주민 여러분의 많은 관심 부탁드립니다."
         ),
         onClick = {}
     )
@@ -316,10 +317,73 @@ fun PreviewCommunityFeedCardStore() {
         item = createPreviewItem(
             kind = CommunityItemKind.STORE,
             writerNickname = null,
-            title = "맛있는 빵집 오픈 이벤트!",
-            discount = "20%",
+            title = "맛있는 빵집 오픈 1주년 이벤트!",
+            content = "오픈 1주년을 맞아 전 품목 할인 행사를 진행합니다. 맛있는 빵 드시러 오세요!",
+            discount = "30% 할인",
             eventStartTime = "2026-05-14T00:00:00.000Z",
             eventEndTime = "2026-05-20T00:00:00.000Z"
+        ),
+        onClick = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCommunityFeedCardFestival() {
+    CommunityFeedCard(
+        item = createPreviewItem(
+            kind = CommunityItemKind.FESTIVAL,
+            writerNickname = null,
+            title = "2026 마포구 봄꽃 축제",
+            content = "경의선 숲길에서 펼쳐지는 봄꽃의 향연! 다양한 공연과 먹거리가 준비되어 있습니다.",
+            eventStartTime = "2026-05-15T10:00:00.000Z",
+            eventEndTime = "2026-05-17T20:00:00.000Z"
+        ),
+        onClick = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCommunityFeedCardPolicy() {
+    CommunityFeedCard(
+        item = createPreviewItem(
+            kind = CommunityItemKind.POLICY,
+            writerNickname = null,
+            title = "청년 월세 지원 사업 안내",
+            content = "마포구에 거주하는 무주택 청년들을 대상으로 월세를 지원해드립니다. 지금 바로 신청하세요!",
+            thumbnailUrl = null
+        ),
+        onClick = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCommunityFeedCardContest() {
+    CommunityFeedCard(
+        item = createPreviewItem(
+            kind = CommunityItemKind.CONTEST,
+            writerNickname = null,
+            title = "제 1회 마포구 숏폼 영상 공모전",
+            content = "마포구의 매력을 1분 내외의 영상으로 담아주세요. 총 상금 1,000만원!",
+            eventStartTime = "2026-05-01T00:00:00.000Z",
+            eventEndTime = "2026-05-31T23:59:59.000Z"
+        ),
+        onClick = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCommunityFeedCardCardNews() {
+    CommunityFeedCard(
+        item = createPreviewItem(
+            kind = CommunityItemKind.CARDNEWS,
+            writerNickname = null,
+            title = "이번 주 마포구 주요 소식 TOP 3",
+            content = "1. 공원 조성 소식 2. 할인 행사 안내 3. 주말 날씨 정보",
+            thumbnailUrl = "https://picsum.photos/400/300?random=1"
         ),
         onClick = {}
     )
@@ -330,9 +394,9 @@ fun PreviewCommunityFeedCardStore() {
 fun PreviewRepresentativeFeedCard() {
     RepresentativeFeedCard(
         item = createPreviewItem(
-            kind = CommunityItemKind.CARDNEWS,
-            title = "이번 주 마포구 핫플레이스 TOP 5",
-            thumbnailUrl = "https://picsum.photos/400/300"
+            kind = CommunityItemKind.ISSUE,
+            title = "우리 동네 핫플레이스: 경의선 숲길 산책로",
+            thumbnailUrl = "https://picsum.photos/600/400?random=2"
         ),
         onClick = {}
     )
@@ -342,6 +406,7 @@ private fun createPreviewItem(
     kind: CommunityItemKind,
     writerNickname: String? = null,
     title: String = "테스트 제목",
+    content: String = "이것은 테스트 게시글의 상세 내용입니다.",
     discount: String? = null,
     eventStartTime: String? = null,
     eventEndTime: String? = null,
@@ -351,11 +416,11 @@ private fun createPreviewItem(
     pinId = null,
     kind = kind,
     title = title,
-    content = "이것은 테스트 게시글의 상세 내용입니다.",
+    content = content,
     thumbnailUrl = thumbnailUrl,
     writerNickname = writerNickname,
     writerProfileUrl = null,
-    address = "서울시 마포구",
+    address = "서울시 마포구 성산동",
     viewCount = 123,
     likeCount = 45,
     eventStartTime = eventStartTime,

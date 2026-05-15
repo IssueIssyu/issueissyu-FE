@@ -1,7 +1,6 @@
 package com.issueissyu.fe.ui.screens.community
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,8 +28,11 @@ import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
 import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
+import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Issue
+import com.issueissyu.fe.ui.theme.Lime
 import com.issueissyu.fe.ui.theme.Shop
+import com.issueissyu.fe.ui.theme.Title
 
 @Composable
 fun CommunityScreen(
@@ -59,14 +61,14 @@ fun CommunityScreenContent(
     val categories = remember {
         CommunityTab.visibleTabs.map { tab ->
             when (tab) {
-                CommunityTab.HOT -> CategoryItem(tab.displayName, R.drawable.issue, Issue, Color(0xFFFFEBEE))
+                CommunityTab.HOT -> CategoryItem(tab.displayName, R.drawable.ic_fire, Issue, Color(0xFFFFEBEE))
                 CommunityTab.ISSUE -> CategoryItem(tab.displayName, R.drawable.issue, Issue, Color(0xFFFFEBEE))
                 CommunityTab.STORE -> CategoryItem(tab.displayName, R.drawable.shop, Shop, Color(0xFFE8F5E9))
                 CommunityTab.FESTIVAL -> CategoryItem(tab.displayName, R.drawable.festival, Festival, Color(0xFFFFF3E0))
-                CommunityTab.POLICY -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, Color(0xFFE3F2FD)) // TODO: 전용 아이콘 교체
-                CommunityTab.CONTEST -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, Color(0xFFF3E5F5)) // TODO: 전용 아이콘 교체
-                CommunityTab.CARDNEWS -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, Color(0xFFE0F2F1)) // TODO: 전용 아이콘 교체
-                CommunityTab.ALL -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, Color(0xFFF5F5F5)) // TODO: 전용 아이콘 교체
+                CommunityTab.POLICY -> CategoryItem(tab.displayName, R.drawable.ic_policy, Gray_5, Color(0xFFE3F2FD)) // TODO: 전용 아이콘 교체
+                CommunityTab.CONTEST -> CategoryItem(tab.displayName, R.drawable.ic_award, Shop, Color(0xFFF3E5F5)) // TODO: 전용 아이콘 교체
+                CommunityTab.CARDNEWS -> CategoryItem(tab.displayName, R.drawable.ic_cardnews, Lime, Color(0xFFE0F2F1)) // TODO: 전용 아이콘 교체
+                CommunityTab.ALL -> CategoryItem(tab.displayName, R.drawable.ic_all, Title, Color(0xFFF5F5F5)) // TODO: 전용 아이콘 교체
                 else -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, Color.LightGray)
             }
         }
@@ -121,32 +123,53 @@ fun CommunityScreenContent(
         ) {
             when {
                 uiState.isLoading && !uiState.isRefreshing -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 3.dp
+                        )
+                    }
                 }
                 uiState.error != null -> {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(24.dp),
+                            .padding(horizontal = 32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = uiState.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                            textAlign = TextAlign.Center
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = Color(0xFF757575),
+                                textAlign = TextAlign.Center
+                            )
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = onRefresh) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = onRefresh,
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
+                        ) {
                             Text("다시 시도")
                         }
                     }
                 }
                 uiState.feedItems.isEmpty() -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "표시할 소식이 없습니다.",
-                            style = MaterialTheme.typography.bodyLarge.copy(color = Color.Gray)
+                            text = "현재 표시할 소식이 없습니다.\n다른 지역을 선택하거나 나중에 다시 확인해주세요.",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = Color(0xFF9E9E9E),
+                                textAlign = TextAlign.Center,
+                                lineHeight = 24.sp
+                            )
                         )
                     }
                 }
@@ -318,20 +341,33 @@ fun SectionHeader(title: String) {
 
 @Preview(showBackground = true)
 @Composable
+fun PreviewRegionDropdownPill() {
+    Box(modifier = Modifier.padding(16.dp)) {
+        RegionDropdownPill(
+            region = "마포구",
+            expanded = false,
+            onClick = {},
+            onDismissRequest = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
 fun PreviewCommunityScreen() {
     val dummyItems = listOf(
         CommunityFeedItem(
             communityId = 1L,
             pinId = null,
             kind = CommunityItemKind.ISSUE,
-            title = "우리 동네 새로운 이슈",
-            content = "내용입니다.",
-            thumbnailUrl = "https://picsum.photos/200/200",
-            writerNickname = "작성자",
+            title = "[이슈] 우리 동네 새로운 공원 조성 소식",
+            content = "마포구 성산동 부근에 새로운 공원이 조성될 예정입니다. 주민 여러분의 많은 관심 부탁드립니다.",
+            thumbnailUrl = "https://picsum.photos/400/300?random=1",
+            writerNickname = "이슈알리미",
             writerProfileUrl = null,
-            address = "마포구",
-            viewCount = 10,
-            likeCount = 5,
+            address = "서울시 마포구 성산동",
+            viewCount = 123,
+            likeCount = 45,
             eventStartTime = null,
             eventEndTime = null,
             discount = null,
@@ -341,25 +377,84 @@ fun PreviewCommunityScreen() {
             communityId = 2L,
             pinId = null,
             kind = CommunityItemKind.STORE,
-            title = "가게 홍보",
-            content = "할인 중!",
-            thumbnailUrl = null,
+            title = "[할인] 맛있는 빵집 오픈 1주년 이벤트!",
+            content = "오픈 1주년을 맞아 전 품목 할인 행사를 진행합니다. 맛있는 빵 드시러 오세요!",
+            thumbnailUrl = "https://picsum.photos/400/300?random=2",
             writerNickname = null,
             writerProfileUrl = null,
-            address = "서대문구",
-            viewCount = 20,
-            likeCount = 10,
-            eventStartTime = null,
-            eventEndTime = null,
-            discount = "10%",
+            address = "서울시 마포구 망원동",
+            viewCount = 256,
+            likeCount = 89,
+            eventStartTime = "2026-05-14T00:00:00.000Z",
+            eventEndTime = "2026-05-20T00:00:00.000Z",
+            discount = "30% 할인",
             isHot = false
+        ),
+        CommunityFeedItem(
+            communityId = 3L,
+            pinId = null,
+            kind = CommunityItemKind.FESTIVAL,
+            title = "[축제] 2026 마포구 봄꽃 축제",
+            content = "경의선 숲길에서 펼쳐지는 봄꽃의 향연! 다양한 공연과 먹거리가 준비되어 있습니다.",
+            thumbnailUrl = "https://picsum.photos/400/300?random=3",
+            writerNickname = null,
+            writerProfileUrl = null,
+            address = "서울시 마포구 연남동",
+            viewCount = 512,
+            likeCount = 128,
+            eventStartTime = "2026-05-15T10:00:00.000Z",
+            eventEndTime = "2026-05-17T20:00:00.000Z",
+            discount = null,
+            isHot = true
         )
     )
     
     CommunityScreenContent(
         uiState = CommunityUiState(
             feedItems = dummyItems,
-            selectedTab = CommunityTab.HOT
+            selectedTab = CommunityTab.HOT,
+            region = "마포구"
+        ),
+        onBackClick = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCommunityScreenEmpty() {
+    CommunityScreenContent(
+        uiState = CommunityUiState(
+            feedItems = emptyList(),
+            selectedTab = CommunityTab.ALL,
+            region = "서대문구"
+        ),
+        onBackClick = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCommunityScreenLoading() {
+    CommunityScreenContent(
+        uiState = CommunityUiState(
+            isLoading = true,
+            feedItems = emptyList(),
+            selectedTab = CommunityTab.ALL,
+            region = "마포구"
+        ),
+        onBackClick = {}
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewCommunityScreenError() {
+    CommunityScreenContent(
+        uiState = CommunityUiState(
+            error = "서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.",
+            feedItems = emptyList(),
+            selectedTab = CommunityTab.ALL,
+            region = "마포구"
         ),
         onBackClick = {}
     )
