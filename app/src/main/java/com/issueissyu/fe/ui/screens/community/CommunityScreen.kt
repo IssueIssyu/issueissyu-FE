@@ -3,7 +3,7 @@ package com.issueissyu.fe.ui.screens.community
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle // Added import
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,6 +34,7 @@ import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.Lime
 import com.issueissyu.fe.ui.theme.Shop
 import com.issueissyu.fe.ui.theme.Title
+import com.issueissyu.fe.ui.theme.suiteFontFamily // Added import
 
 @Composable
 fun CommunityScreen(
@@ -58,21 +60,21 @@ fun CommunityScreenContent(
 ) {
     var showRegionDropdown by remember { mutableStateOf(false) }
 
-    val categories = remember {
-        CommunityTab.visibleTabs.map { tab ->
+    val colorScheme = MaterialTheme.colorScheme
+
+    val categories = CommunityTab.visibleTabs.map { tab ->
             when (tab) {
-                CommunityTab.HOT -> CategoryItem(tab.displayName, R.drawable.ic_fire, Issue, Color(0xFFFFEBEE))
-                CommunityTab.ISSUE -> CategoryItem(tab.displayName, R.drawable.issue, Issue, Color(0xFFFFEBEE))
-                CommunityTab.STORE -> CategoryItem(tab.displayName, R.drawable.shop, Shop, Color(0xFFE8F5E9))
-                CommunityTab.FESTIVAL -> CategoryItem(tab.displayName, R.drawable.festival, Festival, Color(0xFFFFF3E0))
-                CommunityTab.POLICY -> CategoryItem(tab.displayName, R.drawable.ic_policy, Gray_5, Color(0xFFE3F2FD)) // TODO: 전용 아이콘 교체
-                CommunityTab.CONTEST -> CategoryItem(tab.displayName, R.drawable.ic_award, Shop, Color(0xFFF3E5F5)) // TODO: 전용 아이콘 교체
-                CommunityTab.CARDNEWS -> CategoryItem(tab.displayName, R.drawable.ic_cardnews, Lime, Color(0xFFE0F2F1)) // TODO: 전용 아이콘 교체
-                CommunityTab.ALL -> CategoryItem(tab.displayName, R.drawable.ic_all, Title, Color(0xFFF5F5F5)) // TODO: 전용 아이콘 교체
-                else -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, Color.LightGray)
+                CommunityTab.HOT -> CategoryItem(tab.displayName, R.drawable.ic_fire, Issue, colorScheme.errorContainer)
+                CommunityTab.ISSUE -> CategoryItem(tab.displayName, R.drawable.issue, Issue, colorScheme.errorContainer)
+                CommunityTab.STORE -> CategoryItem(tab.displayName, R.drawable.shop, Shop, colorScheme.secondaryContainer)
+                CommunityTab.FESTIVAL -> CategoryItem(tab.displayName, R.drawable.festival, Festival, colorScheme.tertiaryContainer)
+                CommunityTab.POLICY -> CategoryItem(tab.displayName, R.drawable.ic_policy, Gray_5, colorScheme.primaryContainer)
+                CommunityTab.CONTEST -> CategoryItem(tab.displayName, R.drawable.ic_award, Shop, colorScheme.primaryContainer)
+                CommunityTab.CARDNEWS -> CategoryItem(tab.displayName, R.drawable.ic_cardnews, Lime, colorScheme.secondaryContainer)
+                CommunityTab.ALL -> CategoryItem(tab.displayName, R.drawable.ic_all, Title, colorScheme.surfaceVariant)
+                else -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, colorScheme.outline)
             }
         }
-    }
 
     Scaffold(
         topBar = {
@@ -119,7 +121,7 @@ fun CommunityScreenContent(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(Color(0xFFF8F8F8))
+                .background(MaterialTheme.colorScheme.background) // Color(0xFFF8F8F8) -> MaterialTheme.colorScheme.background
         ) {
             when {
                 uiState.isLoading && !uiState.isRefreshing -> {
@@ -143,10 +145,13 @@ fun CommunityScreenContent(
                     ) {
                         Text(
                             text = uiState.error,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = Color(0xFF757575),
-                                textAlign = TextAlign.Center
-                            )
+                            style = TextStyle(
+                                fontFamily = suiteFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant // Color(0xFF757575) -> MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
@@ -165,8 +170,11 @@ fun CommunityScreenContent(
                     ) {
                         Text(
                             text = "현재 표시할 소식이 없습니다.\n다른 지역을 선택하거나 나중에 다시 확인해주세요.",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                color = Color(0xFF9E9E9E),
+                            style = TextStyle(
+                                fontFamily = suiteFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.outline, // Color(0xFF9E9E9E) -> MaterialTheme.colorScheme.outline
                                 textAlign = TextAlign.Center,
                                 lineHeight = 24.sp
                             )
@@ -209,7 +217,8 @@ fun CommunityScreenContent(
                                             if (index < hotItems.take(3).size - 1) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = 16.dp),
-                                                    color = Color(0xFFF5F5F5)
+                                                    color = MaterialTheme.colorScheme.surfaceVariant, // Color(0xFFF5F5F5) -> MaterialTheme.colorScheme.surfaceVariant
+                                                    thickness = 1.dp
                                                 )
                                             }
                                         }
@@ -234,7 +243,8 @@ fun CommunityScreenContent(
                                         if (index < uiState.feedItems.size - 1) {
                                             HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
-                                                color = Color(0xFFF5F5F5)
+                                                color = MaterialTheme.colorScheme.surfaceVariant, // Color(0xFFF5F5F5) -> MaterialTheme.colorScheme.surfaceVariant
+                                                thickness = 1.dp
                                             )
                                         }
                                     }
@@ -242,19 +252,24 @@ fun CommunityScreenContent(
                             }
                         } else {
                             // 일반 카테고리 탭: 리스트만 표시
-                            items(uiState.feedItems) { item ->
-                                Card(
+                            itemsIndexed(uiState.feedItems) { index, item ->
+                                Column(
                                     modifier = Modifier
-                                        .padding(horizontal = 16.dp, vertical = 6.dp)
-                                        .fillMaxWidth(),
-                                    shape = RoundedCornerShape(16.dp),
-                                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                                        .fillMaxWidth()
+                                        .background(Color.White) // 카드 느낌을 주기 위해 흰색 배경
                                 ) {
                                     CommunityFeedCard(
                                         item = item,
-                                        onClick = { /* TODO: 상세 이동 */ }
+                                        onClick = { /* TODO: 상세 이동 */ },
+                                        // 카드 내부 padding은 CommunityFeedCard 내부에서 처리되므로 여기서는 제거
                                     )
+                                    if (index < uiState.feedItems.size - 1) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 16.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant, // Color(0xFFF5F5F5) -> MaterialTheme.colorScheme.surfaceVariant
+                                            thickness = 1.dp
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -289,7 +304,7 @@ fun RegionDropdownPill(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFFF5F5F5),
+        color = MaterialTheme.colorScheme.surfaceVariant, // Color(0xFFF5F5F5) -> MaterialTheme.colorScheme.surfaceVariant
         modifier = Modifier.height(36.dp)
     ) {
         Row(
@@ -298,7 +313,8 @@ fun RegionDropdownPill(
         ) {
             Text(
                 text = region,
-                style = MaterialTheme.typography.titleMedium.copy(
+                style = TextStyle(
+                    fontFamily = suiteFontFamily,
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp
                 )
@@ -330,10 +346,11 @@ fun RegionDropdownPill(
 fun SectionHeader(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.titleMedium.copy(
+        style = TextStyle(
+            fontFamily = suiteFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
-            color = Color(0xFF212121)
+            color = MaterialTheme.colorScheme.onBackground // Color(0xFF212121) -> MaterialTheme.colorScheme.onBackground
         ),
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp)
     )
