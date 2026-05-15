@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle // Added import
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,7 +34,7 @@ import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.Lime
 import com.issueissyu.fe.ui.theme.Shop
 import com.issueissyu.fe.ui.theme.Title
-import com.issueissyu.fe.ui.theme.suiteFontFamily // Added import
+import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 @Composable
 fun CommunityScreen(
@@ -121,7 +121,7 @@ fun CommunityScreenContent(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background) // Color(0xFFF8F8F8) -> MaterialTheme.colorScheme.background
+                .background(MaterialTheme.colorScheme.background)
         ) {
             when {
                 uiState.isLoading && !uiState.isRefreshing -> {
@@ -149,7 +149,7 @@ fun CommunityScreenContent(
                                 fontFamily = suiteFontFamily,
                                 fontWeight = FontWeight.Normal,
                                 fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant // Color(0xFF757575) -> MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             ),
                             textAlign = TextAlign.Center
                         )
@@ -174,7 +174,7 @@ fun CommunityScreenContent(
                                 fontFamily = suiteFontFamily,
                                 fontWeight = FontWeight.Normal,
                                 fontSize = 16.sp,
-                                color = MaterialTheme.colorScheme.outline, // Color(0xFF9E9E9E) -> MaterialTheme.colorScheme.outline
+                                color = MaterialTheme.colorScheme.outline,
                                 textAlign = TextAlign.Center,
                                 lineHeight = 24.sp
                             )
@@ -189,7 +189,7 @@ fun CommunityScreenContent(
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
                         if (isSectionedTab) {
-                            // 대표 카드 영역
+                            // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
                             item {
                                 RepresentativeFeedCard(
                                     item = uiState.feedItems.first(),
@@ -198,7 +198,7 @@ fun CommunityScreenContent(
                                 )
                             }
 
-                            // 우리 동네 인기 소식 섹션
+                            // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
                             val hotItems = uiState.feedItems.filter { it.isHot }
                             if (hotItems.isNotEmpty()) {
                                 item {
@@ -206,7 +206,7 @@ fun CommunityScreenContent(
                                     Column(
                                         modifier = Modifier
                                             .padding(horizontal = 16.dp)
-                                            .clip(RoundedCornerShape(16.dp))
+                                            .clip(RoundedCornerShape(16.dp)) // 컨테이너 둥근 모서리
                                             .background(Color.White)
                                     ) {
                                         hotItems.take(3).forEachIndexed { index, item ->
@@ -217,7 +217,7 @@ fun CommunityScreenContent(
                                             if (index < hotItems.take(3).size - 1) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = 16.dp),
-                                                    color = MaterialTheme.colorScheme.surfaceVariant, // Color(0xFFF5F5F5) -> MaterialTheme.colorScheme.surfaceVariant
+                                                    color = MaterialTheme.colorScheme.surfaceVariant,
                                                     thickness = 1.dp
                                                 )
                                             }
@@ -226,13 +226,13 @@ fun CommunityScreenContent(
                                 }
                             }
 
-                            // 우리 동네 최근 소식 섹션
+                            // 우리 동네 최근 소식 섹션 (컨테이너를 둥글게 처리)
                             item {
                                 SectionHeader(title = "우리 동네 최근 소식 🆕")
                                 Column(
                                     modifier = Modifier
                                         .padding(horizontal = 16.dp)
-                                        .clip(RoundedCornerShape(16.dp))
+                                        .clip(RoundedCornerShape(16.dp)) // 컨테이너 둥근 모서리
                                         .background(Color.White)
                                 ) {
                                     uiState.feedItems.forEachIndexed { index, item ->
@@ -243,7 +243,7 @@ fun CommunityScreenContent(
                                         if (index < uiState.feedItems.size - 1) {
                                             HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
-                                                color = MaterialTheme.colorScheme.surfaceVariant, // Color(0xFFF5F5F5) -> MaterialTheme.colorScheme.surfaceVariant
+                                                color = MaterialTheme.colorScheme.surfaceVariant,
                                                 thickness = 1.dp
                                             )
                                         }
@@ -251,22 +251,21 @@ fun CommunityScreenContent(
                                 }
                             }
                         } else {
-                            // 일반 카테고리 탭: 리스트만 표시
+                            // 일반 카테고리 탭: 리스트만 표시 (피그마 기준 리스트형)
                             itemsIndexed(uiState.feedItems) { index, item ->
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(Color.White) // 카드 느낌을 주기 위해 흰색 배경
+                                        .background(Color.White)
                                 ) {
                                     CommunityFeedCard(
                                         item = item,
-                                        onClick = { /* TODO: 상세 이동 */ },
-                                        // 카드 내부 padding은 CommunityFeedCard 내부에서 처리되므로 여기서는 제거
+                                        onClick = { /* TODO: 상세 이동 */ }
                                     )
                                     if (index < uiState.feedItems.size - 1) {
                                         HorizontalDivider(
                                             modifier = Modifier.padding(horizontal = 16.dp),
-                                            color = MaterialTheme.colorScheme.surfaceVariant, // Color(0xFFF5F5F5) -> MaterialTheme.colorScheme.surfaceVariant
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
                                             thickness = 1.dp
                                         )
                                     }
@@ -304,7 +303,7 @@ fun RegionDropdownPill(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant, // Color(0xFFF5F5F5) -> MaterialTheme.colorScheme.surfaceVariant
+        color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.height(36.dp)
     ) {
         Row(
@@ -350,7 +349,7 @@ fun SectionHeader(title: String) {
             fontFamily = suiteFontFamily,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onBackground // Color(0xFF212121) -> MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground
         ),
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp)
     )

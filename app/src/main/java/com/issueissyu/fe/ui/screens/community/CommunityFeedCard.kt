@@ -30,6 +30,7 @@ fun CommunityFeedCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 개별 카드 모서리는 둥글게 하지 않고 리스트 아이템 형태로 유지
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -38,21 +39,21 @@ fun CommunityFeedCard(
             .padding(horizontal = 16.dp, vertical = 10.dp), // 패딩 조정
         verticalAlignment = Alignment.Top
     ) {
-        // 좌측 썸네일
+        // 좌측 썸네일 (모서리 10dp 유지)
         if (item.thumbnailUrl != null) {
             AsyncImage(
                 model = item.thumbnailUrl,
                 contentDescription = null,
                 modifier = Modifier
-                    .size(108.dp) // 크기 108.dp로 변경
-                    .clip(RoundedCornerShape(10.dp)), // 모서리 10.dp 유지
+                    .size(108.dp)
+                    .clip(RoundedCornerShape(10.dp)),
                 contentScale = ContentScale.Crop
             )
         } else {
             Box(
                 modifier = Modifier
-                    .size(108.dp) // 크기 108.dp로 변경
-                    .clip(RoundedCornerShape(10.dp)) // 모서리 10.dp 유지
+                    .size(108.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
         }
@@ -207,79 +208,81 @@ fun RepresentativeFeedCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Card 컴포넌트 제거, Row에 직접 스타일 적용
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(124.dp) // CommunityFeedCard와 동일한 높이
-            .background(Color.White) // 배경색 추가
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp), // CommunityFeedCard와 동일한 패딩
-        verticalAlignment = Alignment.CenterVertically // 썸네일과 텍스트 영역을 중앙에 정렬
+    // 대표 카드는 단독 카드처럼 보이므로 Surface로 감싸서 둥근 모서리(16dp) 적용
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        onClick = onClick
     ) {
-        // 좌측 이미지
-        if (item.thumbnailUrl != null) {
-            AsyncImage(
-                model = item.thumbnailUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(108.dp) // CommunityFeedCard와 동일한 크기
-                    .clip(RoundedCornerShape(10.dp)),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(108.dp) // CommunityFeedCard와 동일한 크기
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp)) // 이미지와 텍스트 사이 간격 유지
-
-        // 우측 텍스트
-        Column(
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight() // 높이에 맞춰 채움
-                .padding(vertical = 4.dp) // 내부 상하 패딩 추가 (조회/공감 텍스트를 포함하기 위함)
+                .height(124.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = item.title,
-                style = IssueTypo.Bold18.copy(color = MaterialTheme.colorScheme.onSurface), // IssueTypo 스타일 기반, fontSize 유지, color 적용
-                maxLines = 1, // CommunityFeedCard와 통일
-                overflow = TextOverflow.Ellipsis
-            )
-            Spacer(modifier = Modifier.height(4.dp)) // 제목과 아래 요소 사이 간격
-
-            // RepresentativeFeedCard는 광고성 콘텐츠이므로, 일반 카드처럼 주소 대신 content를 더 강조할 수 있음
-            // 또는 특정 광고성 문구를 표시하거나, 할인을 직접 표시
-            if (!item.content.isNullOrBlank()) {
-                Text(
-                    text = item.content,
-                    style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.onSurfaceVariant), // IssueTypo 스타일 기반, fontSize 유지, color 적용
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            // 좌측 이미지 (모서리 10dp 유지)
+            if (item.thumbnailUrl != null) {
+                AsyncImage(
+                    model = item.thumbnailUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(108.dp)
+                        .clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop
                 )
-                Spacer(modifier = Modifier.height(2.dp))
-            } else if (item.address != null) {
-                 Text(
-                    text = item.address,
-                    style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.onSurfaceVariant), // IssueTypo 스타일 기반, fontSize 유지, color 적용
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(108.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                 )
-                Spacer(modifier = Modifier.height(2.dp))
             }
 
+            Spacer(modifier = Modifier.width(12.dp)) // 이미지와 텍스트 사이 간격 유지
 
-            Spacer(modifier = Modifier.weight(1f)) // 조회/공감 텍스트를 하단으로 밀어냄
+            // 우측 텍스트
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight() // 높이에 맞춰 채움
+                    .padding(vertical = 4.dp) // 내부 상하 패딩 추가
+            ) {
+                Text(
+                    text = item.title,
+                    style = IssueTypo.Bold18.copy(color = MaterialTheme.colorScheme.onSurface),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp)) // 제목과 아래 요소 사이 간격
 
-            Text(
-                text = "조회 ${item.viewCount}·공감 ${item.likeCount}",
-                style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.outlineVariant) // IssueTypo 스타일 기반, fontSize 유지, color 적용
-            )
+                if (!item.content.isNullOrBlank()) {
+                    Text(
+                        text = item.content,
+                        style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                } else if (item.address != null) {
+                     Text(
+                        text = item.address,
+                        style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
+
+
+                Spacer(modifier = Modifier.weight(1f)) // 조회/공감 텍스트를 하단으로 밀어냄
+
+                Text(
+                    text = "조회 ${item.viewCount}·공감 ${item.likeCount}",
+                    style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.outlineVariant)
+                )
+            }
         }
     }
 }
