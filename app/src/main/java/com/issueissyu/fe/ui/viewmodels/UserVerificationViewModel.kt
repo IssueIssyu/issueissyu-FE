@@ -99,8 +99,7 @@ class UserVerificationViewModel @Inject constructor(
     /** 로컬 계정으로는 '연동'이 아니라 기존 아이디 로그인이 필요할 때 */
     fun onLocalPhoneRegisteredGoToLogin(onNavigateToLogin: () -> Unit) {
         viewModelScope.launch {
-            authRepository.logout()
-            onboardingSessionStore.clearPendingProfile()
+            onboardingSessionStore.exitToLogin()
             _uiState.update { it.copy(showLocalPhoneRegisteredDialog = false) }
             onNavigateToLogin()
         }
@@ -117,8 +116,7 @@ class UserVerificationViewModel @Inject constructor(
 
     fun onAlreadyLinkedGoToLogin(onNavigateToLogin: () -> Unit) {
         viewModelScope.launch {
-            authRepository.logout()
-            onboardingSessionStore.clearPendingProfile()
+            onboardingSessionStore.exitToLogin()
             _uiState.update {
                 it.copy(
                     showAlreadyLinkedDialog = false,
@@ -402,8 +400,7 @@ class UserVerificationViewModel @Inject constructor(
     fun onLinkCompletedAcknowledged(onNavigateToLogin: () -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(showLinkCompletedDialog = false) }
-            authRepository.logout()
-            onboardingSessionStore.clearPendingProfile()
+            onboardingSessionStore.exitToLogin()
             onNavigateToLogin()
         }
     }

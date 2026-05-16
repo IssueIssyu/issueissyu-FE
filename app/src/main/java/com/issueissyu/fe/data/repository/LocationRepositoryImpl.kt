@@ -1,15 +1,23 @@
 package com.issueissyu.fe.data.repository
 
-import com.issueissyu.fe.data.local.AndroidAddressGeocoder
+import android.content.Context
+import android.location.Geocoder
+import android.os.Build
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.domain.repository.LocationRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.coroutines.resume
 
 @Singleton
 class LocationRepositoryImpl @Inject constructor(
     private val locationApi: LocationApi,
-    private val addressGeocoder: AndroidAddressGeocoder,
+    @ApplicationContext private val context: Context,
 ) : LocationRepository {
 
     override suspend fun resolveAddressPreview(lat: Double, lng: Double): Result<String> {
@@ -17,8 +25,7 @@ class LocationRepositoryImpl @Inject constructor(
         if (fromServer.isSuccess) {
             return fromServer
         }
-
-        return addressGeocoder.reverseGeocode(lat, lng)
+        return reverseGeocodeOnDevice(lat, lng)
     }
 
     override suspend fun certifyUserLocation(lat: Double, lng: Double): Result<String> {
@@ -86,6 +93,45 @@ class LocationRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    private suspend fun reverseGeocodeOnDevice(lat: Double, lng: Double): Result<String> {
+        return withContext(Dispatchers.IO) {
+            if (!Geocoder.isPresent()) {
+                return@withContext Result.failure(
+                    Exception("이 기기에서는 주소 미리보기를 사용할 수 없습니다."),
+                )
+            }
+
+            runCatching {
+                val geocoder = Geocoder(context, Locale.KOREA)
+                val addresses = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    suspendCancellableCoroutine { continuation ->
+                        geocoder.getFromLocation(lat, lng, 1) { list ->
+                            if (continuation.isActive) {
+                                continuation.resume(list ?: emptyList())
+                            }
+                        }
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    geocoder.getFromLocation(lat, lng, 1) ?: emptyList()
+                }
+
+                val line = addresses.firstOrNull()?.let { address ->
+                    address.getAddressLine(0)?.takeIf { it.isNotBlank() }
+                        ?: listOfNotNull(
+                            address.adminArea,
+                            address.subAdminArea,
+                            address.thoroughfare,
+                            address.subThoroughfare,
+                        ).filter { it.isNotBlank() }.joinToString(" ").takeIf { it.isNotBlank() }
+                }
+
+                line?.let { Result.success(it) }
+                    ?: Result.failure(Exception("주소 조회 결과를 찾을 수 없습니다."))
+            }.getOrElse { Result.failure(it) }
         }
     }
 }

@@ -1,11 +1,14 @@
 package com.issueissyu.fe.data.local
 
+import com.issueissyu.fe.domain.repository.AuthRepository
 import javax.inject.Inject
 import javax.inject.Singleton
 
-// 본인 인증 입력값
+/** 본인인증 → 동네 인증 사이 프로필 입력값 (앱 프로세스 메모리). */
 @Singleton
-class OnboardingSessionStore @Inject constructor() {
+class OnboardingSessionStore @Inject constructor(
+    private val authRepository: AuthRepository,
+) {
 
     private var pendingNickname: String? = null
     private var pendingEmail: String? = null
@@ -28,5 +31,11 @@ class OnboardingSessionStore @Inject constructor() {
         pendingNickname = null
         pendingEmail = null
         pendingPhone = null
+    }
+
+    /** 온보딩 이탈: 서버 로그아웃 + 로컬 토큰 삭제 + 대기 중 프로필 초기화 */
+    suspend fun exitToLogin() {
+        authRepository.logout()
+        clearPendingProfile()
     }
 }

@@ -7,9 +7,18 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.issueissyu.fe.data.local.OnboardingSessionStore
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.launch
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -99,7 +108,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.TERM_ROUTE) {
-            OnboardingBackToLoginHandler(navController)
+            OnboardingSystemBackHandler(navController)
 
             TermScreen(
                 onAgreeClick = { navController.navigate(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) },
@@ -128,7 +137,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) {
-            OnboardingBackToLoginHandler(navController)
+            OnboardingSystemBackHandler(navController)
 
             UserVerificationScreen(
                 onVerificationComplete = { _, _, _ ->
@@ -143,7 +152,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE) {
-            OnboardingBackToLoginHandler(navController)
+            OnboardingSystemBackHandler(navController)
 
             LocalVerificationScreen(
                 onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE) }
@@ -151,7 +160,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.COMPLETE_ROUTE) {
-            OnboardingBackToLoginHandler(navController)
+            OnboardingSystemBackHandler(navController)
 
             CompleteScreen(
                 onNavigateToMain = {
@@ -238,6 +247,33 @@ fun AppNavGraph(
                 contentAlignment = Alignment.Center
             ) {
                 Text("핀 생성 화면: $pinType, PinLat: $pinLat, PinLng: $pinLng, UserLat: $userLat, UserLng: $userLng")
+            }
+        }
+    }
+}
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+internal interface OnboardingSessionEntryPoint {
+    fun onboardingSessionStore(): OnboardingSessionStore
+}
+
+@Composable
+private fun OnboardingSystemBackHandler(navController: NavHostController) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val sessionStore = remember {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            OnboardingSessionEntryPoint::class.java,
+        ).onboardingSessionStore()
+    }
+
+    BackHandler {
+        scope.launch {
+            sessionStore.exitToLogin()
+            navController.navigate(LOGIN_ROUTE) {
+                popUpTo(0) { inclusive = true }
             }
         }
     }
