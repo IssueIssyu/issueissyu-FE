@@ -2,7 +2,6 @@ package com.issueissyu.fe.data.repository
 
 import android.util.Log
 import com.issueissyu.fe.BuildConfig
-import com.issueissyu.fe.data.local.OnboardingSessionStore
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.dto.request.auth.LoginLinkRequest
@@ -28,7 +27,6 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
     private val tokenManager: TokenManager,
-    private val onboardingSessionStore: OnboardingSessionStore,
 ) : AuthRepository {
 
     companion object {
@@ -343,9 +341,20 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun logout(): Result<Unit> {
         return try {
-            runCatching { authApi.logout() }
+            val response = runCatching { authApi.logout() }.getOrNull()
             tokenManager.clearTokens()
-            Result.success(Unit)
+            when (response?.code) {
+                "LOGOUT_200",
+                "LOGOUT_401",
+                -> Result.success(Unit)
+                null -> Result.success(Unit)
+                else ->
+                    if (response.isSuccess) {
+                        Result.success(Unit)
+                    } else {
+                        Result.success(Unit)
+                    }
+            }
         } catch (e: Exception) {
             tokenManager.clearTokens()
             Result.success(Unit)
@@ -543,7 +552,6 @@ class AuthRepositoryImpl @Inject constructor(
     ): Result<Unit> {
         return try {
             val socialForRequest = tokenManager.getLoginSocialType()?.takeIf { it.isNotBlank() }
-                ?: onboardingSessionStore.socialType.takeIf { it.isNotBlank() }
                 ?: socialType
             val response = authApi.linkLoginAccount(
                 LoginLinkRequest(

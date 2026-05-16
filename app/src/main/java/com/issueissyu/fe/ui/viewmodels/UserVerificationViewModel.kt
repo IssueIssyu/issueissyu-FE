@@ -88,8 +88,7 @@ class UserVerificationViewModel @Inject constructor(
     }
 
     private fun sessionSocialTypeForUi(): String =
-        tokenManager.getLoginSocialType()?.takeIf { it.isNotBlank() }
-            ?: onboardingSessionStore.socialType
+        tokenManager.getLoginSocialType()?.takeIf { it.isNotBlank() } ?: "LOCAL"
 
     fun dismissLocalPhoneRegisteredDialog() {
         _uiState.update {
@@ -99,10 +98,12 @@ class UserVerificationViewModel @Inject constructor(
 
     /** 로컬 계정으로는 '연동'이 아니라 기존 아이디 로그인이 필요할 때 */
     fun onLocalPhoneRegisteredGoToLogin(onNavigateToLogin: () -> Unit) {
-        tokenManager.clearTokens()
-        onboardingSessionStore.clearAll()
-        _uiState.update { it.copy(showLocalPhoneRegisteredDialog = false) }
-        onNavigateToLogin()
+        viewModelScope.launch {
+            authRepository.logout()
+            onboardingSessionStore.clearPendingProfile()
+            _uiState.update { it.copy(showLocalPhoneRegisteredDialog = false) }
+            onNavigateToLogin()
+        }
     }
 
     fun dismissAlreadyLinkedDialog() {
@@ -115,17 +116,19 @@ class UserVerificationViewModel @Inject constructor(
     }
 
     fun onAlreadyLinkedGoToLogin(onNavigateToLogin: () -> Unit) {
-        tokenManager.clearTokens()
-        onboardingSessionStore.clearAll()
-        _uiState.update {
-            it.copy(
-                showAlreadyLinkedDialog = false,
-                alreadyLinkedMessage = null,
-                showAccountLinkDialog = false,
-                accountLinkError = null,
-            )
+        viewModelScope.launch {
+            authRepository.logout()
+            onboardingSessionStore.clearPendingProfile()
+            _uiState.update {
+                it.copy(
+                    showAlreadyLinkedDialog = false,
+                    alreadyLinkedMessage = null,
+                    showAccountLinkDialog = false,
+                    accountLinkError = null,
+                )
+            }
+            onNavigateToLogin()
         }
-        onNavigateToLogin()
     }
 
     fun onNicknameChange(nickname: String) {
@@ -354,12 +357,12 @@ class UserVerificationViewModel @Inject constructor(
 
     fun confirmAccountLink() {
         val phone = _uiState.value.phoneNumber
-        val socialType = onboardingSessionStore.socialType
+        val socialType = tokenManager.getLoginSocialType()?.takeIf { it.isNotBlank() } ?: "LOCAL"
         viewModelScope.launch {
             _uiState.update { it.copy(isLinkingAccount = true, accountLinkError = null) }
             authRepository.linkLogin(phone, socialType).fold(
                 onSuccess = {
-                    onboardingSessionStore.clearAll()
+                    onboardingSessionStore.clearPendingProfile()
                     _uiState.update {
                         it.copy(
                             showAccountLinkDialog = false,
@@ -400,7 +403,7 @@ class UserVerificationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(showLinkCompletedDialog = false) }
             authRepository.logout()
-            onboardingSessionStore.clearAll()
+            onboardingSessionStore.clearPendingProfile()
             onNavigateToLogin()
         }
     }

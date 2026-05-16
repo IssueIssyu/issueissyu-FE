@@ -99,11 +99,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.TERM_ROUTE) {
-            BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            OnboardingBackToLoginHandler(navController)
 
             TermScreen(
                 onAgreeClick = { navController.navigate(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) },
@@ -132,11 +128,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) {
-            BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            OnboardingBackToLoginHandler(navController)
 
             UserVerificationScreen(
                 onVerificationComplete = { _, _, _ ->
@@ -151,11 +143,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE) {
-            BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            OnboardingBackToLoginHandler(navController)
 
             LocalVerificationScreen(
                 onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE) }
@@ -163,15 +151,11 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.COMPLETE_ROUTE) {
-            BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            OnboardingBackToLoginHandler(navController)
 
             CompleteScreen(
                 onNavigateToMain = {
-                    navController.navigate(AppDestinations.HOME_ROUTE) {
+                    navController.navigate(AppDestinations.TOWN_ROUTE) {
                         popUpTo(0) { inclusive = true }
                     }
                 },

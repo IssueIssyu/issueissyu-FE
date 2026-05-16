@@ -1,26 +1,15 @@
 package com.issueissyu.fe.data.local
 
-import com.issueissyu.fe.domain.model.OnboardingProfile
 import javax.inject.Inject
 import javax.inject.Singleton
 
+// 본인 인증 입력값
 @Singleton
 class OnboardingSessionStore @Inject constructor() {
 
     private var pendingNickname: String? = null
     private var pendingEmail: String? = null
     private var pendingPhone: String? = null
-
-    /** 현재 온보딩 흐름의 소셜 타입. "LOCAL" | "NAVER" */
-    var socialType: String = "LOCAL"
-        private set
-
-    var lastCompletedProfile: OnboardingProfile? = null
-        private set
-
-    fun setSocialType(type: String) {
-        socialType = type
-    }
 
     fun setPendingProfile(nickname: String, email: String, phone: String) {
         pendingNickname = nickname
@@ -39,21 +28,5 @@ class OnboardingSessionStore @Inject constructor() {
         pendingNickname = null
         pendingEmail = null
         pendingPhone = null
-    }
-
-    fun clearAll() {
-        pendingNickname = null
-        pendingEmail = null
-        pendingPhone = null
-        socialType = "LOCAL"
-        lastCompletedProfile = null
-    }
-
-    fun setCompletedProfile(profile: OnboardingProfile) {
-        lastCompletedProfile = profile
-    }
-
-    fun clearCompletedProfile() {
-        lastCompletedProfile = null
     }
 }

@@ -2,7 +2,6 @@ package com.issueissyu.fe.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.data.local.OnboardingSessionStore
 import com.issueissyu.fe.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -26,7 +25,6 @@ data class LoginUiState(
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val onboardingSessionStore: OnboardingSessionStore,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -82,7 +80,6 @@ class LoginViewModel @Inject constructor(
                     return@launch
                 }
 
-                onboardingSessionStore.setSocialType("LOCAL")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -133,7 +130,6 @@ class LoginViewModel @Inject constructor(
                     return@launch
                 }
 
-                onboardingSessionStore.setSocialType("NAVER")
                 _uiState.update {
                     it.copy(
                         isLoading = false,
