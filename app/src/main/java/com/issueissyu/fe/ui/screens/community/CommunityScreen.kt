@@ -334,7 +334,10 @@ fun RegionSelectorSheet(
     onDismissRequest: () -> Unit,
     onRegionSelected: (String) -> Unit
 ) {
-    var selectedProvince by remember { mutableStateOf("서울") }
+    // currentRegion이 포함된 province를 찾아 초기값으로 설정
+    val initialProvince = dummyDistrictsMap.entries.find { it.value.contains(currentRegion) }?.key ?: "서울"
+    
+    var selectedProvince by remember { mutableStateOf(initialProvince) }
     var draftRegion by remember { mutableStateOf(currentRegion) }
 
     ModalBottomSheet(
@@ -396,7 +399,6 @@ fun RegionSelectorSheet(
             // Footer
             SelectedRegionFooter(
                 selectedRegion = draftRegion,
-                onRemove = { draftRegion = "" },
                 onApply = { 
                     if (draftRegion.isNotEmpty()) {
                         onRegionSelected(draftRegion)
@@ -454,14 +456,21 @@ fun RegionDistrictList(
         modifier = modifier
             .fillMaxHeight()
             .background(Color.White)
+            .padding(horizontal = 12.dp)
     ) {
+        item { Spacer(modifier = Modifier.height(8.dp)) }
         items(districts) { district ->
             val isSelected = district == selectedDistrict
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        if (isSelected) BrandColor.copy(alpha = 0.08f)
+                        else Color.Transparent
+                    )
                     .clickable { onDistrictSelected(district) }
-                    .padding(vertical = 16.dp, horizontal = 20.dp),
+                    .padding(vertical = 12.dp, horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -472,25 +481,26 @@ fun RegionDistrictList(
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         fontSize = 15.sp,
                         color = if (isSelected) BrandColor else Gray_8
-                    )
+                    ),
+                    modifier = Modifier.weight(1f)
                 )
                 if (isSelected) {
                     Icon(
                         imageVector = Icons.Default.Check,
                         contentDescription = "선택됨",
                         tint = BrandColor,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
         }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
     }
 }
 
 @Composable
 fun SelectedRegionFooter(
     selectedRegion: String,
-    onRemove: () -> Unit,
     onApply: () -> Unit
 ) {
     Column(
@@ -499,53 +509,6 @@ fun SelectedRegionFooter(
             .background(Color.White)
             .padding(16.dp)
     ) {
-        Text(
-            text = "선택한 곳 ${if (selectedRegion.isEmpty()) 0 else 1}/10",
-            style = TextStyle(
-                fontFamily = suiteFontFamily,
-                fontWeight = FontWeight.Normal,
-                fontSize = 13.sp,
-                color = Gray_6
-            )
-        )
-        
-        Spacer(modifier = Modifier.height(12.dp))
-        
-        if (selectedRegion.isNotEmpty()) {
-            Surface(
-                shape = RoundedCornerShape(20.dp),
-                color = BrandColor.copy(alpha = 0.1f),
-                border = BorderStroke(1.dp, BrandColor),
-                modifier = Modifier.height(36.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                ) {
-                    Text(
-                        text = selectedRegion,
-                        style = TextStyle(
-                            fontFamily = suiteFontFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 14.sp,
-                            color = BrandColor
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "삭제",
-                        tint = BrandColor,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clickable { onRemove() }
-                    )
-                }
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
         Button(
             onClick = onApply,
             modifier = Modifier
@@ -781,7 +744,6 @@ fun PreviewRegionSelectorSheet() {
                 // Footer
                 SelectedRegionFooter(
                     selectedRegion = "마포구",
-                    onRemove = {},
                     onApply = {}
                 )
             }
