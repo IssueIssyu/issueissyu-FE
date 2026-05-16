@@ -86,7 +86,7 @@ class LocalVerificationViewModel @Inject constructor(
     }
 
     private suspend fun fetchAddressPreview(lat: Double, lng: Double) {
-        locationRepository.locationVerification(lat, lng).fold(
+        locationRepository.resolveAddressPreview(lat, lng).fold(
             onSuccess = { address ->
                 lastPreviewErrorMessage = null
                 if (address.isNotBlank()) {
@@ -99,35 +99,30 @@ class LocalVerificationViewModel @Inject constructor(
                 } else {
                     _uiState.update {
                         it.copy(
-                            currentAddress = if (it.currentAddress.isNotBlank()) {
-                                it.currentAddress
-                            } else {
-                                "지도를 움직여 동네 주소를 확인해 주세요"
-                            },
-                            isAddressResolved = false,
+                            currentAddress = "지도를 움직여 동네 주소를 확인해 주세요",
+                            isAddressResolved = hasValidCoordinates(it),
                         )
                     }
                 }
             },
             onFailure = {
-                val message = it.message ?: "주소 조회에 실패했습니다"
+                val message = it.message ?: "주소 미리보기에 실패했습니다"
                 if (lastPreviewErrorMessage != message) {
                     lastPreviewErrorMessage = message
                     _event.emit(UiEvent.ShowError(message))
                 }
                 _uiState.update {
                     it.copy(
-                        currentAddress = if (it.currentAddress.isNotBlank()) {
-                            it.currentAddress
-                        } else {
-                            "지도를 움직여 동네 주소를 확인해 주세요"
-                        },
-                        isAddressResolved = false,
+                        currentAddress = "위치는 선택되었습니다. 확인을 눌러 동네를 등록해 주세요.",
+                        isAddressResolved = hasValidCoordinates(it),
                     )
                 }
             },
         )
     }
+
+    private fun hasValidCoordinates(state: UiState): Boolean =
+        state.latitude != null && state.longitude != null
 
     fun registerLocation() {
         val state = _uiState.value
@@ -142,7 +137,7 @@ class LocalVerificationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            locationRepository.locationVerification(state.latitude!!, state.longitude!!).fold(
+            locationRepository.certifyUserLocation(state.latitude!!, state.longitude!!).fold(
                 onSuccess = { address ->
                     if (address.isNotBlank()) {
                         _uiState.update { it.copy(currentAddress = address) }
@@ -162,8 +157,7 @@ class LocalVerificationViewModel @Inject constructor(
                         email = pending.second,
                         phone = pending.third,
                     ).fold(
-                        onSuccess = { profile ->
-                            onboardingSessionStore.setCompletedProfile(profile)
+                        onSuccess = {
                             onboardingSessionStore.clearPendingProfile()
                             tokenManager.clearNewUserFlag()
                             _uiState.update { it.copy(isLoading = false) }

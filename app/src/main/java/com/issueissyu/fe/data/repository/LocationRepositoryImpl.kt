@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.data.local.AndroidAddressGeocoder
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.domain.repository.LocationRepository
 import javax.inject.Inject
@@ -8,11 +9,21 @@ import javax.inject.Singleton
 @Singleton
 class LocationRepositoryImpl @Inject constructor(
     private val locationApi: LocationApi,
+    private val addressGeocoder: AndroidAddressGeocoder,
 ) : LocationRepository {
 
-    override suspend fun locationVerification(lat: Double, lng: Double): Result<String> {
+    override suspend fun resolveAddressPreview(lat: Double, lng: Double): Result<String> {
+        val fromServer = resolveAddressFromServer(lat, lng)
+        if (fromServer.isSuccess) {
+            return fromServer
+        }
+
+        return addressGeocoder.reverseGeocode(lat, lng)
+    }
+
+    override suspend fun certifyUserLocation(lat: Double, lng: Double): Result<String> {
         return try {
-            val response = locationApi.locationVerification(lat, lng)
+            val response = locationApi.certifyUserLocation(lat, lng)
             when (response.code) {
                 "LOCATION_200_4" -> {
                     val address = response.result?.address?.takeIf { it.isNotBlank() }.orEmpty()
@@ -56,6 +67,22 @@ class LocationRepositoryImpl @Inject constructor(
                             Exception(response.message.ifBlank { "위치 인증에 실패했습니다." }),
                         )
                     }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private suspend fun resolveAddressFromServer(lat: Double, lng: Double): Result<String> {
+        return try {
+            val response = locationApi.resolveAddress(lat, lng)
+            val address = response.result?.address?.takeIf { it.isNotBlank() }
+            if (response.isSuccess && address != null) {
+                Result.success(address)
+            } else {
+                Result.failure(
+                    Exception(response.message.ifBlank { "주소 조회에 실패했습니다." }),
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
