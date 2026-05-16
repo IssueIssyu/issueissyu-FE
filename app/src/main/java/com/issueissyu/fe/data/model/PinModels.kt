@@ -34,14 +34,33 @@ sealed interface AuthoredPinDetail : PinDetail {
     val writer: PinUser
 }
 
+// 시민해결사 한 명의 참여 단위.
+// TODO: 서버 명세 확정 후 필드 타입(시간 포맷 등) 정합성 재검토 필요.
+data class IssueResolverParticipation(
+    val user: PinUser,
+    val joinedAt: String,
+    val proofImageUrls: List<String> = emptyList(),
+    val proofSubmittedAt: String? = null,
+    val isConfirmedByWriter: Boolean = false,
+    val confirmedAt: String? = null
+)
+
 data class IssuePinDetail(
     override val writer: PinUser,
     val resolutionStatus: ResolutionStatus = ResolutionStatus.BEFORE_RESOLUTION,
-    val resolver: PinUser? = null,
+    // 지금가요를 누른 시민해결사 전체 목록.
+    // TODO: 서버 응답 구조 확정 시 필요한 필드(예: 페이지네이션 등) 보강.
+    val resolverParticipations: List<IssueResolverParticipation> = emptyList(),
+    // 작성자가 최종 해결자로 인정한 유저 한 명. 서버의 RESOLVED 상태와 함께 신뢰.
+    val resolvedBy: PinUser? = null,
+    // TODO: resolverParticipations.proofImageUrls로 이전 검토 (서버 명세 확정 후 제거 후보).
     val resolutionProofImageUrls: List<String> = emptyList(),
     val resolvedAt: String? = null,
     val petitionCount: Int = 0,
-    val isPetitionedByMe: Boolean = false
+    val isPetitionedByMe: Boolean = false,
+    // 청원 progress bar에서 "민원 메일 조건까지 남은 수" 계산용.
+    // TODO: 서버 정책값/응답 위치 확정 시 별도 config로 분리 검토.
+    val petitionTargetCount: Int? = null
 ) : AuthoredPinDetail { // AuthoredPinDetail 구현
     override val category = PinCategory.ISSUE
 }
