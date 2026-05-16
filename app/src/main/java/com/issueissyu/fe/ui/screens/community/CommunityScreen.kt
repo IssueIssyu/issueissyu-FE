@@ -282,7 +282,7 @@ fun CommunityScreenContent(
 }
 
 private fun String?.toCommunityTab(): CommunityTab {
-    return CommunityTab.values().find { it.displayName == this } ?: CommunityTab.ALL
+    return CommunityTab.entries.find { it.displayName == this } ?: CommunityTab.ALL
 }
 
 @Composable

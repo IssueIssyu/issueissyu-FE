@@ -6,6 +6,7 @@ import com.issueissyu.fe.domain.model.community.CommunityItemKind
 
 private const val DEFAULT_COMMUNITY_TITLE = "제목 없음"
 
+@Suppress("unused") // TODO: 실제 CommunityApi 연결 시 사용 예정
 fun CommunityFeedResponse.toCommunityFeed(): CommunityFeed {
     return CommunityFeed(
         items = this.content?.map { it.toCommunityFeedItem() } ?: emptyList(),

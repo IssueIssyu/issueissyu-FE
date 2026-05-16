@@ -14,7 +14,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
@@ -307,7 +306,7 @@ private fun formatDate(dateString: String?): String {
         val zonedDateTime = ZonedDateTime.parse(dateString)
         val formatter = DateTimeFormatter.ofPattern("MM.dd", Locale.getDefault())
         zonedDateTime.format(formatter)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         dateString // 파싱 실패 시 원본 문자열 반환
     }
 }
