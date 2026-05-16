@@ -6,13 +6,19 @@ import com.issueissyu.fe.domain.model.TermsAgreementResult
 
 interface AuthRepository {
 
-    //회원 가입
+    /** 로컬 회원가입 — 성공 시 토큰은 저장하지 않음(로그인 화면으로만 이동). */
     suspend fun signUpLocal(
         userName: String,
         password: String,
-    ): Result<String>
+    ): Result<Unit>
 
-    //로그인
+    //네이버 로그인
+    suspend fun loginNaver(
+        accessToken: String,
+        refreshToken: String
+    ): Result<AuthUser>
+
+    // 로컬 로그인
     suspend fun loginLocal(
         userName: String,
         password: String,
@@ -21,6 +27,8 @@ interface AuthRepository {
     //토큰 재발급
     suspend fun refreshToken(): Result<Unit>
 
+    /** 서버 세션 종료 후 로컬 토큰 삭제(실패해도 로컬은 비움). */
+    suspend fun logout(): Result<Unit>
 
     //아이디 중복 확인
     suspend fun checkLocalUsernameAvailable(userName: String): Result<Boolean>
@@ -49,7 +57,7 @@ interface AuthRepository {
     //로그인 연동
     suspend fun linkLogin(
         phoneDigits: String,
-        socialType: String = "LOCAL",
+        socialType: String,
     ): Result<Unit>
 
     //온보딩 (프로필 제출)

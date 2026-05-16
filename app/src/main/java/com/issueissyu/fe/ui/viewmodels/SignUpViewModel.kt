@@ -162,25 +162,12 @@ class SignUpViewModel @Inject constructor(
             val signUpResult = authRepository.signUpLocal(id, pw)
             signUpResult.fold(
                 onSuccess = {
-                    val loginResult = authRepository.loginLocal(id, pw)
-                    loginResult.fold(
-                        onSuccess = {
-                            updateState {
-                                copy(
-                                    isSubmitting = false,
-                                    signUpSuccess = true,
-                                )
-                            }
-                        },
-                        onFailure = { e ->
-                            updateState {
-                                copy(
-                                    isSubmitting = false,
-                                    userPwError = e.message ?: "자동 로그인에 실패했습니다",
-                                )
-                            }
-                        },
-                    )
+                    updateState {
+                        copy(
+                            isSubmitting = false,
+                            signUpSuccess = true,
+                        )
+                    }
                 },
                 onFailure = { e ->
                     val msg = e.message ?: "회원가입에 실패했습니다"

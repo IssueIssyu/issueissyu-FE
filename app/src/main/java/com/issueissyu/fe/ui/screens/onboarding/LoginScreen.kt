@@ -1,5 +1,7 @@
 package com.issueissyu.fe.ui.screens.onboarding
 
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,9 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
@@ -28,8 +32,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.R
+import com.navercorp.nid.NaverIdLoginSDK
+import com.navercorp.nid.oauth.OAuthLoginCallback
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -40,6 +48,7 @@ import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.suiteFontFamily
+import com.issueissyu.fe.ui.viewmodels.LoginEffect
 import com.issueissyu.fe.ui.viewmodels.LoginViewModel
 
 @Composable
@@ -49,11 +58,15 @@ fun LoginScreen(
     onNavigateToSignUp: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val onLoginSuccessUpdated by rememberUpdatedState(onLoginSuccess)
 
-    LaunchedEffect(uiState.navigateWithIsNew) {
-        uiState.navigateWithIsNew?.let { isNew ->
-            onLoginSuccess(isNew)
-            viewModel.consumeLoginNavigation()
+    LaunchedEffect(Unit) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                LoginEffect.NavigateToTerms -> onLoginSuccessUpdated(true)
+                LoginEffect.NavigateToMain -> onLoginSuccessUpdated(false)
+            }
         }
     }
 
@@ -65,7 +78,47 @@ fun LoginScreen(
         onUserIdChange = viewModel::updateUserId,
         onUserPwChange = viewModel::updatePassword,
         onLocalClick = viewModel::localLogin,
-        onNaverClick = viewModel::naverLogin,
+        onNaverClick = {
+            when {
+                uiState.isLoading -> Unit
+                BuildConfig.NAVER_CLIENT_ID.isBlank() -> {
+                    viewModel.reportNaverLoginError(
+                        "naver.client.id가 비어 있습니다. local.properties를 확인하세요.",
+                    )
+                }
+                else -> {
+                    val activity = context.findFragmentActivityForNaver()
+                    if (activity == null) {
+                        viewModel.reportNaverLoginError(
+                            "로그인 화면(Activity)을 찾지 못했습니다. 앱을 다시 실행해 보세요.",
+                        )
+                    } else {
+                        NaverIdLoginSDK.authenticate(
+                            activity,
+                            object : OAuthLoginCallback {
+                                override fun onSuccess() {
+                                    val access = NaverIdLoginSDK.getAccessToken().orEmpty()
+                                    val refresh = NaverIdLoginSDK.getRefreshToken().orEmpty()
+                                    viewModel.naverLogin(access, refresh)
+                                }
+
+                                override fun onFailure(httpStatus: Int, message: String) {
+                                    viewModel.reportNaverLoginError(
+                                        message.ifBlank { "네이버 로그인 실패 ($httpStatus)" },
+                                    )
+                                }
+
+                                override fun onError(errorCode: Int, message: String) {
+                                    viewModel.reportNaverLoginError(
+                                        message.ifBlank { "네이버 로그인 오류 ($errorCode)" },
+                                    )
+                                }
+                            },
+                        )
+                    }
+                }
+            }
+        },
         onSignUpClick = onNavigateToSignUp
     )
 }
@@ -239,4 +292,19 @@ fun LoginScreenPreview(){
         onNaverClick = {},
         onSignUpClick = {}
     )
+}
+
+private fun Context.findFragmentActivityForNaver(): FragmentActivity? {
+    var current: Context = this
+    while (true) {
+        when (current) {
+            is FragmentActivity -> return current
+            is ContextWrapper -> {
+                val next = current.baseContext
+                if (next === current) return null
+                current = next
+            }
+            else -> return null
+        }
+    }
 }

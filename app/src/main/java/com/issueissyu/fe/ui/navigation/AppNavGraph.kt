@@ -42,7 +42,7 @@ fun AppNavGraph(
             SplashScreen(
                 viewModel = hiltViewModel(),
                 onNavigateToMain = {
-                    navController.navigate(AppDestinations.HOME_ROUTE) {
+                    navController.navigate(AppDestinations.TOWN_ROUTE) {
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
                 },
@@ -50,16 +50,29 @@ fun AppNavGraph(
                     navController.navigate(AppDestinations.Onboarding.LOGIN_ROUTE) {
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
-                }
+                },
+                onNavigateToOnboarding = {
+                    navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
+                        popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
+                    }
+                },
             )
         }
 
         composable(AppDestinations.Onboarding.LOGIN_ROUTE) {
             LoginScreen(
                 viewModel = hiltViewModel(),
-                onNavigateToMain = {
-                    navController.navigate(AppDestinations.HOME_ROUTE) {
-                        popUpTo(AppDestinations.Onboarding.LOGIN_ROUTE) { inclusive = true }
+                onLoginSuccess = { isNewUser ->
+                    if (isNewUser) {
+                        navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
+                            popUpTo(AppDestinations.Onboarding.LOGIN_ROUTE) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        navController.navigate(AppDestinations.TOWN_ROUTE) {
+                            popUpTo(AppDestinations.Onboarding.LOGIN_ROUTE) { inclusive = true }
+                            launchSingleTop = true
+                        }
                     }
                 },
                 onNavigateToSignUp = {
@@ -77,9 +90,11 @@ fun AppNavGraph(
 
             SignUpScreen(
                 viewModel = hiltViewModel(),
-                onNavigateToVerification = {
-                    navController.navigate(AppDestinations.Onboarding.TERM_ROUTE)
-                }
+                onSignUpCompleteNavigateToLogin = {
+                    navController.navigate(AppDestinations.Onboarding.LOGIN_ROUTE) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
 
@@ -126,7 +141,12 @@ fun AppNavGraph(
             UserVerificationScreen(
                 onVerificationComplete = { _, _, _ ->
                     navController.navigate(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE)
-                }
+                },
+                onNavigateToLogin = {
+                    navController.navigate(AppDestinations.Onboarding.LOGIN_ROUTE) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
             )
         }
 

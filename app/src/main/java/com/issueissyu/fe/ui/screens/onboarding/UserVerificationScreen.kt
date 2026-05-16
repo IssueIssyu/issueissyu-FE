@@ -30,10 +30,95 @@ import com.issueissyu.fe.ui.viewmodels.UserVerificationViewModel.Companion.Verif
 @Composable
 fun UserVerificationScreen(
     viewModel: UserVerificationViewModel = hiltViewModel(),
-    onVerificationComplete: (nickname: String, email: String, phoneNumber: String) -> Unit
+    onVerificationComplete: (nickname: String, email: String, phoneNumber: String) -> Unit,
+    onNavigateToLogin: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val emailDomains = listOf("선택", "naver.com", "gmail.com", "daum.net", "직접 입력")
+
+    if (uiState.showLocalPhoneRegisteredDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissLocalPhoneRegisteredDialog() },
+            title = {
+                Text(
+                    text = "이미 가입된 번호예요",
+                    style = IssueTypo.Bold18,
+                )
+            },
+            text = {
+                Text(
+                    text = "이 번호는 이미 로컬(아이디) 계정으로 가입되어 있어요. " +
+                        "새로 가입하는 대신, 기존에 쓰던 아이디로 로그인해 주세요.",
+                    style = IssueTypo.Regular15.copy(color = Text),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onLocalPhoneRegisteredGoToLogin(onNavigateToLogin) },
+                ) {
+                    Text("로그인으로", style = IssueTypo.Bold12.copy(color = BrandColor))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissLocalPhoneRegisteredDialog() }) {
+                    Text("닫기", style = IssueTypo.Regular12.copy(color = Gray_5))
+                }
+            },
+        )
+    }
+
+    if (uiState.showAlreadyLinkedDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissAlreadyLinkedDialog() },
+            title = {
+                Text(
+                    text = "연동할 수 없어요",
+                    style = IssueTypo.Bold18,
+                )
+            },
+            text = {
+                Text(
+                    text = uiState.alreadyLinkedMessage
+                        ?: "이미 연동된 계정이에요. 로그인 화면에서 다시 시도해 주세요.",
+                    style = IssueTypo.Regular15.copy(color = Text),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onAlreadyLinkedGoToLogin(onNavigateToLogin) },
+                ) {
+                    Text("로그인으로", style = IssueTypo.Bold12.copy(color = BrandColor))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissAlreadyLinkedDialog() }) {
+                    Text("닫기", style = IssueTypo.Regular12.copy(color = Gray_5))
+                }
+            },
+        )
+    }
+
+    if (uiState.showLinkCompletedDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Text("연동 완료", style = IssueTypo.Bold18)
+            },
+            text = {
+                Text(
+                    "계정 연동이 완료되었어요. 확인을 누르면 로그아웃 후 로그인 화면으로 이동합니다.",
+                    style = IssueTypo.Regular15.copy(color = Text),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onLinkCompletedAcknowledged(onNavigateToLogin) },
+                ) {
+                    Text("확인", style = IssueTypo.Bold12.copy(color = BrandColor))
+                }
+            },
+        )
+    }
 
     if (uiState.showAccountLinkDialog) {
         AlertDialog(
@@ -75,23 +160,6 @@ fun UserVerificationScreen(
                 }
             },
         )
-    }
-
-    // 인증번호 6자리 입력 시 자동 확인 (확인 버튼과 동일 API).
-    // 인증 실패 후 codeError가 남아 있으면 같은 6자리로 effect가 재실행되며 무한 호출되지 않도록 건너뜀.
-    LaunchedEffect(
-        uiState.verificationCode,
-        uiState.isVerificationCodeSent,
-        uiState.isCodeVerified,
-        uiState.isVerifyingCode,
-        uiState.codeError,
-    ) {
-        if (uiState.isCodeVerified) return@LaunchedEffect
-        if (uiState.isVerifyingCode) return@LaunchedEffect
-        if (uiState.codeError != null) return@LaunchedEffect
-        if (uiState.verificationCode.length == UserVerificationViewModel.VerificationCodeLength && uiState.isVerificationCodeSent) {
-            viewModel.verifyCode()
-        }
     }
 
     UserVerificationContent(
@@ -528,7 +596,7 @@ private fun VerificationCodeSection(
         )
 
         Text(
-            text = "문자로 받은 ${VerificationCodeLength}자리를 입력한 뒤 [확인]을 누르세요. 입력이 끝나면 자동으로 확인하기도 합니다.",
+            text = "문자로 받은 ${VerificationCodeLength}자리를 입력한 뒤 [확인]을 누르세요.",
             style = IssueTypo.Regular12.copy(color = Gray_5),
             modifier = Modifier.padding(horizontal = 5.dp),
         )

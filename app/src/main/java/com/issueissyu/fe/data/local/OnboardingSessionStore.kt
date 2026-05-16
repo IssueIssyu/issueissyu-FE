@@ -11,8 +11,16 @@ class OnboardingSessionStore @Inject constructor() {
     private var pendingEmail: String? = null
     private var pendingPhone: String? = null
 
+    /** 현재 온보딩 흐름의 소셜 타입. "LOCAL" | "NAVER" */
+    var socialType: String = "LOCAL"
+        private set
+
     var lastCompletedProfile: OnboardingProfile? = null
         private set
+
+    fun setSocialType(type: String) {
+        socialType = type
+    }
 
     fun setPendingProfile(nickname: String, email: String, phone: String) {
         pendingNickname = nickname
@@ -31,6 +39,14 @@ class OnboardingSessionStore @Inject constructor() {
         pendingNickname = null
         pendingEmail = null
         pendingPhone = null
+    }
+
+    fun clearAll() {
+        pendingNickname = null
+        pendingEmail = null
+        pendingPhone = null
+        socialType = "LOCAL"
+        lastCompletedProfile = null
     }
 
     fun setCompletedProfile(profile: OnboardingProfile) {

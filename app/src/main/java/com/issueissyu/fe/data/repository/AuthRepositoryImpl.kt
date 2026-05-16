@@ -2,17 +2,21 @@ package com.issueissyu.fe.data.repository
 
 import android.util.Log
 import com.issueissyu.fe.BuildConfig
+import com.issueissyu.fe.data.local.OnboardingSessionStore
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.data.remote.api.AuthApi
-import com.issueissyu.fe.data.remote.dto.request.AuthLocalRequest
-import com.issueissyu.fe.data.remote.dto.request.LoginLinkRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.LoginLinkRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.OnboardingRequest
 import com.issueissyu.fe.data.remote.dto.request.PhoneSendCodeRequest
 import com.issueissyu.fe.data.remote.dto.request.PhoneVerifyRequest
 import com.issueissyu.fe.data.remote.dto.request.RefreshTokenRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.AuthLocalRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.NaverLoginRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.TermRequest
 import com.issueissyu.fe.data.remote.dto.response.auth.OnboardingResponse
+import com.issueissyu.fe.domain.auth.AccountAlreadyLinkedException
 import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
+import com.issueissyu.fe.domain.auth.RefreshTokenUnauthorizedException
 import com.issueissyu.fe.domain.model.AuthUser
 import com.issueissyu.fe.domain.model.OnboardingProfile
 import com.issueissyu.fe.domain.model.TermsAgreementResult
@@ -23,11 +27,20 @@ import javax.inject.Singleton
 @Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val onboardingSessionStore: OnboardingSessionStore,
 ) : AuthRepository {
 
     companion object {
         private const val TAG = "AuthRepository"
+    }
+
+    private fun isAlreadyLinkedLinkMessage(code: String, message: String): Boolean {
+        if (code == "LOGIN_LINK_409" || code == "LOGIN_LINK_409_1" || code == "LOGIN_LINK_409_2") {
+            return true
+        }
+        val m = message
+        return m.contains("이미") && (m.contains("연동") || m.contains("연결"))
     }
 
     private fun safeMessage(rawMessage: String?, fallback: String): String {
@@ -37,7 +50,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun signUpLocal(
         userName: String,
         password: String
-    ): Result<String> {
+    ): Result<Unit> {
         return try {
             val request = AuthLocalRequest(userName, password)
             val response = authApi.signUpLocal(request)
@@ -51,7 +64,7 @@ class AuthRepositoryImpl @Inject constructor(
                             "signUpLocal success code=${response.code} message=${response.message} userName=$signedUpName",
                         )
                     }
-                    Result.success(signedUpName)
+                    Result.success(Unit)
                 }
 
                 "LOCAL_SIGNUP_409_1" ->
@@ -84,6 +97,96 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    //네이버 앱 로그인
+    override suspend fun loginNaver(
+        accessToken: String,
+        refreshToken: String
+    ): Result<AuthUser> {
+        return try {
+            val request = NaverLoginRequest(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+            )
+            val response = authApi.loginNaver(request)
+
+            when (response.code) {
+                "NAVER_LOGIN_200_1",
+                "NAVER_LOGIN_200_2",
+                -> {
+                    val result = response.result
+                        ?: return Result.failure(
+                            Exception(
+                                safeMessage(response.message as String?, "네이버 로그인 응답이 올바르지 않습니다."),
+                            ),
+                        )
+
+                    val tempUuidRaw: String? = result.user.tempUuid
+                    val uuidRaw: String? = result.user.uuid
+                    val userNameRaw: String? = result.user.userName
+
+                    val resolvedTempUuid = tempUuidRaw?.takeIf { it.isNotBlank() }
+                    if (result.isNew && resolvedTempUuid == null) {
+                        return Result.failure(
+                            Exception(
+                                safeMessage(
+                                    response.message as String?,
+                                    "신규 회원 응답(tempUuid)이 올바르지 않습니다.",
+                                ),
+                            ),
+                        )
+                    }
+                    if (resolvedTempUuid == null) {
+                        tokenManager.clearTempUuid()
+                    }
+
+                    val resolvedUuid = uuidRaw?.takeIf { it.isNotBlank() }
+                        ?: resolvedTempUuid
+                        ?: return Result.failure(
+                            Exception(
+                                safeMessage(
+                                    response.message as String?,
+                                    "로그인 응답(사용자 식별자)이 올바르지 않습니다.",
+                                ),
+                            ),
+                        )
+                    val resolvedUserName = userNameRaw?.takeIf { it.isNotBlank() } ?: "NAVER_USER"
+
+                    tokenManager.saveTokens(
+                        accessToken = result.accessToken,
+                        refreshToken = result.refreshToken,
+                        isNewUser = result.isNew,
+                        tempUuid = resolvedTempUuid,
+                        loginSocialType = result.socialType.takeIf { it.isNotBlank() },
+                    )
+
+                    Result.success(
+                        AuthUser(
+                            uuid = resolvedUuid,
+                            userName = resolvedUserName,
+                            isNew = result.isNew,
+                        ),
+                    )
+                }
+
+                "NAVER_LOGIN_401" ->
+                    Result.failure(
+                        Exception(safeMessage(response.message as String?, "유효하지 않은 값이 존재합니다.")),
+                    )
+
+                "COMMON_500" ->
+                    Result.failure(
+                        Exception(safeMessage(response.message as String?, "InternalServerError")),
+                    )
+
+                else ->
+                    Result.failure(
+                        Exception(safeMessage(response.message as String?, "네이버 로그인에 실패했습니다.")),
+                    )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
     //로컬 로그인
     override suspend fun loginLocal(
         userName: String,
@@ -116,15 +219,30 @@ class AuthRepositoryImpl @Inject constructor(
                     val userNameRaw: String? = result.user.userName
 
                     val resolvedTempUuid = tempUuidRaw?.takeIf { it.isNotBlank() }
+                    if (result.isNew && resolvedTempUuid == null) {
+                        return Result.failure(
+                            Exception(
+                                safeMessage(
+                                    response.message as String?,
+                                    "신규 회원 응답(tempUuid)이 올바르지 않습니다.",
+                                ),
+                            ),
+                        )
+                    }
+                    if (resolvedTempUuid == null) {
+                        tokenManager.clearTempUuid()
+                    }
+
+                    val resolvedUuid = uuidRaw?.takeIf { it.isNotBlank() }
+                        ?: resolvedTempUuid
                         ?: return Result.failure(
                             Exception(
                                 safeMessage(
                                     response.message as String?,
-                                    "로그인 응답(tempUuid)이 올바르지 않습니다.",
+                                    "로그인 응답(사용자 식별자)이 올바르지 않습니다.",
                                 ),
                             ),
                         )
-                    val resolvedUuid = uuidRaw?.takeIf { it.isNotBlank() } ?: resolvedTempUuid
                     val resolvedUserName = userNameRaw?.takeIf { it.isNotBlank() } ?: userName
 
                     tokenManager.saveTokens(
@@ -132,6 +250,7 @@ class AuthRepositoryImpl @Inject constructor(
                         refreshToken = result.refreshToken,
                         isNewUser = result.isNew,
                         tempUuid = resolvedTempUuid,
+                        loginSocialType = result.socialType.takeIf { it.isNotBlank() },
                     )
 
                     val authUser = AuthUser(
@@ -196,7 +315,9 @@ class AuthRepositoryImpl @Inject constructor(
 
                 "REFRESH_401" ->
                     Result.failure(
-                        Exception(response.message.ifBlank { "유효하지 않은 토큰입니다." }),
+                        RefreshTokenUnauthorizedException(
+                            response.message.ifBlank { "유효하지 않은 토큰입니다." },
+                        ),
                     )
 
                 else ->
@@ -207,13 +328,27 @@ class AuthRepositoryImpl @Inject constructor(
                         )
                         Result.success(Unit)
                     } else {
-                        Result.failure(
-                            Exception(response.message.ifBlank { "토큰 재발급에 실패했습니다." }),
-                        )
+                        val msg = response.message.ifBlank { "토큰 재발급에 실패했습니다." }
+                        if (response.code == "REFRESH_401") {
+                            Result.failure(RefreshTokenUnauthorizedException(msg))
+                        } else {
+                            Result.failure(Exception(msg))
+                        }
                     }
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    override suspend fun logout(): Result<Unit> {
+        return try {
+            runCatching { authApi.logout() }
+            tokenManager.clearTokens()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            tokenManager.clearTokens()
+            Result.success(Unit)
         }
     }
 
@@ -349,7 +484,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    //전화번호 인증번호 전송 (api/auth/phone/send — 응답 코드 PHONE_SEND_*)
+    //전화번호 인증번호 전송
     override suspend fun sendPhoneVerificationCode(phoneDigits: String): Result<Unit> {
         return try {
             val response = authApi.sendPhoneVerificationCode(
@@ -371,7 +506,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    //전화번호 인증 (api/auth/phone — 응답 코드 PHONE_*)
+    //전화번호 인증
     override suspend fun verifyPhoneCode(
         phoneDigits: String,
         code: String,
@@ -401,31 +536,58 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    //로그인 연동 (api/auth/login/link — 응답 코드 LOGIN_LINK_*)
+    //로그인 연동
     override suspend fun linkLogin(
         phoneDigits: String,
         socialType: String,
     ): Result<Unit> {
         return try {
+            val socialForRequest = tokenManager.getLoginSocialType()?.takeIf { it.isNotBlank() }
+                ?: onboardingSessionStore.socialType.takeIf { it.isNotBlank() }
+                ?: socialType
             val response = authApi.linkLoginAccount(
                 LoginLinkRequest(
                     phone = toDashedPhone(phoneDigits),
-                    socialType = socialType,
+                    socialType = socialForRequest,
                 ),
             )
-            when (response.code) {
-                "LOGIN_LINK_200" -> Result.success(Unit)
-                "LOGIN_LINK_400" ->
-                    Result.failure(
-                        Exception(response.message.ifBlank { "로그인 연동에 실패했습니다." }),
+
+            fun persistLinkedSession(): Result<Unit> {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "로그인 연동 응답이 올바르지 않습니다." },
+                        ),
                     )
+                result.uuid?.takeIf { it.isNotBlank() }
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "연동 응답(uuid)이 올바르지 않습니다." },
+                        ),
+                    )
+                // 연동 직후에는 로그아웃·로그인 화면으로만 갈 것 — isNew/토큰 재저장으로 스플래시·다른 화면이 메인으로 튀는 레이스 방지
+                tokenManager.clearTempUuid()
+                return Result.success(Unit)
+            }
+
+            val failMessage = response.message.ifBlank { "로그인 연동에 실패했습니다." }
+            when (response.code) {
+                "LOGIN_LINK_200" -> persistLinkedSession()
+                "LOGIN_LINK_400" ->
+                    if (isAlreadyLinkedLinkMessage(response.code, failMessage)) {
+                        Result.failure(AccountAlreadyLinkedException(failMessage))
+                    } else {
+                        Result.failure(Exception(failMessage))
+                    }
                 else ->
                     if (response.isSuccess) {
-                        Result.success(Unit)
+                        persistLinkedSession()
                     } else {
-                        Result.failure(
-                            Exception(response.message.ifBlank { "로그인 연동에 실패했습니다." }),
-                        )
+                        if (isAlreadyLinkedLinkMessage(response.code, failMessage)) {
+                            Result.failure(AccountAlreadyLinkedException(failMessage))
+                        } else {
+                            Result.failure(Exception(failMessage))
+                        }
                     }
             }
         } catch (e: Exception) {
@@ -433,7 +595,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    //온보딩 (응답 코드 ONBOAREDING_* — 스펙 철자 그대로)
+    //온보딩
     override suspend fun onboarding(
         nickname: String,
         email: String,
@@ -486,10 +648,10 @@ class AuthRepositoryImpl @Inject constructor(
 
     private fun toDashedPhone(rawPhone: String): String {
         val digits = rawPhone.filter { it.isDigit() }
-        return if (digits.length == 11) {
-            "${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7, 11)}"
-        } else {
-            digits
+        return when (digits.length) {
+            11 -> "${digits.substring(0, 3)}-${digits.substring(3, 7)}-${digits.substring(7, 11)}"
+            10 -> "${digits.substring(0, 3)}-${digits.substring(3, 6)}-${digits.substring(6, 10)}"
+            else -> digits
         }
     }
 }

@@ -3,6 +3,8 @@ package com.issueissyu.fe.ui.viewmodels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.data.local.OnboardingSessionStore
+import com.issueissyu.fe.data.local.TokenManager
+import com.issueissyu.fe.domain.auth.AccountAlreadyLinkedException
 import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
 import com.issueissyu.fe.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,12 +41,23 @@ data class UserVerificationUiState(
     val showAccountLinkDialog: Boolean = false,
     val isLinkingAccount: Boolean = false,
     val accountLinkError: String? = null,
+
+    /** 로컬 가입/로그인 세션인데, 전화번호가 이미 다른 로컬 계정에 쓰인 경우(소셜 연동 아님) */
+    val showLocalPhoneRegisteredDialog: Boolean = false,
+
+    /** 연동 API가 "이미 연동됨" 등으로 거절한 뒤 안내 */
+    val showAlreadyLinkedDialog: Boolean = false,
+    val alreadyLinkedMessage: String? = null,
+
+    /** 연동 성공 후 로그아웃 안내 */
+    val showLinkCompletedDialog: Boolean = false,
 )
 
 @HiltViewModel
 class UserVerificationViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val onboardingSessionStore: OnboardingSessionStore,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserVerificationUiState())
@@ -72,6 +85,47 @@ class UserVerificationViewModel @Inject constructor(
                     && state.isCodeVerified,
             )
         }
+    }
+
+    private fun sessionSocialTypeForUi(): String =
+        tokenManager.getLoginSocialType()?.takeIf { it.isNotBlank() }
+            ?: onboardingSessionStore.socialType
+
+    fun dismissLocalPhoneRegisteredDialog() {
+        _uiState.update {
+            it.copy(showLocalPhoneRegisteredDialog = false)
+        }
+    }
+
+    /** 로컬 계정으로는 '연동'이 아니라 기존 아이디 로그인이 필요할 때 */
+    fun onLocalPhoneRegisteredGoToLogin(onNavigateToLogin: () -> Unit) {
+        tokenManager.clearTokens()
+        onboardingSessionStore.clearAll()
+        _uiState.update { it.copy(showLocalPhoneRegisteredDialog = false) }
+        onNavigateToLogin()
+    }
+
+    fun dismissAlreadyLinkedDialog() {
+        _uiState.update {
+            it.copy(
+                showAlreadyLinkedDialog = false,
+                alreadyLinkedMessage = null,
+            )
+        }
+    }
+
+    fun onAlreadyLinkedGoToLogin(onNavigateToLogin: () -> Unit) {
+        tokenManager.clearTokens()
+        onboardingSessionStore.clearAll()
+        _uiState.update {
+            it.copy(
+                showAlreadyLinkedDialog = false,
+                alreadyLinkedMessage = null,
+                showAccountLinkDialog = false,
+                accountLinkError = null,
+            )
+        }
+        onNavigateToLogin()
     }
 
     fun onNicknameChange(nickname: String) {
@@ -178,6 +232,10 @@ class UserVerificationViewModel @Inject constructor(
                 verificationCode = "",
                 showAccountLinkDialog = false,
                 accountLinkError = null,
+                showLocalPhoneRegisteredDialog = false,
+                showAlreadyLinkedDialog = false,
+                alreadyLinkedMessage = null,
+                showLinkCompletedDialog = false,
             )
         }
         updateSignupEnabled()
@@ -261,11 +319,13 @@ class UserVerificationViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     if (e is ExistingPhoneRequiresLinkException) {
+                        val isLocalSession = sessionSocialTypeForUi().equals("LOCAL", ignoreCase = true)
                         _uiState.update {
                             it.copy(
                                 isCodeVerified = false,
                                 isVerifyingCode = false,
-                                showAccountLinkDialog = true,
+                                showAccountLinkDialog = !isLocalSession,
+                                showLocalPhoneRegisteredDialog = isLocalSession,
                             )
                         }
                     } else {
@@ -294,30 +354,54 @@ class UserVerificationViewModel @Inject constructor(
 
     fun confirmAccountLink() {
         val phone = _uiState.value.phoneNumber
+        val socialType = onboardingSessionStore.socialType
         viewModelScope.launch {
             _uiState.update { it.copy(isLinkingAccount = true, accountLinkError = null) }
-            authRepository.linkLogin(phone).fold(
+            authRepository.linkLogin(phone, socialType).fold(
                 onSuccess = {
+                    onboardingSessionStore.clearAll()
                     _uiState.update {
                         it.copy(
                             showAccountLinkDialog = false,
                             isLinkingAccount = false,
-                            isCodeVerified = true,
-                            codeError = null,
-                            phoneError = null,
+                            accountLinkError = null,
+                            showLinkCompletedDialog = true,
                         )
                     }
-                    updateSignupEnabled()
                 },
                 onFailure = { e ->
-                    _uiState.update {
-                        it.copy(
-                            isLinkingAccount = false,
-                            accountLinkError = e.message ?: "연동에 실패했습니다",
-                        )
+                    when (e) {
+                        is AccountAlreadyLinkedException -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLinkingAccount = false,
+                                    showAccountLinkDialog = false,
+                                    accountLinkError = null,
+                                    showAlreadyLinkedDialog = true,
+                                    alreadyLinkedMessage = e.message,
+                                )
+                            }
+                        }
+                        else -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLinkingAccount = false,
+                                    accountLinkError = e.message ?: "연동에 실패했습니다",
+                                )
+                            }
+                        }
                     }
                 },
             )
+        }
+    }
+
+    fun onLinkCompletedAcknowledged(onNavigateToLogin: () -> Unit) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(showLinkCompletedDialog = false) }
+            authRepository.logout()
+            onboardingSessionStore.clearAll()
+            onNavigateToLogin()
         }
     }
 
