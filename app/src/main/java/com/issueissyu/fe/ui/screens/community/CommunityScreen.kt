@@ -1,13 +1,20 @@
 package com.issueissyu.fe.ui.screens.community
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,14 +34,7 @@ import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.community.CommunityTab
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
-import com.issueissyu.fe.ui.theme.Communication
-import com.issueissyu.fe.ui.theme.Festival
-import com.issueissyu.fe.ui.theme.Gray_5
-import com.issueissyu.fe.ui.theme.Issue
-import com.issueissyu.fe.ui.theme.Lime
-import com.issueissyu.fe.ui.theme.Shop
-import com.issueissyu.fe.ui.theme.Title
-import com.issueissyu.fe.ui.theme.suiteFontFamily
+import com.issueissyu.fe.ui.theme.*
 
 @Composable
 fun CommunityScreen(
@@ -47,18 +47,21 @@ fun CommunityScreen(
         uiState = uiState,
         onBackClick = onBackClick,
         onTabSelected = viewModel::onTabSelected,
-        onRefresh = viewModel::onRefresh
+        onRefresh = viewModel::onRefresh,
+        onRegionSelected = viewModel::onRegionSelected
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityScreenContent(
     uiState: CommunityUiState,
     onBackClick: (() -> Unit)? = null,
     onTabSelected: (CommunityTab) -> Unit = {},
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    onRegionSelected: (String) -> Unit = {}
 ) {
-    var showRegionDropdown by remember { mutableStateOf(false) }
+    var showRegionSelector by remember { mutableStateOf(false) }
 
     val colorScheme = MaterialTheme.colorScheme
 
@@ -111,9 +114,7 @@ fun CommunityScreenContent(
 
                     RegionDropdownPill(
                         region = uiState.region,
-                        expanded = showRegionDropdown,
-                        onClick = { showRegionDropdown = true },
-                        onDismissRequest = { showRegionDropdown = false }
+                        onClick = { showRegionSelector = true }
                     )
                 }
             }
@@ -279,6 +280,17 @@ fun CommunityScreenContent(
             }
         }
     }
+
+    if (showRegionSelector) {
+        RegionSelectorSheet(
+            currentRegion = uiState.region,
+            onDismissRequest = { showRegionSelector = false },
+            onRegionSelected = { region ->
+                onRegionSelected(region)
+                showRegionSelector = false
+            }
+        )
+    }
 }
 
 private fun String?.toCommunityTab(): CommunityTab {
@@ -288,9 +300,7 @@ private fun String?.toCommunityTab(): CommunityTab {
 @Composable
 fun RegionDropdownPill(
     region: String,
-    expanded: Boolean,
-    onClick: () -> Unit,
-    onDismissRequest: () -> Unit
+    onClick: () -> Unit
 ) {
     Surface(
         onClick = onClick,
@@ -315,23 +325,260 @@ fun RegionDropdownPill(
                 contentDescription = null,
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+}
 
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = onDismissRequest
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RegionSelectorSheet(
+    currentRegion: String,
+    onDismissRequest: () -> Unit,
+    onRegionSelected: (String) -> Unit
+) {
+    var selectedProvince by remember { mutableStateOf("서울") }
+    var draftRegion by remember { mutableStateOf(currentRegion) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        containerColor = Color.White,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        dragHandle = null
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.8f)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                DropdownMenuItem(
-                    text = { Text("마포구") },
-                    onClick = onDismissRequest
+                Text(
+                    text = "지역 선택",
+                    style = TextStyle(
+                        fontFamily = suiteFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Title
+                    )
                 )
-                DropdownMenuItem(
-                    text = { Text("서대문구") },
-                    onClick = onDismissRequest
+                IconButton(onClick = onDismissRequest) {
+                    Icon(Icons.Default.Close, contentDescription = "닫기")
+                }
+            }
+
+            // Body
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                // Left: Provinces
+                RegionProvinceList(
+                    provinces = dummyProvinces,
+                    selectedProvince = selectedProvince,
+                    onProvinceSelected = { selectedProvince = it },
+                    modifier = Modifier.width(120.dp)
+                )
+
+                // Right: Districts
+                RegionDistrictList(
+                    districts = dummyDistrictsMap[selectedProvince] ?: emptyList(),
+                    selectedDistrict = draftRegion,
+                    onDistrictSelected = { draftRegion = it },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Footer
+            SelectedRegionFooter(
+                selectedRegion = draftRegion,
+                onRemove = { draftRegion = "" },
+                onApply = { 
+                    if (draftRegion.isNotEmpty()) {
+                        onRegionSelected(draftRegion)
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun RegionProvinceList(
+    provinces: List<String>,
+    selectedProvince: String,
+    onProvinceSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxHeight()
+            .background(Gray_1)
+    ) {
+        items(provinces) { province ->
+            val isSelected = province == selectedProvince
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onProvinceSelected(province) }
+                    .background(if (isSelected) Color.White else Color.Transparent)
+                    .padding(vertical = 16.dp, horizontal = 16.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = province,
+                    style = TextStyle(
+                        fontFamily = suiteFontFamily,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 15.sp,
+                        color = if (isSelected) BrandColor else Gray_6
+                    )
                 )
             }
         }
     }
 }
+
+@Composable
+fun RegionDistrictList(
+    districts: List<String>,
+    selectedDistrict: String,
+    onDistrictSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxHeight()
+            .background(Color.White)
+    ) {
+        items(districts) { district ->
+            val isSelected = district == selectedDistrict
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDistrictSelected(district) }
+                    .padding(vertical = 16.dp, horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = district,
+                    style = TextStyle(
+                        fontFamily = suiteFontFamily,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = 15.sp,
+                        color = if (isSelected) BrandColor else Gray_8
+                    )
+                )
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Default.Check,
+                        contentDescription = "선택됨",
+                        tint = BrandColor,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SelectedRegionFooter(
+    selectedRegion: String,
+    onRemove: () -> Unit,
+    onApply: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "선택한 곳 ${if (selectedRegion.isEmpty()) 0 else 1}/10",
+            style = TextStyle(
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 13.sp,
+                color = Gray_6
+            )
+        )
+        
+        Spacer(modifier = Modifier.height(12.dp))
+        
+        if (selectedRegion.isNotEmpty()) {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = BrandColor.copy(alpha = 0.1f),
+                border = BorderStroke(1.dp, BrandColor),
+                modifier = Modifier.height(36.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                ) {
+                    Text(
+                        text = selectedRegion,
+                        style = TextStyle(
+                            fontFamily = suiteFontFamily,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp,
+                            color = BrandColor
+                        )
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "삭제",
+                        tint = BrandColor,
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clickable { onRemove() }
+                    )
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Button(
+            onClick = onApply,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = BrandColor,
+                contentColor = Color.White
+            ),
+            enabled = selectedRegion.isNotEmpty()
+        ) {
+            Text(
+                text = "적용하기",
+                style = TextStyle(
+                    fontFamily = suiteFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            )
+        }
+    }
+}
+
+private val dummyProvinces = listOf("서울", "경기", "인천", "강원", "대전", "세종", "충남", "충북", "부산", "울산", "경남", "경북")
+private val dummyDistrictsMap = mapOf(
+    "서울" to listOf("전체", "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"),
+    "경기" to listOf("전체", "수원시", "고양시", "용인시", "성남시", "부천시", "화성시", "안산시", "남양주시", "안양시", "평택시"),
+    "인천" to listOf("전체", "중구", "동구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서구"),
+    "강원" to listOf("전체", "춘천시", "원주시", "강릉시", "동해시", "태백시", "속초시", "삼척시")
+)
 
 @Composable
 fun SectionHeader(title: String) {
@@ -353,9 +600,7 @@ fun PreviewRegionDropdownPill() {
     Box(modifier = Modifier.padding(16.dp)) {
         RegionDropdownPill(
             region = "마포구",
-            expanded = false,
-            onClick = {},
-            onDismissRequest = {}
+            onClick = {}
         )
     }
 }
@@ -423,7 +668,8 @@ fun PreviewCommunityScreen() {
             selectedTab = CommunityTab.HOT,
             region = "마포구"
         ),
-        onBackClick = {}
+        onBackClick = {},
+        onRegionSelected = {}
     )
 }
 
@@ -436,7 +682,8 @@ fun PreviewCommunityScreenEmpty() {
             selectedTab = CommunityTab.ALL,
             region = "서대문구"
         ),
-        onBackClick = {}
+        onBackClick = {},
+        onRegionSelected = {}
     )
 }
 
@@ -450,7 +697,8 @@ fun PreviewCommunityScreenLoading() {
             selectedTab = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {}
+        onBackClick = {},
+        onRegionSelected = {}
     )
 }
 
@@ -464,6 +712,81 @@ fun PreviewCommunityScreenError() {
             selectedTab = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {}
+        onBackClick = {},
+        onRegionSelected = {}
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true)
+@Composable
+fun PreviewRegionSelectorSheet() {
+    // 바텀시트 내부 UI만 확인하기 위해 시트의 컨텐츠 구조를 직접 렌더링
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = Color.Black.copy(alpha = 0.32f) // 배경 딤 처리 시뮬레이션
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.8f)
+                    .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    .background(Color.White)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "지역 선택",
+                        style = TextStyle(
+                            fontFamily = suiteFontFamily,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = Title
+                        )
+                    )
+                    IconButton(onClick = {}) {
+                        Icon(Icons.Default.Close, contentDescription = "닫기")
+                    }
+                }
+
+                // Body
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    RegionProvinceList(
+                        provinces = dummyProvinces,
+                        selectedProvince = "서울",
+                        onProvinceSelected = {},
+                        modifier = Modifier.width(120.dp)
+                    )
+
+                    RegionDistrictList(
+                        districts = dummyDistrictsMap["서울"] ?: emptyList(),
+                        selectedDistrict = "마포구",
+                        onDistrictSelected = {},
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                // Footer
+                SelectedRegionFooter(
+                    selectedRegion = "마포구",
+                    onRemove = {},
+                    onApply = {}
+                )
+            }
+        }
+    }
 }

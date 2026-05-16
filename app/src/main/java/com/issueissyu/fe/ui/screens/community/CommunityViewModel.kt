@@ -36,6 +36,20 @@ class CommunityViewModel @Inject constructor(
         loadFeed(isRefreshing = true)
     }
 
+    fun onRegionSelected(region: String) {
+        if (_uiState.value.region == region) return
+        _uiState.update {
+            it.copy(
+                region = region,
+                nextCursor = null,
+                hasNext = false,
+                feedItems = emptyList(),
+                isLoading = true
+            )
+        }
+        loadFeed()
+    }
+
     private fun loadFeed(isRefreshing: Boolean = false) {
         viewModelScope.launch {
             getCommunityFeedUseCase(
