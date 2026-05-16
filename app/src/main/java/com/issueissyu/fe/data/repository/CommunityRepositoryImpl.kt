@@ -117,11 +117,14 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
     override fun getCommunityDetail(
         communityId: Long
     ): Flow<CommunityDetail> = flow {
-        val kind = when ((communityId % 4).toInt()) {
+        val kind = when ((communityId % 7).toInt()) {
             0 -> CommunityItemKind.ISSUE
-            1 -> CommunityItemKind.STORE
-            2 -> CommunityItemKind.FESTIVAL
-            else -> CommunityItemKind.POLICY
+            1 -> CommunityItemKind.COMMUNICATION
+            2 -> CommunityItemKind.STORE
+            3 -> CommunityItemKind.FESTIVAL
+            4 -> CommunityItemKind.POLICY
+            5 -> CommunityItemKind.CONTEST
+            else -> CommunityItemKind.CARDNEWS
         }
 
         emit(
@@ -139,30 +142,68 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                 },
                 kind = kind,
                 title = when (kind) {
-                    CommunityItemKind.STORE -> "마포구 맛집 오픈 이벤트"
-                    CommunityItemKind.FESTIVAL -> "2026 마포구 봄꽃 축제"
-                    CommunityItemKind.POLICY -> "마포구 청년 지원 정책"
-                    else -> "우리 동네 새로운 이슈"
+                    CommunityItemKind.ISSUE -> "우리 동네 새로운 공원 조성 소식"
+                    CommunityItemKind.COMMUNICATION -> "성산동 근처 맛있는 카페 추천해주세요!"
+                    CommunityItemKind.STORE -> "맛있는 빵집 오픈 1주년 전품목 할인 이벤트"
+                    CommunityItemKind.FESTIVAL -> "2026 마포구 봄꽃 축제 안내"
+                    CommunityItemKind.POLICY -> "청년 월세 지원 사업 신청 안내"
+                    CommunityItemKind.CONTEST -> "제 1회 마포구 숏폼 영상 공모전"
+                    else -> "이번 주 마포구 주요 소식 TOP 3"
                 },
-                content = "커뮤니티 상세 화면 더미 본문입니다. 실제 API 연결 전까지 화면 구조 확인용으로 사용합니다.",
+                content = """
+                    이것은 커뮤니티 게시글 상세 내용입니다. 
+                    실제 서비스에서는 백엔드에서 받아온 풍부한 내용이 표시됩니다.
+                    
+                    줄바꿈이 포함된 여러 줄의 텍스트를 테스트하기 위한 본문입니다.
+                    가독성을 위해 줄 간격이 여유 있게 설정되어야 합니다.
+                    
+                    AI 신뢰도 점수와 사유, 그리고 각종 반응 영역이 하단에 배치됩니다.
+                """.trimIndent(),
                 imageUrls = listOf(
-                    "https://picsum.photos/600/400?random=$communityId"
+                    "https://picsum.photos/800/600?random=${communityId}_1",
+                    "https://picsum.photos/800/600?random=${communityId}_2",
+                    "https://picsum.photos/800/600?random=${communityId}_3"
                 ),
                 writerNickname = if (kind == CommunityItemKind.ISSUE || kind == CommunityItemKind.COMMUNICATION) {
-                    "작성자 $communityId"
+                    "이슈알리미"
                 } else {
                     null
                 },
-                writerProfileUrl = null,
-                address = "서울 마포구 어느 길 $communityId",
-                viewCount = communityId.toInt() * 10,
-                likeCount = communityId.toInt() * 3,
-                createdAt = "2026-05-14T00:00:00.000Z",
+                writerProfileUrl = if (kind == CommunityItemKind.ISSUE || kind == CommunityItemKind.COMMUNICATION) {
+                    "https://picsum.photos/200/200?random=$communityId"
+                } else {
+                    null
+                },
+                address = "서울시 마포구 성산동 123-45",
+                viewCount = 1234,
+                likeCount = 56,
+                createdAt = "2026-05-16T12:00:00.000Z",
                 updatedAt = null,
                 isReported = false,
                 isPetitioned = false,
                 isProblemSolver = false,
-                isMine = false
+                isMine = false,
+                reliabilityScore = when (kind) {
+                    CommunityItemKind.ISSUE -> null
+                    CommunityItemKind.COMMUNICATION -> 65
+                    CommunityItemKind.STORE -> 92
+                    CommunityItemKind.FESTIVAL -> 78
+                    CommunityItemKind.POLICY -> 88
+                    CommunityItemKind.CONTEST -> 60
+                    CommunityItemKind.CARDNEWS -> 70
+                    else -> null
+                },
+                reliabilityReason = when (kind) {
+                    CommunityItemKind.COMMUNICATION -> "일부 표현이 주관적이며 근거 자료가 부족합니다."
+                    CommunityItemKind.CONTEST -> "기간 및 주최 정보 확인이 필요합니다."
+                    else -> null
+                },
+                discount = if (kind == CommunityItemKind.STORE) "전 품목 20% 할인" else null,
+                eventStartTime = if (kind == CommunityItemKind.STORE || kind == CommunityItemKind.FESTIVAL) "2026-05-14T00:00:00.000Z" else null,
+                eventEndTime = if (kind == CommunityItemKind.STORE || kind == CommunityItemKind.FESTIVAL) "2026-05-20T00:00:00.000Z" else null,
+                petitionCount = if (kind == CommunityItemKind.ISSUE) 450 else 0,
+                petitionTargetCount = if (kind == CommunityItemKind.ISSUE) 1000 else null,
+                isPetitionedByMe = false
             )
         )
     }

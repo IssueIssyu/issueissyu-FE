@@ -1,33 +1,58 @@
 package com.issueissyu.fe.ui.screens.community.detail
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
+import com.issueissyu.fe.ui.components.ActionState
+import com.issueissyu.fe.ui.components.GoNowButton
+import com.issueissyu.fe.ui.components.SignButton
+import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Gray_1
+import com.issueissyu.fe.ui.theme.Gray_3
+import com.issueissyu.fe.ui.theme.Gray_5
+import com.issueissyu.fe.ui.theme.Gray_6
 import com.issueissyu.fe.ui.theme.IssueTypo
+import com.issueissyu.fe.ui.theme.Orange
+import com.issueissyu.fe.ui.theme.Title
+import com.issueissyu.fe.ui.theme.White
+import java.time.Instant
+import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+private const val RELIABILITY_REASON_VISIBLE_THRESHOLD = 70
 
 @Composable
 fun CommunityDetailScreen(
@@ -43,7 +68,6 @@ fun CommunityDetailScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommunityDetailScreenContent(
     uiState: CommunityDetailUiState,
@@ -52,73 +76,23 @@ fun CommunityDetailScreenContent(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(text = "상세 보기", style = IssueTypo.Bold18) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "뒤로가기"
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* TODO: 더보기 메뉴 */ }) {
-                        Icon(
-                            imageVector = Icons.Default.MoreVert,
-                            contentDescription = "더보기"
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.White
-                )
+            CommunityDetailTopBar(
+                kind = uiState.detail?.kind,
+                onBackClick = onBackClick,
+                onMapClick = { /* TODO: 지도 이동 */ }
             )
         },
         bottomBar = {
-            // TODO: 댓글 입력창 또는 하단 액션바
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 8.dp,
-                color = Color.White
-            ) {
-                Row(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .navigationBarsPadding(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Placeholder for comment input
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 16.dp),
-                        contentAlignment = Alignment.CenterStart
-                    ) {
-                        Text(
-                            text = "댓글을 입력해주세요...",
-                            style = IssueTypo.Regular15,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "등록",
-                        style = IssueTypo.Bold12,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
+            if (uiState.detail != null) {
+                CommunityDetailBottomBar(detail = uiState.detail)
             }
-        }
+        },
+        containerColor = Color.White
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .background(Color.White)
         ) {
             when {
                 uiState.isLoading -> {
@@ -139,155 +113,60 @@ fun CommunityDetailScreenContent(
                 uiState.detail != null -> {
                     val detail = uiState.detail
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 32.dp)
                     ) {
-                        // 1. 이미지 목록
-                        if (detail.imageUrls.isNotEmpty()) {
+                        // 1. 작성자 및 메타 정보 (ISSUE, COMMUNICATION 등)
+                        if (detail.writerNickname != null) {
                             item {
-                                LazyRow(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(300.dp),
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    items(detail.imageUrls) { imageUrl ->
-                                        AsyncImage(
-                                            model = imageUrl,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .fillMaxHeight()
-                                                .aspectRatio(4f / 3f)
-                                                .clip(RoundedCornerShape(12.dp)),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(16.dp))
+                                CommunityDetailMetaSection(detail = detail)
                             }
                         }
 
-                        // 2. 작성자 정보 및 메타데이터
+                        // 2. 제목 및 주소
                         item {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    // 작성자 프로필
-                                    if (detail.writerNickname != null) {
-                                        AsyncImage(
-                                            model = detail.writerProfileUrl,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                                            contentScale = ContentScale.Crop
-                                        )
-                                        Spacer(modifier = Modifier.width(12.dp))
-                                        Column {
-                                            Text(text = detail.writerNickname, style = IssueTypo.Bold12)
-                                            Text(
-                                                text = "${detail.createdAt ?: ""} · 조회 ${detail.viewCount}",
-                                                style = IssueTypo.Regular12,
-                                                color = MaterialTheme.colorScheme.outline
-                                            )
-                                        }
-                                    } else {
-                                        // 작성자 정보가 없는 경우 (가게 홍보 등)
-                                        Text(
-                                            text = "${detail.kind.name} · ${detail.createdAt ?: ""} · 조회 ${detail.viewCount}",
-                                            style = IssueTypo.Regular12,
-                                            color = MaterialTheme.colorScheme.outline
-                                        )
-                                    }
-                                    
-                                    Spacer(modifier = Modifier.weight(1f))
-                                    
-                                    // 신고 버튼 placeholder
-                                    Text(
-                                        text = "신고",
-                                        style = IssueTypo.Regular12,
-                                        color = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.padding(4.dp)
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                // 제목
-                                Text(text = detail.title, style = IssueTypo.Bold18)
-                                
-                                Spacer(modifier = Modifier.height(8.dp))
-                                
-                                // 주소
-                                if (detail.address != null) {
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                    ) {
-                                        Text(
-                                            text = "📍 ${detail.address}",
-                                            style = IssueTypo.Regular12,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                }
-                                
-                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
-                                
-                                // 본문
-                                Text(
-                                    text = detail.content,
-                                    style = IssueTypo.Regular16,
-                                    lineHeight = 24.sp
-                                )
-                                
-                                Spacer(modifier = Modifier.height(32.dp))
-                                
-                                // 이모지/공감 영역 placeholder
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(20.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                                        color = Color.White,
-                                        onClick = { /* TODO: 공감 클릭 */ }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(text = "👍", fontSize = 18.sp)
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Text(text = "공감 ${detail.likeCount}", style = IssueTypo.Bold12)
-                                        }
-                                    }
-                                }
-                                
-                                Spacer(modifier = Modifier.height(40.dp))
-                                
-                                // 댓글 영역 placeholder
-                                Text(text = "댓글 0", style = IssueTypo.Bold18)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(100.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "첫 번째 댓글을 남겨보세요.",
-                                        style = IssueTypo.Regular15,
-                                        color = MaterialTheme.colorScheme.outline
-                                    )
-                                }
-                                
-                                Spacer(modifier = Modifier.height(80.dp))
+                            CommunityDetailTitleSection(detail = detail)
+                        }
+
+                        // 3. 이미지 섹션
+                        if (detail.imageUrls.isNotEmpty()) {
+                            item {
+                                CommunityDetailImageSection(imageUrls = detail.imageUrls)
                             }
+                        }
+
+                        // 4. AI 신뢰도 섹션 (ISSUE 전용)
+                        if (detail.kind == CommunityItemKind.ISSUE) {
+                            item {
+                                AiReliabilitySection(
+                                    score = detail.reliabilityScore,
+                                    reason = detail.reliabilityReason
+                                )
+                            }
+                        }
+
+                        // 5. 본문 내용
+                        item {
+                            CommunityDetailContentSection(content = detail.content)
+                        }
+
+                        // 6. 반응 영역 (ISSUE, COMMUNICATION 등)
+                        if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
+                            item {
+                                ReactionPlaceholderSection(detail = detail)
+                            }
+                        }
+
+                        // 7. 청원 영역 (ISSUE 전용)
+                        if (detail.kind == CommunityItemKind.ISSUE) {
+                            item {
+                                PetitionPlaceholderSection(detail = detail)
+                            }
+                        }
+
+                        // 8. 댓글 영역
+                        item {
+                            CommentPlaceholderSection()
                         }
                     }
                 }
@@ -296,61 +175,528 @@ fun CommunityDetailScreenContent(
     }
 }
 
-@Preview(showBackground = true)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PreviewCommunityDetailScreenIssue() {
-    val dummyDetail = CommunityDetail(
-        communityId = 1L,
-        pinId = 10L,
-        kind = CommunityItemKind.ISSUE,
-        title = "우리 동네 새로운 공원 조성 소식",
-        content = "마포구 성산동 부근에 새로운 공원이 조성될 예정입니다. 주민 여러분의 많은 관심 부탁드립니다.\n\n공원에는 산책로, 운동 기구, 그리고 아이들을 위한 놀이터가 포함될 예정입니다.",
-        imageUrls = listOf(
-            "https://picsum.photos/800/600?random=1",
-            "https://picsum.photos/800/600?random=2"
-        ),
-        writerNickname = "이슈알리미",
-        writerProfileUrl = "https://picsum.photos/200/200?random=1",
-        address = "서울시 마포구 성산동",
-        viewCount = 123,
-        likeCount = 45,
-        createdAt = "2026-05-16T12:00:00.000Z",
-        updatedAt = null,
-        isReported = false,
-        isPetitioned = false,
-        isProblemSolver = false,
-        isMine = false
-    )
-    CommunityDetailScreenContent(
-        uiState = CommunityDetailUiState(detail = dummyDetail),
-        onBackClick = {}
+private fun CommunityDetailTopBar(
+    kind: CommunityItemKind?,
+    onBackClick: () -> Unit,
+    onMapClick: () -> Unit
+) {
+    TopAppBar(
+        title = {
+            if (kind != null) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Orange.copy(alpha = 0.1f),
+                    modifier = Modifier.padding(start = 8.dp)
+                ) {
+                    Text(
+                        text = "#${getKindDisplayName(kind)}",
+                        style = IssueTypo.Bold12,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        color = Orange
+                    )
+                }
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "뒤로가기"
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = onMapClick) {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = "지도보기"
+                )
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
     )
 }
 
-@Preview(showBackground = true)
+@Composable
+private fun CommunityDetailMetaSection(detail: CommunityDetail) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        WriterAvatar(imageUrl = detail.writerProfileUrl, size = 40.dp)
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = detail.writerNickname ?: "익명",
+                style = IssueTypo.Bold12.copy(color = Title)
+            )
+            Text(
+                text = "${formatTimestamp(detail.createdAt)} · 조회 ${detail.viewCount} · 공감 ${detail.likeCount}",
+                style = IssueTypo.Regular12.copy(color = Gray_6)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CommunityDetailTitleSection(detail: CommunityDetail) {
+    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
+        Text(
+            text = detail.title,
+            style = IssueTypo.Bold18.copy(color = Title, fontSize = 22.sp),
+            modifier = Modifier.fillMaxWidth()
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        if (detail.address != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = Gray_6
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = detail.address,
+                    style = IssueTypo.Regular12.copy(color = Gray_6),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        // 가게/행사 전용 정보
+        if ((detail.kind == CommunityItemKind.STORE || detail.kind == CommunityItemKind.FESTIVAL) && detail.discount != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Orange.copy(alpha = 0.1f)
+            ) {
+                Text(
+                    text = "🎁 ${detail.discount}",
+                    style = IssueTypo.Bold12.copy(color = Orange),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityDetailImageSection(imageUrls: List<String>) {
+    val listState = rememberLazyListState()
+    
+    Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        LazyRow(
+            state = listState,
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(imageUrls) { imageUrl ->
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = "게시글 이미지",
+                    modifier = Modifier
+                        .size(118.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Gray_3),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+        
+        if (imageUrls.size > 1) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(4.dp)
+                    .align(Alignment.CenterHorizontally)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Gray_3)
+            ) {
+                // TODO: 실제 스크롤 위치에 연동된 인디케이터 구현
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.3f)
+                        .fillMaxHeight()
+                        .background(BrandColor)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiReliabilitySection(score: Int?, reason: String?) {
+    Surface(
+        modifier = Modifier
+            .padding(horizontal = 24.dp, vertical = 8.dp)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        color = Gray_1,
+        border = androidx.compose.foundation.BorderStroke(1.dp, Gray_3)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "AI 신뢰도",
+                    style = IssueTypo.Bold12.copy(color = Title)
+                )
+                if (score != null) {
+                    Text(
+                        text = "$score / 100점",
+                        style = IssueTypo.Bold12.copy(color = BrandColor)
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            if (score == null) {
+                Text(
+                    text = "AI가 검사중입니다",
+                    style = IssueTypo.Regular12.copy(color = Gray_5)
+                )
+            } else {
+                LinearProgressIndicator(
+                    progress = { score.coerceIn(0, 100) / 100f },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(999.dp)),
+                    color = BrandColor,
+                    trackColor = Gray_3
+                )
+                
+                // TODO: 신뢰도 사유 표시 기준 점수 정책 확정 필요
+                if (score < RELIABILITY_REASON_VISIBLE_THRESHOLD && !reason.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = reason,
+                        style = IssueTypo.Regular12.copy(color = Gray_6),
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityDetailContentSection(content: String) {
+    Text(
+        text = content,
+        style = IssueTypo.Regular15.copy(color = com.issueissyu.fe.ui.theme.Text),
+        lineHeight = 24.sp,
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+    )
+}
+
+@Composable
+private fun ReactionPlaceholderSection(detail: CommunityDetail) {
+    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Text(text = "반응", style = IssueTypo.Bold12.copy(color = Gray_6))
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("👍", "😮", "🔥", "📍").forEach { emoji ->
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Gray_3),
+                    color = White
+                ) {
+                    Text(
+                        text = "$emoji 0",
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = IssueTypo.Regular12.copy(color = Title)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PetitionPlaceholderSection(detail: CommunityDetail) {
+    Surface(
+        modifier = Modifier
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Gray_1
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "현재 청원 진행 중",
+                style = IssueTypo.Bold12.copy(color = Orange)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            val progress = if (detail.petitionTargetCount != null && detail.petitionTargetCount > 0) {
+                (detail.petitionCount / detail.petitionTargetCount.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+            
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(CircleShape),
+                color = Orange,
+                trackColor = Gray_3
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "참여 ${detail.petitionCount}명",
+                    style = IssueTypo.Bold12.copy(color = Title)
+                )
+                if (detail.petitionTargetCount != null) {
+                    Text(
+                        text = "목표 ${detail.petitionTargetCount}명",
+                        style = IssueTypo.Regular12.copy(color = Gray_6)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommentPlaceholderSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Gray_1)
+            .padding(horizontal = 24.dp, vertical = 32.dp)
+    ) {
+        Text(text = "댓글 0", style = IssueTypo.Bold18.copy(color = Title))
+        Spacer(modifier = Modifier.height(24.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.communicate),
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = Gray_3
+            )
+            Text(
+                text = "첫 번째 댓글을 남겨보세요.",
+                style = IssueTypo.Regular12.copy(color = Gray_5),
+                textAlign = TextAlign.Center
+            )
+        }
+        Spacer(modifier = Modifier.height(40.dp))
+    }
+}
+
+@Composable
+private fun CommunityDetailBottomBar(detail: CommunityDetail) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shadowElevation = 16.dp,
+        color = White
+    ) {
+        Column(modifier = Modifier.navigationBarsPadding()) {
+            if (detail.kind == CommunityItemKind.ISSUE) {
+                Row(
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    GoNowButton(
+                        state = ActionState.DEFAULT,
+                        onClick = { /* TODO */ },
+                        modifier = Modifier.weight(1f)
+                    )
+                    SignButton(
+                        isSigned = detail.isPetitionedByMe,
+                        count = detail.petitionCount,
+                        onClick = { /* TODO */ },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+            
+            // 댓글 입력창 placeholder
+            Row(
+                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(White)
+                        .border(1.dp, BrandColor, RoundedCornerShape(24.dp))
+                        .padding(horizontal = 18.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Text(
+                        text = "댓글 입력",
+                        style = IssueTypo.Regular15.copy(color = Gray_5)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(BrandColor),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_fire), // 임시 아이콘
+                        contentDescription = "전송",
+                        tint = White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WriterAvatar(
+    imageUrl: String?,
+    size: Dp = 36.dp
+) {
+    val avatarModifier = Modifier
+        .size(size)
+        .clip(CircleShape)
+        .background(Gray_3)
+
+    if (imageUrl.isNullOrBlank()) {
+        Box(modifier = avatarModifier)
+    } else {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = "작성자 프로필",
+            modifier = avatarModifier,
+            contentScale = ContentScale.Crop
+        )
+    }
+}
+
+private fun getKindDisplayName(kind: CommunityItemKind): String = when (kind) {
+    CommunityItemKind.ISSUE -> "이슈"
+    CommunityItemKind.COMMUNICATION -> "소통"
+    CommunityItemKind.STORE -> "가게홍보"
+    CommunityItemKind.FESTIVAL -> "축제행사"
+    CommunityItemKind.POLICY -> "정책"
+    CommunityItemKind.CONTEST -> "공모전"
+    CommunityItemKind.CARDNEWS -> "카드뉴스"
+    CommunityItemKind.UNKNOWN -> "기타"
+}
+
+private fun formatTimestamp(raw: String?): String {
+    if (raw == null) return ""
+    val pattern = DateTimeFormatter.ofPattern("MM.dd HH:mm")
+    return runCatching {
+        OffsetDateTime.parse(raw).format(pattern)
+    }.getOrElse {
+        runCatching {
+            Instant.parse(raw)
+                .atZone(ZoneId.systemDefault())
+                .format(pattern)
+        }.getOrDefault(raw)
+    }
+}
+
+@Preview(name = "ISSUE 상세", showBackground = true, heightDp = 1200)
+@Composable
+fun PreviewCommunityDetailScreenIssue() {
+    val dummyDetail = CommunityDetail(
+        communityId = 1L, pinId = 10L, kind = CommunityItemKind.ISSUE,
+        title = "우리 동네 새로운 공원 조성 소식",
+        content = "마포구 성산동 부근에 새로운 공원이 조성될 예정입니다. 주민 여러분의 많은 관심 부탁드립니다.\n\n공원에는 산책로, 운동 기구, 그리고 아이들을 위한 놀이터가 포함될 예정입니다.",
+        imageUrls = listOf(
+            "https://picsum.photos/400/400?random=1",
+            "https://picsum.photos/400/400?random=2",
+            "https://picsum.photos/400/400?random=3"
+        ),
+        writerNickname = "이슈알리미", writerProfileUrl = null, address = "서울시 마포구 성산동 123-45",
+        viewCount = 1234, likeCount = 56, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
+        reliabilityScore = null, reliabilityReason = null,
+        petitionCount = 450, petitionTargetCount = 1000
+    )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "STORE 상세", showBackground = true, heightDp = 1000)
 @Composable
 fun PreviewCommunityDetailScreenStore() {
     val dummyDetail = CommunityDetail(
-        communityId = 2L,
-        pinId = 20L,
-        kind = CommunityItemKind.STORE,
-        title = "[할인] 맛있는 빵집 오픈 1주년 이벤트!",
-        content = "오픈 1주년을 맞아 전 품목 할인 행사를 진행합니다. 맛있는 빵 드시러 오세요!\n\n인기 메뉴인 소금빵과 크루아상은 조기 품절될 수 있으니 서둘러 방문해주세요.",
-        imageUrls = listOf("https://picsum.photos/800/600?random=3"),
-        writerNickname = null,
-        writerProfileUrl = null,
-        address = "서울시 마포구 망원동",
-        viewCount = 256,
-        likeCount = 89,
-        createdAt = "2026-05-15T10:00:00.000Z",
-        updatedAt = null,
-        isReported = false,
-        isPetitioned = false,
-        isProblemSolver = false,
-        isMine = true
+        communityId = 2L, pinId = 20L, kind = CommunityItemKind.STORE,
+        title = "맛있는 빵집 오픈 1주년 이벤트!",
+        content = "오픈 1주년을 맞아 전 품목 할인 행사를 진행합니다. 맛있는 빵 드시러 오세요!",
+        imageUrls = listOf("https://picsum.photos/400/400?random=4"),
+        writerNickname = null, writerProfileUrl = null, address = "서울시 마포구 망원동",
+        viewCount = 256, likeCount = 89, createdAt = "2026-05-15T10:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = true,
+        reliabilityScore = 95, reliabilityReason = null, discount = "전 품목 20% 할인"
     )
-    CommunityDetailScreenContent(
-        uiState = CommunityDetailUiState(detail = dummyDetail),
-        onBackClick = {}
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "COMMUNICATION 상세", showBackground = true, heightDp = 1000)
+@Composable
+fun PreviewCommunityDetailScreenCommunication() {
+    val dummyDetail = CommunityDetail(
+        communityId = 5L, pinId = 50L, kind = CommunityItemKind.COMMUNICATION,
+        title = "성산동 근처 맛있는 카페 추천해주세요!",
+        content = "이사 온 지 얼마 안 돼서 동네를 잘 몰라요. 조용하고 커피 맛있는 카페 있으면 추천 부탁드립니다!",
+        imageUrls = emptyList(),
+        writerNickname = "동네뉴비", writerProfileUrl = null, address = "서울시 마포구 성산동",
+        viewCount = 120, likeCount = 15, createdAt = "2026-05-16T10:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
+        reliabilityScore = 65, reliabilityReason = "일부 표현이 주관적이며 근거 자료가 부족합니다."
     )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "FESTIVAL 상세", showBackground = true, heightDp = 1000)
+@Composable
+fun PreviewCommunityDetailScreenFestival() {
+    val dummyDetail = CommunityDetail(
+        communityId = 6L, pinId = 60L, kind = CommunityItemKind.FESTIVAL,
+        title = "2026 마포구 봄꽃 축제 안내",
+        content = "경의선 숲길에서 펼쳐지는 봄꽃의 향연! 다양한 공연과 먹거리가 준비되어 있습니다. 가족, 친구들과 함께 오셔서 즐거운 시간 보내세요.",
+        imageUrls = listOf("https://picsum.photos/400/400?random=5", "https://picsum.photos/400/400?random=6"),
+        writerNickname = null, writerProfileUrl = null, address = "서울시 마포구 연남동",
+        viewCount = 3500, likeCount = 120, createdAt = "2026-05-14T09:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
+        reliabilityScore = 78, reliabilityReason = null,
+        eventStartTime = "2026-05-14T00:00:00.000Z", eventEndTime = "2026-05-20T00:00:00.000Z"
+    )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "신뢰도 낮음 상세", showBackground = true, heightDp = 1000)
+@Composable
+fun PreviewCommunityDetailScreenLowReliability() {
+    val dummyDetail = CommunityDetail(
+        communityId = 3L, pinId = 30L, kind = CommunityItemKind.ISSUE,
+        title = "신뢰도 낮은 게시글 예시",
+        content = "이 게시글은 AI 신뢰도가 낮게 측정되어 사유가 표시되는 예시입니다.",
+        imageUrls = emptyList(),
+        writerNickname = "정보제보자", writerProfileUrl = null, address = "서울시 서대문구",
+        viewCount = 50, likeCount = 5, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
+        reliabilityScore = 58, reliabilityReason = "출처가 불분명하며 허위 정보일 가능성이 있습니다."
+    )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }

@@ -17,5 +17,13 @@ data class CommunityDetail(
     val isReported: Boolean,
     val isPetitioned: Boolean,
     val isProblemSolver: Boolean,
-    val isMine: Boolean
+    val isMine: Boolean,
+    val reliabilityScore: Int?,
+    val reliabilityReason: String?,
+    val discount: String? = null,
+    val eventStartTime: String? = null,
+    val eventEndTime: String? = null,
+    val petitionCount: Int = 0,
+    val petitionTargetCount: Int? = null,
+    val isPetitionedByMe: Boolean = false
 )
