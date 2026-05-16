@@ -179,10 +179,10 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                 likeCount = 56,
                 createdAt = "2026-05-16T12:00:00.000Z",
                 updatedAt = null,
-                isReported = false,
+                isReported = (communityId % 3 == 0L), // 더미: 3의 배수 ID는 신고됨 상태
                 isPetitioned = false,
                 isProblemSolver = false,
-                isMine = false,
+                isMine = (communityId % 2 == 0L), // 더미: 짝수 ID는 본인 글
                 reliabilityScore = when (kind) {
                     CommunityItemKind.ISSUE -> if (communityId % 2 == 0L) null else 58
                     else -> null

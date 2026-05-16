@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -75,7 +76,7 @@ fun CommunityDetailScreenContent(
     Scaffold(
         topBar = {
             CommunityDetailTopBar(
-                kind = uiState.detail?.kind,
+                detail = uiState.detail,
                 onBackClick = onBackClick,
                 onMapClick = { /* TODO: 지도 이동 */ }
             )
@@ -204,10 +205,13 @@ fun CommunityDetailScreenContent(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CommunityDetailTopBar(
-    kind: CommunityItemKind?,
+    detail: CommunityDetail?,
     onBackClick: () -> Unit,
     onMapClick: () -> Unit
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+    val kind = detail?.kind
+
     TopAppBar(
         title = {
             if (kind != null) {
@@ -240,6 +244,61 @@ private fun CommunityDetailTopBar(
                     contentDescription = "지도보기",
                     tint = BrandColor
                 )
+            }
+
+            if (detail != null) {
+                if (detail.isMine) {
+                    // 본인 글인 경우: 관리 메뉴 (ISSUE, COMMUNICATION 위주)
+                    if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
+                        Box {
+                            IconButton(onClick = { showMenu = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.MoreVert,
+                                    contentDescription = "더보기",
+                                    tint = Gray_6
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                modifier = Modifier.background(White)
+                            ) {
+                                if (detail.kind == CommunityItemKind.COMMUNICATION) {
+                                    DropdownMenuItem(
+                                        text = { Text("삭제", style = IssueTypo.Regular15) },
+                                        onClick = {
+                                            showMenu = false
+                                            // TODO: 삭제 API 연결
+                                        }
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("글 내리기", style = IssueTypo.Regular15) },
+                                    onClick = {
+                                        showMenu = false
+                                        // TODO: 글 내리기 API 연결
+                                    }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    // 본인 글이 아닌 경우: 신고 버튼
+                    TextButton(
+                        onClick = {
+                            if (!detail.isReported) {
+                                // TODO: 신고 API 연결
+                            }
+                        },
+                        enabled = !detail.isReported
+                    ) {
+                        Text(
+                            text = if (detail.isReported) "신고됨" else "신고",
+                            style = IssueTypo.Bold12,
+                            color = if (detail.isReported) Gray_5 else Orange
+                        )
+                    }
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
@@ -646,7 +705,39 @@ private fun formatTimestamp(raw: String?): String {
     }
 }
 
-@Preview(name = "ISSUE 상세", showBackground = true, heightDp = 1200)
+@Preview(name = "ISSUE 상세 (본인)", showBackground = true, heightDp = 1200)
+@Composable
+fun PreviewCommunityDetailScreenIssueMine() {
+    val dummyDetail = CommunityDetail(
+        communityId = 2L, pinId = 10L, kind = CommunityItemKind.ISSUE,
+        title = "우리 동네 새로운 공원 조성 소식",
+        content = "마포구 성산동 부근에 새로운 공원이 조성될 예정입니다. 주민 여러분의 많은 관심 부탁드립니다.",
+        imageUrls = emptyList(),
+        writerNickname = "이슈알리미", writerProfileUrl = null, address = "서울시 마포구 성산동",
+        viewCount = 1234, likeCount = 56, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = true,
+        reliabilityScore = 85, reliabilityReason = null
+    )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "COMMUNICATION 상세 (본인)", showBackground = true, heightDp = 1000)
+@Composable
+fun PreviewCommunityDetailScreenCommunicationMine() {
+    val dummyDetail = CommunityDetail(
+        communityId = 4L, pinId = 50L, kind = CommunityItemKind.COMMUNICATION,
+        title = "성산동 근처 맛있는 카페 추천해주세요!",
+        content = "이사 온 지 얼마 안 돼서 동네를 잘 몰라요. 조용하고 커피 맛있는 카페 있으면 추천 부탁드립니다!",
+        imageUrls = emptyList(),
+        writerNickname = "동네뉴비", writerProfileUrl = null, address = "서울시 마포구 성산동",
+        viewCount = 120, likeCount = 15, createdAt = "2026-05-16T10:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = true,
+        reliabilityScore = null, reliabilityReason = null
+    )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "ISSUE 상세 (비작성자)", showBackground = true, heightDp = 1200)
 @Composable
 fun PreviewCommunityDetailScreenIssue() {
     val dummyDetail = CommunityDetail(
@@ -667,18 +758,18 @@ fun PreviewCommunityDetailScreenIssue() {
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
 
-@Preview(name = "COMMUNICATION 상세", showBackground = true, heightDp = 1000)
+@Preview(name = "신고됨 상태 상세", showBackground = true, heightDp = 1000)
 @Composable
-fun PreviewCommunityDetailScreenCommunication() {
+fun PreviewCommunityDetailScreenReported() {
     val dummyDetail = CommunityDetail(
-        communityId = 5L, pinId = 50L, kind = CommunityItemKind.COMMUNICATION,
-        title = "성산동 근처 맛있는 카페 추천해주세요!",
-        content = "이사 온 지 얼마 안 돼서 동네를 잘 몰라요. 조용하고 커피 맛있는 카페 있으면 추천 부탁드립니다!",
+        communityId = 3L, pinId = 30L, kind = CommunityItemKind.ISSUE,
+        title = "이미 신고된 게시글",
+        content = "이 게시글은 이미 신고가 완료된 상태입니다.",
         imageUrls = emptyList(),
-        writerNickname = "동네뉴비", writerProfileUrl = null, address = "서울시 마포구 성산동",
-        viewCount = 120, likeCount = 15, createdAt = "2026-05-16T10:00:00.000Z", updatedAt = null,
-        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
-        reliabilityScore = 65, reliabilityReason = "일부 표현이 주관적이며 근거 자료가 부족합니다."
+        writerNickname = "정보제보자", writerProfileUrl = null, address = "서울시 서대문구",
+        viewCount = 50, likeCount = 5, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
+        isReported = true, isPetitioned = false, isProblemSolver = false, isMine = false,
+        reliabilityScore = 58, reliabilityReason = "출처가 불분명하며 허위 정보일 가능성이 있습니다."
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
@@ -728,22 +819,6 @@ fun PreviewCommunityDetailScreenIssueNullReliability() {
         viewCount = 100, likeCount = 10, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
         isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
         reliabilityScore = null, reliabilityReason = null
-    )
-    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
-}
-
-@Preview(name = "ISSUE + reliabilityScore 낮음 + reliabilityReason 표시 Preview", showBackground = true, heightDp = 1000)
-@Composable
-fun PreviewCommunityDetailScreenIssueLowReliability() {
-    val dummyDetail = CommunityDetail(
-        communityId = 3L, pinId = 30L, kind = CommunityItemKind.ISSUE,
-        title = "신뢰도 낮은 이슈 게시글",
-        content = "이 게시글은 AI 신뢰도가 낮게 측정되어 사유가 표시되는 예시입니다.",
-        imageUrls = emptyList(),
-        writerNickname = "정보제보자", writerProfileUrl = null, address = "서울시 서대문구",
-        viewCount = 50, likeCount = 5, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
-        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
-        reliabilityScore = 58, reliabilityReason = "출처가 불분명하며 허위 정보일 가능성이 있습니다."
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
