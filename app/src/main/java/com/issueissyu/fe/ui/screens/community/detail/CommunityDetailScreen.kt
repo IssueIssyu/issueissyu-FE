@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
@@ -236,7 +237,8 @@ private fun CommunityDetailTopBar(
             IconButton(onClick = onMapClick) {
                 Icon(
                     imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = "지도보기"
+                    contentDescription = "지도보기",
+                    tint = BrandColor
                 )
             }
         },
@@ -284,7 +286,7 @@ private fun CommunityDetailTitleSection(detail: CommunityDetail) {
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = null,
                     modifier = Modifier.size(14.dp),
-                    tint = Gray_6
+                    tint = BrandColor
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
@@ -533,10 +535,15 @@ private fun CommunityDetailBottomBar(detail: CommunityDetail) {
         shadowElevation = 16.dp,
         color = White
     ) {
-        Column(modifier = Modifier.navigationBarsPadding()) {
+        Column(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp)
+                .padding(top = 16.dp, bottom = 24.dp)
+        ) {
             if (detail.kind == CommunityItemKind.ISSUE) {
                 Row(
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     GoNowButton(
@@ -555,7 +562,6 @@ private fun CommunityDetailBottomBar(detail: CommunityDetail) {
             
             // 댓글 입력창 placeholder
             Row(
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -570,7 +576,7 @@ private fun CommunityDetailBottomBar(detail: CommunityDetail) {
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Text(
-                        text = "댓글 입력",
+                        text = "댓글을 입력해주세요...",
                         style = IssueTypo.Regular15.copy(color = Gray_5)
                     )
                 }
@@ -582,7 +588,7 @@ private fun CommunityDetailBottomBar(detail: CommunityDetail) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_fire), // 임시 아이콘
+                        imageVector = Icons.Default.ArrowUpward,
                         contentDescription = "전송",
                         tint = White,
                         modifier = Modifier.size(20.dp)
