@@ -28,6 +28,7 @@ securityCrypto = "1.1.0"
 
 [libraries]
 naver-map-sdk = { group = "com.naver.maps", name = "map-sdk", version.ref = "navermaps" }
+naver-nid-oauth = { group = "com.navercorp.nid", name = "oauth", version = "5.9.1" }
 google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }

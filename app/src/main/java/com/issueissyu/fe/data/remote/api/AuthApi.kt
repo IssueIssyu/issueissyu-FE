@@ -1,11 +1,12 @@
 package com.issueissyu.fe.data.remote.api
 
-import com.issueissyu.fe.data.remote.dto.request.AuthLocalRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.OnboardingRequest
-import com.issueissyu.fe.data.remote.dto.request.LoginLinkRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.LoginLinkRequest
 import com.issueissyu.fe.data.remote.dto.request.PhoneSendCodeRequest
 import com.issueissyu.fe.data.remote.dto.request.PhoneVerifyRequest
 import com.issueissyu.fe.data.remote.dto.request.RefreshTokenRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.AuthLocalRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.NaverLoginRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.TermRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.auth.LoginLinkResultDto
@@ -51,11 +52,19 @@ interface AuthApi {
     ): BaseResponse<TokenResponse>
 
     //네이버 앱 로그인
+    @POST("auth/login/naver")
+    suspend fun loginNaver(
+        @Body request: NaverLoginRequest,
+    ): BaseResponse<LoginResponse>
+
     //로컬 로그인
     @POST("auth/login/local")
     suspend fun loginLocal(
         @Body request: AuthLocalRequest,
     ): BaseResponse<LoginResponse>
+
+    @POST("auth/logout")
+    suspend fun logout(): BaseResponse<PhoneAuthEmptyResult?>
 
     //약관 동의
     @POST("api/auth/term")
