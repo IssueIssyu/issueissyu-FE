@@ -55,11 +55,19 @@ class AuthRepositoryImpl @Inject constructor(
 
             when (response.code) {
                 "LOCAL_SIGNUP_200_1" -> {
-                    val signedUpName = response.result!!.userName
+                    val result = response.result
+                        ?: return Result.failure(
+                            Exception(
+                                safeMessage(
+                                    response.message as String?,
+                                    "회원가입 응답이 올바르지 않습니다.",
+                                ),
+                            ),
+                        )
                     if (BuildConfig.DEBUG) {
                         Log.d(
                             TAG,
-                            "signUpLocal success code=${response.code} message=${response.message} userName=$signedUpName",
+                            "signUpLocal success code=${response.code} message=${response.message} userName=${result.userName}",
                         )
                     }
                     Result.success(Unit)
@@ -631,14 +639,16 @@ class AuthRepositoryImpl @Inject constructor(
                     Result.failure(
                         Exception(response.message.ifBlank { "온보딩에 실패했습니다." }),
                     )
-                else ->
-                    if (response.isSuccess && response.result != null) {
-                        Result.success(response.result!!.toDomain())
+                else -> {
+                    val result = response.result
+                    if (response.isSuccess && result != null) {
+                        Result.success(result.toDomain())
                     } else {
                         Result.failure(
                             Exception(response.message.ifBlank { "온보딩에 실패했습니다." }),
                         )
                     }
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)
