@@ -62,7 +62,8 @@ fun CommunityScreenContent(
 
     val colorScheme = MaterialTheme.colorScheme
 
-    val categories = CommunityTab.visibleTabs.map { tab ->
+    val categories = remember(colorScheme) {
+        CommunityTab.visibleTabs.map { tab ->
             when (tab) {
                 CommunityTab.HOT -> CategoryItem(tab.displayName, R.drawable.ic_fire, Issue, colorScheme.errorContainer)
                 CommunityTab.ISSUE -> CategoryItem(tab.displayName, R.drawable.issue, Issue, colorScheme.errorContainer)
@@ -75,6 +76,7 @@ fun CommunityScreenContent(
                 else -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, colorScheme.outline)
             }
         }
+    }
 
     Scaffold(
         topBar = {
@@ -280,17 +282,7 @@ fun CommunityScreenContent(
 }
 
 private fun String?.toCommunityTab(): CommunityTab {
-    return when (this) {
-        "HOT" -> CommunityTab.HOT
-        "이슈" -> CommunityTab.ISSUE
-        "가게 홍보" -> CommunityTab.STORE
-        "축제·행사" -> CommunityTab.FESTIVAL
-        "정책" -> CommunityTab.POLICY
-        "공모전" -> CommunityTab.CONTEST
-        "카드뉴스" -> CommunityTab.CARDNEWS
-        "전체", null -> CommunityTab.ALL
-        else -> CommunityTab.ALL
-    }
+    return CommunityTab.values().find { it.displayName == this } ?: CommunityTab.ALL
 }
 
 @Composable

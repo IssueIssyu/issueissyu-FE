@@ -46,7 +46,7 @@ class CommunityViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = !isRefreshing, isRefreshing = isRefreshing) }
                 }
                 .catch { e ->
-                    _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = e.message) }
+                    _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = "커뮤니티 소식을 불러오는 중 오류가 발생했습니다.") }
                 }
                 .collect { feed ->
                     _uiState.update {

@@ -4,6 +4,8 @@ import com.issueissyu.fe.domain.model.community.CommunityFeed
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
 
+private const val DEFAULT_COMMUNITY_TITLE = "제목 없음"
+
 fun CommunityFeedResponse.toCommunityFeed(): CommunityFeed {
     return CommunityFeed(
         items = this.content?.map { it.toCommunityFeedItem() } ?: emptyList(),
@@ -18,7 +20,7 @@ fun CommunityFeedItemResponse.toCommunityFeedItem(): CommunityFeedItem {
         communityId = this.communityId ?: 0L, // TODO: communityId null 처리 정책 확정 필요
         pinId = this.pinId,
         kind = this.kind.toCommunityItemKind(),
-        title = this.title ?: this.pinTitle ?: "제목 없음",
+        title = this.title ?: this.pinTitle ?: DEFAULT_COMMUNITY_TITLE,
         content = this.content,
         thumbnailUrl = this.pinImageUrl ?: this.thumbnailUrl ?: this.storeImageUrl,
         writerNickname = this.pinUserNickname,
