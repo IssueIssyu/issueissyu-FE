@@ -159,7 +159,7 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                     
                     AI 신뢰도 점수와 사유, 그리고 각종 반응 영역이 하단에 배치됩니다.
                 """.trimIndent(),
-                imageUrls = listOf(
+                imageUrls = if (kind == CommunityItemKind.COMMUNICATION) emptyList() else listOf(
                     "https://picsum.photos/800/600?random=${communityId}_1",
                     "https://picsum.photos/800/600?random=${communityId}_2",
                     "https://picsum.photos/800/600?random=${communityId}_3"
@@ -184,18 +184,11 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                 isProblemSolver = false,
                 isMine = false,
                 reliabilityScore = when (kind) {
-                    CommunityItemKind.ISSUE -> null
-                    CommunityItemKind.COMMUNICATION -> 65
-                    CommunityItemKind.STORE -> 92
-                    CommunityItemKind.FESTIVAL -> 78
-                    CommunityItemKind.POLICY -> 88
-                    CommunityItemKind.CONTEST -> 60
-                    CommunityItemKind.CARDNEWS -> 70
+                    CommunityItemKind.ISSUE -> if (communityId % 2 == 0L) null else 58
                     else -> null
                 },
                 reliabilityReason = when (kind) {
-                    CommunityItemKind.COMMUNICATION -> "일부 표현이 주관적이며 근거 자료가 부족합니다."
-                    CommunityItemKind.CONTEST -> "기간 및 주최 정보 확인이 필요합니다."
+                    CommunityItemKind.ISSUE -> if (communityId % 2 != 0L) "출처가 불분명하며 허위 정보일 가능성이 있습니다." else null
                     else -> null
                 },
                 discount = if (kind == CommunityItemKind.STORE) "전 품목 20% 할인" else null,

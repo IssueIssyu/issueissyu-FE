@@ -26,24 +26,48 @@ class CommunityDetailViewModel @Inject constructor(
     val uiState: StateFlow<CommunityDetailUiState> = _uiState.asStateFlow()
 
     init {
-        if (communityId != 0L) {
-            loadDetail()
-        } else {
-            _uiState.update { it.copy(errorMessage = "잘못된 접근입니다.") }
-        }
+        loadDetail()
     }
 
     fun loadDetail() {
+        if (_uiState.value.isLoading) return
+
+        if (communityId == 0L) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorMessage = "잘못된 접근입니다."
+                )
+            }
+            return
+        }
+
         viewModelScope.launch {
             getCommunityDetailUseCase(communityId)
                 .onStart {
-                    _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = true,
+                            errorMessage = null
+                        )
+                    }
                 }
-                .catch { e ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = "상세 정보를 불러오는 중 오류가 발생했습니다.") }
+                .catch {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = "게시글을 불러오지 못했습니다.\n잠시 후 다시 시도해주세요."
+                        )
+                    }
                 }
                 .collect { detail ->
-                    _uiState.update { it.copy(isLoading = false, detail = detail) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            detail = detail,
+                            errorMessage = null
+                        )
+                    }
                 }
         }
     }

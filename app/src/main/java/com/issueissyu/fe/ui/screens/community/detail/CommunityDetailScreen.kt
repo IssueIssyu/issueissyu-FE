@@ -1,9 +1,7 @@
 package com.issueissyu.fe.ui.screens.community.detail
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -14,7 +12,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -96,18 +93,46 @@ fun CommunityDetailScreenContent(
         ) {
             when {
                 uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = BrandColor)
+                    }
                 }
                 uiState.errorMessage != null -> {
                     Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Text(text = uiState.errorMessage, style = IssueTypo.Regular15)
+                        Icon(
+                            painter = painterResource(R.drawable.communicate), // 임시 에러 아이콘
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = Gray_3
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = onRetry) {
-                            Text(text = "다시 시도")
+                        Text(
+                            text = uiState.errorMessage,
+                            style = IssueTypo.Regular15.copy(color = Gray_6),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = onRetry,
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandColor),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(text = "다시 시도", style = IssueTypo.Bold12.copy(color = White))
                         }
+                    }
+                }
+                uiState.detail == null -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "게시글 정보를 찾을 수 없습니다.",
+                            style = IssueTypo.Regular15.copy(color = Gray_6)
+                        )
                     }
                 }
                 uiState.detail != null -> {
@@ -630,24 +655,8 @@ fun PreviewCommunityDetailScreenIssue() {
         writerNickname = "이슈알리미", writerProfileUrl = null, address = "서울시 마포구 성산동 123-45",
         viewCount = 1234, likeCount = 56, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
         isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
-        reliabilityScore = null, reliabilityReason = null,
+        reliabilityScore = 85, reliabilityReason = null,
         petitionCount = 450, petitionTargetCount = 1000
-    )
-    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
-}
-
-@Preview(name = "STORE 상세", showBackground = true, heightDp = 1000)
-@Composable
-fun PreviewCommunityDetailScreenStore() {
-    val dummyDetail = CommunityDetail(
-        communityId = 2L, pinId = 20L, kind = CommunityItemKind.STORE,
-        title = "맛있는 빵집 오픈 1주년 이벤트!",
-        content = "오픈 1주년을 맞아 전 품목 할인 행사를 진행합니다. 맛있는 빵 드시러 오세요!",
-        imageUrls = listOf("https://picsum.photos/400/400?random=4"),
-        writerNickname = null, writerProfileUrl = null, address = "서울시 마포구 망원동",
-        viewCount = 256, likeCount = 89, createdAt = "2026-05-15T10:00:00.000Z", updatedAt = null,
-        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = true,
-        reliabilityScore = 95, reliabilityReason = null, discount = "전 품목 20% 할인"
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
@@ -664,6 +673,22 @@ fun PreviewCommunityDetailScreenCommunication() {
         viewCount = 120, likeCount = 15, createdAt = "2026-05-16T10:00:00.000Z", updatedAt = null,
         isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
         reliabilityScore = 65, reliabilityReason = "일부 표현이 주관적이며 근거 자료가 부족합니다."
+    )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "STORE 상세", showBackground = true, heightDp = 1000)
+@Composable
+fun PreviewCommunityDetailScreenStore() {
+    val dummyDetail = CommunityDetail(
+        communityId = 2L, pinId = 20L, kind = CommunityItemKind.STORE,
+        title = "맛있는 빵집 오픈 1주년 이벤트!",
+        content = "오픈 1주년을 맞아 전 품목 할인 행사를 진행합니다. 맛있는 빵 드시러 오세요!",
+        imageUrls = listOf("https://picsum.photos/400/400?random=4"),
+        writerNickname = null, writerProfileUrl = null, address = "서울시 마포구 망원동",
+        viewCount = 256, likeCount = 89, createdAt = "2026-05-15T10:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = true,
+        reliabilityScore = 95, reliabilityReason = null, discount = "전 품목 20% 할인"
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
@@ -685,12 +710,28 @@ fun PreviewCommunityDetailScreenFestival() {
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
 
-@Preview(name = "신뢰도 낮음 상세", showBackground = true, heightDp = 1000)
+@Preview(name = "ISSUE + reliabilityScore null Preview", showBackground = true, heightDp = 1000)
 @Composable
-fun PreviewCommunityDetailScreenLowReliability() {
+fun PreviewCommunityDetailScreenIssueNullReliability() {
+    val dummyDetail = CommunityDetail(
+        communityId = 1L, pinId = 10L, kind = CommunityItemKind.ISSUE,
+        title = "AI 신뢰도 검사 중인 이슈",
+        content = "AI가 아직 신뢰도를 분석 중인 상태의 이슈 게시글입니다.",
+        imageUrls = emptyList(),
+        writerNickname = "이슈알리미", writerProfileUrl = null, address = "서울시 마포구",
+        viewCount = 100, likeCount = 10, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
+        isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
+        reliabilityScore = null, reliabilityReason = null
+    )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "ISSUE + reliabilityScore 낮음 + reliabilityReason 표시 Preview", showBackground = true, heightDp = 1000)
+@Composable
+fun PreviewCommunityDetailScreenIssueLowReliability() {
     val dummyDetail = CommunityDetail(
         communityId = 3L, pinId = 30L, kind = CommunityItemKind.ISSUE,
-        title = "신뢰도 낮은 게시글 예시",
+        title = "신뢰도 낮은 이슈 게시글",
         content = "이 게시글은 AI 신뢰도가 낮게 측정되어 사유가 표시되는 예시입니다.",
         imageUrls = emptyList(),
         writerNickname = "정보제보자", writerProfileUrl = null, address = "서울시 서대문구",
@@ -699,4 +740,19 @@ fun PreviewCommunityDetailScreenLowReliability() {
         reliabilityScore = 58, reliabilityReason = "출처가 불분명하며 허위 정보일 가능성이 있습니다."
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "Loading Preview", showBackground = true)
+@Composable
+fun PreviewCommunityDetailScreenLoading() {
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(isLoading = true), onBackClick = {})
+}
+
+@Preview(name = "Error Preview", showBackground = true)
+@Composable
+fun PreviewCommunityDetailScreenError() {
+    CommunityDetailScreenContent(
+        uiState = CommunityDetailUiState(errorMessage = "게시글을 불러오지 못했습니다.\n잠시 후 다시 시도해주세요."),
+        onBackClick = {}
+    )
 }
