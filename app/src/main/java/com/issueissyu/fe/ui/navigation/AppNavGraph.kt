@@ -33,6 +33,7 @@ import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 import com.issueissyu.fe.ui.screens.community.CommunityScreen
+import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreen
 
 @Composable
 fun AppNavGraph(
@@ -190,6 +191,29 @@ fun AppNavGraph(
                     .padding(paddingValues)
             ) {
                 CommunityScreen(
+                    onBackClick = {
+                        navController.navigateUp()
+                    },
+                    onCommunityClick = { communityId ->
+                        navController.navigate(AppDestinations.communityDetailRoute(communityId))
+                    }
+                )
+            }
+        }
+        composable(
+            route = AppDestinations.COMMUNITY_DETAIL_ROUTE,
+            arguments = listOf(
+                navArgument("communityId") {
+                    type = NavType.LongType
+                }
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                CommunityDetailScreen(
                     onBackClick = {
                         navController.navigateUp()
                     }

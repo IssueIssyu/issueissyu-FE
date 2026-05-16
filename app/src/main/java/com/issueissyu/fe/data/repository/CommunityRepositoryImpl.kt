@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityFeed
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
@@ -109,6 +110,59 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                 region = region,
                 nextCursor = if (dummyItems.size == size) "next_cursor_${tab.name}" else null,
                 hasNext = dummyItems.size == size
+            )
+        )
+    }
+
+    override fun getCommunityDetail(
+        communityId: Long
+    ): Flow<CommunityDetail> = flow {
+        val kind = when ((communityId % 4).toInt()) {
+            0 -> CommunityItemKind.ISSUE
+            1 -> CommunityItemKind.STORE
+            2 -> CommunityItemKind.FESTIVAL
+            else -> CommunityItemKind.POLICY
+        }
+
+        emit(
+            CommunityDetail(
+                communityId = communityId,
+                pinId = if (
+                    kind == CommunityItemKind.ISSUE ||
+                    kind == CommunityItemKind.COMMUNICATION ||
+                    kind == CommunityItemKind.STORE ||
+                    kind == CommunityItemKind.FESTIVAL
+                ) {
+                    communityId * 10
+                } else {
+                    null
+                },
+                kind = kind,
+                title = when (kind) {
+                    CommunityItemKind.STORE -> "마포구 맛집 오픈 이벤트"
+                    CommunityItemKind.FESTIVAL -> "2026 마포구 봄꽃 축제"
+                    CommunityItemKind.POLICY -> "마포구 청년 지원 정책"
+                    else -> "우리 동네 새로운 이슈"
+                },
+                content = "커뮤니티 상세 화면 더미 본문입니다. 실제 API 연결 전까지 화면 구조 확인용으로 사용합니다.",
+                imageUrls = listOf(
+                    "https://picsum.photos/600/400?random=$communityId"
+                ),
+                writerNickname = if (kind == CommunityItemKind.ISSUE || kind == CommunityItemKind.COMMUNICATION) {
+                    "작성자 $communityId"
+                } else {
+                    null
+                },
+                writerProfileUrl = null,
+                address = "서울 마포구 어느 길 $communityId",
+                viewCount = communityId.toInt() * 10,
+                likeCount = communityId.toInt() * 3,
+                createdAt = "2026-05-14T00:00:00.000Z",
+                updatedAt = null,
+                isReported = false,
+                isPetitioned = false,
+                isProblemSolver = false,
+                isMine = false
             )
         )
     }

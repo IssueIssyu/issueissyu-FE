@@ -23,6 +23,7 @@ object AppDestinations {
     const val COLLECTION_ROUTE = "collection_route"
     const val TOWN_ROUTE = "town_route"
     const val COMMUNITY_ROUTE = "community_route"
+    const val COMMUNITY_DETAIL_ROUTE = "community_detail_route/{communityId}"
     const val MYPAGE_ROUTE = "mypage_route"
 
     // 지도 관련
@@ -30,6 +31,10 @@ object AppDestinations {
     const val PIN_CREATION_ROUTE = "pin_creation_route"
     const val PIN_DETAIL_ROUTE = "pin_detail_route/{pinId}"
     const val PIN_REPORT_ROUTE = "pin_report_route/{pinId}"
+
+    fun communityDetailRoute(communityId: Long): String {
+        return "community_detail_route/$communityId"
+    }
 
     fun pinDetailRoute(pinId: String): String {
         return "pin_detail_route/$pinId"
