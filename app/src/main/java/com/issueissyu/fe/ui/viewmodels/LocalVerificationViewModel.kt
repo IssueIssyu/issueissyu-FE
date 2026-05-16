@@ -65,8 +65,10 @@ class LocalVerificationViewModel @Inject constructor(
     }
 
     fun onMapMoved(lat: Double, lng: Double) {
-        if (lastLat != null && lastLng != null) {
-            val distance = distanceBetween(lastLat!!, lastLng!!, lat, lng)
+        val previousLat = lastLat
+        val previousLng = lastLng
+        if (previousLat != null && previousLng != null) {
+            val distance = distanceBetween(previousLat, previousLng, lat, lng)
             if (distance < 30) return
         }
 
@@ -125,9 +127,10 @@ class LocalVerificationViewModel @Inject constructor(
         state.latitude != null && state.longitude != null
 
     fun registerLocation() {
-        val state = _uiState.value
+        val latitude = _uiState.value.latitude
+        val longitude = _uiState.value.longitude
 
-        if (state.latitude == null || state.longitude == null) {
+        if (latitude == null || longitude == null) {
             viewModelScope.launch {
                 _event.emit(UiEvent.ShowError("위치 정보가 없습니다"))
             }
@@ -137,7 +140,7 @@ class LocalVerificationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            locationRepository.certifyUserLocation(state.latitude!!, state.longitude!!).fold(
+            locationRepository.certifyUserLocation(latitude, longitude).fold(
                 onSuccess = { address ->
                     if (address.isNotBlank()) {
                         _uiState.update { it.copy(currentAddress = address) }
