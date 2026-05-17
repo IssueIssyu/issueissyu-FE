@@ -1,6 +1,7 @@
 package com.issueissyu.fe.di.network
 
 import com.google.gson.Gson
+import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.data.remote.api.AuthApi
 import dagger.Module
@@ -8,6 +9,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Named
@@ -20,10 +22,14 @@ object AuthNetworkModule {
     @Provides
     @Singleton
     @Named("auth_plain")
-    fun providePlainOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .applyDebugLogging()
-            .build()
+    fun providePlainOkHttpClient(
+        loggingInterceptor: HttpLoggingInterceptor,
+    ): OkHttpClient {
+        return OkHttpClient.Builder().apply {
+            if (BuildConfig.DEBUG) {
+                addInterceptor(loggingInterceptor)
+            }
+        }.build()
     }
 
     @Provides
