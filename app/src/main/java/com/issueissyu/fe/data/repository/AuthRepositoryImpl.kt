@@ -6,9 +6,9 @@ import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.dto.request.auth.LoginLinkRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.OnboardingRequest
-import com.issueissyu.fe.data.remote.dto.request.PhoneSendCodeRequest
-import com.issueissyu.fe.data.remote.dto.request.PhoneVerifyRequest
-import com.issueissyu.fe.data.remote.dto.request.RefreshTokenRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.PhoneSendCodeRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.PhoneVerifyRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.RefreshTokenRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.AuthLocalRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.NaverLoginRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.TermRequest
@@ -275,9 +275,16 @@ class AuthRepositoryImpl @Inject constructor(
                     Result.success(authUser)
                 }
 
-                "NAVER_LOGIN_401" ->
+                "LOCAL_LOGIN_401_1" ->
                     Result.failure(
                         Exception(safeMessage(response.message as String?, "유효하지 않은 값이 존재합니다.")),
+                    )
+
+                "LOCAL_LOGIN_401_2" ->
+                    Result.failure(
+                        Exception(
+                            safeMessage(response.message as String?, "아이디 또는 비밀번호가 올바르지 않습니다."),
+                        ),
                     )
 
                 "COMMON_500" ->
