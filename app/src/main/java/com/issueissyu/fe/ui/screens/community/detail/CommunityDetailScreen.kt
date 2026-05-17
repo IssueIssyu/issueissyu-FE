@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.community.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,7 +40,9 @@ import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.SignButton
 import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Gray_1
+import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
@@ -51,7 +55,10 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+// TODO: 백엔드/기획 기준 확정 후 사유 노출 임계값 조정
 private const val RELIABILITY_REASON_VISIBLE_THRESHOLD = 70
+private val COMMUNITY_DETAIL_ACTION_TOUCH_SIZE = 48.dp
+private val COMMUNITY_DETAIL_ACTION_BUTTON_SIZE = 30.dp
 
 @Composable
 fun CommunityDetailScreen(
@@ -77,8 +84,7 @@ fun CommunityDetailScreenContent(
         topBar = {
             CommunityDetailTopBar(
                 detail = uiState.detail,
-                onBackClick = onBackClick,
-                onMapClick = { /* TODO: 지도 이동 기능 구현 필요 */ }
+                onBackClick = onBackClick
             )
         },
         bottomBar = {
@@ -114,7 +120,10 @@ fun CommunityDetailScreenContent(
                     }
                 }
                 uiState.detail != null -> {
-                    CommunityDetailBody(detail = uiState.detail)
+                    CommunityDetailBody(
+                        detail = uiState.detail,
+                        onMapClick = { /* TODO: 지도 이동 기능 구현 필요 */ }
+                    )
                 }
             }
         }
@@ -157,37 +166,38 @@ private fun CommunityDetailErrorState(
 }
 
 @Composable
-private fun CommunityDetailBody(detail: CommunityDetail) {
+private fun CommunityDetailBody(
+    detail: CommunityDetail,
+    onMapClick: () -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
-        // 1. 작성자 및 메타 정보 (ISSUE, COMMUNICATION 등)
+        // 1. 카테고리 / 신고 / 위치 Row
+        item {
+            CommunityDetailCategoryRow(
+                detail = detail,
+                onMapClick = onMapClick
+            )
+        }
+
+        // 2. 작성자 및 메타 정보 (ISSUE, COMMUNICATION 등)
         if (detail.writerNickname != null) {
             item {
                 CommunityDetailMetaSection(detail = detail)
             }
         }
 
-        // 2. 제목 및 주소
+        // 3. 제목 및 주소
         item {
             CommunityDetailTitleSection(detail = detail)
         }
 
-        // 3. 이미지 섹션
+        // 4. 이미지 섹션
         if (detail.imageUrls.isNotEmpty()) {
             item {
                 CommunityDetailImageSection(imageUrls = detail.imageUrls)
-            }
-        }
-
-        // 4. AI 신뢰도 섹션 (ISSUE 전용)
-        if (detail.kind == CommunityItemKind.ISSUE) {
-            item {
-                AiReliabilitySection(
-                    score = detail.reliabilityScore,
-                    reason = detail.reliabilityReason
-                )
             }
         }
 
@@ -221,29 +231,10 @@ private fun CommunityDetailBody(detail: CommunityDetail) {
 @Composable
 private fun CommunityDetailTopBar(
     detail: CommunityDetail?,
-    onBackClick: () -> Unit,
-    onMapClick: () -> Unit
+    onBackClick: () -> Unit
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-    val kind = detail?.kind
-
     TopAppBar(
-        title = {
-            if (kind != null) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = Orange.copy(alpha = 0.1f),
-                    modifier = Modifier.padding(start = 8.dp)
-                ) {
-                    Text(
-                        text = "#${getKindDisplayName(kind)}",
-                        style = IssueTypo.Bold12,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                        color = Orange
-                    )
-                }
-            }
-        },
+        title = { },
         navigationIcon = {
             IconButton(onClick = onBackClick) {
                 Icon(
@@ -253,66 +244,9 @@ private fun CommunityDetailTopBar(
             }
         },
         actions = {
-            IconButton(onClick = onMapClick) {
-                Icon(
-                    imageVector = Icons.Outlined.LocationOn,
-                    contentDescription = "지도보기",
-                    tint = BrandColor
-                )
-            }
-
-            if (detail != null) {
-                if (detail.isMine) {
-                    // 본인 글인 경우: 관리 메뉴 (ISSUE, COMMUNICATION 위주)
-                    if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
-                        Box {
-                            IconButton(onClick = { showMenu = true }) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "더보기",
-                                    tint = Gray_6
-                                )
-                            }
-                            DropdownMenu(
-                                expanded = showMenu,
-                                onDismissRequest = { showMenu = false },
-                                modifier = Modifier.background(White)
-                            ) {
-                                if (detail.kind == CommunityItemKind.COMMUNICATION) {
-                                    DropdownMenuItem(
-                                        text = { Text("삭제", style = IssueTypo.Regular15) },
-                                        onClick = {
-                                            showMenu = false
-                                            // TODO: 삭제 API 연결 필요
-                                        }
-                                    )
-                                }
-                                DropdownMenuItem(
-                                    text = { Text("글 내리기", style = IssueTypo.Regular15) },
-                                    onClick = {
-                                        showMenu = false
-                                        // TODO: 글 내리기 API 연결 필요
-                                    }
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    // 본인 글이 아닌 경우: 신고 버튼
-                    TextButton(
-                        onClick = {
-                            if (!detail.isReported) {
-                                // TODO: 신고 API 연결 필요
-                            }
-                        },
-                        enabled = !detail.isReported
-                    ) {
-                        Text(
-                            text = if (detail.isReported) "신고됨" else "신고",
-                            style = IssueTypo.Bold12,
-                            color = if (detail.isReported) Gray_5 else Orange
-                        )
-                    }
+            if (detail != null && detail.isMine) {
+                if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
+                    CommunityDetailOwnerActionMenu(detail = detail)
                 }
             }
         },
@@ -321,24 +255,165 @@ private fun CommunityDetailTopBar(
 }
 
 @Composable
-private fun CommunityDetailMetaSection(detail: CommunityDetail) {
+private fun CommunityDetailOwnerActionMenu(detail: CommunityDetail) {
+    var showMenu by remember { mutableStateOf(false) }
+
+    Box {
+        IconButton(onClick = { showMenu = true }) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "더보기",
+                tint = Gray_6
+            )
+        }
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false },
+            modifier = Modifier.background(White)
+        ) {
+            if (detail.kind == CommunityItemKind.COMMUNICATION) {
+                DropdownMenuItem(
+                    text = { Text("삭제", style = IssueTypo.Regular15) },
+                    onClick = {
+                        showMenu = false
+                        // TODO: 삭제 API 연결 필요
+                    }
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("글 내리기", style = IssueTypo.Regular15) },
+                onClick = {
+                    showMenu = false
+                    // TODO: 글 내리기 API 연결 필요
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CommunityDetailCategoryRow(
+    detail: CommunityDetail,
+    onMapClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = 24.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        WriterAvatar(imageUrl = detail.writerProfileUrl, size = 40.dp)
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
+        // Category Chip
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = Orange.copy(alpha = 0.1f)
+        ) {
             Text(
-                text = detail.writerNickname ?: "익명",
-                style = IssueTypo.Bold12.copy(color = Title)
+                text = "#${getKindDisplayName(detail.kind)}",
+                style = IssueTypo.Bold12,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                color = Orange
             )
-            Text(
-                text = "${formatTimestamp(detail.createdAt)} · 조회 ${detail.viewCount} · 공감 ${detail.likeCount}",
-                style = IssueTypo.Regular12.copy(color = Gray_6)
+        }
+
+        // Report Button (if not mine)
+        if (!detail.isMine) {
+            Spacer(modifier = Modifier.width(8.dp))
+            CommunityDetailOutlinedIconButton(
+                onClick = {
+                    if (!detail.isReported) {
+                        // TODO: 커뮤니티 신고 API 연결
+                    }
+                },
+                enabled = !detail.isReported
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_report),
+                    contentDescription = if (detail.isReported) "신고됨" else "신고",
+                    modifier = Modifier.size(24.dp),
+                    tint = if (detail.isReported) Gray_5 else Orange
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        // Map Button
+        CommunityDetailOutlinedIconButton(onClick = onMapClick) {
+            Icon(
+                imageVector = Icons.Outlined.LocationOn,
+                contentDescription = "지도보기",
+                tint = BrandColor,
+                modifier = Modifier.size(24.dp)
             )
+        }
+    }
+}
+
+@Composable
+private fun CommunityDetailOutlinedIconButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(COMMUNITY_DETAIL_ACTION_TOUCH_SIZE)
+            .clickable(
+                enabled = enabled,
+                role = Role.Button,
+                onClick = onClick
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(COMMUNITY_DETAIL_ACTION_BUTTON_SIZE)
+                .border(
+                    width = 0.8.dp,
+                    color = if (enabled) Gray_3 else Gray_2,
+                    shape = CircleShape
+                )
+                .clip(CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun CommunityDetailMetaSection(detail: CommunityDetail) {
+    Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            WriterAvatar(imageUrl = detail.writerProfileUrl, size = 40.dp)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = detail.writerNickname ?: "익명",
+                    style = IssueTypo.Bold12.copy(color = Title)
+                )
+                Text(
+                    text = "${formatTimestamp(detail.createdAt)} · 조회 ${detail.viewCount} · 공감 ${detail.likeCount}",
+                    style = IssueTypo.Regular12.copy(color = Gray_6)
+                )
+            }
+        }
+
+        if (detail.kind == CommunityItemKind.ISSUE && detail.issueStatusText != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = Orange.copy(alpha = 0.1f)
+            ) {
+                Text(
+                    text = detail.issueStatusText,
+                    style = IssueTypo.Bold12.copy(color = Orange, fontSize = 10.sp),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                )
+            }
         }
     }
 }
@@ -354,20 +429,37 @@ private fun CommunityDetailTitleSection(detail: CommunityDetail) {
         
         Spacer(modifier = Modifier.height(8.dp))
         
-        if (detail.address != null) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = BrandColor
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = detail.address,
-                    style = IssueTypo.Regular12.copy(color = Gray_6),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            if (detail.address != null) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = BrandColor
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = detail.address,
+                        style = IssueTypo.Regular12.copy(color = Gray_6),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            if (detail.kind == CommunityItemKind.ISSUE) {
+                IssueReliabilityInline(
+                    score = detail.reliabilityScore,
+                    reason = detail.reliabilityReason,
+                    modifier = Modifier.padding(start = 16.dp)
                 )
             }
         }
@@ -390,6 +482,87 @@ private fun CommunityDetailTitleSection(detail: CommunityDetail) {
 }
 
 @Composable
+private fun IssueReliabilityInline(
+    score: Int?,
+    reason: String?,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.width(100.dp),
+        horizontalAlignment = Alignment.End
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "AI 신뢰도",
+                style = IssueTypo.Bold12.copy(color = Title, fontSize = 10.sp)
+            )
+            Text(
+                text = if (score != null) "$score%" else "검사중",
+                style = IssueTypo.Bold12.copy(
+                    color = if (score != null) getReliabilityColor(score) else Gray_5,
+                    fontSize = 10.sp
+                )
+            )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(Gray_2)
+        ) {
+            if (score != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(score / 100f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(getReliabilityColor(score))
+                )
+            }
+
+            // 33%, 66% dividers
+            Row(modifier = Modifier.fillMaxSize()) {
+                Spacer(modifier = Modifier.weight(0.33f))
+                Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(White.copy(alpha = 0.5f)))
+                Spacer(modifier = Modifier.weight(0.33f))
+                Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(White.copy(alpha = 0.5f)))
+                Spacer(modifier = Modifier.weight(0.34f))
+            }
+        }
+
+        if (score != null &&
+            score < RELIABILITY_REASON_VISIBLE_THRESHOLD &&
+            !reason.isNullOrBlank()
+        ) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = reason,
+                style = IssueTypo.Regular12.copy(color = Gray_6, fontSize = 10.sp),
+                textAlign = TextAlign.End,
+                lineHeight = 14.sp
+            )
+        }
+    }
+}
+
+private fun getReliabilityColor(score: Int): Color {
+    val percentage = score.coerceIn(0, 100)
+    return when {
+        percentage <= 33 -> Orange
+        percentage <= 66 -> Festival // TODO: AI 신뢰도 중간 구간 색상 theme 토큰 확정 필요
+        else -> BrandColor
+    }
+}
+
+@Composable
 private fun CommunityDetailImageSection(imageUrls: List<String>) {
     val listState = rememberLazyListState()
     
@@ -398,15 +571,16 @@ private fun CommunityDetailImageSection(imageUrls: List<String>) {
             state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(imageUrls) { imageUrl ->
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = "게시글 이미지",
                     modifier = Modifier
-                        .size(118.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .width(110.dp)
+                        .height(110.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .background(Gray_3),
                     contentScale = ContentScale.Crop
                 )
@@ -430,63 +604,6 @@ private fun CommunityDetailImageSection(imageUrls: List<String>) {
                         .fillMaxHeight()
                         .background(BrandColor)
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AiReliabilitySection(score: Int?, reason: String?) {
-    Surface(
-        modifier = Modifier
-            .padding(horizontal = 24.dp, vertical = 8.dp)
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = Gray_1,
-        border = androidx.compose.foundation.BorderStroke(1.dp, Gray_3)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "AI 신뢰도",
-                    style = IssueTypo.Bold12.copy(color = Title)
-                )
-                if (score != null) {
-                    Text(
-                        text = "$score / 100점",
-                        style = IssueTypo.Bold12.copy(color = BrandColor)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            if (score == null) {
-                Text(
-                    text = "AI가 검사중입니다",
-                    style = IssueTypo.Regular12.copy(color = Gray_5)
-                )
-            } else {
-                LinearProgressIndicator(
-                    progress = { score.coerceIn(0, 100) / 100f },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(999.dp)),
-                    color = BrandColor,
-                    trackColor = Gray_3
-                )
-                
-                if (score < RELIABILITY_REASON_VISIBLE_THRESHOLD && !reason.isNullOrBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = reason,
-                        style = IssueTypo.Regular12.copy(color = Gray_6),
-                        lineHeight = 18.sp
-                    )
-                }
             }
         }
     }
@@ -734,7 +851,8 @@ fun PreviewCommunityDetailScreenIssue() {
         writerNickname = "이슈알리미", writerProfileUrl = null, address = "서울시 마포구 성산동 123-45",
         viewCount = 1234, likeCount = 56, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
         isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
-        reliabilityScore = 85, reliabilityReason = null,
+        reliabilityScore = 33, reliabilityReason = null,
+        issueStatusText = "진행중",
         petitionCount = 450, petitionTargetCount = 1000
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
@@ -751,7 +869,8 @@ fun PreviewCommunityDetailScreenIssueMine() {
         writerNickname = "나", writerProfileUrl = null, address = "서울시 마포구 성산동",
         viewCount = 10, likeCount = 2, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
         isReported = false, isPetitioned = false, isProblemSolver = false, isMine = true,
-        reliabilityScore = 90, reliabilityReason = null
+        reliabilityScore = 90, reliabilityReason = null,
+        issueStatusText = "해결 완료"
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
@@ -767,7 +886,8 @@ fun PreviewCommunityDetailScreenIssueReported() {
         writerNickname = "누군가", writerProfileUrl = null, address = "서울시 마포구",
         viewCount = 100, likeCount = 5, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
         isReported = true, isPetitioned = false, isProblemSolver = false, isMine = false,
-        reliabilityScore = 75, reliabilityReason = null
+        reliabilityScore = 75, reliabilityReason = null,
+        issueStatusText = "진행중"
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
@@ -783,7 +903,8 @@ fun PreviewCommunityDetailScreenIssueNullReliability() {
         writerNickname = "이슈알리미", writerProfileUrl = null, address = "서울시 마포구",
         viewCount = 100, likeCount = 10, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
         isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
-        reliabilityScore = null, reliabilityReason = null
+        reliabilityScore = null, reliabilityReason = null,
+        issueStatusText = "진행중"
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
@@ -799,7 +920,8 @@ fun PreviewCommunityDetailScreenIssueLowReliability() {
         writerNickname = "정보제보자", writerProfileUrl = null, address = "서울시 서대문구",
         viewCount = 50, likeCount = 5, createdAt = "2026-05-16T12:00:00.000Z", updatedAt = null,
         isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
-        reliabilityScore = 58, reliabilityReason = "출처가 불분명하며 허위 정보일 가능성이 있습니다."
+        reliabilityScore = 20, reliabilityReason = "출처가 불분명하며 허위 정보일 가능성이 있습니다.",
+        issueStatusText = "해결 전"
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }

@@ -184,13 +184,18 @@ class CommunityRepositoryImpl @Inject constructor() : CommunityRepository {
                 isProblemSolver = false,
                 isMine = (communityId % 2 == 0L), // 더미: 짝수 ID는 본인 글
                 reliabilityScore = when (kind) {
-                    CommunityItemKind.ISSUE -> if (communityId % 4 == 0L) null else 58 // 더미: 4의 배수는 검사중, 나머지는 낮음
+                    CommunityItemKind.ISSUE -> when (communityId % 3) {
+                        0L -> 33
+                        1L -> 65
+                        else -> 85
+                    }
                     else -> null
                 },
                 reliabilityReason = when (kind) {
                     CommunityItemKind.ISSUE -> if (communityId % 4 != 0L) "출처가 불분명하며 허위 정보일 가능성이 있습니다." else null
                     else -> null
                 },
+                issueStatusText = if (kind == CommunityItemKind.ISSUE) "진행중" else null,
                 discount = if (kind == CommunityItemKind.STORE) "전 품목 20% 할인" else null,
                 eventStartTime = if (kind == CommunityItemKind.STORE || kind == CommunityItemKind.FESTIVAL) "2026-05-14T00:00:00.000Z" else null,
                 eventEndTime = if (kind == CommunityItemKind.STORE || kind == CommunityItemKind.FESTIVAL) "2026-05-20T00:00:00.000Z" else null,

@@ -20,6 +20,7 @@ data class CommunityDetail(
     val isMine: Boolean,
     val reliabilityScore: Int?,
     val reliabilityReason: String?,
+    val issueStatusText: String? = null,
     val discount: String? = null,
     val eventStartTime: String? = null,
     val eventEndTime: String? = null,
