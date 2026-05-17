@@ -42,14 +42,11 @@ data class UserVerificationUiState(
     val isLinkingAccount: Boolean = false,
     val accountLinkError: String? = null,
 
-    /** 로컬 가입/로그인 세션인데, 전화번호가 이미 다른 로컬 계정에 쓰인 경우(소셜 연동 아님) */
     val showLocalPhoneRegisteredDialog: Boolean = false,
 
-    /** 연동 API가 "이미 연동됨" 등으로 거절한 뒤 안내 */
     val showAlreadyLinkedDialog: Boolean = false,
     val alreadyLinkedMessage: String? = null,
 
-    /** 연동 성공 후 로그아웃 안내 */
     val showLinkCompletedDialog: Boolean = false,
 )
 
@@ -96,10 +93,9 @@ class UserVerificationViewModel @Inject constructor(
         }
     }
 
-    /** 로컬 계정으로는 '연동'이 아니라 기존 아이디 로그인이 필요할 때 */
     fun onLocalPhoneRegisteredGoToLogin(onNavigateToLogin: () -> Unit) {
         viewModelScope.launch {
-            onboardingSessionStore.exitToLogin()
+            exitToLogin()
             _uiState.update { it.copy(showLocalPhoneRegisteredDialog = false) }
             onNavigateToLogin()
         }
@@ -116,7 +112,7 @@ class UserVerificationViewModel @Inject constructor(
 
     fun onAlreadyLinkedGoToLogin(onNavigateToLogin: () -> Unit) {
         viewModelScope.launch {
-            onboardingSessionStore.exitToLogin()
+            exitToLogin()
             _uiState.update {
                 it.copy(
                     showAlreadyLinkedDialog = false,
@@ -280,10 +276,7 @@ class UserVerificationViewModel @Inject constructor(
         }
     }
 
-    /**
-     * [api/auth/phone] 전화번호 인증 확인.
-     * 화면에서 **확인** 버튼으로 호출하거나, 6자리 입력 완료 시 자동 호출됩니다.
-     */
+
     fun verifyCode() {
         if (_uiState.value.isVerifyingCode) return
 
@@ -400,9 +393,14 @@ class UserVerificationViewModel @Inject constructor(
     fun onLinkCompletedAcknowledged(onNavigateToLogin: () -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(showLinkCompletedDialog = false) }
-            onboardingSessionStore.exitToLogin()
+            exitToLogin()
             onNavigateToLogin()
         }
+    }
+
+    private suspend fun exitToLogin() {
+        authRepository.logout()
+        onboardingSessionStore.clearPendingProfile()
     }
 
     fun onSignupClick(onComplete: (nickname: String, email: String, phoneNumber: String) -> Unit) {

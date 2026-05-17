@@ -7,18 +7,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.issueissyu.fe.data.local.OnboardingSessionStore
-import dagger.hilt.EntryPoint
-import dagger.hilt.InstallIn
-import dagger.hilt.android.EntryPointAccessors
-import dagger.hilt.components.SingletonComponent
-import kotlinx.coroutines.launch
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -61,9 +52,7 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToLogin = {
-                    navController.navigate(LOGIN_ROUTE) {
-                        popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
-                    }
+                    navController.navigateToLoginClearingBackStack()
                 },
                 onNavigateToOnboarding = {
                     navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
@@ -97,23 +86,19 @@ fun AppNavGraph(
 
         composable(AppDestinations.Onboarding.SIGNUP_ROUTE) {
             BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
+                navController.navigateToLoginClearingBackStack()
             }
 
             SignUpScreen(
                 viewModel = hiltViewModel(),
                 onSignUpCompleteNavigateToLogin = {
-                    navController.navigate(AppDestinations.Onboarding.LOGIN_ROUTE) {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigateToLoginClearingBackStack()
                 },
             )
         }
 
         composable(AppDestinations.Onboarding.TERM_ROUTE) {
-            OnboardingSystemBackHandler(navController)
+            OnboardingBackDisabledHandler()
 
             TermScreen(
                 onAgreeClick = { navController.navigate(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) },
@@ -142,22 +127,20 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) {
-            OnboardingSystemBackHandler(navController)
+            OnboardingBackDisabledHandler()
 
             UserVerificationScreen(
                 onVerificationComplete = { _, _, _ ->
                     navController.navigate(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE)
                 },
                 onNavigateToLogin = {
-                    navController.navigate(AppDestinations.Onboarding.LOGIN_ROUTE) {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    navController.navigateToLoginClearingBackStack()
                 },
             )
         }
 
         composable(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE) {
-            OnboardingSystemBackHandler(navController)
+            OnboardingBackDisabledHandler()
 
             LocalVerificationScreen(
                 onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE) }
@@ -165,7 +148,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.COMPLETE_ROUTE) {
-            OnboardingSystemBackHandler(navController)
+            OnboardingBackDisabledHandler()
 
             CompleteScreen(
                 onNavigateToMain = {
@@ -343,29 +326,14 @@ fun AppNavGraph(
     }
 }
 
-@EntryPoint
-@InstallIn(SingletonComponent::class)
-internal interface OnboardingSessionEntryPoint {
-    fun onboardingSessionStore(): OnboardingSessionStore
+//시스템 뒤로가기 -> 막힘
+@Composable
+private fun OnboardingBackDisabledHandler() {
+    BackHandler { }
 }
 
-@Composable
-private fun OnboardingSystemBackHandler(navController: NavHostController) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val sessionStore = remember {
-        EntryPointAccessors.fromApplication(
-            context.applicationContext,
-            OnboardingSessionEntryPoint::class.java,
-        ).onboardingSessionStore()
-    }
-
-    BackHandler {
-        scope.launch {
-            sessionStore.exitToLogin()
-            navController.navigate(LOGIN_ROUTE) {
-                popUpTo(0) { inclusive = true }
-            }
-        }
+private fun NavHostController.navigateToLoginClearingBackStack() {
+    navigate(LOGIN_ROUTE) {
+        popUpTo(0) { inclusive = true }
     }
 }
