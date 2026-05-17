@@ -1,8 +1,6 @@
 package com.issueissyu.fe.di.network
 
-import android.util.Log
 import com.google.gson.Gson
-import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
@@ -14,7 +12,6 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import javax.inject.Named
@@ -29,30 +26,13 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideLoggingInterceptor(): HttpLoggingInterceptor {
-        val logger = HttpLoggingInterceptor.Logger { message ->
-            // Logcat에서 확실하게 잡히도록 별도 태그 사용
-            Log.d("ISSUE_HTTP", message)
-        }
-        return HttpLoggingInterceptor(logger).apply {
-            level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
-            } else {
-                HttpLoggingInterceptor.Level.NONE
-            }
-        }
-    }
-
-    @Provides
-    @Singleton
     fun provideOkHttpClient(
-        loggingInterceptor: HttpLoggingInterceptor,
         authInterceptor: AuthInterceptor,
         tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
-            .addInterceptor(loggingInterceptor)
+            .applyDebugLogging()
             .authenticator(tokenAuthenticator)
             .build()
     }
