@@ -88,7 +88,7 @@ class LocalVerificationViewModel @Inject constructor(
     }
 
     private suspend fun fetchAddressPreview(lat: Double, lng: Double) {
-        locationRepository.resolveAddressPreview(lat, lng).fold(
+        locationRepository.myAddress(lat, lng).fold(
             onSuccess = { address ->
                 lastPreviewErrorMessage = null
                 if (address.isNotBlank()) {

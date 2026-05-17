@@ -2,9 +2,9 @@ package com.issueissyu.fe.data.remote.api
 
 import com.issueissyu.fe.data.remote.dto.request.auth.OnboardingRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.LoginLinkRequest
-import com.issueissyu.fe.data.remote.dto.request.PhoneSendCodeRequest
-import com.issueissyu.fe.data.remote.dto.request.PhoneVerifyRequest
-import com.issueissyu.fe.data.remote.dto.request.RefreshTokenRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.PhoneSendCodeRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.PhoneVerifyRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.RefreshTokenRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.AuthLocalRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.NaverLoginRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.TermRequest

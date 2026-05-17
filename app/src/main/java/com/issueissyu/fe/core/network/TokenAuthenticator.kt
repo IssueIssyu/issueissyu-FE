@@ -2,7 +2,7 @@ package com.issueissyu.fe.core.network
 
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.data.remote.api.AuthApi
-import com.issueissyu.fe.data.remote.dto.request.RefreshTokenRequest
+import com.issueissyu.fe.data.remote.dto.request.auth.RefreshTokenRequest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock

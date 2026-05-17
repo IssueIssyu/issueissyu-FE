@@ -20,8 +20,8 @@ class LocationRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : LocationRepository {
 
-    override suspend fun resolveAddressPreview(lat: Double, lng: Double): Result<String> {
-        val fromServer = resolveAddressFromServer(lat, lng)
+    override suspend fun myAddress(lat: Double, lng: Double): Result<String> {
+        val fromServer = fetchMyAddressFromServer(lat, lng)
         if (fromServer.isSuccess) {
             return fromServer
         }
@@ -80,16 +80,45 @@ class LocationRepositoryImpl @Inject constructor(
         }
     }
 
-    private suspend fun resolveAddressFromServer(lat: Double, lng: Double): Result<String> {
+    private suspend fun fetchMyAddressFromServer(lat: Double, lng: Double): Result<String> {
         return try {
-            val response = locationApi.resolveAddress(lat, lng)
-            val address = response.result?.address?.takeIf { it.isNotBlank() }
-            if (response.isSuccess && address != null) {
-                Result.success(address)
-            } else {
-                Result.failure(
-                    Exception(response.message.ifBlank { "주소 조회에 실패했습니다." }),
-                )
+            val response = locationApi.myAddress(lat, lng)
+            when (response.code) {
+                "LOCATION_200_3" -> {
+                    val address = response.result?.address?.takeIf { it.isNotBlank() }
+                    if (address != null) {
+                        Result.success(address)
+                    } else {
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "주소 조회 결과가 올바르지 않습니다." },
+                            ),
+                        )
+                    }
+                }
+                "COMMON_500" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요." },
+                        ),
+                    )
+                else ->
+                    if (response.isSuccess) {
+                        val address = response.result?.address?.takeIf { it.isNotBlank() }
+                        if (address != null) {
+                            Result.success(address)
+                        } else {
+                            Result.failure(
+                                Exception(
+                                    response.message.ifBlank { "주소 조회 결과가 올바르지 않습니다." },
+                                ),
+                            )
+                        }
+                    } else {
+                        Result.failure(
+                            Exception(response.message.ifBlank { "주소 조회에 실패했습니다." }),
+                        )
+                    }
             }
         } catch (e: Exception) {
             Result.failure(e)
