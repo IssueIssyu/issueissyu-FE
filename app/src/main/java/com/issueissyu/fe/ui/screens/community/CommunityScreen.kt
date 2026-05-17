@@ -64,7 +64,7 @@ fun CommunityScreenContent(
     val colorScheme = MaterialTheme.colorScheme
 
     val categories = remember(colorScheme) {
-        CommunityTab.visibleTabs.map { tab ->
+        CommunityTab.visibleTabs.filter { it != CommunityTab.ALL }.map { tab ->
             when (tab) {
                 CommunityTab.HOT -> CategoryItem(tab.displayName, R.drawable.ic_fire, Issue, colorScheme.errorContainer)
                 CommunityTab.ISSUE -> CategoryItem(tab.displayName, R.drawable.issue, Issue, colorScheme.errorContainer)
@@ -85,7 +85,9 @@ fun CommunityScreenContent(
                 // 1. 카테고리 버튼 (제일 위)
                 CategoryButtons(
                     categories = categories,
-                    selectedCategory = uiState.selectedTab.displayName,
+                    selectedCategory = uiState.selectedTab
+                        .takeIf { it != CommunityTab.ALL }
+                        ?.displayName,
                     onCategorySelected = { name ->
                         onTabSelected(name.toCommunityTab())
                     }
