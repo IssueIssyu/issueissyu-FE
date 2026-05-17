@@ -24,9 +24,11 @@ androidxJunit = "1.2.1"
 espressoCore = "3.6.1"
 googleServices = "4.4.4"
 firebaseBom = "34.11.0"
+securityCrypto = "1.1.0"
 
 [libraries]
 naver-map-sdk = { group = "com.naver.maps", name = "map-sdk", version.ref = "navermaps" }
+naver-nid-oauth = { group = "com.navercorp.nid", name = "oauth", version = "5.9.1" }
 google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -67,6 +69,9 @@ androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espres
 
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging"}
+
+androidx-security-crypto = { group = "androidx.security", name="security-crypto", version.ref = "securityCrypto" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

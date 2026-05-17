@@ -14,10 +14,15 @@ android {
     namespace = "com.issueissyu.fe"
     compileSdk = 35
 
-    // Read API keys from local.properties
     val localProperties = Properties().apply {
         rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(::load)
     }
+
+    // local.properties → BuildConfig / manifestPlaceholders
+    fun Properties.buildConfigString(key: String, default: String = ""): String =
+        (getProperty(key) ?: default).trim()
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
 
     defaultConfig {
         applicationId = "com.issueissyu.fe"
@@ -30,8 +35,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        val naverMapNcpKeyId = localProperties.getProperty("naver.map.client.id") ?: ""
-        manifestPlaceholders["NCP_KEY_ID"] = naverMapNcpKeyId
+        manifestPlaceholders["NCP_KEY_ID"] = localProperties.getProperty("naver.map.client.id") ?: ""
+
+        buildConfigField("String", "API_BASE_URL", "\"${localProperties.buildConfigString("api.base.url", "https://api.example.com/")}\"")
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProperties.buildConfigString("naver.client.id")}\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProperties.buildConfigString("naver.client.secret")}\"")
+        buildConfigField("String", "NAVER_CLIENT_NAME", "\"${localProperties.buildConfigString("naver.client.name", "이슈있슈")}\"")
     }
 
     buildTypes {
@@ -73,6 +82,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.google.play.services.location)
     implementation(libs.naver.map.sdk)
+    implementation(libs.naver.nid.oauth)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
@@ -111,4 +121,6 @@ dependencies {
 
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+
+    implementation(libs.androidx.security.crypto)
 }

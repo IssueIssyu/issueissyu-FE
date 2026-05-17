@@ -25,20 +25,141 @@ import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.*
 import com.issueissyu.fe.ui.viewmodels.UserVerificationViewModel
 import com.issueissyu.fe.ui.viewmodels.UserVerificationViewModel.Companion.PHONE_NUMBER_LENGTH
+import com.issueissyu.fe.ui.viewmodels.UserVerificationViewModel.Companion.VerificationCodeLength
 
 @Composable
 fun UserVerificationScreen(
     viewModel: UserVerificationViewModel = hiltViewModel(),
-    onVerificationComplete: (nickname: String, email: String, phoneNumber: String) -> Unit
+    onVerificationComplete: (nickname: String, email: String, phoneNumber: String) -> Unit,
+    onNavigateToLogin: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val emailDomains = listOf("선택", "naver.com", "gmail.com", "daum.net", "직접 입력")
 
-    // 인증번호 자동 확인
-    LaunchedEffect(uiState.verificationCode) {
-        if (uiState.verificationCode.length == 6 && uiState.isVerificationCodeSent) {
-            viewModel.verifyCode()
-        }
+    if (uiState.showLocalPhoneRegisteredDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissLocalPhoneRegisteredDialog() },
+            title = {
+                Text(
+                    text = "이미 가입된 번호예요",
+                    style = IssueTypo.Bold18,
+                )
+            },
+            text = {
+                Text(
+                    text = "이 번호는 이미 로컬(아이디) 계정으로 가입되어 있어요. " +
+                        "새로 가입하는 대신, 기존에 쓰던 아이디로 로그인해 주세요.",
+                    style = IssueTypo.Regular15.copy(color = Text),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onLocalPhoneRegisteredGoToLogin(onNavigateToLogin) },
+                ) {
+                    Text("로그인으로", style = IssueTypo.Bold12.copy(color = BrandColor))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissLocalPhoneRegisteredDialog() }) {
+                    Text("닫기", style = IssueTypo.Regular12.copy(color = Gray_5))
+                }
+            },
+        )
+    }
+
+    if (uiState.showAlreadyLinkedDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissAlreadyLinkedDialog() },
+            title = {
+                Text(
+                    text = "연동할 수 없어요",
+                    style = IssueTypo.Bold18,
+                )
+            },
+            text = {
+                Text(
+                    text = uiState.alreadyLinkedMessage
+                        ?: "이미 연동된 계정이에요. 로그인 화면에서 다시 시도해 주세요.",
+                    style = IssueTypo.Regular15.copy(color = Text),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onAlreadyLinkedGoToLogin(onNavigateToLogin) },
+                ) {
+                    Text("로그인으로", style = IssueTypo.Bold12.copy(color = BrandColor))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.dismissAlreadyLinkedDialog() }) {
+                    Text("닫기", style = IssueTypo.Regular12.copy(color = Gray_5))
+                }
+            },
+        )
+    }
+
+    if (uiState.showLinkCompletedDialog) {
+        AlertDialog(
+            onDismissRequest = { },
+            title = {
+                Text("연동 완료", style = IssueTypo.Bold18)
+            },
+            text = {
+                Text(
+                    "계정 연동이 완료되었어요. 확인을 누르면 로그아웃 후 로그인 화면으로 이동합니다.",
+                    style = IssueTypo.Regular15.copy(color = Text),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.onLinkCompletedAcknowledged(onNavigateToLogin) },
+                ) {
+                    Text("확인", style = IssueTypo.Bold12.copy(color = BrandColor))
+                }
+            },
+        )
+    }
+
+    if (uiState.showAccountLinkDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!uiState.isLinkingAccount) viewModel.dismissAccountLinkDialog() },
+            title = {
+                Text(
+                    text = "이미 가입된 번호예요",
+                    style = IssueTypo.Bold18,
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "이 전화번호로 가입된 계정이 있습니다. 지금 로그인한 계정과 연동할까요?",
+                        style = IssueTypo.Regular15.copy(color = Text),
+                    )
+                    uiState.accountLinkError?.let { err ->
+                        Text(
+                            text = err,
+                            style = IssueTypo.Regular12.copy(color = Issue),
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.confirmAccountLink() },
+                    enabled = !uiState.isLinkingAccount,
+                ) {
+                    Text("연동", style = IssueTypo.Bold12.copy(color = BrandColor))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.dismissAccountLinkDialog() },
+                    enabled = !uiState.isLinkingAccount,
+                ) {
+                    Text("취소", style = IssueTypo.Regular12.copy(color = Gray_5))
+                }
+            },
+        )
     }
 
     UserVerificationContent(
@@ -69,13 +190,10 @@ fun UserVerificationScreen(
         onPhoneNumberChange = viewModel::onPhoneNumberChange,
         onSendVerificationCode = viewModel::sendVerificationCode,
         onVerificationCodeChange = viewModel::onVerificationCodeChange,
+        onConfirmVerificationCode = viewModel::verifyCode,
         onSignupClick = {
-            onVerificationComplete(
-                uiState.nickname,
-                viewModel.getFullEmail(),
-                uiState.phoneNumber
-            )
-        }
+            viewModel.onSignupClick(onVerificationComplete)
+        },
     )
 }
 
@@ -109,6 +227,7 @@ fun UserVerificationContent(
     onPhoneNumberChange: (String) -> Unit,
     onSendVerificationCode: () -> Unit,
     onVerificationCodeChange: (String) -> Unit,
+    onConfirmVerificationCode: () -> Unit,
     onSignupClick: () -> Unit
 ) {
     Scaffold(
@@ -186,9 +305,12 @@ fun UserVerificationContent(
             // 인증번호 입력
             VerificationCodeSection(
                 verificationCode = verificationCode,
+                isVerificationCodeSent = isVerificationCodeSent,
                 isCodeVerified = isCodeVerified,
+                isVerifyingCode = isVerifyingCode,
                 codeError = codeError,
-                onVerificationCodeChange = onVerificationCodeChange
+                onVerificationCodeChange = onVerificationCodeChange,
+                onConfirmVerification = onConfirmVerificationCode,
             )
         }
     }
@@ -383,13 +505,15 @@ private fun PhoneNumberSection(
     onPhoneNumberChange: (String) -> Unit,
     onSendVerificationCode: () -> Unit
 ) {
+    val phoneDigitsLength = phoneNumber.count { it.isDigit() }
+
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // 휴대폰 번호 입력
         CommonTextField(
             label = "휴대폰 번호",
-            placeholder = "'-' 없이 번호만 입력해주세요",
+            placeholder = "휴대폰 번호를 입력해주세요",
             value = phoneNumber,
             onValueChange = onPhoneNumberChange,
             maxLength = PHONE_NUMBER_LENGTH
@@ -418,7 +542,7 @@ private fun PhoneNumberSection(
             // 인증번호 받기/재발송 버튼
             Button(
                 onClick = onSendVerificationCode,
-                enabled = phoneNumber.length >= 10 && phoneError == null && !isSendingCode,
+                enabled = phoneDigitsLength == 11 && phoneError == null && !isSendingCode,
                 modifier = Modifier.size(70.dp, 30.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = BrandColor,
@@ -435,16 +559,30 @@ private fun PhoneNumberSection(
                 )
             }
         }
+        Text(
+            text = "번호 입력 후 [인증번호]를 누르면 문자로 인증번호가 전송됩니다. (예: 010-1234-5678)",
+            style = IssueTypo.Regular12.copy(color = Gray_5),
+            modifier = Modifier.padding(horizontal = 5.dp),
+        )
     }
 }
 
 @Composable
 private fun VerificationCodeSection(
     verificationCode: String,
+    isVerificationCodeSent: Boolean,
     isCodeVerified: Boolean,
+    isVerifyingCode: Boolean,
     codeError: String?,
-    onVerificationCodeChange: (String) -> Unit
+    onVerificationCodeChange: (String) -> Unit,
+    onConfirmVerification: () -> Unit,
 ) {
+    val canConfirm =
+        isVerificationCodeSent &&
+            verificationCode.length == VerificationCodeLength &&
+            !isVerifyingCode &&
+            !isCodeVerified
+
     Column(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -454,22 +592,62 @@ private fun VerificationCodeSection(
             placeholder = "인증번호를 입력해주세요",
             value = verificationCode,
             onValueChange = onVerificationCodeChange,
-            maxLength = 6
+            maxLength = VerificationCodeLength
         )
 
-        // 에러 또는 확인 완료 메시지
-        if (codeError != null) {
-            Text(
-                text = codeError,
-                style = IssueTypo.Regular12.copy(color = Issue),
-                modifier = Modifier.padding(horizontal = 5.dp)
-            )
-        } else if (isCodeVerified) {
-            Text(
-                text = "인증이 완료되었습니다",
-                style = IssueTypo.Regular12.copy(color = BrandColor),
-                modifier = Modifier.padding(horizontal = 5.dp)
-            )
+        Text(
+            text = "문자로 받은 ${VerificationCodeLength}자리를 입력한 뒤 [확인]을 누르세요.",
+            style = IssueTypo.Regular12.copy(color = Gray_5),
+            modifier = Modifier.padding(horizontal = 5.dp),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 5.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                if (codeError != null) {
+                    Text(
+                        text = codeError,
+                        style = IssueTypo.Regular12.copy(color = Issue),
+                    )
+                } else if (isCodeVerified) {
+                    Text(
+                        text = "인증이 완료되었습니다",
+                        style = IssueTypo.Regular12.copy(color = BrandColor),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Button(
+                onClick = onConfirmVerification,
+                enabled = canConfirm,
+                modifier = Modifier.size(70.dp, 30.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BrandColor,
+                    disabledContainerColor = Gray_5
+                ),
+                shape = RoundedCornerShape(20.dp),
+                contentPadding = PaddingValues(5.dp)
+            ) {
+                if (isVerifyingCode) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = White,
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Text(
+                        text = "확인",
+                        style = IssueTypo.Bold12.copy(color = White)
+                    )
+                }
+            }
         }
     }
 }
@@ -505,6 +683,7 @@ fun UserVerificationScreenPreview() {
         onPhoneNumberChange = {},
         onSendVerificationCode = {},
         onVerificationCodeChange = {},
+        onConfirmVerificationCode = {},
         onSignupClick = {}
     )
 }

@@ -24,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.CommonButton
@@ -36,8 +35,8 @@ import com.issueissyu.fe.ui.theme.White
 @Composable
 fun CompleteScreen(
     onNavigateToMain: () -> Unit,
-    onNavigateToLanding: () -> Unit
-){
+    onNavigateToLanding: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -107,13 +106,4 @@ fun CompleteScreen(
             }
         }
     }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun CompleteScreenPreview(){
-    CompleteScreen(
-        onNavigateToMain = {},
-        onNavigateToLanding = {}
-    )
 }

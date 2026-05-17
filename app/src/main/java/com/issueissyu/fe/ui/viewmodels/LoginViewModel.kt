@@ -2,10 +2,14 @@ package com.issueissyu.fe.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.domain.repository.AuthRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -14,53 +18,137 @@ import javax.inject.Inject
 data class LoginUiState(
     val userId: String = "",
     val userPw: String = "",
-
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val loginSuccess: Boolean = false
 )
 
 @HiltViewModel
-class LoginViewModel @Inject constructor(): ViewModel() {
+class LoginViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    //id & pw 업데이트
+    private val _effects = MutableSharedFlow<LoginEffect>(extraBufferCapacity = 64)
+    val effects: SharedFlow<LoginEffect> = _effects.asSharedFlow()
+
     fun updateUserId(newId: String) {
-        _uiState.update {it.copy(userId = newId, errorMessage = null)}
+        _uiState.update { it.copy(userId = newId, errorMessage = null) }
     }
 
-    fun updatePassword(newPw: String){
-        _uiState.update {it.copy(userPw = newPw, errorMessage = null)}
+    fun updatePassword(newPw: String) {
+        _uiState.update { it.copy(userPw = newPw, errorMessage = null) }
     }
 
-    //로컬 로그인
-    fun localLogin(){
+    fun reportNaverLoginError(message: String) {
+        _uiState.update {
+            it.copy(isLoading = false, errorMessage = message.ifBlank { "네이버 로그인에 실패했습니다" })
+        }
+    }
+
+    fun localLogin() {
+        if (_uiState.value.isLoading) return
+
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
 
-            delay(1000)
+            val id = _uiState.value.userId.trim()
+            val pw = _uiState.value.userPw
 
-            if(_uiState.value.userId == "test123" && _uiState.value.userPw == "0000"){    //더미
-                _uiState.update { it.copy(isLoading = false, loginSuccess = true) }
-            } else {
+            if (id.isEmpty() || pw.isEmpty()) {
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        errorMessage = "아이디 또는 비밀번호가 틀렸습니다"
+                        errorMessage = "아이디와 비밀번호를 입력해주세요",
+                    )
+                }
+                return@launch
+            }
+
+            try {
+                val result = authRepository.loginLocal(userName = id, password = pw)
+                val user = result.getOrNull()
+                if (user == null) {
+                    val err = result.exceptionOrNull()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = err?.message ?: "로그인에 실패했습니다",
+                        )
+                    }
+                    return@launch
+                }
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = null,
+                        userId = id,
+                        userPw = "",
+                    )
+                }
+                // 별도 launch에 emit하면 화면 전환 직후 ViewModel 정리로 emit 코루틴이 취소될 수 있음 → 같은 코루틴에서 emit
+                _effects.emit(
+                    if (user.isNew) LoginEffect.NavigateToTerms else LoginEffect.NavigateToMain,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "로그인에 실패했습니다",
                     )
                 }
             }
         }
     }
 
-    fun naverLogin(){
+    fun naverLogin(accessToken: String, refreshToken: String) {
         viewModelScope.launch {
+            if (accessToken.isBlank()) {
+                _uiState.update { it.copy(errorMessage = "네이버 액세스 토큰이 없습니다") }
+                return@launch
+            }
+
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            delay(1000)
-            _uiState.update { it.copy(isLoading = false, loginSuccess = true) }
-            //SDK 호출 -> 토큰 주고 -> 응답 받기
+            try {
+                val result = authRepository.loginNaver(
+                    accessToken = accessToken,
+                    refreshToken = refreshToken.ifBlank { "" },
+                )
+                val user = result.getOrNull()
+                if (user == null) {
+                    val err = result.exceptionOrNull()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = err?.message ?: "네이버 로그인에 실패했습니다",
+                        )
+                    }
+                    return@launch
+                }
+
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = null,
+                    )
+                }
+                _effects.emit(
+                    if (user.isNew) LoginEffect.NavigateToTerms else LoginEffect.NavigateToMain,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "네이버 로그인에 실패했습니다",
+                    )
+                }
+            }
         }
     }
 }

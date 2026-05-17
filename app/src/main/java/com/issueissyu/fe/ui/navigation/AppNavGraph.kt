@@ -47,24 +47,35 @@ fun AppNavGraph(
             SplashScreen(
                 viewModel = hiltViewModel(),
                 onNavigateToMain = {
-                    navController.navigate(AppDestinations.HOME_ROUTE) {
+                    navController.navigate(AppDestinations.TOWN_ROUTE) {
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
                 },
                 onNavigateToLogin = {
-                    navController.navigate(LOGIN_ROUTE) {
+                    navController.navigateToLoginClearingBackStack()
+                },
+                onNavigateToOnboarding = {
+                    navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
-                }
+                },
             )
         }
 
         composable(LOGIN_ROUTE) {
             LoginScreen(
                 viewModel = hiltViewModel(),
-                onNavigateToMain = {
-                    navController.navigate(AppDestinations.HOME_ROUTE) {
-                        popUpTo(LOGIN_ROUTE) { inclusive = true }
+                onLoginSuccess = { isNewUser ->
+                    if (isNewUser) {
+                        navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
+                            popUpTo(AppDestinations.Onboarding.LOGIN_ROUTE) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        navController.navigate(AppDestinations.TOWN_ROUTE) {
+                            popUpTo(AppDestinations.Onboarding.LOGIN_ROUTE) { inclusive = true }
+                            launchSingleTop = true
+                        }
                     }
                 },
                 onNavigateToSignUp = {
@@ -75,25 +86,19 @@ fun AppNavGraph(
 
         composable(AppDestinations.Onboarding.SIGNUP_ROUTE) {
             BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
+                navController.navigateToLoginClearingBackStack()
             }
 
             SignUpScreen(
                 viewModel = hiltViewModel(),
-                onNavigateToVerification = {
-                    navController.navigate(AppDestinations.Onboarding.TERM_ROUTE)
-                }
+                onSignUpCompleteNavigateToLogin = {
+                    navController.navigateToLoginClearingBackStack()
+                },
             )
         }
 
         composable(AppDestinations.Onboarding.TERM_ROUTE) {
-            BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            OnboardingBackDisabledHandler()
 
             TermScreen(
                 onAgreeClick = { navController.navigate(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) },
@@ -122,25 +127,20 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) {
-            BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            OnboardingBackDisabledHandler()
 
             UserVerificationScreen(
                 onVerificationComplete = { _, _, _ ->
                     navController.navigate(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE)
-                }
+                },
+                onNavigateToLogin = {
+                    navController.navigateToLoginClearingBackStack()
+                },
             )
         }
 
         composable(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE) {
-            BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            OnboardingBackDisabledHandler()
 
             LocalVerificationScreen(
                 onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE) }
@@ -148,15 +148,11 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.COMPLETE_ROUTE) {
-            BackHandler {
-                navController.navigate(LOGIN_ROUTE) {
-                    popUpTo(0) { inclusive = true }
-                }
-            }
+            OnboardingBackDisabledHandler()
 
             CompleteScreen(
                 onNavigateToMain = {
-                    navController.navigate(AppDestinations.HOME_ROUTE) {
+                    navController.navigate(AppDestinations.TOWN_ROUTE) {
                         popUpTo(0) { inclusive = true }
                     }
                 },
@@ -327,5 +323,17 @@ fun AppNavGraph(
                 }
             }
         }
+    }
+}
+
+//시스템 뒤로가기 -> 막힘
+@Composable
+private fun OnboardingBackDisabledHandler() {
+    BackHandler { }
+}
+
+private fun NavHostController.navigateToLoginClearingBackStack() {
+    navigate(LOGIN_ROUTE) {
+        popUpTo(0) { inclusive = true }
     }
 }

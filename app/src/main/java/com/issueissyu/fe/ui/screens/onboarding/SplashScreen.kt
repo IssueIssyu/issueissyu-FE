@@ -19,21 +19,24 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.theme.White
+import com.issueissyu.fe.ui.viewmodels.SplashDestination
 import com.issueissyu.fe.ui.viewmodels.SplashViewModel
 
 @Composable
 fun SplashScreen(
     onNavigateToMain: () -> Unit,
     onNavigateToLogin: () -> Unit,
-    viewModel: SplashViewModel = hiltViewModel()
-){
-    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+    onNavigateToOnboarding: () -> Unit,
+    viewModel: SplashViewModel = hiltViewModel(),
+) {
+    val destination by viewModel.destination.collectAsState()
 
-    LaunchedEffect(isLoggedIn) {
-        when (isLoggedIn) {
-            true -> onNavigateToMain()
-            false -> onNavigateToLogin()
-            null -> { }
+    LaunchedEffect(destination) {
+        when (destination) {
+            SplashDestination.Loading -> Unit
+            SplashDestination.Login -> onNavigateToLogin()
+            SplashDestination.Main -> onNavigateToMain()
+            SplashDestination.Onboarding -> onNavigateToOnboarding()
         }
     }
 
@@ -41,33 +44,33 @@ fun SplashScreen(
 }
 
 @Composable
-fun SplashContent(){
+fun SplashContent() {
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(White),
-        contentAlignment = Alignment.Center
-    ){
-            Image(
-                painter = painterResource(R.drawable.img_logo),
-                modifier = Modifier
-                    .width(150.dp)
-                    .height(200.dp),
-                contentDescription = "이슈있슈 로고",
-            )
+        contentAlignment = Alignment.Center,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.img_logo),
+            modifier = Modifier
+                .width(150.dp)
+                .height(200.dp),
+            contentDescription = "이슈있슈 로고",
+        )
 
-            Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-            Image(
-                painter = painterResource(R.drawable.img_bush),
-                modifier = Modifier.align(Alignment.BottomCenter),
-                contentDescription = "덤불"
-            )
+        Image(
+            painter = painterResource(R.drawable.img_bush),
+            modifier = Modifier.align(Alignment.BottomCenter),
+            contentDescription = "덤불",
+        )
     }
 }
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun SplashScreenPreview(){
+fun SplashScreenPreview() {
     SplashContent()
 }

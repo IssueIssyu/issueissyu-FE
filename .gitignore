@@ -11,6 +11,8 @@
 .externalNativeBuild
 .cxx
 **/build/
+app/release/
+*.aab
 
 *.log
 *.jks
