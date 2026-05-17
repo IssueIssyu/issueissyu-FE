@@ -632,10 +632,8 @@ fun PreviewRegionDropdownPill() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewCommunityScreen() {
-    val dummyItems = listOf(
+private fun previewCommunityItems(): List<CommunityFeedItem> {
+    return listOf(
         CommunityFeedItem(
             communityId = 1L,
             pinId = null,
@@ -688,11 +686,43 @@ fun PreviewCommunityScreen() {
             isHot = true
         )
     )
-    
+}
+
+@Preview(name = "커뮤니티 홈", showBackground = true)
+@Composable
+fun PreviewCommunityScreenHome() {
     CommunityScreenContent(
         uiState = CommunityUiState(
-            feedItems = dummyItems,
+            feedItems = previewCommunityItems(),
+            selectedTab = CommunityTab.ALL,
+            region = "마포구"
+        ),
+        onBackClick = {},
+        onRegionSelected = {}
+    )
+}
+
+@Preview(name = "커뮤니티 HOT 탭", showBackground = true)
+@Composable
+fun PreviewCommunityScreenHot() {
+    CommunityScreenContent(
+        uiState = CommunityUiState(
+            feedItems = previewCommunityItems(),
             selectedTab = CommunityTab.HOT,
+            region = "마포구"
+        ),
+        onBackClick = {},
+        onRegionSelected = {}
+    )
+}
+
+@Preview(name = "커뮤니티 ISSUE 탭", showBackground = true)
+@Composable
+fun PreviewCommunityScreenIssue() {
+    CommunityScreenContent(
+        uiState = CommunityUiState(
+            feedItems = previewCommunityItems().filter { it.kind == CommunityItemKind.ISSUE },
+            selectedTab = CommunityTab.ISSUE,
             region = "마포구"
         ),
         onBackClick = {},
