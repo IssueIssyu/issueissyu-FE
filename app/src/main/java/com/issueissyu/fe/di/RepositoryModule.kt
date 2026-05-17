@@ -12,6 +12,8 @@ import com.issueissyu.fe.data.repository.PinRepositoryImpl
 import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.LocationRepository
 
+import com.issueissyu.fe.data.repository.CommunityRepositoryImpl
+import com.issueissyu.fe.domain.repository.CommunityRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -52,4 +54,7 @@ abstract class RepositoryModule {
     abstract fun bindLocationRepository(
         impl: LocationRepositoryImpl
     ): LocationRepository
+    abstract fun bindCommunityRepository(
+        impl: CommunityRepositoryImpl
+    ): CommunityRepository
 }

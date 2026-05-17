@@ -41,6 +41,7 @@ import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
+import com.issueissyu.fe.ui.screens.community.CommunityScreen
 
 @Composable
 fun AppNavGraph(
@@ -195,7 +196,19 @@ fun AppNavGraph(
                 MapScreen(navController = navController)
             }
         }
-        composable(AppDestinations.COMMUNITY_ROUTE) { /* TODO: CommunityScreen */ }
+        composable(AppDestinations.COMMUNITY_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                CommunityScreen(
+                    onBackClick = {
+                        navController.navigateUp()
+                    }
+                )
+            }
+        }
         composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
             Box(
