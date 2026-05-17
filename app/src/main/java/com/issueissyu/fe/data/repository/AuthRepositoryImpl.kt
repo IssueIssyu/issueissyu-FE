@@ -275,12 +275,12 @@ class AuthRepositoryImpl @Inject constructor(
                     Result.success(authUser)
                 }
 
-                "LOCAL_LOGIN_401_1" ->
+                "LOCAL_LOGIN_400_1" ->
                     Result.failure(
                         Exception(safeMessage(response.message as String?, "유효하지 않은 값이 존재합니다.")),
                     )
 
-                "LOCAL_LOGIN_401_2" ->
+                "LOCAL_LOGIN_401" ->
                     Result.failure(
                         Exception(
                             safeMessage(response.message as String?, "아이디 또는 비밀번호가 올바르지 않습니다."),
