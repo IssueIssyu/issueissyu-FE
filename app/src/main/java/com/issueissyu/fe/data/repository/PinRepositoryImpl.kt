@@ -147,44 +147,44 @@ class PinRepositoryImpl @Inject constructor(
     override suspend fun likePin(pinId: Long): Result<PinLike> {
         return try {
             val response = pinApi.pinLike(pinId)
-            when (response.code) {
-                "PIN_LIKE_200" -> {
-                    val result = response.result
-                        ?: return Result.failure(
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 공감 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinLike())
+            } else {
+                when (response.code) {
+                    "PIN_LIKE_400_1" ->
+                        Result.failure(
                             Exception(
-                                response.message.ifBlank { "핀 공감 응답이 올바르지 않습니다." },
+                                response.message.ifBlank { "이미 공감된 핀입니다." },
                             ),
                         )
-                    Result.success(result.toPinLike())
+
+                    "PIN_LIKE_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                            ),
+                        )
+
+                    "PIN_LIKE_500" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 공감하기 중 서버 오류가 발생했습니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 공감에 실패했습니다." },
+                            ),
+                        )
                 }
-
-                "PIN_LIKE_400_1" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "이미 공감된 핀입니다." },
-                        ),
-                    )
-
-                "PIN_LIKE_404" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "존재하지 않는 핀 입니다." },
-                        ),
-                    )
-
-                "PIN_LIKE_500" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "핀 공감하기 중 서버 오류가 발생했습니다." },
-                        ),
-                    )
-
-                else ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "핀 공감에 실패했습니다." },
-                        ),
-                    )
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -195,37 +195,37 @@ class PinRepositoryImpl @Inject constructor(
     override suspend fun getPinEmojis(pinId: Long): Result<PinEmojis> {
         return try {
             val response = pinApi.getPinEmojis(pinId)
-            when (response.code) {
-                "PIN_EMOJIS_200" -> {
-                    val result = response.result
-                        ?: return Result.failure(
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 반응 목록 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinEmojis())
+            } else {
+                when (response.code) {
+                    "PIN_NOT_FOUND_404" ->
+                        Result.failure(
                             Exception(
-                                response.message.ifBlank { "핀 반응 목록 응답이 올바르지 않습니다." },
+                                response.message.ifBlank { "존재하지 않는 핀입니다." },
                             ),
                         )
-                    Result.success(result.toPinEmojis())
+
+                    "JWT_401" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "인증이 필요합니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 반응 목록 조회에 실패했습니다." },
+                            ),
+                        )
                 }
-
-                "PIN_NOT_FOUND_404" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "존재하지 않는 핀입니다." },
-                        ),
-                    )
-
-                "JWT_401" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "인증이 필요합니다." },
-                        ),
-                    )
-
-                else ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "핀 반응 목록 조회에 실패했습니다." },
-                        ),
-                    )
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -263,43 +263,45 @@ class PinRepositoryImpl @Inject constructor(
     override suspend fun deletePin(pinId: Long): Result<Unit> {
         return try {
             val response = pinApi.pinDelete(pinId)
-            when (response.code) {
-                "PIN_DELETE_200" -> Result.success(Unit)
+            if (response.isSuccess) {
+                Result.success(Unit)
+            } else {
+                when (response.code) {
+                    "PIN_DELETE_400_1" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "등업된 이슈 핀은 삭제가 불가능 합니다." },
+                            ),
+                        )
 
-                "PIN_DELETE_400_1" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "등업된 이슈 핀은 삭제가 불가능 합니다." },
-                        ),
-                    )
+                    "PIN_DELETE_400_2" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                            ),
+                        )
 
-                "PIN_DELETE_400_2" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "존재하지 않는 핀 입니다." },
-                        ),
-                    )
+                    "PIN_DELETE_400_3" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 작성자가 아니므로 삭제 권한이 없습니다." },
+                            ),
+                        )
 
-                "PIN_DELETE_400_3" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "핀 작성자가 아니므로 삭제 권한이 없습니다." },
-                        ),
-                    )
+                    "PIN_DELETE_400_4" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 삭제 API를 실행할 수 없습니다." },
+                            ),
+                        )
 
-                "PIN_DELETE_400_4" ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "핀 삭제 API를 실행할 수 없습니다." },
-                        ),
-                    )
-
-                else ->
-                    Result.failure(
-                        Exception(
-                            response.message.ifBlank { "핀 삭제에 실패했습니다." },
-                        ),
-                    )
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 삭제에 실패했습니다." },
+                            ),
+                        )
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)
