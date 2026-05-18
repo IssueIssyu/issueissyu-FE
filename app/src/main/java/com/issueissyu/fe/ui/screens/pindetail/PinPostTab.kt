@@ -39,11 +39,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.issueissyu.fe.data.model.CommunicationPinDetail
-import com.issueissyu.fe.data.model.IssuePinDetail
-import com.issueissyu.fe.data.model.Pin
-import com.issueissyu.fe.data.model.PinEmojiReaction
-import com.issueissyu.fe.data.model.PinUser
+import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
+import com.issueissyu.fe.domain.model.pin.IssuePinDetail
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
+import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_1

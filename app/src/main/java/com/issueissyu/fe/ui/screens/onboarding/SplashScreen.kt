@@ -19,8 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.theme.White
-import com.issueissyu.fe.ui.viewmodels.SplashDestination
-import com.issueissyu.fe.ui.viewmodels.SplashViewModel
 
 @Composable
 fun SplashScreen(

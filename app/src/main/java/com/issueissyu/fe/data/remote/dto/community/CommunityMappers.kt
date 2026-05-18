@@ -1,5 +1,8 @@
 package com.issueissyu.fe.data.remote.dto.community
 
+import com.issueissyu.fe.data.remote.dto.response.community.CommunityDetailResponse
+import com.issueissyu.fe.data.remote.dto.response.community.CommunityFeedItemResponse
+import com.issueissyu.fe.data.remote.dto.response.community.CommunityFeedResponse
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityFeed
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem

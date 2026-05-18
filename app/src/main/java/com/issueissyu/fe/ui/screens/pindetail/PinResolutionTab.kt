@@ -36,11 +36,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
-import com.issueissyu.fe.data.model.IssuePinDetail
-import com.issueissyu.fe.data.model.IssueResolverParticipation
-import com.issueissyu.fe.data.model.Pin
-import com.issueissyu.fe.data.model.PinUser
-import com.issueissyu.fe.data.model.ResolutionStatus
+import com.issueissyu.fe.domain.model.pin.IssuePinDetail
+import com.issueissyu.fe.domain.model.pin.IssueResolverParticipation
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.GoNowButton

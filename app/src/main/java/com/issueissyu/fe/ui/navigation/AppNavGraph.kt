@@ -16,7 +16,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
-import com.issueissyu.fe.ui.screens.home.HomeScreen
 import com.issueissyu.fe.ui.screens.map.MapScreen
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
 import com.issueissyu.fe.ui.screens.onboarding.LocalVerificationScreen
@@ -27,7 +26,7 @@ import com.issueissyu.fe.ui.screens.onboarding.TermDetailScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermsType
 import com.issueissyu.fe.ui.screens.onboarding.UserVerificationScreen
-import com.issueissyu.fe.data.model.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
@@ -159,16 +158,6 @@ fun AppNavGraph(
                 },
                 onNavigateToLanding = {}
             )
-        }
-
-        composable(AppDestinations.HOME_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                HomeScreen()
-            }
         }
         composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
         composable(AppDestinations.TOWN_ROUTE) {
