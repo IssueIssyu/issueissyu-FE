@@ -89,7 +89,7 @@ fun CommunityDetailScreenContent(
         },
         bottomBar = {
             if (uiState.detail != null) {
-                CommunityDetailBottomBar(detail = uiState.detail)
+                CommunityDetailBottomBar()
             }
         },
         containerColor = Color.White
@@ -119,7 +119,7 @@ fun CommunityDetailScreenContent(
                         )
                     }
                 }
-                uiState.detail != null -> {
+                else -> {
                     CommunityDetailBody(
                         detail = uiState.detail,
                         onMapClick = { /* TODO: 지도 이동 기능 구현 필요 */ }
@@ -217,6 +217,9 @@ private fun CommunityDetailBody(
         if (detail.kind == CommunityItemKind.ISSUE) {
             item {
                 PetitionPlaceholderSection(detail = detail)
+            }
+            item {
+                CommunityDetailIssueActionSection(detail = detail)
             }
         }
 
@@ -688,6 +691,28 @@ private fun PetitionPlaceholderSection(detail: CommunityDetail) {
 }
 
 @Composable
+private fun CommunityDetailIssueActionSection(detail: CommunityDetail) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        GoNowButton(
+            state = ActionState.DEFAULT,
+            onClick = { /* TODO: 지금가요 기능 구현 필요 */ },
+            modifier = Modifier.weight(1f)
+        )
+        SignButton(
+            isSigned = detail.isPetitionedByMe,
+            count = detail.petitionCount,
+            onClick = { /* TODO: 청원하기 기능 구현 필요 */ },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
 private fun CommentPlaceholderSection() {
     Column(
         modifier = Modifier
@@ -719,7 +744,7 @@ private fun CommentPlaceholderSection() {
 }
 
 @Composable
-private fun CommunityDetailBottomBar(detail: CommunityDetail) {
+private fun CommunityDetailBottomBar() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shadowElevation = 16.dp,
@@ -731,25 +756,6 @@ private fun CommunityDetailBottomBar(detail: CommunityDetail) {
                 .padding(horizontal = 24.dp)
                 .padding(top = 16.dp, bottom = 24.dp)
         ) {
-            if (detail.kind == CommunityItemKind.ISSUE) {
-                Row(
-                    modifier = Modifier.padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    GoNowButton(
-                        state = ActionState.DEFAULT,
-                        onClick = { /* TODO: 지금가요 기능 구현 필요 */ },
-                        modifier = Modifier.weight(1f)
-                    )
-                    SignButton(
-                        isSigned = detail.isPetitionedByMe,
-                        count = detail.petitionCount,
-                        onClick = { /* TODO: 청원하기 기능 구현 필요 */ },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-            
             // 댓글 입력창 placeholder
             Row(
                 verticalAlignment = Alignment.CenterVertically,
