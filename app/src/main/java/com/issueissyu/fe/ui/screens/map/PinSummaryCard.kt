@@ -24,17 +24,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
-import com.issueissyu.fe.domain.model.CommunicationPinDetail
-import com.issueissyu.fe.domain.model.FestivalPinDetail
-import com.issueissyu.fe.domain.model.IssuePinDetail
-import com.issueissyu.fe.domain.model.Pin
-import com.issueissyu.fe.domain.model.PinCategory
-import com.issueissyu.fe.domain.model.PinCoordinate
-import com.issueissyu.fe.domain.model.PinEmojiReaction
-import com.issueissyu.fe.domain.model.PinUser
-import com.issueissyu.fe.domain.model.ResolutionStatus
-import com.issueissyu.fe.domain.model.ShopPinDetail
-import com.issueissyu.fe.domain.model.canEditBy
+import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
+import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
+import com.issueissyu.fe.domain.model.pin.IssuePinDetail
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
+import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.ResolutionStatus
+import com.issueissyu.fe.domain.model.pin.ShopPinDetail
+import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.ui.theme.*
 
 @Composable

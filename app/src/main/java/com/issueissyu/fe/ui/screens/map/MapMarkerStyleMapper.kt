@@ -1,7 +1,7 @@
 package com.issueissyu.fe.ui.screens.map
 
 import com.issueissyu.fe.R
-import com.issueissyu.fe.domain.model.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinCategory
 
 fun PinCategory.toMarkerIconRes(): Int {
     return when (this) {

@@ -1,4 +1,4 @@
-package com.issueissyu.fe.domain.model
+package com.issueissyu.fe.domain.model.pin
 
 enum class PinCategory {
     ISSUE, COMMUNICATION, SHOP, FESTIVAL

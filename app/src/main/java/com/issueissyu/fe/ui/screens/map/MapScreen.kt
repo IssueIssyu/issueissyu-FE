@@ -52,8 +52,8 @@ import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.collectLatest
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.MapBounds
-import com.issueissyu.fe.domain.model.PinCategory
-import com.issueissyu.fe.domain.model.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
 import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap

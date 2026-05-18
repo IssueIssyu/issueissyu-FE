@@ -3,10 +3,10 @@ package com.issueissyu.fe.ui.screens.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.MapBounds
-import com.issueissyu.fe.domain.model.Pin
-import com.issueissyu.fe.domain.model.PinCategory
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.MapPinMarker
-import com.issueissyu.fe.domain.model.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
