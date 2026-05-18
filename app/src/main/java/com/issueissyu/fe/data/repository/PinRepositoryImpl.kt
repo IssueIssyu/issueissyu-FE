@@ -4,8 +4,10 @@ import com.issueissyu.fe.data.remote.api.PinApi
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.domain.model.pin.PinEmoji
 import com.issueissyu.fe.domain.model.pin.PinEmojis
+import com.issueissyu.fe.domain.model.pin.PinLike
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.issueissyu.fe.domain.model.MapPinMarker
@@ -142,6 +144,53 @@ class PinRepositoryImpl @Inject constructor(
             }
     }
 
+    override suspend fun likePin(pinId: Long): Result<PinLike> {
+        return try {
+            val response = pinApi.pinLike(pinId)
+            when (response.code) {
+                "PIN_LIKE_200" -> {
+                    val result = response.result
+                        ?: return Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 공감 응답이 올바르지 않습니다." },
+                            ),
+                        )
+                    Result.success(result.toPinLike())
+                }
+
+                "PIN_LIKE_400_1" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "이미 공감된 핀입니다." },
+                        ),
+                    )
+
+                "PIN_LIKE_404" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                        ),
+                    )
+
+                "PIN_LIKE_500" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 공감하기 중 서버 오류가 발생했습니다." },
+                        ),
+                    )
+
+                else ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 공감에 실패했습니다." },
+                        ),
+                    )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // 이모지 조회
     override suspend fun getPinEmojis(pinId: Long): Result<PinEmojis> {
         return try {
@@ -166,6 +215,14 @@ class PinRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun PinLikeResponse.toPinLike(): PinLike {
+        return PinLike(
+            pinId = pinId,
+            pinLikeCount = pinLikeCount,
+            isLike = isLike,
+        )
     }
 
     private fun BaseResponse<PinEmojisResponse?>.toPinEmojisResult(): Result<PinEmojis> {

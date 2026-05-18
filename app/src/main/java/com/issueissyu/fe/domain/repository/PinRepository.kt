@@ -6,6 +6,7 @@ import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinEmojis
+import com.issueissyu.fe.domain.model.pin.PinLike
 
 interface PinRepository {
     suspend fun getPins(): List<Pin>
@@ -19,4 +20,6 @@ interface PinRepository {
     suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker>
 
     suspend fun getPinEmojis(pinId: Long): Result<PinEmojis>
+
+    suspend fun likePin(pinId: Long): Result<PinLike>
 }

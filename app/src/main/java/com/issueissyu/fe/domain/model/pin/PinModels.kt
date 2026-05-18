@@ -41,6 +41,12 @@ data class PinEmoji(
     val productId: String?,
 )
 
+data class PinLike(
+    val pinId: Long,
+    val pinLikeCount: Int,
+    val isLike: Boolean,
+)
+
 sealed interface PinDetail {
     val category: PinCategory
 }
