@@ -196,6 +196,16 @@ class PinRepositoryImpl @Inject constructor(
         return try {
             val response = pinApi.getPinEmojis(pinId)
             when (response.code) {
+                "PIN_EMOJIS_200" -> {
+                    val result = response.result
+                        ?: return Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 반응 목록 응답이 올바르지 않습니다." },
+                            ),
+                        )
+                    Result.success(result.toPinEmojis())
+                }
+
                 "PIN_NOT_FOUND_404" ->
                     Result.failure(
                         Exception(
@@ -210,7 +220,12 @@ class PinRepositoryImpl @Inject constructor(
                         ),
                     )
 
-                else -> response.toPinEmojisResult()
+                else ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 반응 목록 조회에 실패했습니다." },
+                        ),
+                    )
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -223,20 +238,6 @@ class PinRepositoryImpl @Inject constructor(
             pinLikeCount = pinLikeCount,
             isLike = isLike,
         )
-    }
-
-    private fun BaseResponse<PinEmojisResponse?>.toPinEmojisResult(): Result<PinEmojis> {
-        val ok = code == "PIN_EMOJIS_200" || isSuccess
-        if (!ok) {
-            return Result.failure(
-                Exception(message.ifBlank { "핀 반응 목록 조회에 실패했습니다." }),
-            )
-        }
-        val payload = result
-            ?: return Result.failure(
-                Exception(message.ifBlank { "핀 반응 목록 응답이 올바르지 않습니다." }),
-            )
-        return Result.success(payload.toPinEmojis())
     }
 
     private fun PinEmojisResponse.toPinEmojis(): PinEmojis {
