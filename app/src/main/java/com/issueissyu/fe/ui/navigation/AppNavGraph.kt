@@ -38,9 +38,6 @@ import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 import com.issueissyu.fe.ui.screens.community.CommunityScreen
 import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreen
-import com.issueissyu.fe.ui.screens.collection.CollectionScreen
-import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
-import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
 
 @Composable
 fun AppNavGraph(
@@ -57,7 +54,7 @@ fun AppNavGraph(
 
     NavHost(
         navController = navController,
-        startDestination = AppDestinations.TOWN_ROUTE
+        startDestination = AppDestinations.Onboarding.SPLASH_ROUTE
     ) {
         composable(AppDestinations.Onboarding.SPLASH_ROUTE) {
             SplashScreen(
@@ -185,15 +182,7 @@ fun AppNavGraph(
                 HomeScreen()
             }
         }
-        composable(AppDestinations.COLLECTION_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
-            ) {
-                CollectionScreen()
-            }
-        }
+        composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
         composable(AppDestinations.TOWN_ROUTE) {
             Box(
                 modifier = Modifier
@@ -239,34 +228,7 @@ fun AppNavGraph(
                 )
             }
         }
-        composable(AppDestinations.MYPAGE_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
-            ) {
-                MyPageScreen(
-                    onEvent = { event ->
-                        when (event) {
-                            MyPageEvent.NavigateBack -> navController.navigateUp()
-                            MyPageEvent.NavigateToLanding -> {
-                                navController.navigate(AppDestinations.Onboarding.LOGIN_ROUTE)
-                            }
-                            MyPageEvent.NavigateToProfile,
-                            MyPageEvent.NavigateToLocal,
-                            MyPageEvent.NavigateToIssue,
-                            MyPageEvent.NavigateToSettingAlarm,
-                            MyPageEvent.NavigateToTerm,
-                            MyPageEvent.Logout,
-                            MyPageEvent.Withdraw -> {
-                                // TODO: 마이페이지 하위 라우트 정의 후 연결
-                            }
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
+        composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
             Box(
                 modifier = Modifier
