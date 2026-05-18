@@ -1,0 +1,30 @@
+package com.issueissyu.fe.domain.model.community
+
+data class CommunityDetail(
+    val communityId: Long,
+    val pinId: Long?,
+    val kind: CommunityItemKind,
+    val title: String,
+    val content: String,
+    val imageUrls: List<String>,
+    val writerNickname: String?,
+    val writerProfileUrl: String?,
+    val address: String?,
+    val viewCount: Int,
+    val likeCount: Int,
+    val createdAt: String?,
+    val updatedAt: String?,
+    val isReported: Boolean,
+    val isPetitioned: Boolean,
+    val isProblemSolver: Boolean,
+    val isMine: Boolean,
+    val reliabilityScore: Int?,
+    val reliabilityReason: String?,
+    val issueStatusText: String? = null,
+    val discount: String? = null,
+    val eventStartTime: String? = null,
+    val eventEndTime: String? = null,
+    val petitionCount: Int = 0,
+    val petitionTargetCount: Int? = null,
+    val isPetitionedByMe: Boolean = false
+)

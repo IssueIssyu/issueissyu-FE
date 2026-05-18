@@ -1,9 +1,20 @@
 package com.issueissyu.fe.ui.screens.community
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -13,8 +24,24 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,7 +59,19 @@ import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.community.CommunityTab
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
-import com.issueissyu.fe.ui.theme.*
+import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Communication
+import com.issueissyu.fe.ui.theme.Festival
+import com.issueissyu.fe.ui.theme.Gray_1
+import com.issueissyu.fe.ui.theme.Gray_5
+import com.issueissyu.fe.ui.theme.Gray_6
+import com.issueissyu.fe.ui.theme.Gray_8
+import com.issueissyu.fe.ui.theme.Issue
+import com.issueissyu.fe.ui.theme.Lime
+import com.issueissyu.fe.ui.theme.Shop
+import com.issueissyu.fe.ui.theme.Title
+import com.issueissyu.fe.ui.theme.suiteFontFamily
+import androidx.compose.material3.TextButton
 
 @Composable
 fun CommunityScreen(
@@ -41,14 +80,14 @@ fun CommunityScreen(
     onCommunityClick: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+
     CommunityScreenContent(
         uiState = uiState,
         onBackClick = onBackClick,
+        onCommunityClick = onCommunityClick,
         onTabSelected = viewModel::onTabSelected,
         onRefresh = viewModel::onRefresh,
-        onRegionSelected = viewModel::onRegionSelected,
-        onCommunityClick = onCommunityClick
+        onRegionSelected = viewModel::onRegionSelected
     )
 }
 
@@ -57,10 +96,10 @@ fun CommunityScreen(
 fun CommunityScreenContent(
     uiState: CommunityUiState,
     onBackClick: (() -> Unit)? = null,
+    onCommunityClick: (Long) -> Unit = {},
     onTabSelected: (CommunityTab) -> Unit = {},
     onRefresh: () -> Unit = {},
-    onRegionSelected: (String) -> Unit = {},
-    onCommunityClick: (Long) -> Unit = {}
+    onRegionSelected: (String) -> Unit = {}
 ) {
     var showRegionSelector by remember { mutableStateOf(false) }
 
@@ -69,15 +108,68 @@ fun CommunityScreenContent(
     val categories = remember(colorScheme) {
         CommunityTab.visibleTabs.filter { it != CommunityTab.ALL }.map { tab ->
             when (tab) {
-                CommunityTab.HOT -> CategoryItem(tab.displayName, R.drawable.ic_fire, Issue, colorScheme.errorContainer)
-                CommunityTab.ISSUE -> CategoryItem(tab.displayName, R.drawable.issue, Issue, colorScheme.errorContainer)
-                CommunityTab.STORE -> CategoryItem(tab.displayName, R.drawable.shop, Shop, colorScheme.secondaryContainer)
-                CommunityTab.FESTIVAL -> CategoryItem(tab.displayName, R.drawable.festival, Festival, colorScheme.tertiaryContainer)
-                CommunityTab.POLICY -> CategoryItem(tab.displayName, R.drawable.ic_policy, Gray_5, colorScheme.primaryContainer)
-                CommunityTab.CONTEST -> CategoryItem(tab.displayName, R.drawable.ic_award, Shop, colorScheme.primaryContainer)
-                CommunityTab.CARDNEWS -> CategoryItem(tab.displayName, R.drawable.ic_cardnews, Lime, colorScheme.secondaryContainer)
-                CommunityTab.ALL -> CategoryItem(tab.displayName, R.drawable.ic_all, Title, colorScheme.surfaceVariant)
-                else -> CategoryItem(tab.displayName, R.drawable.communicate, Communication, colorScheme.outline)
+                CommunityTab.HOT -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.ic_fire,
+                    Issue,
+                    colorScheme.errorContainer
+                )
+
+                CommunityTab.ISSUE -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.issue,
+                    Issue,
+                    colorScheme.errorContainer
+                )
+
+                CommunityTab.STORE -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.shop,
+                    Shop,
+                    colorScheme.secondaryContainer
+                )
+
+                CommunityTab.FESTIVAL -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.festival,
+                    Festival,
+                    colorScheme.tertiaryContainer
+                )
+
+                CommunityTab.POLICY -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.ic_policy,
+                    Gray_5,
+                    colorScheme.primaryContainer
+                )
+
+                CommunityTab.CONTEST -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.ic_award,
+                    Shop,
+                    colorScheme.primaryContainer
+                )
+
+                CommunityTab.CARDNEWS -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.ic_cardnews,
+                    Lime,
+                    colorScheme.secondaryContainer
+                )
+
+                CommunityTab.ALL -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.ic_all,
+                    Title,
+                    colorScheme.surfaceVariant
+                )
+
+                else -> CategoryItem(
+                    tab.displayName,
+                    R.drawable.communicate,
+                    Communication,
+                    colorScheme.outline
+                )
             }
         }
     }
@@ -85,7 +177,6 @@ fun CommunityScreenContent(
     Scaffold(
         topBar = {
             Column(modifier = Modifier.background(Color.White)) {
-                // 1. 카테고리 버튼 (제일 위)
                 CategoryButtons(
                     categories = categories,
                     selectedCategory = uiState.selectedTab
@@ -96,7 +187,6 @@ fun CommunityScreenContent(
                     }
                 )
 
-                // 2. 상단바 Row (뒤로가기 + 지역 선택)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -141,6 +231,7 @@ fun CommunityScreenContent(
                         )
                     }
                 }
+
                 uiState.error != null -> {
                     Column(
                         modifier = Modifier
@@ -159,16 +250,19 @@ fun CommunityScreenContent(
                             ),
                             textAlign = TextAlign.Center
                         )
+
                         Spacer(modifier = Modifier.height(24.dp))
+
                         Button(
                             onClick = onRefresh,
                             shape = RoundedCornerShape(8.dp),
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                         ) {
-                            Text("다시 시도")
+                            Text(text = "다시 시도")
                         }
                     }
                 }
+
                 uiState.feedItems.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -187,6 +281,7 @@ fun CommunityScreenContent(
                         )
                     }
                 }
+
                 else -> {
                     val hotItems = uiState.feedItems.filter { it.isHot }
 
@@ -215,15 +310,18 @@ fun CommunityScreenContent(
                                     Column(
                                         modifier = Modifier
                                             .padding(horizontal = 16.dp)
-                                            .clip(RoundedCornerShape(16.dp)) // 컨테이너 둥근 모서리
+                                            .clip(RoundedCornerShape(16.dp))
                                             .background(Color.White)
                                     ) {
                                         hotItems.take(3).forEachIndexed { index, item ->
                                             CommunityFeedCard(
                                                 item = item,
-                                                onClick = { onCommunityClick(item.communityId) }
+                                                onClick = {
+                                                    onCommunityClick(item.communityId)
+                                                }
                                             )
-                                            if (index < hotItems.take(3).size - 1) {
+
+                                            if (index < hotItems.take(3).lastIndex) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = 16.dp),
                                                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -235,21 +333,24 @@ fun CommunityScreenContent(
                                 }
                             }
 
-                            // 우리 동네 최근 소식 섹션 (컨테이너를 둥글게 처리)
                             item {
                                 SectionHeader(title = "우리 동네 최근 소식 🆕")
+
                                 Column(
                                     modifier = Modifier
                                         .padding(horizontal = 16.dp)
-                                        .clip(RoundedCornerShape(16.dp)) // 컨테이너 둥근 모서리
+                                        .clip(RoundedCornerShape(16.dp))
                                         .background(Color.White)
                                 ) {
                                     uiState.feedItems.forEachIndexed { index, item ->
                                         CommunityFeedCard(
                                             item = item,
-                                            onClick = { onCommunityClick(item.communityId) }
+                                            onClick = {
+                                                onCommunityClick(item.communityId)
+                                            }
                                         )
-                                        if (index < uiState.feedItems.size - 1) {
+
+                                        if (index < uiState.feedItems.lastIndex) {
                                             HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
                                                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -282,7 +383,6 @@ fun CommunityScreenContent(
                                 }
                             }
                         } else {
-                            // 일반 카테고리 탭: 리스트만 표시 (피그마 기준 리스트형)
                             itemsIndexed(uiState.feedItems) { index, item ->
                                 Column(
                                     modifier = Modifier
@@ -291,9 +391,12 @@ fun CommunityScreenContent(
                                 ) {
                                     CommunityFeedCard(
                                         item = item,
-                                        onClick = { onCommunityClick(item.communityId) }
+                                        onClick = {
+                                            onCommunityClick(item.communityId)
+                                        }
                                     )
-                                    if (index < uiState.feedItems.size - 1) {
+
+                                    if (index < uiState.feedItems.lastIndex) {
                                         HorizontalDivider(
                                             modifier = Modifier.padding(horizontal = 16.dp),
                                             color = MaterialTheme.colorScheme.surfaceVariant,
@@ -312,7 +415,9 @@ fun CommunityScreenContent(
     if (showRegionSelector) {
         RegionSelectorSheet(
             currentRegion = uiState.region,
-            onDismissRequest = { showRegionSelector = false },
+            onDismissRequest = {
+                showRegionSelector = false
+            },
             onRegionSelected = { region ->
                 onRegionSelected(region)
                 showRegionSelector = false
@@ -348,8 +453,9 @@ fun RegionDropdownPill(
                     fontSize = 14.sp
                 )
             )
+
             Icon(
-                Icons.Default.ArrowDropDown,
+                imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp)
             )
@@ -364,9 +470,11 @@ fun RegionSelectorSheet(
     onDismissRequest: () -> Unit,
     onRegionSelected: (String) -> Unit
 ) {
-    // currentRegion이 포함된 province를 찾아 초기값으로 설정
-    val initialProvince = dummyDistrictsMap.entries.find { it.value.contains(currentRegion) }?.key ?: "서울"
-    
+    val initialProvince =
+        dummyDistrictsMap.entries.find { (_, districts) ->
+            districts.contains(currentRegion)
+        }?.key ?: "서울"
+
     var selectedProvince by remember { mutableStateOf(initialProvince) }
     var draftRegion by remember { mutableStateOf(currentRegion) }
 
@@ -381,7 +489,6 @@ fun RegionSelectorSheet(
                 .fillMaxWidth()
                 .fillMaxHeight(0.8f)
         ) {
-            // Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -398,18 +505,20 @@ fun RegionSelectorSheet(
                         color = Title
                     )
                 )
+
                 IconButton(onClick = onDismissRequest) {
-                    Icon(Icons.Default.Close, contentDescription = "닫기")
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "닫기"
+                    )
                 }
             }
 
-            // Body
             Row(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                // Left: Provinces
                 RegionProvinceList(
                     provinces = dummyProvinces,
                     selectedProvince = selectedProvince,
@@ -417,20 +526,18 @@ fun RegionSelectorSheet(
                     modifier = Modifier.width(120.dp)
                 )
 
-                // Right: Districts
                 RegionDistrictList(
-                    districts = dummyDistrictsMap[selectedProvince] ?: emptyList(),
+                    districts = dummyDistrictsMap[selectedProvince].orEmpty(),
                     selectedDistrict = draftRegion,
                     onDistrictSelected = { draftRegion = it },
                     modifier = Modifier.weight(1f)
                 )
             }
 
-            // Footer
             SelectedRegionFooter(
                 selectedRegion = draftRegion,
-                onApply = { 
-                    if (draftRegion.isNotEmpty()) {
+                onApply = {
+                    if (draftRegion.isNotBlank()) {
                         onRegionSelected(draftRegion)
                     }
                 }
@@ -453,6 +560,7 @@ fun RegionProvinceList(
     ) {
         items(provinces) { province ->
             val isSelected = province == selectedProvince
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -489,15 +597,20 @@ fun RegionDistrictList(
             .padding(horizontal = 12.dp)
     ) {
         item { Spacer(modifier = Modifier.height(8.dp)) }
+
         items(districts) { district ->
             val isSelected = district == selectedDistrict
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .background(
-                        if (isSelected) BrandColor.copy(alpha = 0.08f)
-                        else Color.Transparent
+                        if (isSelected) {
+                            BrandColor.copy(alpha = 0.08f)
+                        } else {
+                            Color.Transparent
+                        }
                     )
                     .clickable { onDistrictSelected(district) }
                     .padding(vertical = 12.dp, horizontal = 12.dp),
@@ -514,6 +627,7 @@ fun RegionDistrictList(
                     ),
                     modifier = Modifier.weight(1f)
                 )
+
                 if (isSelected) {
                     Icon(
                         imageVector = Icons.Default.Check,
@@ -524,6 +638,7 @@ fun RegionDistrictList(
                 }
             }
         }
+
         item { Spacer(modifier = Modifier.height(8.dp)) }
     }
 }
@@ -549,7 +664,7 @@ fun SelectedRegionFooter(
                 containerColor = BrandColor,
                 contentColor = Color.White
             ),
-            enabled = selectedRegion.isNotEmpty()
+            enabled = selectedRegion.isNotBlank()
         ) {
             Text(
                 text = "적용하기",
@@ -563,12 +678,148 @@ fun SelectedRegionFooter(
     }
 }
 
-private val dummyProvinces = listOf("서울", "경기", "인천", "강원", "대전", "세종", "충남", "충북", "부산", "울산", "경남", "경북")
+private val dummyProvinces = listOf(
+    "서울",
+    "경기",
+    "인천",
+    "강원",
+    "대전",
+    "세종",
+    "충남",
+    "충북",
+    "부산",
+    "울산",
+    "경남",
+    "경북"
+)
+
 private val dummyDistrictsMap = mapOf(
-    "서울" to listOf("전체", "강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"),
-    "경기" to listOf("전체", "수원시", "고양시", "용인시", "성남시", "부천시", "화성시", "안산시", "남양주시", "안양시", "평택시"),
-    "인천" to listOf("전체", "중구", "동구", "미추홀구", "연수구", "남동구", "부평구", "계양구", "서구"),
-    "강원" to listOf("전체", "춘천시", "원주시", "강릉시", "동해시", "태백시", "속초시", "삼척시")
+    "서울" to listOf(
+        "전체",
+        "강남구",
+        "강동구",
+        "강북구",
+        "강서구",
+        "관악구",
+        "광진구",
+        "구로구",
+        "금천구",
+        "노원구",
+        "도봉구",
+        "동대문구",
+        "동작구",
+        "마포구",
+        "서대문구",
+        "서초구",
+        "성동구",
+        "성북구",
+        "송파구",
+        "양천구",
+        "영등포구",
+        "용산구",
+        "은평구",
+        "종로구",
+        "중구",
+        "중랑구"
+    ),
+    "경기" to listOf(
+        "전체",
+        "수원시",
+        "고양시",
+        "용인시",
+        "성남시",
+        "부천시",
+        "화성시",
+        "안산시",
+        "남양주시",
+        "안양시",
+        "평택시"
+    ),
+    "인천" to listOf(
+        "전체",
+        "중구",
+        "동구",
+        "미추홀구",
+        "연수구",
+        "남동구",
+        "부평구",
+        "계양구",
+        "서구"
+    ),
+    "강원" to listOf(
+        "전체",
+        "춘천시",
+        "원주시",
+        "강릉시",
+        "동해시",
+        "태백시",
+        "속초시",
+        "삼척시"
+    ),
+    "대전" to listOf(
+        "전체",
+        "동구",
+        "중구",
+        "서구",
+        "유성구",
+        "대덕구"
+    ),
+    "세종" to listOf(
+        "전체",
+        "세종시"
+    ),
+    "충남" to listOf(
+        "전체",
+        "천안시",
+        "공주시",
+        "보령시",
+        "아산시",
+        "서산시",
+        "논산시"
+    ),
+    "충북" to listOf(
+        "전체",
+        "청주시",
+        "충주시",
+        "제천시"
+    ),
+    "부산" to listOf(
+        "전체",
+        "중구",
+        "서구",
+        "동구",
+        "영도구",
+        "부산진구",
+        "동래구",
+        "남구",
+        "해운대구"
+    ),
+    "울산" to listOf(
+        "전체",
+        "중구",
+        "남구",
+        "동구",
+        "북구",
+        "울주군"
+    ),
+    "경남" to listOf(
+        "전체",
+        "창원시",
+        "진주시",
+        "통영시",
+        "사천시",
+        "김해시",
+        "양산시"
+    ),
+    "경북" to listOf(
+        "전체",
+        "포항시",
+        "경주시",
+        "김천시",
+        "안동시",
+        "구미시",
+        "경산시"
+    )
 )
 
 @Composable
@@ -740,7 +991,7 @@ fun PreviewCommunityScreenEmpty() {
             region = "서대문구"
         ),
         onBackClick = {},
-        onRegionSelected = {}
+        onCommunityClick = {}
     )
 }
 
@@ -755,7 +1006,7 @@ fun PreviewCommunityScreenLoading() {
             region = "마포구"
         ),
         onBackClick = {},
-        onRegionSelected = {}
+        onCommunityClick = {}
     )
 }
 
@@ -770,18 +1021,17 @@ fun PreviewCommunityScreenError() {
             region = "마포구"
         ),
         onBackClick = {},
+        onCommunityClick = {},
         onRegionSelected = {}
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true)
 @Composable
 fun PreviewRegionSelectorSheet() {
-    // 바텀시트 내부 UI만 확인하기 위해 시트의 컨텐츠 구조를 직접 렌더링
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color.Black.copy(alpha = 0.32f) // 배경 딤 처리 시뮬레이션
+        color = Color.Black.copy(alpha = 0.32f)
     ) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -794,7 +1044,6 @@ fun PreviewRegionSelectorSheet() {
                     .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                     .background(Color.White)
             ) {
-                // Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -811,12 +1060,15 @@ fun PreviewRegionSelectorSheet() {
                             color = Title
                         )
                     )
+
                     IconButton(onClick = {}) {
-                        Icon(Icons.Default.Close, contentDescription = "닫기")
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "닫기"
+                        )
                     }
                 }
 
-                // Body
                 Row(
                     modifier = Modifier
                         .weight(1f)
@@ -830,14 +1082,13 @@ fun PreviewRegionSelectorSheet() {
                     )
 
                     RegionDistrictList(
-                        districts = dummyDistrictsMap["서울"] ?: emptyList(),
+                        districts = dummyDistrictsMap["서울"].orEmpty(),
                         selectedDistrict = "마포구",
                         onDistrictSelected = {},
                         modifier = Modifier.weight(1f)
                     )
                 }
 
-                // Footer
                 SelectedRegionFooter(
                     selectedRegion = "마포구",
                     onApply = {}
