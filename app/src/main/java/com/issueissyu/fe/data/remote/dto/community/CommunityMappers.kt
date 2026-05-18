@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.remote.dto.community
 
+import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityFeed
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
@@ -16,9 +17,46 @@ fun CommunityFeedResponse.toCommunityFeed(): CommunityFeed {
     )
 }
 
+@Suppress("unused") // TODO: 실제 CommunityApi 연결 시 사용 예정
+fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
+    val item = this.item
+    return CommunityDetail(
+        communityId = item?.communityId ?: 0L,
+        pinId = item?.pinId,
+        kind = item?.kind.toCommunityItemKind(),
+        title = item?.title ?: item?.pinTitle ?: DEFAULT_COMMUNITY_TITLE,
+        content = this.content ?: "",
+        imageUrls = if (!this.pinImageUrls.isNullOrEmpty()) {
+            this.pinImageUrls
+        } else {
+            listOfNotNull(item?.pinImageUrl ?: item?.thumbnailUrl ?: item?.storeImageUrl)
+        },
+        writerNickname = item?.pinUserNickname,
+        writerProfileUrl = item?.pinUserProfile,
+        address = item?.pinDetailAddress ?: item?.address,
+        viewCount = item?.viewCount ?: 0,
+        likeCount = item?.likeCount ?: 0,
+        createdAt = this.createdAt,
+        updatedAt = this.updatedAt,
+        isReported = this.isReported ?: false,
+        isPetitioned = this.isPetitioned ?: false,
+        isProblemSolver = this.isProblemSolver ?: false,
+        isMine = this.isMine ?: false,
+        reliabilityScore = this.reliabilityScore,
+        reliabilityReason = this.reliabilityReason,
+        discount = this.discount ?: item?.discount,
+        eventStartTime = this.eventStartTime ?: item?.eventStartTime,
+        eventEndTime = this.eventEndTime ?: item?.eventEndTime,
+        petitionCount = this.petitionCount ?: 0,
+        petitionTargetCount = this.petitionTargetCount,
+        isPetitionedByMe = this.isPetitioned ?: false
+    )
+}
+
+@Suppress("unused") // TODO: 실제 CommunityApi 연결 시 사용 예정
 fun CommunityFeedItemResponse.toCommunityFeedItem(): CommunityFeedItem {
     return CommunityFeedItem(
-        communityId = this.communityId ?: 0L, // TODO: communityId null 처리 정책 확정 필요
+        communityId = this.communityId ?: 0L,
         pinId = this.pinId,
         kind = this.kind.toCommunityItemKind(),
         title = this.title ?: this.pinTitle ?: DEFAULT_COMMUNITY_TITLE,
@@ -32,7 +70,7 @@ fun CommunityFeedItemResponse.toCommunityFeedItem(): CommunityFeedItem {
         eventStartTime = this.eventStartTime,
         eventEndTime = this.eventEndTime,
         discount = this.discount,
-        isHot = false // TODO: isHot 필드 서버 응답 확정 시 처리 필요 (현재 false로 fallback)
+        isHot = false
     )
 }
 
