@@ -19,10 +19,26 @@ data class PinUser(
     val imageUrl: String? = null
 )
 
+// 요건 연결하면서 수정하시면 될듯
 data class PinEmojiReaction(
     val emojiId: String,
     val count: Int,
     val reactedByMe: Boolean = false
+)
+
+// 이모지 조회
+data class PinEmojis(
+    val selectedEmojiId: Int?,
+    val emojis: List<PinEmoji>,
+)
+
+data class PinEmoji(
+    val emojiId: Int,
+    val emojiImageUrl: String,
+    val count: Int,
+    val isDefault: Boolean,
+    val isOwned: Boolean,
+    val productId: String?,
 )
 
 sealed interface PinDetail {

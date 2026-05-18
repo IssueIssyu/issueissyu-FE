@@ -1,23 +1,33 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.data.remote.api.PinApi
+import com.issueissyu.fe.data.remote.dto.response.BaseResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
+import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
+import com.issueissyu.fe.domain.model.pin.PinEmoji
+import com.issueissyu.fe.domain.model.pin.PinEmojis
 import javax.inject.Inject
+import javax.inject.Singleton
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.data.sample.PinSamples
-import com.issueissyu.fe.domain.model.AuthoredPinDetail
-import com.issueissyu.fe.domain.model.CommunicationPinDetail
-import com.issueissyu.fe.domain.model.CreatePinRequest
-import com.issueissyu.fe.domain.model.IssuePinDetail
+import com.issueissyu.fe.domain.model.pin.AuthoredPinDetail
+import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
+import com.issueissyu.fe.domain.model.pin.CreatePinRequest
+import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.MapBounds
-import com.issueissyu.fe.domain.model.Pin
-import com.issueissyu.fe.domain.model.PinCategory
-import com.issueissyu.fe.domain.model.PinDetail
-import com.issueissyu.fe.domain.model.PinUser
-import com.issueissyu.fe.domain.model.UpdatePinRequest
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinDetail
+import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import com.issueissyu.fe.domain.repository.PinRepository
 import java.time.Instant
 import java.util.UUID
 
-class PinRepositoryImpl @Inject constructor() : PinRepository {
+@Singleton
+class PinRepositoryImpl @Inject constructor(
+    private val pinApi: PinApi,
+) : PinRepository {
 
     // TODO: 실제 백엔드와 연결 시 PinSamples 의존을 제거하고 네트워크 호출 로직으로 대체.
     private val dummyPins: MutableList<Pin> = PinSamples.pins.toMutableList()
@@ -130,5 +140,64 @@ class PinRepositoryImpl @Inject constructor() : PinRepository {
                     locationName = pin.locationName ?: pin.address
                 )
             }
+    }
+
+    // 이모지 조회
+    override suspend fun getPinEmojis(pinId: Long): Result<PinEmojis> {
+        return try {
+            val response = pinApi.getPinEmojis(pinId)
+            when (response.code) {
+                "PIN_NOT_FOUND_404" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "존재하지 않는 핀입니다." },
+                        ),
+                    )
+
+                "JWT_401" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "인증이 필요합니다." },
+                        ),
+                    )
+
+                else -> response.toPinEmojisResult()
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun BaseResponse<PinEmojisResponse?>.toPinEmojisResult(): Result<PinEmojis> {
+        val ok = code == "PIN_EMOJIS_200" || isSuccess
+        if (!ok) {
+            return Result.failure(
+                Exception(message.ifBlank { "핀 반응 목록 조회에 실패했습니다." }),
+            )
+        }
+        val payload = result
+            ?: return Result.failure(
+                Exception(message.ifBlank { "핀 반응 목록 응답이 올바르지 않습니다." }),
+            )
+        return Result.success(payload.toPinEmojis())
+    }
+
+    private fun PinEmojisResponse.toPinEmojis(): PinEmojis {
+        return PinEmojis(
+            selectedEmojiId = selectedEmojiId,
+            emojis = emojis.orEmpty().mapNotNull { it.toPinEmoji() },
+        )
+    }
+
+    private fun PinEmojiDto.toPinEmoji(): PinEmoji? {
+        if (emojiId == 0 || emojiImageUrl.isBlank()) return null
+        return PinEmoji(
+            emojiId = emojiId,
+            emojiImageUrl = emojiImageUrl,
+            count = count,
+            isDefault = isDefault,
+            isOwned = isOwned,
+            productId = productId,
+        )
     }
 }

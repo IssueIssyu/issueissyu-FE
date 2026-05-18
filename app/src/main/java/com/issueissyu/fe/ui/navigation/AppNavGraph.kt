@@ -26,7 +26,7 @@ import com.issueissyu.fe.ui.screens.onboarding.TermDetailScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermsType
 import com.issueissyu.fe.ui.screens.onboarding.UserVerificationScreen
-import com.issueissyu.fe.domain.model.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen

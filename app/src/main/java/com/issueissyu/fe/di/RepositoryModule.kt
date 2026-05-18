@@ -6,14 +6,13 @@ import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.UserRepository
 import com.issueissyu.fe.data.repository.UserRepositoryImpl
 import com.issueissyu.fe.data.repository.LocationRepositoryImpl
-import com.issueissyu.fe.domain.repository.PinRepository
-import com.issueissyu.fe.data.repository.PinRepositoryImpl
-
 import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.LocationRepository
 
 import com.issueissyu.fe.data.repository.CommunityRepositoryImpl
+import com.issueissyu.fe.data.repository.PinRepositoryImpl
 import com.issueissyu.fe.domain.repository.CommunityRepository
+import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -39,12 +38,6 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindPinRepository(
-        impl: PinRepositoryImpl
-    ): PinRepository
-
-    @Binds
-    @Singleton
     abstract fun bindAuthRepository(
         impl: AuthRepositoryImpl
     ): AuthRepository
@@ -60,4 +53,10 @@ abstract class RepositoryModule {
     abstract fun bindCommunityRepository(
         impl: CommunityRepositoryImpl
     ): CommunityRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindPinRepository(
+        impl: PinRepositoryImpl
+    ): PinRepository
 }
