@@ -3,12 +3,16 @@ package com.issueissyu.fe.ui.navigation
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -161,19 +165,17 @@ fun AppNavGraph(
         }
         composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
         composable(AppDestinations.TOWN_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 MapScreen(navController = navController)
             }
         }
         composable(AppDestinations.COMMUNITY_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 CommunityScreen(
                     onBackClick = {
@@ -193,10 +195,9 @@ fun AppNavGraph(
                 }
             )
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 CommunityDetailScreen(
                     onBackClick = {
@@ -207,10 +208,9 @@ fun AppNavGraph(
         }
         composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 PatchNotesRoute(
                     onBackClick = {
@@ -232,10 +232,9 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 PinDetailScreen(
                     pinId = pinId,
@@ -256,10 +255,9 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 PinReportScreen(
                     pinId = pinId,
@@ -312,10 +310,9 @@ fun AppNavGraph(
                 else -> null
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 if (category == null) {
                     Box(
@@ -336,6 +333,33 @@ fun AppNavGraph(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NavScreenWrapper(
+    paddingValues: PaddingValues,
+    removeTopPadding: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    val layoutDirection = LocalLayoutDirection.current
+    val appliedPadding = if (removeTopPadding) {
+        PaddingValues(
+            start = paddingValues.calculateStartPadding(layoutDirection),
+            top = 0.dp,
+            end = paddingValues.calculateEndPadding(layoutDirection),
+            bottom = paddingValues.calculateBottomPadding()
+        )
+    } else {
+        paddingValues
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(appliedPadding)
+    ) {
+        content()
     }
 }
 
