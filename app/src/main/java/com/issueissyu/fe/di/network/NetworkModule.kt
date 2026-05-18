@@ -33,8 +33,12 @@ object NetworkModule {
             Log.d("ISSUE_HTTP", message)
         }
         return HttpLoggingInterceptor(logger).apply {
-            level = HttpLoggingInterceptor.Level.BODY
             redactHeader("Authorization")
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BASIC
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
     }
 
