@@ -3,12 +3,16 @@ package com.issueissyu.fe.ui.navigation
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -34,15 +38,26 @@ import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 import com.issueissyu.fe.ui.screens.community.CommunityScreen
 import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreen
+import com.issueissyu.fe.ui.screens.collection.CollectionScreen
+import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
+import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues
 ) {
+    val layoutDirection = LocalLayoutDirection.current
+    val navigationPaddingValues = PaddingValues(
+        start = paddingValues.calculateStartPadding(layoutDirection),
+        top = 0.dp,
+        end = paddingValues.calculateEndPadding(layoutDirection),
+        bottom = paddingValues.calculateBottomPadding()
+    )
+
     NavHost(
         navController = navController,
-        startDestination = AppDestinations.Onboarding.SPLASH_ROUTE
+        startDestination = AppDestinations.TOWN_ROUTE
     ) {
         composable(AppDestinations.Onboarding.SPLASH_ROUTE) {
             SplashScreen(
@@ -165,17 +180,25 @@ fun AppNavGraph(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(navigationPaddingValues)
             ) {
                 HomeScreen()
             }
         }
-        composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
+        composable(AppDestinations.COLLECTION_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(navigationPaddingValues)
+            ) {
+                CollectionScreen()
+            }
+        }
         composable(AppDestinations.TOWN_ROUTE) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(navigationPaddingValues)
             ) {
                 MapScreen(navController = navController)
             }
@@ -184,7 +207,7 @@ fun AppNavGraph(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(navigationPaddingValues)
             ) {
                 CommunityScreen(
                     onBackClick = {
@@ -207,7 +230,7 @@ fun AppNavGraph(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(navigationPaddingValues)
             ) {
                 CommunityDetailScreen(
                     onBackClick = {
@@ -216,12 +239,39 @@ fun AppNavGraph(
                 )
             }
         }
-        composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }
+        composable(AppDestinations.MYPAGE_ROUTE) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(navigationPaddingValues)
+            ) {
+                MyPageScreen(
+                    onEvent = { event ->
+                        when (event) {
+                            MyPageEvent.NavigateBack -> navController.navigateUp()
+                            MyPageEvent.NavigateToLanding -> {
+                                navController.navigate(AppDestinations.Onboarding.LOGIN_ROUTE)
+                            }
+                            MyPageEvent.NavigateToProfile,
+                            MyPageEvent.NavigateToLocal,
+                            MyPageEvent.NavigateToIssue,
+                            MyPageEvent.NavigateToSettingAlarm,
+                            MyPageEvent.NavigateToTerm,
+                            MyPageEvent.Logout,
+                            MyPageEvent.Withdraw -> {
+                                // TODO: 마이페이지 하위 라우트 정의 후 연결
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(navigationPaddingValues)
             ) {
                 PatchNotesRoute(
                     onBackClick = {
@@ -246,7 +296,7 @@ fun AppNavGraph(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(navigationPaddingValues)
             ) {
                 PinDetailScreen(
                     pinId = pinId,
@@ -270,7 +320,7 @@ fun AppNavGraph(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(navigationPaddingValues)
             ) {
                 PinReportScreen(
                     pinId = pinId,
@@ -326,7 +376,7 @@ fun AppNavGraph(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
+                    .padding(navigationPaddingValues)
             ) {
                 if (category == null) {
                     Box(
