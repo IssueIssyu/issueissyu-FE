@@ -54,6 +54,9 @@ abstract class RepositoryModule {
     abstract fun bindLocationRepository(
         impl: LocationRepositoryImpl
     ): LocationRepository
+
+    @Binds
+    @Singleton
     abstract fun bindCommunityRepository(
         impl: CommunityRepositoryImpl
     ): CommunityRepository

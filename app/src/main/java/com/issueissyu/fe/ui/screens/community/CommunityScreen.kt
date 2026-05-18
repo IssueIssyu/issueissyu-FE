@@ -71,6 +71,7 @@ import com.issueissyu.fe.ui.theme.Lime
 import com.issueissyu.fe.ui.theme.Shop
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.suiteFontFamily
+import androidx.compose.material3.TextButton
 
 @Composable
 fun CommunityScreen(
@@ -105,7 +106,7 @@ fun CommunityScreenContent(
     val colorScheme = MaterialTheme.colorScheme
 
     val categories = remember(colorScheme) {
-        CommunityTab.visibleTabs.map { tab ->
+        CommunityTab.visibleTabs.filter { it != CommunityTab.ALL }.map { tab ->
             when (tab) {
                 CommunityTab.HOT -> CategoryItem(
                     tab.displayName,
@@ -178,7 +179,9 @@ fun CommunityScreenContent(
             Column(modifier = Modifier.background(Color.White)) {
                 CategoryButtons(
                     categories = categories,
-                    selectedCategory = uiState.selectedTab.displayName,
+                    selectedCategory = uiState.selectedTab
+                        .takeIf { it != CommunityTab.ALL }
+                        ?.displayName,
                     onCategorySelected = { name ->
                         onTabSelected(name.toCommunityTab())
                     }
@@ -280,31 +283,30 @@ fun CommunityScreenContent(
                 }
 
                 else -> {
-                    val isSectionedTab =
-                        uiState.selectedTab == CommunityTab.HOT ||
-                                uiState.selectedTab == CommunityTab.ALL
+                    val hotItems = uiState.feedItems.filter { it.isHot }
 
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
-                        if (isSectionedTab) {
+                        if (uiState.selectedTab == CommunityTab.ALL) {
+                            // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
                             item {
                                 RepresentativeFeedCard(
                                     item = uiState.feedItems.first(),
-                                    onClick = {
-                                        onCommunityClick(uiState.feedItems.first().communityId)
-                                    },
+                                    onClick = { onCommunityClick(uiState.feedItems.first().communityId) },
                                     modifier = Modifier.padding(16.dp)
                                 )
                             }
 
-                            val hotItems = uiState.feedItems.filter { it.isHot }
-
+                            // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
                             if (hotItems.isNotEmpty()) {
                                 item {
-                                    SectionHeader(title = "우리 동네 인기 소식 🔥")
-
+                                    SectionHeaderWithAction(
+                                        title = "우리 동네 인기 소식 🔥",
+                                        actionText = "더보기",
+                                        onActionClick = { onTabSelected(CommunityTab.HOT) }
+                                    )
                                     Column(
                                         modifier = Modifier
                                             .padding(horizontal = 16.dp)
@@ -355,6 +357,28 @@ fun CommunityScreenContent(
                                                 thickness = 1.dp
                                             )
                                         }
+                                    }
+                                }
+                            }
+                        } else if (uiState.selectedTab == CommunityTab.HOT) {
+                            val hotListItems = hotItems.ifEmpty { uiState.feedItems }
+
+                            itemsIndexed(hotListItems) { index, item ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color.White)
+                                ) {
+                                    CommunityFeedCard(
+                                        item = item,
+                                        onClick = { onCommunityClick(item.communityId) }
+                                    )
+                                    if (index < hotListItems.size - 1) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(horizontal = 16.dp),
+                                            color = MaterialTheme.colorScheme.surfaceVariant,
+                                            thickness = 1.dp
+                                        )
                                     }
                                 }
                             }
@@ -812,6 +836,42 @@ fun SectionHeader(title: String) {
     )
 }
 
+@Composable
+fun SectionHeaderWithAction(
+    title: String,
+    actionText: String,
+    onActionClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 8.dp, top = 24.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = TextStyle(
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onBackground
+            ),
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = onActionClick) {
+            Text(
+                text = actionText,
+                style = TextStyle(
+                    fontFamily = suiteFontFamily,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = BrandColor
+                )
+            )
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun PreviewRegionDropdownPill() {
@@ -823,10 +883,8 @@ fun PreviewRegionDropdownPill() {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewCommunityScreen() {
-    val dummyItems = listOf(
+private fun previewCommunityItems(): List<CommunityFeedItem> {
+    return listOf(
         CommunityFeedItem(
             communityId = 1L,
             pinId = null,
@@ -879,11 +937,43 @@ fun PreviewCommunityScreen() {
             isHot = true
         )
     )
+}
 
+@Preview(name = "커뮤니티 홈", showBackground = true)
+@Composable
+fun PreviewCommunityScreenHome() {
     CommunityScreenContent(
         uiState = CommunityUiState(
-            feedItems = dummyItems,
+            feedItems = previewCommunityItems(),
+            selectedTab = CommunityTab.ALL,
+            region = "마포구"
+        ),
+        onBackClick = {},
+        onRegionSelected = {}
+    )
+}
+
+@Preview(name = "커뮤니티 HOT 탭", showBackground = true)
+@Composable
+fun PreviewCommunityScreenHot() {
+    CommunityScreenContent(
+        uiState = CommunityUiState(
+            feedItems = previewCommunityItems(),
             selectedTab = CommunityTab.HOT,
+            region = "마포구"
+        ),
+        onBackClick = {},
+        onRegionSelected = {}
+    )
+}
+
+@Preview(name = "커뮤니티 ISSUE 탭", showBackground = true)
+@Composable
+fun PreviewCommunityScreenIssue() {
+    CommunityScreenContent(
+        uiState = CommunityUiState(
+            feedItems = previewCommunityItems().filter { it.kind == CommunityItemKind.ISSUE },
+            selectedTab = CommunityTab.ISSUE,
             region = "마포구"
         ),
         onBackClick = {},
