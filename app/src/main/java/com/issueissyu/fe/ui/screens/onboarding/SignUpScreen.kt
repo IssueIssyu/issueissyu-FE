@@ -39,8 +39,6 @@ import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.White
-import com.issueissyu.fe.ui.viewmodels.SignUpUiState
-import com.issueissyu.fe.ui.viewmodels.SignUpViewModel
 
 @Composable
 fun SignUpScreen(

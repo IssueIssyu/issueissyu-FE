@@ -1,4 +1,4 @@
-package com.issueissyu.fe.ui.viewmodels
+package com.issueissyu.fe.ui.screens.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

@@ -1,10 +1,10 @@
-package com.issueissyu.fe.data.repository
+package com.issueissyu.fe.domain.repository
 
-import com.issueissyu.fe.data.model.CreatePinRequest
-import com.issueissyu.fe.data.model.MapBounds
-import com.issueissyu.fe.data.model.Pin
-import com.issueissyu.fe.data.model.UpdatePinRequest
-import com.issueissyu.fe.data.model.MapPinMarker
+import com.issueissyu.fe.domain.model.CreatePinRequest
+import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.Pin
+import com.issueissyu.fe.domain.model.UpdatePinRequest
+import com.issueissyu.fe.domain.model.MapPinMarker
 
 interface PinRepository {
     suspend fun getPins(): List<Pin>

@@ -1,7 +1,7 @@
 package com.issueissyu.fe.ui.screens.pincreate
 
 import androidx.lifecycle.ViewModel
-import com.issueissyu.fe.data.model.PinCategory
+import com.issueissyu.fe.domain.model.PinCategory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

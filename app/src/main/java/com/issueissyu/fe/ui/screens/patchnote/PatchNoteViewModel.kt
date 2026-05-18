@@ -2,8 +2,8 @@ package com.issueissyu.fe.ui.screens.patchnote
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.data.model.IssuePinDetail
-import com.issueissyu.fe.data.repository.PinRepository
+import com.issueissyu.fe.domain.model.IssuePinDetail
+import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

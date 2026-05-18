@@ -27,8 +27,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.issueissyu.fe.data.model.IssuePinDetail
-import com.issueissyu.fe.data.model.Pin
+import com.issueissyu.fe.domain.model.IssuePinDetail
+import com.issueissyu.fe.domain.model.Pin
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.Gray_3

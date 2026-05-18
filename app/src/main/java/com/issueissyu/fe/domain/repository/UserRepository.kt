@@ -1,6 +1,6 @@
-package com.issueissyu.fe.data.repository
+package com.issueissyu.fe.domain.repository
 
-import com.issueissyu.fe.data.model.User
+import com.issueissyu.fe.domain.model.User
 import kotlinx.coroutines.flow.Flow
 
 interface UserRepository {

@@ -23,9 +23,8 @@ import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.*
-import com.issueissyu.fe.ui.viewmodels.UserVerificationViewModel
-import com.issueissyu.fe.ui.viewmodels.UserVerificationViewModel.Companion.PHONE_NUMBER_LENGTH
-import com.issueissyu.fe.ui.viewmodels.UserVerificationViewModel.Companion.VerificationCodeLength
+import com.issueissyu.fe.ui.screens.onboarding.UserVerificationViewModel.Companion.PHONE_NUMBER_LENGTH
+import com.issueissyu.fe.ui.screens.onboarding.UserVerificationViewModel.Companion.VerificationCodeLength
 
 @Composable
 fun UserVerificationScreen(

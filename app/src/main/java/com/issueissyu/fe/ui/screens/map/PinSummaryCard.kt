@@ -24,7 +24,17 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
-import com.issueissyu.fe.data.model.*
+import com.issueissyu.fe.domain.model.CommunicationPinDetail
+import com.issueissyu.fe.domain.model.FestivalPinDetail
+import com.issueissyu.fe.domain.model.IssuePinDetail
+import com.issueissyu.fe.domain.model.Pin
+import com.issueissyu.fe.domain.model.PinCategory
+import com.issueissyu.fe.domain.model.PinCoordinate
+import com.issueissyu.fe.domain.model.PinEmojiReaction
+import com.issueissyu.fe.domain.model.PinUser
+import com.issueissyu.fe.domain.model.ResolutionStatus
+import com.issueissyu.fe.domain.model.ShopPinDetail
+import com.issueissyu.fe.domain.model.canEditBy
 import com.issueissyu.fe.ui.theme.*
 
 @Composable

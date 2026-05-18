@@ -1,9 +1,19 @@
 package com.issueissyu.fe.data.repository
 
 import javax.inject.Inject
-import com.issueissyu.fe.data.model.*
-import com.issueissyu.fe.data.model.MapPinMarker
+import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.data.sample.PinSamples
+import com.issueissyu.fe.domain.model.AuthoredPinDetail
+import com.issueissyu.fe.domain.model.CommunicationPinDetail
+import com.issueissyu.fe.domain.model.CreatePinRequest
+import com.issueissyu.fe.domain.model.IssuePinDetail
+import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.Pin
+import com.issueissyu.fe.domain.model.PinCategory
+import com.issueissyu.fe.domain.model.PinDetail
+import com.issueissyu.fe.domain.model.PinUser
+import com.issueissyu.fe.domain.model.UpdatePinRequest
+import com.issueissyu.fe.domain.repository.PinRepository
 import java.time.Instant
 import java.util.UUID
 

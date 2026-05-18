@@ -33,7 +33,6 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.*
-import com.issueissyu.fe.ui.viewmodels.LocalVerificationViewModel
 import com.naver.maps.geometry.LatLng
 import com.naver.maps.map.CameraUpdate
 import com.naver.maps.map.MapView

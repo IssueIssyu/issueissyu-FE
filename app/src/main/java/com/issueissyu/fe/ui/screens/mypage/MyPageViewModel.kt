@@ -3,7 +3,7 @@ package com.issueissyu.fe.ui.screens.mypage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.R
-import com.issueissyu.fe.data.repository.UserRepository
+import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

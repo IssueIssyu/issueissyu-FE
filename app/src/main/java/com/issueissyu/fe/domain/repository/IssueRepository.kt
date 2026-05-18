@@ -1,4 +1,4 @@
-package com.issueissyu.fe.data.repository
+package com.issueissyu.fe.domain.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences

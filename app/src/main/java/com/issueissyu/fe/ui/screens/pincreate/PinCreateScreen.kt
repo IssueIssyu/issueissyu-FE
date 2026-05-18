@@ -36,7 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.issueissyu.fe.data.model.PinCategory
+import com.issueissyu.fe.domain.model.PinCategory
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar

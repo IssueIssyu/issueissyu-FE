@@ -40,7 +40,7 @@ import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
-import com.issueissyu.fe.data.model.ResolutionStatus
+import com.issueissyu.fe.domain.model.ResolutionStatus
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 
 @Composable
