@@ -22,4 +22,6 @@ interface PinRepository {
     suspend fun getPinEmojis(pinId: Long): Result<PinEmojis>
 
     suspend fun likePin(pinId: Long): Result<PinLike>
+
+    suspend fun deletePin(pinId: Long): Result<Unit>
 }

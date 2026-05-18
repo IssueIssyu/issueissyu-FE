@@ -257,4 +257,51 @@ class PinRepositoryImpl @Inject constructor(
             productId = productId,
         )
     }
+
+    // 핀 삭제
+    override suspend fun deletePin(pinId: Long): Result<Unit> {
+        return try {
+            val response = pinApi.pinDelete(pinId)
+            when (response.code) {
+                "PIN_DELETE_200" -> Result.success(Unit)
+
+                "PIN_DELETE_400_1" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "등업된 이슈 핀은 삭제가 불가능 합니다." },
+                        ),
+                    )
+
+                "PIN_DELETE_400_2" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                        ),
+                    )
+
+                "PIN_DELETE_400_3" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 작성자가 아니므로 삭제 권한이 없습니다." },
+                        ),
+                    )
+
+                "PIN_DELETE_400_4" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 삭제 API를 실행할 수 없습니다." },
+                        ),
+                    )
+
+                else ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 삭제에 실패했습니다." },
+                        ),
+                    )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
