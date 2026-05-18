@@ -8,6 +8,7 @@ import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import com.issueissyu.fe.data.remote.api.LocationApi
+import com.issueissyu.fe.data.remote.api.MapApi
 import com.issueissyu.fe.data.remote.api.PinApi
 import dagger.Module
 import dagger.Provides
@@ -89,5 +90,11 @@ object NetworkModule {
     @Singleton
     fun providePinApi(retrofit: Retrofit): PinApi {
         return retrofit.create(PinApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMapApi(retrofit: Retrofit): MapApi {
+        return retrofit.create(MapApi::class.java)
     }
 }

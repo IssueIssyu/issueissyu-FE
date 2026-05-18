@@ -103,6 +103,7 @@ fun MapScreen(
     val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
 
@@ -363,20 +364,10 @@ fun MapScreen(
             )
 
             AutoScrollingNotice(
-                notices = remember {
-                    listOf(
-                        NoticeUiModel(
-                            id = "notice_1",
-                            title = "오늘의 공지: 새로운 업데이트가 있습니다!"
-                        ),
-                        NoticeUiModel(
-                            id = "notice_2",
-                            title = "두 번째 공지: 버그 수정 및 성능 개선"
-                        ),
-                        NoticeUiModel(
-                            id = "notice_3",
-                            title = "세 번째 공지: 새로운 이벤트가 시작됩니다!"
-                        )
+                notices = notices.map { notice ->
+                    NoticeUiModel(
+                        id = notice.id,
+                        title = notice.content
                     )
                 },
                 iconResId = R.drawable.ic_megaphone,

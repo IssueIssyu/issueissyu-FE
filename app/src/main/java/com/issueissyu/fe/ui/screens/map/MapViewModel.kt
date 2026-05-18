@@ -3,11 +3,12 @@ package com.issueissyu.fe.ui.screens.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.MapNotice
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
-import com.issueissyu.fe.domain.repository.PinRepository
+import com.issueissyu.fe.domain.repository.MapRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,11 +27,8 @@ data class PinCreationNavigationEvent(
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    private val pinRepository: PinRepository
+    private val mapRepository: MapRepository
 ) : ViewModel() {
-
-    private val _pins = MutableStateFlow<List<Pin>>(emptyList())
-    val pins: StateFlow<List<Pin>> = _pins.asStateFlow()
 
     private val _mapPins = MutableStateFlow<List<MapPinMarker>>(emptyList())
     val mapPins: StateFlow<List<MapPinMarker>> = _mapPins.asStateFlow()
@@ -40,6 +38,9 @@ class MapViewModel @Inject constructor(
 
     private val _selectedCategory = MutableStateFlow<PinCategory?>(null)
     val selectedCategory: StateFlow<PinCategory?> = _selectedCategory.asStateFlow()
+
+    private val _notices = MutableStateFlow<List<MapNotice>>(emptyList())
+    val notices: StateFlow<List<MapNotice>> = _notices.asStateFlow()
 
     private val _showResearchButton = MutableStateFlow(false)
     val showResearchButton: StateFlow<Boolean> = _showResearchButton.asStateFlow()
@@ -71,23 +72,13 @@ class MapViewModel @Inject constructor(
     val navigateToPinCreation = _navigateToPinCreation.asSharedFlow()
 
     init {
-        loadPins()
+        loadNotices()
     }
 
-    private fun loadPins() {
+    private fun loadNotices() {
         viewModelScope.launch {
-            val loadedPins = pinRepository.getPins()
-            _pins.value = loadedPins
-
-            _mapPins.value = loadedPins.map { pin ->
-                MapPinMarker(
-                    pinId = pin.id,
-                    category = pin.category,
-                    coordinate = pin.coordinate,
-                    address = pin.address,
-                    locationName = pin.locationName ?: pin.address
-                )
-            }
+            mapRepository.getMapNotices()
+                .onSuccess { _notices.value = it }
         }
     }
 
@@ -105,6 +96,7 @@ class MapViewModel @Inject constructor(
             "축제" -> PinCategory.FESTIVAL
             else -> null
         }
+        fetchPinsInBounds()
     }
 
     fun openPinTypeSelector() {
@@ -124,49 +116,49 @@ class MapViewModel @Inject constructor(
     }
 
     fun updateMapBounds(bounds: MapBounds) {
+        val isInitialBounds = _currentBounds.value == null
         _currentBounds.value = bounds
-        showResearchAreaButton()
+        if (isInitialBounds) {
+            fetchPinsInBounds()
+        } else {
+            showResearchAreaButton()
+        }
     }
 
     fun fetchPinsInBounds() {
         val bounds = _currentBounds.value ?: return
 
         viewModelScope.launch {
-            _mapPins.value = pinRepository.getMapPinsInBounds(bounds)
+            mapRepository.getMapPinsInBounds(bounds, _selectedCategory.value)
+                .onSuccess { _mapPins.value = it }
 
             hideResearchAreaButton()
         }
     }
 
     fun toggleSympathy(pinId: String) {
-        _pins.value = _pins.value.map { pin ->
-            if (pin.id != pinId) return@map pin
-
-            val nextIsSympathized = !pin.isSympathizedByMe
-            val nextCount = if (nextIsSympathized) {
-                pin.sympathyCount + 1
-            } else {
-                (pin.sympathyCount - 1).coerceAtLeast(0)
-            }
-
-            pin.copy(
-                isSympathizedByMe = nextIsSympathized,
-                sympathyCount = nextCount
-            )
+        val pin = _selectedPin.value?.takeIf { it.id == pinId } ?: return
+        val nextIsSympathized = !pin.isSympathizedByMe
+        val nextCount = if (nextIsSympathized) {
+            pin.sympathyCount + 1
+        } else {
+            (pin.sympathyCount - 1).coerceAtLeast(0)
         }
 
-        _selectedPin.value = _pins.value.firstOrNull { it.id == pinId }
+        _selectedPin.value = pin.copy(
+            isSympathizedByMe = nextIsSympathized,
+            sympathyCount = nextCount
+        )
     }
 
-fun deletePinLocally(pinId: String) {
-    _pins.value = _pins.value.filterNot { it.id == pinId }
-    _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
+    fun deletePinLocally(pinId: String) {
+        _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
 
-    if (_selectedPin.value?.id == pinId) {
-        _selectedPin.value = null
+        if (_selectedPin.value?.id == pinId) {
+            _selectedPin.value = null
+        }
+        // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
     }
-    // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
-}
 
     fun openEmojiSelector(pinId: String) {
         _emojiTargetPinId.value = pinId
@@ -178,12 +170,11 @@ fun deletePinLocally(pinId: String) {
         _emojiTargetPinId.value = null
     }
 
-fun selectPinById(pinId: String) {
-    viewModelScope.launch {
-        val cachedPin = _pins.value.firstOrNull { it.id == pinId }
-        _selectedPin.value = cachedPin ?: pinRepository.getPinById(pinId)
+    fun selectPinById(pinId: String) {
+        viewModelScope.launch {
+            _selectedPin.value = mapRepository.getPinCard(pinId).getOrNull()
+        }
     }
-}
 
     fun enterLocationSelectionMode(category: PinCategory) {
         _isLocationSelectionMode.value = true
