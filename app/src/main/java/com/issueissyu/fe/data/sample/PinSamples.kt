@@ -1,15 +1,15 @@
 package com.issueissyu.fe.data.sample
 
-import com.issueissyu.fe.data.model.CommunicationPinDetail
-import com.issueissyu.fe.data.model.FestivalPinDetail
-import com.issueissyu.fe.data.model.IssuePinDetail
-import com.issueissyu.fe.data.model.IssueResolverParticipation
-import com.issueissyu.fe.data.model.Pin
-import com.issueissyu.fe.data.model.PinCoordinate
-import com.issueissyu.fe.data.model.PinEmojiReaction
-import com.issueissyu.fe.data.model.PinUser
-import com.issueissyu.fe.data.model.ResolutionStatus
-import com.issueissyu.fe.data.model.ShopPinDetail
+import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
+import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
+import com.issueissyu.fe.domain.model.pin.IssuePinDetail
+import com.issueissyu.fe.domain.model.pin.IssueResolverParticipation
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
+import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.ResolutionStatus
+import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 
 // 백엔드 연동 전까지만 사용하는 Pin 더미 데이터의 단일 원본.
 // PinRepositoryImpl의 더미 데이터와 Compose Preview가 같은 데이터를 공유한다.

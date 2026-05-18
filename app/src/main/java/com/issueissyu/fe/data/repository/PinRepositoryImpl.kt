@@ -1,13 +1,35 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.data.remote.api.PinApi
+import com.issueissyu.fe.data.remote.dto.response.BaseResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
+import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
+import com.issueissyu.fe.domain.model.pin.PinEmoji
+import com.issueissyu.fe.domain.model.pin.PinEmojis
+import com.issueissyu.fe.domain.model.pin.PinLike
 import javax.inject.Inject
-import com.issueissyu.fe.data.model.*
-import com.issueissyu.fe.data.model.MapPinMarker
+import javax.inject.Singleton
+import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.data.sample.PinSamples
+import com.issueissyu.fe.domain.model.pin.AuthoredPinDetail
+import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
+import com.issueissyu.fe.domain.model.pin.CreatePinRequest
+import com.issueissyu.fe.domain.model.pin.IssuePinDetail
+import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinDetail
+import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
+import com.issueissyu.fe.domain.repository.PinRepository
 import java.time.Instant
 import java.util.UUID
 
-class PinRepositoryImpl @Inject constructor() : PinRepository {
+@Singleton
+class PinRepositoryImpl @Inject constructor(
+    private val pinApi: PinApi,
+) : PinRepository {
 
     // TODO: 실제 백엔드와 연결 시 PinSamples 의존을 제거하고 네트워크 호출 로직으로 대체.
     private val dummyPins: MutableList<Pin> = PinSamples.pins.toMutableList()
@@ -120,5 +142,169 @@ class PinRepositoryImpl @Inject constructor() : PinRepository {
                     locationName = pin.locationName ?: pin.address
                 )
             }
+    }
+
+    override suspend fun likePin(pinId: Long): Result<PinLike> {
+        return try {
+            val response = pinApi.pinLike(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 공감 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinLike())
+            } else {
+                when (response.code) {
+                    "PIN_LIKE_400_1" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "이미 공감된 핀입니다." },
+                            ),
+                        )
+
+                    "PIN_LIKE_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                            ),
+                        )
+
+                    "PIN_LIKE_500" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 공감하기 중 서버 오류가 발생했습니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 공감에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // 이모지 조회
+    override suspend fun getPinEmojis(pinId: Long): Result<PinEmojis> {
+        return try {
+            val response = pinApi.getPinEmojis(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 반응 목록 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinEmojis())
+            } else {
+                when (response.code) {
+                    "PIN_NOT_FOUND_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀입니다." },
+                            ),
+                        )
+
+                    "JWT_401" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "인증이 필요합니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 반응 목록 조회에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun PinLikeResponse.toPinLike(): PinLike {
+        return PinLike(
+            pinId = pinId,
+            pinLikeCount = pinLikeCount,
+            isLike = isLike,
+        )
+    }
+
+    private fun PinEmojisResponse.toPinEmojis(): PinEmojis {
+        return PinEmojis(
+            selectedEmojiId = selectedEmojiId,
+            emojis = emojis.orEmpty().mapNotNull { it.toPinEmoji() },
+        )
+    }
+
+    private fun PinEmojiDto.toPinEmoji(): PinEmoji? {
+        if (emojiId == 0 || emojiImageUrl.isBlank()) return null
+        return PinEmoji(
+            emojiId = emojiId,
+            emojiImageUrl = emojiImageUrl,
+            count = count,
+            isDefault = isDefault,
+            isOwned = isOwned,
+            productId = productId,
+        )
+    }
+
+    // 핀 삭제
+    override suspend fun deletePin(pinId: Long): Result<Unit> {
+        return try {
+            val response = pinApi.pinDelete(pinId)
+            if (response.isSuccess) {
+                Result.success(Unit)
+            } else {
+                when (response.code) {
+                    "PIN_DELETE_400_1" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "등업된 이슈 핀은 삭제가 불가능 합니다." },
+                            ),
+                        )
+
+                    "PIN_DELETE_400_2" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                            ),
+                        )
+
+                    "PIN_DELETE_400_3" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 작성자가 아니므로 삭제 권한이 없습니다." },
+                            ),
+                        )
+
+                    "PIN_DELETE_400_4" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 삭제 API를 실행할 수 없습니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 삭제에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

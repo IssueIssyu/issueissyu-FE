@@ -1,4 +1,4 @@
-package com.issueissyu.fe.data.remote.dto.community
+package com.issueissyu.fe.data.remote.dto.response.community
 
 data class CommunityDetailResponse(
     val item: CommunityFeedItemResponse?,

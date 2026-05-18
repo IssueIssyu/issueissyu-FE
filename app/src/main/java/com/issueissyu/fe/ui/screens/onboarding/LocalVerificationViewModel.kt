@@ -1,4 +1,4 @@
-package com.issueissyu.fe.ui.viewmodels
+package com.issueissyu.fe.ui.screens.onboarding
 
 import android.location.Location
 import androidx.lifecycle.ViewModel

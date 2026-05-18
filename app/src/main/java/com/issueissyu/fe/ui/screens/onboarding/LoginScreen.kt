@@ -48,8 +48,6 @@ import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.suiteFontFamily
-import com.issueissyu.fe.ui.viewmodels.LoginEffect
-import com.issueissyu.fe.ui.viewmodels.LoginViewModel
 
 @Composable
 fun LoginScreen(

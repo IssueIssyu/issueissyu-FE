@@ -1,7 +1,7 @@
 package com.issueissyu.fe.domain.repository
 
-import com.issueissyu.fe.domain.model.AuthUser
-import com.issueissyu.fe.domain.model.OnboardingProfile
+import com.issueissyu.fe.domain.model.auth.AuthUser
+import com.issueissyu.fe.domain.model.auth.OnboardingProfile
 import com.issueissyu.fe.domain.model.TermsAgreementResult
 
 interface AuthRepository {

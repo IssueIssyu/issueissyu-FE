@@ -6,9 +6,9 @@ import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
-import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import com.issueissyu.fe.data.remote.api.LocationApi
+import com.issueissyu.fe.data.remote.api.PinApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -33,8 +33,12 @@ object NetworkModule {
             Log.d("ISSUE_HTTP", message)
         }
         return HttpLoggingInterceptor(logger).apply {
-            level = HttpLoggingInterceptor.Level.BODY
             redactHeader("Authorization")
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BASIC
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
     }
 
@@ -79,5 +83,11 @@ object NetworkModule {
     @Singleton
     fun provideLocationApi(retrofit: Retrofit): LocationApi {
         return retrofit.create(LocationApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun providePinApi(retrofit: Retrofit): PinApi {
+        return retrofit.create(PinApi::class.java)
     }
 }

@@ -1,6 +1,7 @@
 package com.issueissyu.fe.data.repository
 
-import com.issueissyu.fe.data.model.User
+import com.issueissyu.fe.domain.model.User
+import com.issueissyu.fe.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject

@@ -2,12 +2,12 @@ package com.issueissyu.fe.ui.screens.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.data.model.MapBounds
-import com.issueissyu.fe.data.model.Pin
-import com.issueissyu.fe.data.model.PinCategory
-import com.issueissyu.fe.data.model.MapPinMarker
-import com.issueissyu.fe.data.model.PinCoordinate
-import com.issueissyu.fe.data.repository.PinRepository
+import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.MapPinMarker
+import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

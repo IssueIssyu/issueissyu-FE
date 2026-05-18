@@ -16,8 +16,8 @@ import com.issueissyu.fe.data.remote.dto.response.auth.OnboardingResponse
 import com.issueissyu.fe.domain.auth.AccountAlreadyLinkedException
 import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
 import com.issueissyu.fe.domain.auth.RefreshTokenUnauthorizedException
-import com.issueissyu.fe.domain.model.AuthUser
-import com.issueissyu.fe.domain.model.OnboardingProfile
+import com.issueissyu.fe.domain.model.auth.AuthUser
+import com.issueissyu.fe.domain.model.auth.OnboardingProfile
 import com.issueissyu.fe.domain.model.TermsAgreementResult
 import com.issueissyu.fe.domain.repository.AuthRepository
 import javax.inject.Inject

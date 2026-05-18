@@ -1,4 +1,4 @@
-package com.issueissyu.fe.domain.model
+package com.issueissyu.fe.domain.model.auth
 
 data class OnboardingProfile(
     val uuid: String,

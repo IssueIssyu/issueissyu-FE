@@ -19,9 +19,8 @@ object AppDestinations {
     }
 
     // 메인 탭 / 일반 화면
-    const val HOME_ROUTE = "home_route"
-    const val COLLECTION_ROUTE = "collection_route"
     const val TOWN_ROUTE = "town_route"
+    const val COLLECTION_ROUTE = "collection_route"
     const val COMMUNITY_ROUTE = "community_route"
     const val COMMUNITY_DETAIL_ROUTE = "community_detail_route/{communityId}"
     const val MYPAGE_ROUTE = "mypage_route"
