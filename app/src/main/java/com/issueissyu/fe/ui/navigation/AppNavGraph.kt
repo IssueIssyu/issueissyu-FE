@@ -44,14 +44,6 @@ fun AppNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues
 ) {
-    val layoutDirection = LocalLayoutDirection.current
-    val navigationPaddingValues = PaddingValues(
-        start = paddingValues.calculateStartPadding(layoutDirection),
-        top = 0.dp,
-        end = paddingValues.calculateEndPadding(layoutDirection),
-        bottom = paddingValues.calculateBottomPadding()
-    )
-
     NavHost(
         navController = navController,
         startDestination = AppDestinations.Onboarding.SPLASH_ROUTE
@@ -174,29 +166,26 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.HOME_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 HomeScreen()
             }
         }
         composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
         composable(AppDestinations.TOWN_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 MapScreen(navController = navController)
             }
         }
         composable(AppDestinations.COMMUNITY_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 CommunityScreen(
                     onBackClick = {
@@ -216,10 +205,9 @@ fun AppNavGraph(
                 }
             )
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 CommunityDetailScreen(
                     onBackClick = {
@@ -230,10 +218,9 @@ fun AppNavGraph(
         }
         composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 PatchNotesRoute(
                     onBackClick = {
@@ -255,10 +242,9 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 PinDetailScreen(
                     pinId = pinId,
@@ -279,10 +265,9 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 PinReportScreen(
                     pinId = pinId,
@@ -335,10 +320,9 @@ fun AppNavGraph(
                 else -> null
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(navigationPaddingValues)
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
             ) {
                 if (category == null) {
                     Box(
@@ -359,6 +343,33 @@ fun AppNavGraph(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NavScreenWrapper(
+    paddingValues: PaddingValues,
+    removeTopPadding: Boolean = false,
+    content: @Composable () -> Unit,
+) {
+    val layoutDirection = LocalLayoutDirection.current
+    val appliedPadding = if (removeTopPadding) {
+        PaddingValues(
+            start = paddingValues.calculateStartPadding(layoutDirection),
+            top = 0.dp,
+            end = paddingValues.calculateEndPadding(layoutDirection),
+            bottom = paddingValues.calculateBottomPadding()
+        )
+    } else {
+        paddingValues
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(appliedPadding)
+    ) {
+        content()
     }
 }
 
