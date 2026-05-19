@@ -474,8 +474,10 @@ fun MapScreen(
                     viewModel.clearSelectedPin()
                     navController.navigate(AppDestinations.pinDetailRoute(pinId))
                 },
-                onCommunityClick = { _ ->
+                onCommunityClick = { communityId ->
+                    val numericCommunityId = communityId.toLongOrNull() ?: return@PinSummaryCard
                     viewModel.clearSelectedPin()
+                    navController.navigate(AppDestinations.communityDetailRoute(numericCommunityId))
                 },
                 onEditClick = { _ ->
                 },
