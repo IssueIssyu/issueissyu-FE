@@ -8,6 +8,8 @@ import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
+import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -176,8 +178,33 @@ class MapViewModel @Inject constructor(
 
     fun selectPinById(pinId: String) {
         viewModelScope.launch {
-            _selectedPin.value = mapRepository.getPinCard(pinId).getOrNull()
+            val pin = mapRepository.getPinCard(pinId).getOrNull() ?: return@launch
+            _selectedPin.value = pin
+            loadPinEmojis(pinId)
         }
+    }
+
+    private suspend fun loadPinEmojis(pinId: String) {
+        val numericPinId = pinId.toLongOrNull() ?: return
+        pinRepository.getPinEmojis(numericPinId)
+            .onSuccess { pinEmojis ->
+                val currentPin = _selectedPin.value?.takeIf { it.id == pinId } ?: return@onSuccess
+                _selectedPin.value = currentPin.copy(
+                    emojiReactions = pinEmojis.toEmojiReactions()
+                )
+            }
+    }
+
+    private fun PinEmojis.toEmojiReactions(): List<PinEmojiReaction> {
+        return emojis
+            .filter { it.count > 0 }
+            .map { emoji ->
+                PinEmojiReaction(
+                    emojiId = emoji.emojiId.toString(),
+                    count = emoji.count,
+                    reactedByMe = emoji.emojiId == selectedEmojiId,
+                )
+            }
     }
 
     fun enterLocationSelectionMode(category: PinCategory) {
