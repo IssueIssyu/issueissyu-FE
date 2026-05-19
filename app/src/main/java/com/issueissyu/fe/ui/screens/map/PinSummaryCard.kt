@@ -11,8 +11,6 @@ import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider // 변경됨: Divider -> HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -20,10 +18,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
@@ -389,19 +389,19 @@ private fun EmojiReactionRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // 이모지 추가 버튼
-        Button(
-            onClick = { onEmojiClick(pin.id) },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Gray_3,
-                contentColor = Text
-            ),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.height(32.dp)
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(Gray_3)
+                .clickable { onEmojiClick(pin.id) },
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "이모지",
-                style = IssueTypo.Regular12
+            Icon(
+                painter = painterResource(id = R.drawable.ic_add_emoji),
+                contentDescription = "이모지 추가",
+                tint = Color.Unspecified,
+                modifier = Modifier.size(26.dp)
             )
         }
 
