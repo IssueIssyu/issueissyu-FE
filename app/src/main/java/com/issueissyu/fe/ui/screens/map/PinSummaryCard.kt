@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Delete
@@ -285,16 +286,44 @@ fun PinSummaryCard(
 
                 // 커뮤니티 버튼 (pin.communityPostId가 있을 때만 표시)
                 if (pin.communityPostId != null) {
-                    Text(
-                        text = "커뮤니티 >",
-                        maxLines = 1,
-                        softWrap = false,
-                        style = IssueTypo.Bold12.copy(color = BrandColor),
-                        modifier = Modifier.clickable { onCommunityClick(pin.communityPostId) }
+                    CommunityLinkButton(
+                        communityPostId = pin.communityPostId,
+                        onCommunityClick = onCommunityClick
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CommunityLinkButton(
+    communityPostId: String,
+    onCommunityClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Orange)
+            .clickable { onCommunityClick(communityPostId) }
+            .padding(start = 12.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "커뮤니티",
+            maxLines = 1,
+            softWrap = false,
+            style = IssueTypo.Bold12.copy(color = White)
+        )
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = White,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
@@ -393,7 +422,6 @@ private fun EmojiReactionRow(
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(Gray_3)
                 .clickable { onEmojiClick(pin.id) },
             contentAlignment = Alignment.Center
         ) {
