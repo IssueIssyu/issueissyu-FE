@@ -75,6 +75,9 @@ class MapViewModel @Inject constructor(
     private val _navigateToPinCreation = MutableSharedFlow<PinCreationNavigationEvent>()
     val navigateToPinCreation = _navigateToPinCreation.asSharedFlow()
 
+    private val _messageEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val messageEvents = _messageEvents.asSharedFlow()
+
     init {
         loadNotices()
     }
@@ -154,6 +157,9 @@ class MapViewModel @Inject constructor(
                         sympathyCount = like.pinLikeCount,
                     )
                 }
+                .onFailure { e ->
+                    _messageEvents.emit(e.message?.takeIf { it.isNotBlank() } ?: "핀 공감에 실패했습니다.")
+                }
         }
     }
 
@@ -168,6 +174,9 @@ class MapViewModel @Inject constructor(
                     if (_selectedPin.value?.id == pinId) {
                         _selectedPin.value = null
                     }
+                }
+                .onFailure { e ->
+                    _messageEvents.emit(e.message?.takeIf { it.isNotBlank() } ?: "핀 삭제에 실패했습니다.")
                 }
         }
     }

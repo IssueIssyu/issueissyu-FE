@@ -32,6 +32,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -121,6 +123,7 @@ fun MapScreen(
 
     val context = LocalContext.current
     val activity = context.findActivity()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val locationSource = remember(activity) {
         activity?.let {
@@ -206,6 +209,12 @@ fun MapScreen(
                     "&userLat=${event.userCoordinate.latitude}" +
                     "&userLng=${event.userCoordinate.longitude}"
             )
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.messageEvents.collectLatest { message ->
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -518,5 +527,16 @@ fun MapScreen(
                     .padding(end = 4.dp, bottom = 88.dp)
             )
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = if (selectedPin != null) 288.dp else 24.dp
+                )
+        )
     }
 }
