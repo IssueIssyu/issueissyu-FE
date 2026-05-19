@@ -19,11 +19,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
@@ -207,10 +209,10 @@ fun PinSummaryCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                PinImagePlaceholder(
+                PinThumbnail(
+                    imageUrl = pin.imageUrls.firstOrNull(),
                     modifier = Modifier.size(96.dp)
                 )
-                // TODO: Coil AsyncImage로 pin.imageUrls.firstOrNull() 연결 예정
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -473,9 +475,22 @@ private fun EmojiReactionRow(
 }
 
 @Composable
-private fun PinImagePlaceholder(
+private fun PinThumbnail(
+    imageUrl: String?,
     modifier: Modifier = Modifier
 ) {
+    if (!imageUrl.isNullOrBlank()) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = "핀 이미지",
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Gray_3)
+        )
+        return
+    }
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
