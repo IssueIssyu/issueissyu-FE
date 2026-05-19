@@ -26,12 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
@@ -175,9 +177,11 @@ fun PatchNoteCard(
                     horizontalArrangement = Arrangement.End,
                     modifier = Modifier.widthIn(max = 168.dp)
                 ) {
-                    if (patchNote.writerImageUrl != null) {
-                        // TODO: Coil 또는 Glide 라이브러리로 이미지 로드
-                        Box(
+                    if (!patchNote.writerImageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = patchNote.writerImageUrl,
+                            contentDescription = "Writer Profile",
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
