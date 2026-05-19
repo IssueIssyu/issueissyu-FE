@@ -14,7 +14,11 @@ import javax.inject.Inject
 
 data class PatchNotesUiState(
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,
+    val paginationErrorMessage: String? = null,
+    val hasNext: Boolean = false,
+    val nextCursor: String? = null,
     val patchNotes: List<PatchNoteItem> = emptyList()
 )
 
@@ -32,13 +36,25 @@ class PatchNotesViewModel @Inject constructor(
 
     fun loadPatchNotes() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    isLoadingMore = false,
+                    errorMessage = null,
+                    paginationErrorMessage = null,
+                    hasNext = false,
+                    nextCursor = null
+                )
+            }
             mapRepository.getPatchNotes(size = PatchNotesPageSize).fold(
                 onSuccess = { page ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
                             errorMessage = null,
+                            paginationErrorMessage = null,
+                            hasNext = page.hasNext,
+                            nextCursor = page.nextCursor,
                             patchNotes = page.items.map { item -> item.toUiItem() }
                         )
                     }
@@ -49,6 +65,48 @@ class PatchNotesViewModel @Inject constructor(
                             isLoading = false,
                             errorMessage = e.message?.takeIf { msg -> msg.isNotBlank() }
                                 ?: "목록을 불러오지 못했습니다"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun loadMorePatchNotes() {
+        val currentState = _uiState.value
+        val cursor = currentState.nextCursor
+
+        if (
+            currentState.isLoading ||
+            currentState.isLoadingMore ||
+            !currentState.hasNext ||
+            cursor == null
+        ) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isLoadingMore = true, paginationErrorMessage = null)
+            }
+            mapRepository.getPatchNotes(size = PatchNotesPageSize, cursor = cursor).fold(
+                onSuccess = { page ->
+                    _uiState.update {
+                        it.copy(
+                            isLoadingMore = false,
+                            paginationErrorMessage = null,
+                            hasNext = page.hasNext,
+                            nextCursor = page.nextCursor,
+                            patchNotes = it.patchNotes + page.items.map { item -> item.toUiItem() }
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            isLoadingMore = false,
+                            paginationErrorMessage = e.message?.takeIf { msg -> msg.isNotBlank() }
+                                ?: "목록을 더 불러오지 못했습니다"
                         )
                     }
                 }
