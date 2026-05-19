@@ -9,6 +9,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.repository.MapRepository
+import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +28,8 @@ data class PinCreationNavigationEvent(
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    private val mapRepository: MapRepository
+    private val mapRepository: MapRepository,
+    private val pinRepository: PinRepository,
 ) : ViewModel() {
 
     private val _mapPins = MutableStateFlow<List<MapPinMarker>>(emptyList())
@@ -138,17 +140,19 @@ class MapViewModel @Inject constructor(
 
     fun toggleSympathy(pinId: String) {
         val pin = _selectedPin.value?.takeIf { it.id == pinId } ?: return
-        val nextIsSympathized = !pin.isSympathizedByMe
-        val nextCount = if (nextIsSympathized) {
-            pin.sympathyCount + 1
-        } else {
-            (pin.sympathyCount - 1).coerceAtLeast(0)
-        }
+        if (pin.isSympathizedByMe) return
+        val numericPinId = pinId.toLongOrNull() ?: return
 
-        _selectedPin.value = pin.copy(
-            isSympathizedByMe = nextIsSympathized,
-            sympathyCount = nextCount
-        )
+        viewModelScope.launch {
+            pinRepository.likePin(numericPinId)
+                .onSuccess { like ->
+                    val currentPin = _selectedPin.value?.takeIf { it.id == pinId } ?: return@onSuccess
+                    _selectedPin.value = currentPin.copy(
+                        isSympathizedByMe = like.isLike,
+                        sympathyCount = like.pinLikeCount,
+                    )
+                }
+        }
     }
 
     fun deletePinLocally(pinId: String) {
