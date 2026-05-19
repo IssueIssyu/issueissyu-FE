@@ -147,6 +147,7 @@ class MapRepositoryImpl @Inject constructor(
             viewCount = 0,
             sympathyCount = likeCount?.toInt() ?: 0,
             isSympathizedByMe = isLike ?: false,
+            isMine = isMine ?: false,
             communityPostId = communityId?.toString(),
             createdAt = "",
             detail = detail,
