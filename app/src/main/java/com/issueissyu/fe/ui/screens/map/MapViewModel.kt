@@ -157,13 +157,19 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun deletePinLocally(pinId: String) {
-        _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
+    fun deletePin(pinId: String) {
+        val numericPinId = pinId.toLongOrNull() ?: return
 
-        if (_selectedPin.value?.id == pinId) {
-            _selectedPin.value = null
+        viewModelScope.launch {
+            pinRepository.deletePin(numericPinId)
+                .onSuccess {
+                    _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
+
+                    if (_selectedPin.value?.id == pinId) {
+                        _selectedPin.value = null
+                    }
+                }
         }
-        // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
     }
 
     fun openEmojiSelector(pinId: String) {

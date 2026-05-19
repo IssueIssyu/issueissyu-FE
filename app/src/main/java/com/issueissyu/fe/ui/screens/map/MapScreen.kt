@@ -482,7 +482,7 @@ fun MapScreen(
                 onEditClick = { _ ->
                 },
                 onDeleteClick = { pinId ->
-                    viewModel.deletePinLocally(pinId)
+                    viewModel.deletePin(pinId)
                 },
                 onSympathyClick = { pinId ->
                     viewModel.toggleSympathy(pinId)
