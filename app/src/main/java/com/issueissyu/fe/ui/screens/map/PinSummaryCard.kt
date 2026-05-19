@@ -446,13 +446,21 @@ private fun EmojiReactionRow(
                     .background(Gray_3, RoundedCornerShape(16.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
-                // 작은 원형 placeholder
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray)
-                )
+                if (!reaction.emojiImageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = reaction.emojiImageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(16.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray)
+                    )
+                }
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "${reaction.count}",

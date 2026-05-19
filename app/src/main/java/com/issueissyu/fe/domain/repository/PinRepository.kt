@@ -5,6 +5,7 @@ import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import com.issueissyu.fe.domain.model.MapPinMarker
+import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
 
@@ -20,6 +21,10 @@ interface PinRepository {
     suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker>
 
     suspend fun getPinEmojis(pinId: Long): Result<PinEmojis>
+
+    suspend fun getEmojiCandidates(): Result<List<PinEmojiCandidate>>
+
+    suspend fun applyPinEmoji(pinId: Long, emojiId: Int): Result<Int?>
 
     suspend fun likePin(pinId: Long): Result<PinLike>
 

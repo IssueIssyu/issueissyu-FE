@@ -23,7 +23,8 @@ data class PinUser(
 data class PinEmojiReaction(
     val emojiId: String,
     val count: Int,
-    val reactedByMe: Boolean = false
+    val reactedByMe: Boolean = false,
+    val emojiImageUrl: String? = null
 )
 
 // 이모지 조회
@@ -40,6 +41,17 @@ data class PinEmoji(
     val isOwned: Boolean,
     val productId: String?,
 )
+
+data class PinEmojiCandidate(
+    val emojiId: Int,
+    val emojiImageUrl: String,
+    val isDefault: Boolean,
+    val isOwned: Boolean,
+    val productId: String?,
+) {
+    val canReact: Boolean
+        get() = isDefault || isOwned
+}
 
 data class PinLike(
     val pinId: Long,

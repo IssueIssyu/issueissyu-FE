@@ -59,6 +59,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
+import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
 import com.issueissyu.fe.ui.components.map.toLatLng
 import com.issueissyu.fe.ui.navigation.AppDestinations
@@ -108,6 +109,7 @@ fun MapScreen(
     val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
+    val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
 
     // TODO: ViewModel에서 combine(_mapPins, _selectedCategory)로 visibleMapPins StateFlow를 노출하고, UI는 collect만 하도록 정리
 
@@ -525,6 +527,19 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 4.dp, bottom = 88.dp)
+            )
+        }
+
+        if (emojiPickerUiState.isVisible) {
+            EmojiReactionBottomSheet(
+                candidates = emojiPickerUiState.candidates,
+                selectedEmojiId = emojiPickerUiState.selectedEmojiId,
+                isLoading = emojiPickerUiState.isLoading,
+                isSubmitting = emojiPickerUiState.isSubmitting,
+                errorMessage = emojiPickerUiState.errorMessage,
+                onDismiss = viewModel::closeEmojiSelector,
+                onEmojiClick = viewModel::selectEmojiCandidate,
+                onApplyClick = viewModel::applySelectedEmoji,
             )
         }
 
