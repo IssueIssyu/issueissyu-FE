@@ -19,17 +19,12 @@ android {
     }
 
     // local.properties → BuildConfig / manifestPlaceholders
-    fun Properties.buildConfigString(key: String, default: String = ""): String =
-        (getProperty(key) ?: default).trim()
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-
     fun Properties.buildConfigString(
         primaryKey: String,
-        fallbackKey: String,
+        fallbackKey: String? = null,
         default: String = ""
     ): String =
-        (getProperty(primaryKey) ?: getProperty(fallbackKey) ?: default).trim()
+        (getProperty(primaryKey) ?: fallbackKey?.let(::getProperty) ?: default).trim()
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
 
