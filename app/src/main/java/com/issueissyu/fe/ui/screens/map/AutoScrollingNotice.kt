@@ -7,15 +7,17 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -25,10 +27,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.IssueTypo
 import kotlinx.coroutines.delay
 
@@ -60,53 +63,79 @@ fun AutoScrollingNotice(
 
     val currentNotice = notices.getOrNull(currentNoticeIndex) ?: return
 
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                color = Gray_7.copy(alpha = 0.3f),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .clickable { onClick(currentNotice) }
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .height(64.dp)
+            .clickable { onClick(currentNotice) },
+        contentAlignment = Alignment.CenterStart
     ) {
-        Icon(
-            painter = painterResource(id = iconResId),
-            contentDescription = "공지",
-            tint = Color.Unspecified,
+        Row(
             modifier = Modifier
-                .size(32.dp)
-                .padding(end = 8.dp)
-        )
-
-        AnimatedContent(
-            targetState = currentNoticeIndex,
-            transitionSpec = {
-                (
-                        slideInVertically(
-                            animationSpec = tween(durationMillis = 300)
-                        ) { height -> height } + fadeIn(
-                            animationSpec = tween(durationMillis = 300)
+                .fillMaxWidth()
+                .height(50.dp)
+                .padding(start = 28.dp)
+                .shadow(
+                    elevation = 6.dp,
+                    shape = RoundedCornerShape(25.dp),
+                    clip = false
+                )
+                .background(
+                    color = Color.White.copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(25.dp)
+                )
+                .padding(start = 68.dp, end = 20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AnimatedContent(
+                targetState = currentNoticeIndex,
+                transitionSpec = {
+                    (
+                            slideInVertically(
+                                animationSpec = tween(durationMillis = 300)
+                            ) { height -> height } + fadeIn(
+                                animationSpec = tween(durationMillis = 300)
+                            )
+                            ).togetherWith(
+                            slideOutVertically(
+                                animationSpec = tween(durationMillis = 300)
+                            ) { height -> -height } + fadeOut(
+                                animationSpec = tween(durationMillis = 300)
+                            )
                         )
-                        ).togetherWith(
-                        slideOutVertically(
-                            animationSpec = tween(durationMillis = 300)
-                        ) { height -> -height } + fadeOut(
-                            animationSpec = tween(durationMillis = 300)
-                        )
-                    )
-            },
-            label = "Notice Animation"
-        ) { targetIndex ->
-            val notice = notices.getOrNull(targetIndex) ?: return@AnimatedContent
+                },
+                label = "Notice Animation"
+            ) { targetIndex ->
+                val notice = notices.getOrNull(targetIndex) ?: return@AnimatedContent
 
-            Text(
-                text = notice.title,
-                style = IssueTypo.Regular15.copy(
-                    color = MaterialTheme.colorScheme.onSurface
+                Text(
+                    text = notice.title,
+                    style = IssueTypo.Bold18.copy(color = Color.Black),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .size(58.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = CircleShape,
+                    clip = false
+                )
+                .background(
+                    color = Color.White,
+                    shape = CircleShape
                 ),
-                maxLines = 1
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(id = iconResId),
+                contentDescription = "공지",
+                tint = Color.Unspecified,
+                modifier = Modifier.size(42.dp)
             )
         }
     }
