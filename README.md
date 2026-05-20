@@ -39,8 +39,8 @@
 2.  **`local.properties` 파일에 추가**: 프로젝트 루트 디렉토리의 `local.properties` 파일에 발급받은 클라이언트 ID와 Secret을 다음과 같은 형식으로 추가합니다. `YOUR_NAVER_MAP_CLIENT_ID`와 `YOUR_NAVER_MAP_CLIENT_SECRET` 부분을 실제 발급받은 값으로 대체하십시오.
 
     ```properties
-    naver.map.client.id=YOUR_NAVER_MAP_CLIENT_ID
-    naver.map.client.secret=YOUR_NAVER_MAP_CLIENT_SECRET
+    NAVER_MAP_CLIENT_ID=YOUR_NAVER_MAP_CLIENT_ID
+    NAVER_MAP_CLIENT_SECRET=YOUR_NAVER_MAP_CLIENT_SECRET
     ```
 
 3.  **애플리케이션에서 사용**: `app/build.gradle.kts` 파일에서 `local.properties`에 정의된 키들을 읽어 `BuildConfig` 필드로 자동 생성하며, 애플리케이션의 `IssueissyuApplication.kt` 파일에서 다음과 같이 `NaverMapSdk`를 초기화할 때 사용됩니다.
