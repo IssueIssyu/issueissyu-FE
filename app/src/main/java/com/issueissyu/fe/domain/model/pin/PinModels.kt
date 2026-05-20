@@ -26,6 +26,13 @@ data class PinEmojiReaction(
     val reactedByMe: Boolean = false
 )
 
+/** 핀 첨부 이미지 (홈 API `PinImageResponse` 대응). */
+data class PinImageRef(
+    val pinImageId: Long,
+    val imageUrl: String,
+    val isMain: Boolean,
+)
+
 // 이모지 조회
 data class PinEmojis(
     val selectedEmojiId: Int?,
@@ -118,11 +125,16 @@ data class Pin(
     val neighborhoodId: String? = null,
     val neighborhoodName: String? = null,
     val imageUrls: List<String> = emptyList(),
+    val imageAttachments: List<PinImageRef> = emptyList(),
     val viewCount: Int = 0,
     val sympathyCount: Int = 0,
     val isSympathizedByMe: Boolean = false,
     val emojiReactions: List<PinEmojiReaction> = emptyList(),
     val communityPostId: String? = null,
+    val author: PinUser? = null,
+    val isMine: Boolean = false,
+    val isReported: Boolean = false,
+    val isUpdated: Boolean = false,
     val createdAt: String,
     val updatedAt: String? = null,
     val detail: PinDetail
@@ -154,8 +166,11 @@ data class UpdatePinRequest(
     val imageUrls: List<String> = emptyList()
 )
 
-fun Pin.canEditBy(userId: String): Boolean {
+fun Pin.canEditBy(userId: String? = null): Boolean {
     if (communityPostId != null) return false
+    if (isMine) return true
+    if (userId.isNullOrBlank()) return false
 
-    return (detail as? AuthoredPinDetail)?.writer?.id == userId
+    return author?.id == userId ||
+        (detail as? AuthoredPinDetail)?.writer?.id == userId
 }

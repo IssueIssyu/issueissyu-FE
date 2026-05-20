@@ -3,7 +3,6 @@ package com.issueissyu.fe.data.remote.dto.pin
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
-import com.issueissyu.fe.data.remote.dto.response.pin.PinImageResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
@@ -14,6 +13,7 @@ import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.model.pin.PinDetail
 import com.issueissyu.fe.domain.model.pin.PinEmoji
 import com.issueissyu.fe.domain.model.pin.PinEmojis
+import com.issueissyu.fe.domain.model.pin.PinImageRef
 import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
@@ -22,6 +22,8 @@ import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 fun PinDetailHomeResponse.toPin(
     coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
 ): Pin {
+    val author = toPinUserOrNull()
+    val (imageAttachments, imageUrls) = toPinImages()
     return Pin(
         id = pinId.toString(),
         title = pinTitle,
@@ -29,14 +31,19 @@ fun PinDetailHomeResponse.toPin(
         coordinate = coordinate,
         address = pinDetailAddress,
         locationName = null,
-        imageUrls = pinImageUrls.toImageUrls(),
+        imageUrls = imageUrls,
+        imageAttachments = imageAttachments,
         viewCount = viewCount,
         sympathyCount = likeCount,
         isSympathizedByMe = isLike,
         communityPostId = communityId?.toString(),
+        author = author,
+        isMine = isMine,
+        isReported = isReported,
+        isUpdated = isUpdated,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        detail = toPinDetail(),
+        detail = toPinDetail(author),
     )
 }
 
@@ -55,25 +62,21 @@ fun PinEmojisResponse.toPinEmojis(): PinEmojis {
     )
 }
 
-private fun PinDetailHomeResponse.toPinDetail(): PinDetail {
+private fun PinDetailHomeResponse.toPinDetail(author: PinUser?): PinDetail {
     val category = pinType.toPinCategory()
-    val writer = toPinUserOrNull()
+    val writer = author ?: unknownWriter()
     return when (category) {
         PinCategory.ISSUE -> IssuePinDetail(
-            writer = writer ?: unknownWriter(),
-            resolutionStatus = issuePinState.toResolutionStatus()
-                ?: ResolutionStatus.BEFORE_RESOLUTION,
+            writer = writer,
+            resolutionStatus = issuePinState.toResolutionStatus() ?: ResolutionStatus.BEFORE_RESOLUTION,
         )
-
         PinCategory.COMMUNICATION -> CommunicationPinDetail(
-            writer = writer ?: unknownWriter(),
+            writer = writer,
         )
-
         PinCategory.SHOP -> ShopPinDetail(
             keywords = emptyList(),
             currentNews = discount,
         )
-
         PinCategory.FESTIVAL -> FestivalPinDetail(
             keywords = emptyList(),
         )
@@ -89,11 +92,19 @@ private fun PinDetailHomeResponse.toPinUserOrNull(): PinUser? {
     )
 }
 
-private fun List<PinImageResponse>.toImageUrls(): List<String> {
-    return sortedWith(compareByDescending { it.isMain })
-        .mapNotNull { image ->
-            image.pinImageUrl.takeIf { it.isNotBlank() }
-        }
+private fun PinDetailHomeResponse.toPinImages(): Pair<List<PinImageRef>, List<String>> {
+    val sorted = pinImageUrls.sortedByDescending { it.isMain }
+    val attachments = sorted.map {
+        PinImageRef(
+            pinImageId = it.pinImageId,
+            imageUrl = it.pinImageUrl,
+            isMain = it.isMain,
+        )
+    }
+    val urlsFromPin = attachments.mapNotNull { ref -> ref.imageUrl.takeIf { it.isNotBlank() } }
+    val storeImage = storeImageUrl?.takeIf { it.isNotBlank() }
+    val allUrls = if (storeImage == null) urlsFromPin else (urlsFromPin + storeImage).distinct()
+    return attachments to allUrls
 }
 
 private fun String.toPinCategory(): PinCategory {

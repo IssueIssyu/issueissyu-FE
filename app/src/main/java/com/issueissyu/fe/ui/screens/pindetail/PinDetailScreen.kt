@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.screens.pindetail
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,14 +23,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
-import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -44,24 +46,33 @@ fun PinDetailScreen(
     onBackClick: () -> Unit,
     onReportClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: PinDetailViewModel = hiltViewModel()
+    viewModel: PinDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     LaunchedEffect(pinId) {
         viewModel.loadPin(pinId)
     }
 
-    val currentUserId = "user1_id" // TODO: 로그인 연동 후 실제 currentUserId로 교체
+    LaunchedEffect(Unit) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                is PinDetailEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background),
     ) {
         IssueissyuTopAppBar(
             onBackClick = onBackClick,
-            titleText = ""
+            titleText = "",
         )
 
         val pin = uiState.pin
@@ -71,41 +82,45 @@ fun PinDetailScreen(
             uiState.isLoading -> {
                 CenteredPlaceholder(
                     modifier = Modifier.weight(1f),
-                    text = "핀 정보를 불러오는 중..."
+                    text = "핀 정보를 불러오는 중...",
                 )
             }
 
             error != null -> {
                 CenteredPlaceholder(
                     modifier = Modifier.weight(1f),
-                    text = error
+                    text = error,
                 )
             }
 
             pin != null -> {
                 PinDetailTabs(
                     pin = pin,
-                    currentUserId = currentUserId,
+                    currentUserId = "user1_id",
                     selectedTab = uiState.selectedTab,
                     onSelectTab = viewModel::selectTab,
                     onReportClick = onReportClick,
                     onEditClick = {
                         // TODO: 핀 수정 화면으로 이동
                     },
-                    onDeleteClick = {
-                        // TODO: 핀 삭제 확인 Dialog 또는 삭제 API 연결
+                    onDeleteClick = { deletePinId ->
+                        viewModel.deletePin(
+                            pinId = deletePinId,
+                            onSuccess = onBackClick,
+                        )
                     },
                     onCommunityClick = {
                         // TODO: 커뮤니티 상세 화면으로 이동
                     },
-                    modifier = Modifier.weight(1f)
+                    isDeleting = uiState.isDeleting,
+                    modifier = Modifier.weight(1f),
                 )
             }
 
             else -> {
                 CenteredPlaceholder(
                     modifier = Modifier.weight(1f),
-                    text = "핀 상세 화면은 추후 구현 예정입니다."
+                    text = "핀 정보를 불러올 수 없습니다.",
                 )
             }
         }
@@ -122,7 +137,8 @@ private fun PinDetailTabs(
     onEditClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
     onCommunityClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    isDeleting: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
     val tabs = buildList {
         add(PinDetailTab.HOME)
@@ -139,19 +155,19 @@ private fun PinDetailTabs(
         PinDetailTabBar(
             tabs = tabs,
             effectiveTab = effectiveTab,
-            onSelectTab = onSelectTab
+            onSelectTab = onSelectTab,
         )
 
         when (effectiveTab) {
             PinDetailTab.HOME -> {
                 PinHomeTab(
                     pin = pin,
-                    currentUserId = currentUserId,
                     onReportClick = onReportClick,
                     onEditClick = onEditClick,
                     onDeleteClick = onDeleteClick,
                     onCommunityClick = onCommunityClick,
-                    modifier = Modifier.fillMaxSize()
+                    isDeleting = isDeleting,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
 
@@ -168,7 +184,7 @@ private fun PinDetailTabs(
                     onCommentSubmit = { _, _ ->
                         // TODO: PinCommentRepository.addComment 연결
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
 
@@ -185,12 +201,12 @@ private fun PinDetailTabs(
                         onPetitionClick = {
                             // TODO: PinPetitionRepository.petition 연결
                         },
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
                     )
                 } else {
                     CenteredPlaceholder(
                         modifier = Modifier.fillMaxSize(),
-                        text = "해결하기는 이슈 핀에서만 사용할 수 있습니다."
+                        text = "해결하기는 이슈 핀에서만 사용할 수 있습니다.",
                     )
                 }
             }
@@ -203,7 +219,7 @@ private fun PinDetailTabBar(
     tabs: List<PinDetailTab>,
     effectiveTab: PinDetailTab,
     onSelectTab: (PinDetailTab) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -212,7 +228,7 @@ private fun PinDetailTabBar(
                     label = tab.label(),
                     selected = effectiveTab == tab,
                     onClick = { onSelectTab(tab) },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
             }
         }
@@ -225,7 +241,7 @@ private fun PinDetailTabItem(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val textStyle = if (selected) {
         IssueTypo.Regular15.copy(color = Title, fontWeight = FontWeight.Bold)
@@ -238,14 +254,14 @@ private fun PinDetailTabItem(
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(text = label, style = textStyle)
         Box(
             modifier = Modifier
                 .height(2.dp)
                 .fillMaxWidth(0.5f)
-                .background(if (selected) Orange else Color.Transparent)
+                .background(if (selected) Orange else Color.Transparent),
         )
     }
 }
@@ -253,13 +269,13 @@ private fun PinDetailTabItem(
 @Composable
 private fun CenteredPlaceholder(
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .fillMaxSize()
             .padding(24.dp),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.Center,
     ) {
         Text(text = text)
     }
@@ -281,22 +297,22 @@ private fun PinDetailScreenPreview_IssueLoaded() {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(MaterialTheme.colorScheme.background),
         ) {
             IssueissyuTopAppBar(
                 onBackClick = {},
-                titleText = ""
+                titleText = "",
             )
             PinDetailTabs(
                 pin = PinSamples.findById(PinSamples.IssueInProgressPinId),
                 currentUserId = PinSamples.user1.id,
                 selectedTab = selectedTab,
                 onSelectTab = { selectedTab = it },
-                onReportClick = {},
+                onReportClick = { },
                 onEditClick = {},
                 onDeleteClick = {},
                 onCommunityClick = {},
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
             )
         }
     }
