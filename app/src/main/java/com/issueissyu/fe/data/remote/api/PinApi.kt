@@ -1,14 +1,22 @@
 package com.issueissyu.fe.data.remote.api
 
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface PinApi {
+
+    //핀 상세 홈
+    @GET("api/pins/home")
+    suspend fun pinHome(
+        @Query("pinId") pinId: Long,
+    ): BaseResponse<PinDetailHomeResponse?>
 
     //핀 삭제
     @DELETE("api/pins/{pinId}/delete")

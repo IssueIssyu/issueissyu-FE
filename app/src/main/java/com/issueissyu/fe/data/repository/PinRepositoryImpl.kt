@@ -1,11 +1,9 @@
 package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.PinApi
-import com.issueissyu.fe.data.remote.dto.response.BaseResponse
-import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
-import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
-import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
-import com.issueissyu.fe.domain.model.pin.PinEmoji
+import com.issueissyu.fe.data.remote.dto.pin.toPin
+import com.issueissyu.fe.data.remote.dto.pin.toPinEmojis
+import com.issueissyu.fe.data.remote.dto.pin.toPinLike
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
 import javax.inject.Inject
@@ -144,6 +142,46 @@ class PinRepositoryImpl @Inject constructor(
             }
     }
 
+    override suspend fun getPinDetailHome(pinId: Long): Result<Pin> {
+        return try {
+            val response = pinApi.pinHome(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 상세 홈 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPin())
+            } else {
+                when (response.code) {
+                    "PIN_HOME_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                            ),
+                        )
+
+                    "PIN_HOME_400" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 상세 홈 조회 API를 실행 할 수 없습니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 상세 홈 조회에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun likePin(pinId: Long): Result<PinLike> {
         return try {
             val response = pinApi.pinLike(pinId)
@@ -230,33 +268,6 @@ class PinRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    private fun PinLikeResponse.toPinLike(): PinLike {
-        return PinLike(
-            pinId = pinId,
-            pinLikeCount = pinLikeCount,
-            isLike = isLike,
-        )
-    }
-
-    private fun PinEmojisResponse.toPinEmojis(): PinEmojis {
-        return PinEmojis(
-            selectedEmojiId = selectedEmojiId,
-            emojis = emojis.orEmpty().mapNotNull { it.toPinEmoji() },
-        )
-    }
-
-    private fun PinEmojiDto.toPinEmoji(): PinEmoji? {
-        if (emojiId == 0 || emojiImageUrl.isBlank()) return null
-        return PinEmoji(
-            emojiId = emojiId,
-            emojiImageUrl = emojiImageUrl,
-            count = count,
-            isDefault = isDefault,
-            isOwned = isOwned,
-            productId = productId,
-        )
     }
 
     // 핀 삭제

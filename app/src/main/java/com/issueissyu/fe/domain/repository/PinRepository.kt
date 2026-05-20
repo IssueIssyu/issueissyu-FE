@@ -19,6 +19,8 @@ interface PinRepository {
 
     suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker>
 
+    suspend fun getPinDetailHome(pinId: Long): Result<Pin>
+
     suspend fun getPinEmojis(pinId: Long): Result<PinEmojis>
 
     suspend fun likePin(pinId: Long): Result<PinLike>
