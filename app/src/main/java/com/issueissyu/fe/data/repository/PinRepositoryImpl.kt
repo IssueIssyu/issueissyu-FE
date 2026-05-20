@@ -1,10 +1,12 @@
 package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.PinApi
+import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
+import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmoji
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
@@ -232,6 +234,35 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getEmojiCandidates(): Result<List<PinEmojiCandidate>> {
+        return try {
+            val response = pinApi.getEmojiCandidates()
+            if (response.isSuccess) {
+                Result.success(response.result.orEmpty().mapNotNull { it.toPinEmojiCandidate() })
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "이모지 목록 조회에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun applyPinEmoji(pinId: Long, emojiId: Int): Result<Int?> {
+        return try {
+            val response = pinApi.applyPinEmoji(
+                pinId = pinId,
+                request = ApplyPinEmojiRequest(emojiId = emojiId),
+            )
+            if (response.isSuccess) {
+                Result.success(response.result?.selectedEmojiId)
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "이모지 반응 등록에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun PinLikeResponse.toPinLike(): PinLike {
         return PinLike(
             pinId = pinId,
@@ -244,6 +275,17 @@ class PinRepositoryImpl @Inject constructor(
         return PinEmojis(
             selectedEmojiId = selectedEmojiId,
             emojis = emojis.orEmpty().mapNotNull { it.toPinEmoji() },
+        )
+    }
+
+    private fun PinEmojiDto.toPinEmojiCandidate(): PinEmojiCandidate? {
+        if (emojiId == 0 || emojiImageUrl.isBlank()) return null
+        return PinEmojiCandidate(
+            emojiId = emojiId,
+            emojiImageUrl = emojiImageUrl,
+            isDefault = isDefault,
+            isOwned = isOwned,
+            productId = productId,
         )
     }
 

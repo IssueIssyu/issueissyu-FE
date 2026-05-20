@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,18 +17,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
@@ -55,6 +61,7 @@ fun PatchNotesRoute(
         uiState = uiState,
         onBackClick = onBackClick,
         onRetry = viewModel::loadPatchNotes,
+        onLoadMore = viewModel::loadMorePatchNotes,
         onPatchNoteClick = onPatchNoteClick
     )
 }
@@ -170,9 +177,11 @@ fun PatchNoteCard(
                     horizontalArrangement = Arrangement.End,
                     modifier = Modifier.widthIn(max = 168.dp)
                 ) {
-                    if (patchNote.writerImageUrl != null) {
-                        // TODO: Coil 또는 Glide 라이브러리로 이미지 로드
-                        Box(
+                    if (!patchNote.writerImageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = patchNote.writerImageUrl,
+                            contentDescription = "Writer Profile",
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(CircleShape)
@@ -237,9 +246,34 @@ fun PatchNotesScreen(
     uiState: PatchNotesUiState,
     onBackClick: () -> Unit,
     onRetry: () -> Unit,
+    onLoadMore: () -> Unit,
     onPatchNoteClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val listState = rememberLazyListState()
+    val shouldLoadMore by remember(
+        listState,
+        uiState.hasNext,
+        uiState.isLoadingMore,
+        uiState.patchNotes.size
+    ) {
+        derivedStateOf {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: return@derivedStateOf false
+
+            uiState.hasNext &&
+                !uiState.isLoadingMore &&
+                uiState.patchNotes.isNotEmpty() &&
+                lastVisibleIndex >= uiState.patchNotes.lastIndex - LoadMoreThreshold
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            onLoadMore()
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -284,6 +318,7 @@ fun PatchNotesScreen(
 
                 else -> {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp, vertical = 16.dp),
@@ -297,6 +332,34 @@ fun PatchNotesScreen(
                                     onPatchNoteClick(patchNote.id)
                                 }
                             )
+                        }
+
+                        if (uiState.isLoadingMore) {
+                            item(key = "patch_note_loading_more") {
+                                CircularProgressIndicator(
+                                    modifier = Modifier
+                                        .padding(vertical = 8.dp)
+                                        .size(28.dp)
+                                )
+                            }
+                        }
+
+                        uiState.paginationErrorMessage?.let { message ->
+                            item(key = "patch_note_pagination_error") {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = message,
+                                        style = IssueTypo.Regular16,
+                                        color = Gray_7
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(onClick = onLoadMore) {
+                                        Text("다시 시도")
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -340,10 +403,13 @@ fun PreviewPatchNotesScreenContent() {
             ),
             onBackClick = {},
             onRetry = {},
+            onLoadMore = {},
             onPatchNoteClick = {}
         )
     }
 }
+
+private const val LoadMoreThreshold = 3
 
 @Preview(showBackground = true)
 @Composable

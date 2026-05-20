@@ -23,7 +23,8 @@ data class PinUser(
 data class PinEmojiReaction(
     val emojiId: String,
     val count: Int,
-    val reactedByMe: Boolean = false
+    val reactedByMe: Boolean = false,
+    val emojiImageUrl: String? = null
 )
 
 // 이모지 조회
@@ -40,6 +41,17 @@ data class PinEmoji(
     val isOwned: Boolean,
     val productId: String?,
 )
+
+data class PinEmojiCandidate(
+    val emojiId: Int,
+    val emojiImageUrl: String,
+    val isDefault: Boolean,
+    val isOwned: Boolean,
+    val productId: String?,
+) {
+    val canReact: Boolean
+        get() = isDefault || isOwned
+}
 
 data class PinLike(
     val pinId: Long,
@@ -121,6 +133,7 @@ data class Pin(
     val viewCount: Int = 0,
     val sympathyCount: Int = 0,
     val isSympathizedByMe: Boolean = false,
+    val isMine: Boolean? = null,
     val emojiReactions: List<PinEmojiReaction> = emptyList(),
     val communityPostId: String? = null,
     val createdAt: String,
@@ -156,6 +169,7 @@ data class UpdatePinRequest(
 
 fun Pin.canEditBy(userId: String): Boolean {
     if (communityPostId != null) return false
+    isMine?.let { return it }
 
     return (detail as? AuthoredPinDetail)?.writer?.id == userId
 }
