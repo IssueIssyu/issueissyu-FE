@@ -34,7 +34,8 @@ import kotlinx.coroutines.delay
 
 data class NoticeUiModel(
     val id: String,
-    val title: String
+    val title: String,
+    val pinId: String? = null
 )
 
 @Composable

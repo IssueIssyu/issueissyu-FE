@@ -378,12 +378,18 @@ fun MapScreen(
                 notices = notices.map { notice ->
                     NoticeUiModel(
                         id = notice.id,
-                        title = notice.content
+                        title = notice.content,
+                        pinId = notice.pinId
                     )
                 },
                 iconResId = R.drawable.ic_megaphone,
-                onClick = { _ ->
-                    // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
+                onClick = { clickedNotice ->
+                    val communityId = clickedNotice.pinId?.toLongOrNull()
+                    if (communityId != null) {
+                        navController.navigate(
+                            AppDestinations.communityDetailRoute(communityId)
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
