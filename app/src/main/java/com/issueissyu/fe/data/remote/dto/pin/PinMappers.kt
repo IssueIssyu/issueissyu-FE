@@ -19,11 +19,16 @@ import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 
+data class PinDetailHomeImages(
+    val attachments: List<PinImageRef>,
+    val displayUrls: List<String>
+)
+
 fun PinDetailHomeResponse.toPin(
     coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
 ): Pin {
     val author = toPinUserOrNull()
-    val (imageAttachments, imageUrls) = toPinImages()
+    val images = toPinImages()
     return Pin(
         id = pinId.toString(),
         title = pinTitle,
@@ -31,8 +36,8 @@ fun PinDetailHomeResponse.toPin(
         coordinate = coordinate,
         address = pinDetailAddress,
         locationName = null,
-        imageUrls = imageUrls,
-        imageAttachments = imageAttachments,
+        imageUrls = images.displayUrls,
+        imageAttachments = images.attachments,
         viewCount = viewCount,
         sympathyCount = likeCount,
         isSympathizedByMe = isLike,
@@ -74,11 +79,11 @@ private fun PinDetailHomeResponse.toPinDetail(author: PinUser?): PinDetail {
             writer = writer,
         )
         PinCategory.SHOP -> ShopPinDetail(
-            keywords = emptyList(),
+            keywords = DETAIL_HOME_NO_KEYWORDS,
             currentNews = discount,
         )
         PinCategory.FESTIVAL -> FestivalPinDetail(
-            keywords = emptyList(),
+            keywords = DETAIL_HOME_NO_KEYWORDS,
         )
     }
 }
@@ -92,7 +97,9 @@ private fun PinDetailHomeResponse.toPinUserOrNull(): PinUser? {
     )
 }
 
-private fun PinDetailHomeResponse.toPinImages(): Pair<List<PinImageRef>, List<String>> {
+private val DETAIL_HOME_NO_KEYWORDS: List<String> = emptyList()
+
+private fun PinDetailHomeResponse.toPinImages(): PinDetailHomeImages {
     val sorted = pinImageUrls.sortedByDescending { it.isMain }
     val attachments = sorted.map {
         PinImageRef(
@@ -104,7 +111,7 @@ private fun PinDetailHomeResponse.toPinImages(): Pair<List<PinImageRef>, List<St
     val urlsFromPin = attachments.mapNotNull { ref -> ref.imageUrl.takeIf { it.isNotBlank() } }
     val storeImage = storeImageUrl?.takeIf { it.isNotBlank() }
     val allUrls = if (storeImage == null) urlsFromPin else (urlsFromPin + storeImage).distinct()
-    return attachments to allUrls
+    return PinDetailHomeImages(attachments = attachments, displayUrls = allUrls)
 }
 
 private fun String.toPinCategory(): PinCategory {
