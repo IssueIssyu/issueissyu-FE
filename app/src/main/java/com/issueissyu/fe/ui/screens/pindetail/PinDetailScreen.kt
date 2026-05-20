@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
@@ -40,12 +41,15 @@ import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
 
+internal const val PIN_DETAIL_REFRESH_KEY = "pin_detail_refresh"
+
 @Composable
 fun PinDetailScreen(
     pinId: String,
     onBackClick: () -> Unit,
     onReportClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    savedStateHandle: SavedStateHandle? = null,
     viewModel: PinDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -53,6 +57,16 @@ fun PinDetailScreen(
 
     LaunchedEffect(pinId) {
         viewModel.loadPin(pinId)
+    }
+
+    LaunchedEffect(savedStateHandle, pinId) {
+        val handle = savedStateHandle ?: return@LaunchedEffect
+        handle.getStateFlow(PIN_DETAIL_REFRESH_KEY, false).collect { shouldRefresh ->
+            if (shouldRefresh) {
+                viewModel.loadPin(pinId)
+                handle[PIN_DETAIL_REFRESH_KEY] = false
+            }
+        }
     }
 
     LaunchedEffect(Unit) {

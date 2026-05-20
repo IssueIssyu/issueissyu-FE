@@ -4,6 +4,7 @@ import com.issueissyu.fe.data.remote.api.PinApi
 import com.issueissyu.fe.data.remote.dto.pin.toPin
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojis
 import com.issueissyu.fe.data.remote.dto.pin.toPinLike
+import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
 import javax.inject.Inject
@@ -311,6 +312,44 @@ class PinRepositoryImpl @Inject constructor(
                             Exception(
                                 response.message.ifBlank { "핀 삭제에 실패했습니다." },
                             ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    //핀 신고
+    override suspend fun declarePin(pinId: Long, reasonIndex: Int): Result<Unit> {
+        return try {
+            val response = pinApi.pinDeclare(
+                pinId = pinId,
+                request = PinDeclarationRequest(reasonIndex=reasonIndex)
+            )
+            if (response.isSuccess){
+                Result.success(Unit)
+            } else {
+                when (response.code){
+                    "PIN_DECLARATION_404_1" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀 입니다." }
+                            )
+                        )
+
+                    "PIN_DECLARATION_409_1" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "이미 신고한 핀입니다." }
+                            )
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank {"핀 신고에 실패했습니다."}
+                            )
                         )
                 }
             }

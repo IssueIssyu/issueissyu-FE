@@ -26,4 +26,6 @@ interface PinRepository {
     suspend fun likePin(pinId: Long): Result<PinLike>
 
     suspend fun deletePin(pinId: Long): Result<Unit>
+
+    suspend fun declarePin(pinId: Long, reasonIndex: Int): Result<Unit>
 }

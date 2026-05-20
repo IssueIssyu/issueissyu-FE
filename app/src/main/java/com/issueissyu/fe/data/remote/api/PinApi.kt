@@ -1,9 +1,11 @@
 package com.issueissyu.fe.data.remote.api
 
+import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
+import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -35,4 +37,11 @@ interface PinApi {
     suspend fun getPinEmojis(
         @Path("pinId") pinId: Long,
     ): BaseResponse<PinEmojisResponse?>
+
+    //핀 신고
+    @POST("api/pins/{pinId}/declarations")
+    suspend fun pinDeclare(
+        @Path("pinId") pinId: Long,
+        @Body request: PinDeclarationRequest
+    ): BaseResponse<Unit>
 }

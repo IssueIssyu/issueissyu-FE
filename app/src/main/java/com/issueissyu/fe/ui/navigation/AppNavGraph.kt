@@ -34,6 +34,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
+import com.issueissyu.fe.ui.screens.pindetail.PIN_DETAIL_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 import com.issueissyu.fe.ui.screens.community.CommunityScreen
 import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreen
@@ -238,10 +239,11 @@ fun AppNavGraph(
             ) {
                 PinDetailScreen(
                     pinId = pinId,
+                    savedStateHandle = backStackEntry.savedStateHandle,
                     onBackClick = { navController.popBackStack() },
                     onReportClick = { reportPinId ->
                         navController.navigate(AppDestinations.pinReportRoute(reportPinId))
-                    }
+                    },
                 )
             }
         }
@@ -262,9 +264,10 @@ fun AppNavGraph(
                 PinReportScreen(
                     pinId = pinId,
                     onBackClick = { navController.popBackStack() },
-                    onSubmitClick = { _ ->
-                        // TODO: 신고 API 연결 (PinReportRepository.reportPin 등)
-                        // TODO: 성공 시 신고 완료 Dialog 노출 후 popBackStack
+                    onSuccess = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set(PIN_DETAIL_REFRESH_KEY, true)
                         navController.popBackStack()
                     }
                 )

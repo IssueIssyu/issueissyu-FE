@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.screens.pindetail
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -19,11 +20,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -31,7 +35,6 @@ import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Title
 
-// TODO: 서버 신고 사유 enum 확정 후 PinReportReason으로 교체
 private val PinReportReasons = listOf(
     "거짓 정보를 포함한 글이에요",
     "욕설 또는 비하 표현이 포함된 글이에요",
@@ -40,23 +43,30 @@ private val PinReportReasons = listOf(
     "종교 포교 목적의 글이에요"
 )
 
-// TODO: PinReportRepository 연결 후 실제 신고 요청 전송
 @Composable
 fun PinReportScreen(
-    @Suppress("UNUSED_PARAMETER") pinId: String,
+    pinId: String,
     onBackClick: () -> Unit,
-    onSubmitClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    onSuccess: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: PinReportViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        viewModel.toastMessage.collect { message ->
+            if (message.isNotEmpty()) {
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        IssueissyuTopAppBar(
-            onBackClick = onBackClick,
-            titleText = ""
-        )
+        IssueissyuTopAppBar(onBackClick = onBackClick, titleText = "")
 
         Column(
             modifier = Modifier
@@ -73,14 +83,30 @@ fun PinReportScreen(
             )
 
             Spacer(modifier = Modifier.height(20.dp))
-
             HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-            PinReportReasons.forEach { reason ->
-                PinReportReasonItem(
-                    reason = reason,
-                    onClick = { onSubmitClick(reason) }
-                )
+            PinReportReasons.forEachIndexed { index, reason ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            viewModel.report(pinId, index + 1, onSuccess)
+                        }
+                        .padding(vertical = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = reason,
+                        style = IssueTypo.Regular15.copy(color = Title),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = Gray_5,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
                 HorizontalDivider(color = Gray_3, thickness = 1.dp)
             }
 
@@ -89,40 +115,10 @@ fun PinReportScreen(
     }
 }
 
-@Composable
-private fun PinReportReasonItem(
-    reason: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 18.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = reason,
-            style = IssueTypo.Regular15.copy(color = Title),
-            modifier = Modifier.weight(1f)
-        )
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = Gray_5,
-            modifier = Modifier.size(20.dp)
-        )
-    }
-}
-
-@Preview(name = "PinReport · 신고 사유 목록", showBackground = true, heightDp = 800)
+@Preview(showBackground = true, heightDp = 800)
 @Composable
 private fun PinReportScreenPreview() {
     IssueissyuTheme {
-        PinReportScreen(
-            pinId = "preview_pin",
-            onBackClick = {},
-            onSubmitClick = {}
-        )
+        PinReportScreen(pinId = "1", onBackClick = {}, onSuccess = {})
     }
 }
