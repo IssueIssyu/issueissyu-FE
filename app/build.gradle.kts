@@ -50,8 +50,8 @@ android {
                 ?: ""
 
         buildConfigField("String", "API_BASE_URL", "\"${localProperties.buildConfigString("API_BASE_URL", "api.base.url", "https://api.example.com/")}\"")
-        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProperties.buildConfigString("NAVER_CLIENT_ID", "naver.client.id")}\"")
-        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProperties.buildConfigString("NAVER_CLIENT_SECRET", "naver.client.secret")}\"")
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProperties.buildConfigString("NAVER_CLIENT_ID", "naver.client.id", "")}\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProperties.buildConfigString("NAVER_CLIENT_SECRET", "naver.client.secret", "")}\"")
         buildConfigField("String", "NAVER_CLIENT_NAME", "\"${localProperties.buildConfigString("NAVER_CLIENT_NAME", "naver.client.name", "이슈있슈")}\"")
     }
 
