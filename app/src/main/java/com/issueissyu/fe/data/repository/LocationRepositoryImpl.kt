@@ -4,6 +4,17 @@ import android.content.Context
 import android.location.Geocoder
 import android.os.Build
 import com.issueissyu.fe.data.remote.api.LocationApi
+import com.issueissyu.fe.data.remote.dto.response.location.LocationRegionGroupResponse
+import com.issueissyu.fe.data.remote.dto.response.location.LocationRegionItemResponse
+import com.issueissyu.fe.data.remote.dto.response.location.LocationRegionListResponse
+import com.issueissyu.fe.data.remote.dto.response.location.LocationResolveResponse
+import com.issueissyu.fe.data.remote.dto.response.location.UserRegionSnippetResponse
+import com.issueissyu.fe.domain.model.LocationRegionGroup
+import com.issueissyu.fe.domain.model.LocationRegionItem
+import com.issueissyu.fe.domain.model.LocationRegions
+import com.issueissyu.fe.domain.model.ResolvedLocation
+import com.issueissyu.fe.domain.model.UserRegion
+import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.repository.LocationRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +93,7 @@ class LocationRepositoryImpl @Inject constructor(
 
     private suspend fun fetchMyAddressFromServer(lat: Double, lng: Double): Result<String> {
         return try {
-            val response = locationApi.myAddress(lat, lng)
+            val response = locationApi.getRoadAddress(lat, lng)
             when (response.code) {
                 "LOCATION_200_3" -> {
                     val address = response.result?.address?.takeIf { it.isNotBlank() }
@@ -123,6 +134,98 @@ class LocationRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    override suspend fun resolveAddressAndLocationId(
+        lat: Double,
+        lng: Double,
+    ): Result<ResolvedLocation> {
+        return try {
+            val response = locationApi.resolveAddressAndLocationId(lat, lng)
+            if (response.isSuccess) {
+                response.result?.toResolvedLocation()
+                    ?: Result.failure(Exception(response.message.ifBlank { "주소 조회 결과가 올바르지 않습니다." }))
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "주소와 지역 정보를 조회하지 못했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun checkPinCreationAvailable(
+        userCoordinate: PinCoordinate,
+        pinCoordinate: PinCoordinate,
+    ): Result<String> {
+        return try {
+            val response = locationApi.isUserCanPostPin(
+                userLat = userCoordinate.latitude,
+                userLng = userCoordinate.longitude,
+                pinLat = pinCoordinate.latitude,
+                pinLng = pinCoordinate.longitude,
+            )
+            if (response.isSuccess) {
+                Result.success(response.result?.address?.takeIf { it.isNotBlank() }.orEmpty())
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "이 위치에는 핀을 생성할 수 없습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getRegionList(): Result<LocationRegions> {
+        return try {
+            val response = locationApi.getRegionList()
+            if (response.isSuccess || response.code == "LOCATION_LIST_204") {
+                Result.success(response.result?.toLocationRegions() ?: LocationRegions(null, emptyList()))
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "지역 목록을 조회하지 못했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun LocationResolveResponse.toResolvedLocation(): Result<ResolvedLocation> {
+        val resolvedLocationId = locationId
+            ?: return Result.failure(Exception("지역 ID를 찾을 수 없습니다."))
+        val resolvedAddress = address?.takeIf { it.isNotBlank() }
+            ?: return Result.failure(Exception("주소 조회 결과를 찾을 수 없습니다."))
+
+        return Result.success(
+            ResolvedLocation(
+                locationId = resolvedLocationId,
+                address = resolvedAddress,
+            ),
+        )
+    }
+
+    private fun LocationRegionListResponse.toLocationRegions(): LocationRegions {
+        return LocationRegions(
+            userRegion = user?.toUserRegion(),
+            groups = locations.orEmpty().mapNotNull { it.toLocationRegionGroup() },
+        )
+    }
+
+    private fun UserRegionSnippetResponse.toUserRegion(): UserRegion? {
+        val id = userLocationId ?: return null
+        val name = userLocation?.takeIf { it.isNotBlank() } ?: return null
+        return UserRegion(locationId = id, location = name)
+    }
+
+    private fun LocationRegionGroupResponse.toLocationRegionGroup(): LocationRegionGroup? {
+        val name = superLocation?.takeIf { it.isNotBlank() } ?: return null
+        return LocationRegionGroup(
+            superLocation = name,
+            subLocations = subLocation.orEmpty().mapNotNull { it.toLocationRegionItem() },
+        )
+    }
+
+    private fun LocationRegionItemResponse.toLocationRegionItem(): LocationRegionItem? {
+        val id = locationId ?: return null
+        val name = location?.takeIf { it.isNotBlank() } ?: return null
+        return LocationRegionItem(locationId = id, location = name)
     }
 
     private suspend fun reverseGeocodeOnDevice(lat: Double, lng: Double): Result<String> {

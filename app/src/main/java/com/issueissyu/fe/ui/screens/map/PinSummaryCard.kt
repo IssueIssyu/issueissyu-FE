@@ -6,13 +6,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider // 변경됨: Divider -> HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -20,10 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import coil.compose.AsyncImage
+import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
@@ -206,10 +209,10 @@ fun PinSummaryCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                PinImagePlaceholder(
+                PinThumbnail(
+                    imageUrl = pin.imageUrls.firstOrNull(),
                     modifier = Modifier.size(96.dp)
                 )
-                // TODO: Coil AsyncImage로 pin.imageUrls.firstOrNull() 연결 예정
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -285,16 +288,44 @@ fun PinSummaryCard(
 
                 // 커뮤니티 버튼 (pin.communityPostId가 있을 때만 표시)
                 if (pin.communityPostId != null) {
-                    Text(
-                        text = "커뮤니티 >",
-                        maxLines = 1,
-                        softWrap = false,
-                        style = IssueTypo.Bold12.copy(color = BrandColor),
-                        modifier = Modifier.clickable { onCommunityClick(pin.communityPostId) }
+                    CommunityLinkButton(
+                        communityPostId = pin.communityPostId,
+                        onCommunityClick = onCommunityClick
                     )
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CommunityLinkButton(
+    communityPostId: String,
+    onCommunityClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Orange)
+            .clickable { onCommunityClick(communityPostId) }
+            .padding(start = 12.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "커뮤니티",
+            maxLines = 1,
+            softWrap = false,
+            style = IssueTypo.Bold12.copy(color = White)
+        )
+
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = White,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
@@ -389,19 +420,18 @@ private fun EmojiReactionRow(
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // 이모지 추가 버튼
-        Button(
-            onClick = { onEmojiClick(pin.id) },
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Gray_3,
-                contentColor = Text
-            ),
-            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier.height(32.dp)
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .clickable { onEmojiClick(pin.id) },
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "이모지",
-                style = IssueTypo.Regular12
+            Icon(
+                painter = painterResource(id = R.drawable.ic_add_emoji),
+                contentDescription = "이모지 추가",
+                tint = Color.Unspecified,
+                modifier = Modifier.size(26.dp)
             )
         }
 
@@ -416,13 +446,21 @@ private fun EmojiReactionRow(
                     .background(Gray_3, RoundedCornerShape(16.dp))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
-                // 작은 원형 placeholder
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(Color.LightGray)
-                )
+                if (!reaction.emojiImageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = reaction.emojiImageUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(16.dp)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray)
+                    )
+                }
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "${reaction.count}",
@@ -445,9 +483,22 @@ private fun EmojiReactionRow(
 }
 
 @Composable
-private fun PinImagePlaceholder(
+private fun PinThumbnail(
+    imageUrl: String?,
     modifier: Modifier = Modifier
 ) {
+    if (!imageUrl.isNullOrBlank()) {
+        AsyncImage(
+            model = imageUrl,
+            contentDescription = "핀 이미지",
+            contentScale = ContentScale.Crop,
+            modifier = modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Gray_3)
+        )
+        return
+    }
+
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))

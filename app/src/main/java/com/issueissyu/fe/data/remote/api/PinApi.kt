@@ -1,15 +1,19 @@
 package com.issueissyu.fe.data.remote.api
 
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
+import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ApplyPinEmojiResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.PUT
 import retrofit2.http.Query
 
 interface PinApi {
@@ -37,6 +41,17 @@ interface PinApi {
     suspend fun getPinEmojis(
         @Path("pinId") pinId: Long,
     ): BaseResponse<PinEmojisResponse?>
+
+    // 이모지 피커 목록 조회
+    @GET("api/emojis/candidates")
+    suspend fun getEmojiCandidates(): BaseResponse<List<PinEmojiDto>?>
+
+    // 내 핀 반응 토글
+    @PUT("api/pins/{pinId}/emojis/me")
+    suspend fun applyPinEmoji(
+        @Path("pinId") pinId: Long,
+        @Body request: ApplyPinEmojiRequest,
+    ): BaseResponse<ApplyPinEmojiResponse?>
 
     //핀 신고
     @POST("api/pins/{pinId}/declarations")

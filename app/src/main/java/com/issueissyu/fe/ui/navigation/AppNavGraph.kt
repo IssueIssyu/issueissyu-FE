@@ -217,8 +217,8 @@ fun AppNavGraph(
                     onBackClick = {
                         navController.popBackStack()
                     },
-                    onPatchNoteClick = { _ ->
-                        // TODO: 핀 상세 화면 route 확정 후 pinId 기반으로 navigate
+                    onPatchNoteClick = { pinId ->
+                        navController.navigate(AppDestinations.pinDetailRoute(pinId))
                     }
                 )
             }

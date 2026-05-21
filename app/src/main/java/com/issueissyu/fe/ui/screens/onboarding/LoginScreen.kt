@@ -81,7 +81,7 @@ fun LoginScreen(
                 uiState.isLoading -> Unit
                 BuildConfig.NAVER_CLIENT_ID.isBlank() -> {
                     viewModel.reportNaverLoginError(
-                        "naver.client.id가 비어 있습니다. local.properties를 확인하세요.",
+                        "NAVER_CLIENT_ID가 비어 있습니다. local.properties를 확인하세요.",
                     )
                 }
                 else -> {

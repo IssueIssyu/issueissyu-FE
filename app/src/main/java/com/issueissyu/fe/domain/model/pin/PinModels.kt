@@ -23,10 +23,11 @@ data class PinUser(
 data class PinEmojiReaction(
     val emojiId: String,
     val count: Int,
-    val reactedByMe: Boolean = false
+    val reactedByMe: Boolean = false,
+    val emojiImageUrl: String? = null
 )
 
-/** 핀 첨부 이미지 (홈 API `PinImageResponse` 대응). */
+// 핀 상세 홈 - 이미지
 data class PinImageRef(
     val pinImageId: Long,
     val imageUrl: String,
@@ -47,6 +48,17 @@ data class PinEmoji(
     val isOwned: Boolean,
     val productId: String?,
 )
+
+data class PinEmojiCandidate(
+    val emojiId: Int,
+    val emojiImageUrl: String,
+    val isDefault: Boolean,
+    val isOwned: Boolean,
+    val productId: String?,
+) {
+    val canReact: Boolean
+        get() = isDefault || isOwned
+}
 
 data class PinLike(
     val pinId: Long,
@@ -129,10 +141,10 @@ data class Pin(
     val viewCount: Int = 0,
     val sympathyCount: Int = 0,
     val isSympathizedByMe: Boolean = false,
+    val isMine: Boolean? = null,
     val emojiReactions: List<PinEmojiReaction> = emptyList(),
     val communityPostId: String? = null,
     val author: PinUser? = null,
-    val isMine: Boolean = false,
     val isReported: Boolean = false,
     val isUpdated: Boolean = false,
     val createdAt: String,
@@ -168,9 +180,5 @@ data class UpdatePinRequest(
 
 fun Pin.canEditBy(userId: String? = null): Boolean {
     if (communityPostId != null) return false
-    if (isMine) return true
-    if (userId.isNullOrBlank()) return false
-
-    return author?.id == userId ||
-        (detail as? AuthoredPinDetail)?.writer?.id == userId
+    return isMine==true
 }

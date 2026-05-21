@@ -94,7 +94,7 @@ fun PinHomeTab(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 PinDetailActionButtons(
-                    isAuthor = pin.isMine,
+                    isAuthor = pin.isMine == true,
                     canEdit = canEdit,
                     isReported = pin.isReported,
                     isDeleting = isDeleting,

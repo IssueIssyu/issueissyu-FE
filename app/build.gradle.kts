@@ -19,8 +19,12 @@ android {
     }
 
     // local.properties → BuildConfig / manifestPlaceholders
-    fun Properties.buildConfigString(key: String, default: String = ""): String =
-        (getProperty(key) ?: default).trim()
+    fun Properties.buildConfigString(
+        primaryKey: String,
+        fallbackKey: String? = null,
+        default: String = ""
+    ): String =
+        (getProperty(primaryKey) ?: fallbackKey?.let(::getProperty) ?: default).trim()
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
 
@@ -35,12 +39,15 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-        manifestPlaceholders["NCP_KEY_ID"] = localProperties.getProperty("naver.map.client.id") ?: ""
+        manifestPlaceholders["NCP_KEY_ID"] =
+            localProperties.getProperty("NAVER_MAP_CLIENT_ID")
+                ?: localProperties.getProperty("naver.map.client.id")
+                ?: ""
 
-        buildConfigField("String", "API_BASE_URL", "\"${localProperties.buildConfigString("api.base.url", "https://api.example.com/")}\"")
-        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProperties.buildConfigString("naver.client.id")}\"")
-        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProperties.buildConfigString("naver.client.secret")}\"")
-        buildConfigField("String", "NAVER_CLIENT_NAME", "\"${localProperties.buildConfigString("naver.client.name", "이슈있슈")}\"")
+        buildConfigField("String", "API_BASE_URL", "\"${localProperties.buildConfigString("API_BASE_URL", "api.base.url", "https://api.example.com/")}\"")
+        buildConfigField("String", "NAVER_CLIENT_ID", "\"${localProperties.buildConfigString("NAVER_CLIENT_ID", "naver.client.id", "")}\"")
+        buildConfigField("String", "NAVER_CLIENT_SECRET", "\"${localProperties.buildConfigString("NAVER_CLIENT_SECRET", "naver.client.secret", "")}\"")
+        buildConfigField("String", "NAVER_CLIENT_NAME", "\"${localProperties.buildConfigString("NAVER_CLIENT_NAME", "naver.client.name", "이슈있슈")}\"")
     }
 
     buildTypes {
@@ -50,6 +57,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 

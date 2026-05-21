@@ -32,6 +32,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +59,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
+import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
 import com.issueissyu.fe.ui.components.map.toLatLng
 import com.issueissyu.fe.ui.navigation.AppDestinations
@@ -103,8 +106,10 @@ fun MapScreen(
     val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
+    val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
 
     // TODO: ViewModel에서 combine(_mapPins, _selectedCategory)로 visibleMapPins StateFlow를 노출하고, UI는 collect만 하도록 정리
 
@@ -120,6 +125,7 @@ fun MapScreen(
 
     val context = LocalContext.current
     val activity = context.findActivity()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val locationSource = remember(activity) {
         activity?.let {
@@ -205,6 +211,12 @@ fun MapScreen(
                     "&userLat=${event.userCoordinate.latitude}" +
                     "&userLng=${event.userCoordinate.longitude}"
             )
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.messageEvents.collectLatest { message ->
+            snackbarHostState.showSnackbar(message)
         }
     }
 
@@ -363,25 +375,21 @@ fun MapScreen(
             )
 
             AutoScrollingNotice(
-                notices = remember {
-                    listOf(
-                        NoticeUiModel(
-                            id = "notice_1",
-                            title = "오늘의 공지: 새로운 업데이트가 있습니다!"
-                        ),
-                        NoticeUiModel(
-                            id = "notice_2",
-                            title = "두 번째 공지: 버그 수정 및 성능 개선"
-                        ),
-                        NoticeUiModel(
-                            id = "notice_3",
-                            title = "세 번째 공지: 새로운 이벤트가 시작됩니다!"
-                        )
+                notices = notices.map { notice ->
+                    NoticeUiModel(
+                        id = notice.id,
+                        title = notice.content,
+                        pinId = notice.pinId
                     )
                 },
                 iconResId = R.drawable.ic_megaphone,
-                onClick = { _ ->
-                    // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
+                onClick = { clickedNotice ->
+                    val communityId = clickedNotice.pinId?.toLongOrNull()
+                    if (communityId != null) {
+                        navController.navigate(
+                            AppDestinations.communityDetailRoute(communityId)
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -483,13 +491,15 @@ fun MapScreen(
                     viewModel.clearSelectedPin()
                     navController.navigate(AppDestinations.pinDetailRoute(pinId))
                 },
-                onCommunityClick = { _ ->
+                onCommunityClick = { communityId ->
+                    val numericCommunityId = communityId.toLongOrNull() ?: return@PinSummaryCard
                     viewModel.clearSelectedPin()
+                    navController.navigate(AppDestinations.communityDetailRoute(numericCommunityId))
                 },
                 onEditClick = { _ ->
                 },
                 onDeleteClick = { pinId ->
-                    viewModel.deletePinLocally(pinId)
+                    viewModel.deletePin(pinId)
                 },
                 onSympathyClick = { pinId ->
                     viewModel.toggleSympathy(pinId)
@@ -525,5 +535,29 @@ fun MapScreen(
                     .padding(end = 4.dp, bottom = 88.dp)
             )
         }
+
+        if (emojiPickerUiState.isVisible) {
+            EmojiReactionBottomSheet(
+                candidates = emojiPickerUiState.candidates,
+                selectedEmojiId = emojiPickerUiState.selectedEmojiId,
+                isLoading = emojiPickerUiState.isLoading,
+                isSubmitting = emojiPickerUiState.isSubmitting,
+                errorMessage = emojiPickerUiState.errorMessage,
+                onDismiss = viewModel::closeEmojiSelector,
+                onEmojiClick = viewModel::selectEmojiCandidate,
+                onApplyClick = viewModel::applySelectedEmoji,
+            )
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = if (selectedPin != null) 288.dp else 24.dp
+                )
+        )
     }
 }

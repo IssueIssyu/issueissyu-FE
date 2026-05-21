@@ -3,10 +3,15 @@ package com.issueissyu.fe.ui.screens.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.MapNotice
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
+import com.issueissyu.fe.domain.model.pin.PinEmojis
+import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,13 +29,23 @@ data class PinCreationNavigationEvent(
     val userCoordinate: PinCoordinate
 )
 
+data class EmojiPickerUiState(
+    val targetPinId: String? = null,
+    val candidates: List<PinEmojiCandidate> = emptyList(),
+    val selectedEmojiId: Int? = null,
+    val isLoading: Boolean = false,
+    val isSubmitting: Boolean = false,
+    val errorMessage: String? = null,
+) {
+    val isVisible: Boolean
+        get() = targetPinId != null
+}
+
 @HiltViewModel
 class MapViewModel @Inject constructor(
-    private val pinRepository: PinRepository
+    private val mapRepository: MapRepository,
+    private val pinRepository: PinRepository,
 ) : ViewModel() {
-
-    private val _pins = MutableStateFlow<List<Pin>>(emptyList())
-    val pins: StateFlow<List<Pin>> = _pins.asStateFlow()
 
     private val _mapPins = MutableStateFlow<List<MapPinMarker>>(emptyList())
     val mapPins: StateFlow<List<MapPinMarker>> = _mapPins.asStateFlow()
@@ -40,6 +55,9 @@ class MapViewModel @Inject constructor(
 
     private val _selectedCategory = MutableStateFlow<PinCategory?>(null)
     val selectedCategory: StateFlow<PinCategory?> = _selectedCategory.asStateFlow()
+
+    private val _notices = MutableStateFlow<List<MapNotice>>(emptyList())
+    val notices: StateFlow<List<MapNotice>> = _notices.asStateFlow()
 
     private val _showResearchButton = MutableStateFlow(false)
     val showResearchButton: StateFlow<Boolean> = _showResearchButton.asStateFlow()
@@ -54,6 +72,9 @@ class MapViewModel @Inject constructor(
     private val _emojiTargetPinId = MutableStateFlow<String?>(null)
     @Suppress("unused") // TODO: 이모지 선택 BottomSheet 연결 시 사용 예정
     val emojiTargetPinId: StateFlow<String?> = _emojiTargetPinId.asStateFlow()
+
+    private val _emojiPickerUiState = MutableStateFlow(EmojiPickerUiState())
+    val emojiPickerUiState: StateFlow<EmojiPickerUiState> = _emojiPickerUiState.asStateFlow()
 
     private val _isLocationSelectionMode = MutableStateFlow(false)
     val isLocationSelectionMode: StateFlow<Boolean> = _isLocationSelectionMode.asStateFlow()
@@ -70,24 +91,17 @@ class MapViewModel @Inject constructor(
     private val _navigateToPinCreation = MutableSharedFlow<PinCreationNavigationEvent>()
     val navigateToPinCreation = _navigateToPinCreation.asSharedFlow()
 
+    private val _messageEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val messageEvents = _messageEvents.asSharedFlow()
+
     init {
-        loadPins()
+        loadNotices()
     }
 
-    private fun loadPins() {
+    private fun loadNotices() {
         viewModelScope.launch {
-            val loadedPins = pinRepository.getPins()
-            _pins.value = loadedPins
-
-            _mapPins.value = loadedPins.map { pin ->
-                MapPinMarker(
-                    pinId = pin.id,
-                    category = pin.category,
-                    coordinate = pin.coordinate,
-                    address = pin.address,
-                    locationName = pin.locationName ?: pin.address
-                )
-            }
+            mapRepository.getMapNotices()
+                .onSuccess { _notices.value = it }
         }
     }
 
@@ -105,6 +119,7 @@ class MapViewModel @Inject constructor(
             "축제" -> PinCategory.FESTIVAL
             else -> null
         }
+        fetchPinsInBounds()
     }
 
     fun openPinTypeSelector() {
@@ -124,66 +139,168 @@ class MapViewModel @Inject constructor(
     }
 
     fun updateMapBounds(bounds: MapBounds) {
+        val isInitialBounds = _currentBounds.value == null
         _currentBounds.value = bounds
-        showResearchAreaButton()
+        if (isInitialBounds) {
+            fetchPinsInBounds()
+        } else {
+            showResearchAreaButton()
+        }
     }
 
     fun fetchPinsInBounds() {
         val bounds = _currentBounds.value ?: return
 
         viewModelScope.launch {
-            _mapPins.value = pinRepository.getMapPinsInBounds(bounds)
+            mapRepository.getMapPinsInBounds(bounds, _selectedCategory.value)
+                .onSuccess { _mapPins.value = it }
 
             hideResearchAreaButton()
         }
     }
 
     fun toggleSympathy(pinId: String) {
-        _pins.value = _pins.value.map { pin ->
-            if (pin.id != pinId) return@map pin
+        val pin = _selectedPin.value?.takeIf { it.id == pinId } ?: return
+        if (pin.isSympathizedByMe) return
+        val numericPinId = pinId.toLongOrNull() ?: return
 
-            val nextIsSympathized = !pin.isSympathizedByMe
-            val nextCount = if (nextIsSympathized) {
-                pin.sympathyCount + 1
-            } else {
-                (pin.sympathyCount - 1).coerceAtLeast(0)
-            }
-
-            pin.copy(
-                isSympathizedByMe = nextIsSympathized,
-                sympathyCount = nextCount
-            )
+        viewModelScope.launch {
+            pinRepository.likePin(numericPinId)
+                .onSuccess { like ->
+                    val currentPin = _selectedPin.value?.takeIf { it.id == pinId } ?: return@onSuccess
+                    _selectedPin.value = currentPin.copy(
+                        isSympathizedByMe = like.isLike,
+                        sympathyCount = like.pinLikeCount,
+                    )
+                }
+                .onFailure { e ->
+                    _messageEvents.emit(e.message?.takeIf { it.isNotBlank() } ?: "핀 공감에 실패했습니다.")
+                }
         }
-
-        _selectedPin.value = _pins.value.firstOrNull { it.id == pinId }
     }
 
-fun deletePinLocally(pinId: String) {
-    _pins.value = _pins.value.filterNot { it.id == pinId }
-    _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
+    fun deletePin(pinId: String) {
+        val numericPinId = pinId.toLongOrNull() ?: return
 
-    if (_selectedPin.value?.id == pinId) {
-        _selectedPin.value = null
+        viewModelScope.launch {
+            pinRepository.deletePin(numericPinId)
+                .onSuccess {
+                    _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
+
+                    if (_selectedPin.value?.id == pinId) {
+                        _selectedPin.value = null
+                    }
+                }
+                .onFailure { e ->
+                    _messageEvents.emit(e.message?.takeIf { it.isNotBlank() } ?: "핀 삭제에 실패했습니다.")
+                }
+        }
     }
-    // TODO: 실제 삭제 API 연결 시 Repository.deletePin(pinId)로 교체
-}
 
     fun openEmojiSelector(pinId: String) {
         _emojiTargetPinId.value = pinId
-        // TODO: 이모지 선택 BottomSheet 표시 상태 연결
+        val selectedEmojiId = _selectedPin.value
+            ?.takeIf { it.id == pinId }
+            ?.emojiReactions
+            ?.firstOrNull { it.reactedByMe }
+            ?.emojiId
+            ?.toIntOrNull()
+
+        _emojiPickerUiState.value = EmojiPickerUiState(
+            targetPinId = pinId,
+            selectedEmojiId = selectedEmojiId,
+            isLoading = true,
+        )
+
+        viewModelScope.launch {
+            pinRepository.getEmojiCandidates()
+                .onSuccess { candidates ->
+                    _emojiPickerUiState.value = _emojiPickerUiState.value.copy(
+                        candidates = candidates,
+                        isLoading = false,
+                        errorMessage = null,
+                    )
+                }
+                .onFailure { e ->
+                    _emojiPickerUiState.value = _emojiPickerUiState.value.copy(
+                        isLoading = false,
+                        errorMessage = e.message?.takeIf { it.isNotBlank() } ?: "이모지 목록을 불러오지 못했습니다.",
+                    )
+                }
+        }
     }
 
-    @Suppress("unused") // TODO: 이모지 선택 BottomSheet 닫기 처리 연결 예정
     fun closeEmojiSelector() {
         _emojiTargetPinId.value = null
+        _emojiPickerUiState.value = EmojiPickerUiState()
     }
 
-fun selectPinById(pinId: String) {
-    viewModelScope.launch {
-        val cachedPin = _pins.value.firstOrNull { it.id == pinId }
-        _selectedPin.value = cachedPin ?: pinRepository.getPinById(pinId)
+    fun selectEmojiCandidate(emojiId: Int) {
+        val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
+            ?: return
+        if (!candidate.canReact) {
+            viewModelScope.launch {
+                _messageEvents.emit("구매가 필요한 이모지입니다.")
+            }
+            return
+        }
+        _emojiPickerUiState.value = _emojiPickerUiState.value.copy(selectedEmojiId = emojiId)
     }
-}
+
+    fun applySelectedEmoji() {
+        val state = _emojiPickerUiState.value
+        val pinId = state.targetPinId ?: return
+        val selectedEmojiId = state.selectedEmojiId ?: return
+        val numericPinId = pinId.toLongOrNull() ?: return
+        val selectedCandidate = state.candidates.firstOrNull { it.emojiId == selectedEmojiId } ?: return
+        if (!selectedCandidate.canReact || state.isSubmitting) return
+
+        viewModelScope.launch {
+            _emojiPickerUiState.value = _emojiPickerUiState.value.copy(isSubmitting = true)
+            pinRepository.applyPinEmoji(numericPinId, selectedEmojiId)
+                .onSuccess {
+                    loadPinEmojis(pinId)
+                    closeEmojiSelector()
+                }
+                .onFailure { e ->
+                    val message = e.message?.takeIf { it.isNotBlank() } ?: "이모지 반응 등록에 실패했습니다."
+                    _emojiPickerUiState.value = _emojiPickerUiState.value.copy(isSubmitting = false)
+                    _messageEvents.emit(message)
+                }
+        }
+    }
+
+    fun selectPinById(pinId: String) {
+        viewModelScope.launch {
+            val pin = mapRepository.getPinCard(pinId).getOrNull() ?: return@launch
+            _selectedPin.value = pin
+            loadPinEmojis(pinId)
+        }
+    }
+
+    private suspend fun loadPinEmojis(pinId: String) {
+        val numericPinId = pinId.toLongOrNull() ?: return
+        pinRepository.getPinEmojis(numericPinId)
+            .onSuccess { pinEmojis ->
+                val currentPin = _selectedPin.value?.takeIf { it.id == pinId } ?: return@onSuccess
+                _selectedPin.value = currentPin.copy(
+                    emojiReactions = pinEmojis.toEmojiReactions()
+                )
+            }
+    }
+
+    private fun PinEmojis.toEmojiReactions(): List<PinEmojiReaction> {
+        return emojis
+            .filter { it.count > 0 }
+            .map { emoji ->
+                PinEmojiReaction(
+                    emojiId = emoji.emojiId.toString(),
+                    count = emoji.count,
+                    reactedByMe = emoji.emojiId == selectedEmojiId,
+                    emojiImageUrl = emoji.emojiImageUrl,
+                )
+            }
+    }
 
     fun enterLocationSelectionMode(category: PinCategory) {
         _isLocationSelectionMode.value = true
