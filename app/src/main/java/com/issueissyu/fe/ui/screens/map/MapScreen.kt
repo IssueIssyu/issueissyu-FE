@@ -63,6 +63,7 @@ import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
 import com.issueissyu.fe.ui.components.map.toLatLng
 import com.issueissyu.fe.ui.navigation.AppDestinations
+import com.issueissyu.fe.ui.navigation.navigateToPinDetail
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
@@ -489,7 +490,7 @@ fun MapScreen(
                 currentUserId = "user1_id", // TODO: 로그인 연동 후 실제 currentUserId로 교체
                 onDetailClick = { pinId ->
                     viewModel.clearSelectedPin()
-                    navController.navigate(AppDestinations.pinDetailRoute(pinId))
+                    navController.navigateToPinDetail(pinId)
                 },
                 onCommunityClick = { communityId ->
                     val numericCommunityId = communityId.toLongOrNull() ?: return@PinSummaryCard

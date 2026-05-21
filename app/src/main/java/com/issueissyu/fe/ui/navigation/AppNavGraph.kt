@@ -218,7 +218,7 @@ fun AppNavGraph(
                         navController.popBackStack()
                     },
                     onPatchNoteClick = { pinId ->
-                        navController.navigate(AppDestinations.pinDetailRoute(pinId))
+                        navController.navigateToPinDetail(pinId)
                     }
                 )
             }
@@ -376,4 +376,10 @@ private fun NavHostController.navigateToLoginClearingBackStack() {
     navigate(LOGIN_ROUTE) {
         popUpTo(0) { inclusive = true }
     }
+}
+
+/** 지도 핀 카드·패치노트 등에서 핀 상세 화면으로 이동 */
+fun NavHostController.navigateToPinDetail(pinId: String) {
+    if (pinId.isBlank()) return
+    navigate(AppDestinations.pinDetailRoute(pinId))
 }
