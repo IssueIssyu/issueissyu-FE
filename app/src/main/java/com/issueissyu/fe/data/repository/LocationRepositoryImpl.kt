@@ -187,6 +187,23 @@ class LocationRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getUserLocation(): Result<String> {
+        return try {
+            val response = locationApi.getUserLocation()
+            if (response.isSuccess) {
+                val address = response.result?.address?.takeIf { it.isNotBlank() }
+                    ?: return Result.failure(
+                        Exception(response.message.ifBlank { "인증된 동네를 찾을 수 없습니다." }),
+                    )
+                Result.success(address)
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "인증된 동네를 조회하지 못했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun LocationResolveResponse.toResolvedLocation(): Result<ResolvedLocation> {
         val resolvedLocationId = locationId
             ?: return Result.failure(Exception("지역 ID를 찾을 수 없습니다."))

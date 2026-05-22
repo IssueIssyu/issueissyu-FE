@@ -39,6 +39,10 @@ interface LocationApi {
     @GET("api/location/regions")
     suspend fun getRegionList(): BaseResponse<LocationRegionListResponse?>
 
+    //인증된 사용자 동네 조회
+    @GET("api/location/user")
+    suspend fun getUserLocation(): BaseResponse<LocationVerificationResponse?>
+
     //동네 인증 및 등록 (최종 확인 시에만 호출)
     @POST("api/location/user/cert")
     suspend fun certifyUserLocation(

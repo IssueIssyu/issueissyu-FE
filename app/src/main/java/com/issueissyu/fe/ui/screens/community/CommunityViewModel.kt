@@ -3,6 +3,7 @@ package com.issueissyu.fe.ui.screens.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.community.CommunityTab
+import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityFeedUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,14 +17,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class CommunityViewModel @Inject constructor(
-    private val getCommunityFeedUseCase: GetCommunityFeedUseCase
+    private val getCommunityFeedUseCase: GetCommunityFeedUseCase,
+    private val locationRepository: LocationRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CommunityUiState())
     val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
 
     init {
-        loadFeed()
+        loadInitialRegionAndFeed()
     }
 
     fun onTabSelected(tab: CommunityTab) {
@@ -51,6 +53,7 @@ class CommunityViewModel @Inject constructor(
     }
 
     private fun loadFeed(isRefreshing: Boolean = false) {
+        if (_uiState.value.region.isBlank()) return
         viewModelScope.launch {
             getCommunityFeedUseCase(
                 tab = _uiState.value.selectedTab,
@@ -71,6 +74,25 @@ class CommunityViewModel @Inject constructor(
                             isLoading = false,
                             isRefreshing = false,
                             error = null
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun loadInitialRegionAndFeed() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            locationRepository.getUserLocation()
+                .onSuccess { region ->
+                    _uiState.update { it.copy(region = region) }
+                    loadFeed()
+                }
+                .onFailure {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "동네 인증 정보를 불러오지 못했습니다."
                         )
                     }
                 }
