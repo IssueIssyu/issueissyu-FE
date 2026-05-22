@@ -5,6 +5,7 @@ import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ApplyPinEmojiResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
@@ -14,15 +15,20 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.PUT
-import retrofit2.http.Query
 
 interface PinApi {
 
     //핀 상세 홈
-    @GET("api/pins/home")
+    @GET("api/pins/{pinId}/home")
     suspend fun pinHome(
-        @Query("pinId") pinId: Long,
+        @Path("pinId") pinId: Long,
     ): BaseResponse<PinDetailHomeResponse?>
+
+    //핀 상세 포스트
+    @GET("api/pins/{pinId}/post")
+    suspend fun pinPost(
+        @Path("pinId") pinId: Long,
+    ): BaseResponse<PinDetailPostResponse?>
 
     //핀 삭제
     @DELETE("api/pins/{pinId}/delete")

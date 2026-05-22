@@ -190,6 +190,46 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getPinDetailPost(pinId: Long): Result<Pin> {
+        return try {
+            val response = pinApi.pinPost(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 상세 포스트 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPin())
+            } else {
+                when (response.code) {
+                    "PIN_POST_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                            ),
+                        )
+
+                    "PIN_POST_400" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 상세 포스트 조회 API를 실행할 수 없습니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 상세 포스트 조회에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun likePin(pinId: Long): Result<PinLike> {
         return try {
             val response = pinApi.pinLike(pinId)

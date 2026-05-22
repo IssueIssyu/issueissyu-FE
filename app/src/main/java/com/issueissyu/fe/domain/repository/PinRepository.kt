@@ -22,6 +22,8 @@ interface PinRepository {
 
     suspend fun getPinDetailHome(pinId: Long): Result<Pin>
 
+    suspend fun getPinDetailPost(pinId: Long): Result<Pin>
+
     suspend fun getPinEmojis(pinId: Long): Result<PinEmojis>
 
     suspend fun getEmojiCandidates(): Result<List<PinEmojiCandidate>>
