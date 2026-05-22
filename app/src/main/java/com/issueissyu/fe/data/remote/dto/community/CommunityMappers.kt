@@ -20,39 +20,34 @@ fun CommunityFeedResponse.toCommunityFeed(): CommunityFeed {
     )
 }
 
-@Suppress("unused") // TODO: 실제 CommunityApi 연결 시 사용 예정
 fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
-    val item = this.item
     return CommunityDetail(
-        communityId = item?.communityId ?: 0L,
-        pinId = item?.pinId,
-        kind = item?.kind.toCommunityItemKind(),
-        title = item?.title ?: item?.pinTitle ?: DEFAULT_COMMUNITY_TITLE,
+        communityId = communityId ?: 0L,
+        pinId = pinId,
+        kind = kind.toCommunityItemKind(),
+        title = title ?: DEFAULT_COMMUNITY_TITLE,
         content = this.content ?: "",
-        imageUrls = if (!this.pinImageUrls.isNullOrEmpty()) {
-            this.pinImageUrls
-        } else {
-            listOfNotNull(item?.pinImageUrl ?: item?.thumbnailUrl ?: item?.storeImageUrl)
-        },
-        writerNickname = item?.pinUserNickname,
-        writerProfileUrl = item?.pinUserProfile,
-        address = item?.pinDetailAddress ?: item?.address,
-        viewCount = item?.viewCount ?: 0,
-        likeCount = item?.likeCount ?: 0,
+        imageUrls = imageUrls.orEmpty().ifEmpty { listOfNotNull(thumbnailUrl) },
+        writerNickname = writerNickname,
+        writerProfileUrl = writerProfileUrl,
+        address = detailAddress,
+        viewCount = viewCount ?: 0,
+        likeCount = likeCount?.toInt() ?: 0,
         createdAt = this.createdAt,
         updatedAt = this.updatedAt,
         isReported = this.isReported ?: false,
-        isPetitioned = this.isPetitioned ?: false,
+        isPetitioned = false,
         isProblemSolver = this.isProblemSolver ?: false,
         isMine = this.isMine ?: false,
-        reliabilityScore = this.reliabilityScore,
-        reliabilityReason = this.reliabilityReason,
-        discount = this.discount ?: item?.discount,
-        eventStartTime = this.eventStartTime ?: item?.eventStartTime,
-        eventEndTime = this.eventEndTime ?: item?.eventEndTime,
-        petitionCount = this.petitionCount ?: 0,
-        petitionTargetCount = this.petitionTargetCount,
-        isPetitionedByMe = this.isPetitioned ?: false
+        reliabilityScore = null,
+        reliabilityReason = null,
+        issueStatusText = issuePinState.toIssueStatusText(),
+        discount = this.discount,
+        eventStartTime = this.eventStartTime,
+        eventEndTime = this.eventEndTime,
+        petitionCount = 0,
+        petitionTargetCount = null,
+        isPetitionedByMe = false
     )
 }
 
@@ -87,5 +82,15 @@ private fun String?.toCommunityItemKind(): CommunityItemKind {
         "CONTEST" -> CommunityItemKind.CONTEST
         "CARDNEWS", "CARD_NEWS" -> CommunityItemKind.CARDNEWS
         else -> CommunityItemKind.UNKNOWN
+    }
+}
+
+private fun String?.toIssueStatusText(): String? {
+    return when (this?.trim()?.uppercase()) {
+        "BEFORE_RESOLUTION", "BEFORE", "READY" -> "해결 전"
+        "IN_PROGRESS", "PROGRESS", "RESOLVING" -> "진행중"
+        "RESOLVED", "DONE" -> "해결 완료"
+        null, "" -> null
+        else -> this
     }
 }
