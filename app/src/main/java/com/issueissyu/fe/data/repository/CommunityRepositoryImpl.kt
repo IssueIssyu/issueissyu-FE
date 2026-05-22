@@ -17,7 +17,7 @@ class CommunityRepositoryImpl @Inject constructor(
 
     override fun getCommunityFeed(
         tab: CommunityTab,
-        region: String,
+        region: String?,
         cursor: String?,
         size: Int
     ): Flow<CommunityFeed> = flow {
@@ -54,9 +54,9 @@ class CommunityRepositoryImpl @Inject constructor(
         emit(result.toCommunityDetail())
     }
 
-    private fun CommunityTab.toApiTab(): String {
+    private fun CommunityTab.toApiTab(): String? {
         return when (this) {
-            CommunityTab.ALL -> "ALL"
+            CommunityTab.ALL -> "HOME"
             CommunityTab.HOT -> "HOT"
             CommunityTab.ISSUE -> "ISSUE"
             CommunityTab.COMMUNICATION -> "COMMUNICATION"

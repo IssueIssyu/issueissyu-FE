@@ -11,7 +11,7 @@ class GetCommunityFeedUseCase @Inject constructor(
 ) {
     operator fun invoke(
         tab: CommunityTab,
-        region: String,
+        region: String?,
         cursor: String? = null,
         size: Int = 20
     ): Flow<CommunityFeed> {

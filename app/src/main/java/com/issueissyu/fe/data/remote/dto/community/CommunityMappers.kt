@@ -12,11 +12,22 @@ private const val DEFAULT_COMMUNITY_TITLE = "제목 없음"
 
 @Suppress("unused") // TODO: 실제 CommunityApi 연결 시 사용 예정
 fun CommunityFeedResponse.toCommunityFeed(): CommunityFeed {
+    val hotIds = hotPreviews.orEmpty().mapNotNull { it.communityId }.toSet()
+    val items = when {
+        recentNews?.content != null -> recentNews.content.map { item ->
+            item.toCommunityFeedItem(isHot = item.communityId in hotIds)
+        }
+        content != null -> content.map { it.toCommunityFeedItem() }
+        else -> (storePromotions.orEmpty() + hotPreviews.orEmpty())
+            .distinctBy { it.communityId }
+            .map { item -> item.toCommunityFeedItem(isHot = item.communityId in hotIds) }
+    }
+
     return CommunityFeed(
-        items = this.content?.map { it.toCommunityFeedItem() } ?: emptyList(),
-        region = this.region ?: "",
-        nextCursor = this.nextCursor,
-        hasNext = this.hasNext ?: false
+        items = items,
+        region = this.recentNews?.region ?: this.region ?: "",
+        nextCursor = this.recentNews?.nextCursor ?: this.nextCursor,
+        hasNext = this.recentNews?.hasNext ?: this.hasNext ?: false
     )
 }
 
@@ -52,7 +63,7 @@ fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
 }
 
 @Suppress("unused") // TODO: 실제 CommunityApi 연결 시 사용 예정
-fun CommunityFeedItemResponse.toCommunityFeedItem(): CommunityFeedItem {
+fun CommunityFeedItemResponse.toCommunityFeedItem(isHot: Boolean = false): CommunityFeedItem {
     return CommunityFeedItem(
         communityId = this.communityId ?: 0L,
         pinId = this.pinId,
@@ -60,15 +71,15 @@ fun CommunityFeedItemResponse.toCommunityFeedItem(): CommunityFeedItem {
         title = this.title ?: this.pinTitle ?: DEFAULT_COMMUNITY_TITLE,
         content = this.content,
         thumbnailUrl = this.pinImageUrl ?: this.thumbnailUrl ?: this.storeImageUrl,
-        writerNickname = this.pinUserNickname,
-        writerProfileUrl = this.pinUserProfile,
-        address = this.pinDetailAddress ?: this.address,
+        writerNickname = this.pinUserNickname ?: this.writerNickname,
+        writerProfileUrl = this.pinUserProfile ?: this.writerProfileUrl,
+        address = this.pinDetailAddress ?: this.address ?: this.detailAddress,
         viewCount = this.viewCount ?: 0,
         likeCount = this.likeCount ?: 0,
         eventStartTime = this.eventStartTime,
         eventEndTime = this.eventEndTime,
         discount = this.discount,
-        isHot = false
+        isHot = isHot
     )
 }
 

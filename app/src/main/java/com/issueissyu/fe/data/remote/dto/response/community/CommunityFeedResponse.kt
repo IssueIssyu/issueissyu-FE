@@ -4,5 +4,15 @@ data class CommunityFeedResponse(
     val region: String?,
     val content: List<CommunityFeedItemResponse>?,
     val nextCursor: String?,
-    val hasNext: Boolean?
+    val hasNext: Boolean?,
+    val storePromotions: List<CommunityFeedItemResponse>? = null,
+    val hotPreviews: List<CommunityFeedItemResponse>? = null,
+    val recentNews: CommunityFeedPageResponse? = null,
+)
+
+data class CommunityFeedPageResponse(
+    val region: String?,
+    val content: List<CommunityFeedItemResponse>?,
+    val nextCursor: String?,
+    val hasNext: Boolean?,
 )

@@ -55,6 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.R
+import com.issueissyu.fe.domain.model.LocationRegionGroup
+import com.issueissyu.fe.domain.model.LocationRegionItem
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.community.CommunityTab
@@ -211,7 +213,7 @@ fun CommunityScreenContent(
                     Spacer(modifier = Modifier.weight(1f))
 
                     RegionDropdownPill(
-                        region = uiState.region,
+                        region = uiState.region.toRegionDisplayName(),
                         onClick = { showRegionSelector = true }
                     )
                 }
@@ -420,6 +422,9 @@ fun CommunityScreenContent(
     if (showRegionSelector) {
         RegionSelectorSheet(
             currentRegion = uiState.region,
+            regionGroups = uiState.regionGroups,
+            isRegionLoading = uiState.isRegionLoading,
+            regionError = uiState.regionError,
             onDismissRequest = {
                 showRegionSelector = false
             },
@@ -451,7 +456,7 @@ fun RegionDropdownPill(
             modifier = Modifier.padding(horizontal = 12.dp)
         ) {
             Text(
-                text = region,
+                text = region.ifBlank { "지역 선택" },
                 style = TextStyle(
                     fontFamily = suiteFontFamily,
                     fontWeight = FontWeight.Bold,
@@ -472,16 +477,19 @@ fun RegionDropdownPill(
 @Composable
 fun RegionSelectorSheet(
     currentRegion: String,
+    regionGroups: List<LocationRegionGroup>,
+    isRegionLoading: Boolean,
+    regionError: String?,
     onDismissRequest: () -> Unit,
     onRegionSelected: (String) -> Unit
 ) {
-    val initialProvince =
-        dummyDistrictsMap.entries.find { (_, districts) ->
-            districts.contains(currentRegion)
-        }?.key ?: "서울"
+    val initialProvince = regionGroups.find { group ->
+        group.subLocations.any { group.toCommunityRegion(it.location) == currentRegion }
+    }?.superLocation ?: regionGroups.firstOrNull()?.superLocation.orEmpty()
 
-    var selectedProvince by remember { mutableStateOf(initialProvince) }
-    var draftRegion by remember { mutableStateOf(currentRegion) }
+    var selectedProvince by remember(currentRegion, regionGroups) { mutableStateOf(initialProvince) }
+    var draftRegion by remember(currentRegion, regionGroups) { mutableStateOf(currentRegion) }
+    val selectedGroup = regionGroups.find { it.superLocation == selectedProvince }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -519,24 +527,70 @@ fun RegionSelectorSheet(
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                RegionProvinceList(
-                    provinces = dummyProvinces,
-                    selectedProvince = selectedProvince,
-                    onProvinceSelected = { selectedProvince = it },
-                    modifier = Modifier.width(120.dp)
-                )
+            when {
+                isRegionLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
 
-                RegionDistrictList(
-                    districts = dummyDistrictsMap[selectedProvince].orEmpty(),
-                    selectedDistrict = draftRegion,
-                    onDistrictSelected = { draftRegion = it },
-                    modifier = Modifier.weight(1f)
-                )
+                regionGroups.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = regionError ?: "선택 가능한 지역이 없습니다.",
+                            style = TextStyle(
+                                fontFamily = suiteFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                else -> {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        RegionProvinceList(
+                            provinces = regionGroups.map { it.superLocation },
+                            selectedProvince = selectedProvince,
+                            onProvinceSelected = { province ->
+                                selectedProvince = province
+                                draftRegion = regionGroups
+                                    .find { it.superLocation == province }
+                                    ?.let { group -> group.subLocations.firstOrNull()?.let { group.toCommunityRegion(it.location) } }
+                                    .orEmpty()
+                            },
+                            modifier = Modifier.width(120.dp)
+                        )
+
+                        RegionDistrictList(
+                            districts = selectedGroup?.subLocations.orEmpty(),
+                            superLocation = selectedGroup?.superLocation.orEmpty(),
+                            selectedDistrict = draftRegion,
+                            onDistrictSelected = { draftRegion = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
 
             SelectedRegionFooter(
@@ -590,7 +644,8 @@ fun RegionProvinceList(
 
 @Composable
 fun RegionDistrictList(
-    districts: List<String>,
+    districts: List<LocationRegionItem>,
+    superLocation: String,
     selectedDistrict: String,
     onDistrictSelected: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -604,7 +659,8 @@ fun RegionDistrictList(
         item { Spacer(modifier = Modifier.height(8.dp)) }
 
         items(districts) { district ->
-            val isSelected = district == selectedDistrict
+            val districtRegion = superLocation.toCommunityRegion(district.location)
+            val isSelected = districtRegion == selectedDistrict
 
             Row(
                 modifier = Modifier
@@ -617,13 +673,13 @@ fun RegionDistrictList(
                             Color.Transparent
                         }
                     )
-                    .clickable { onDistrictSelected(district) }
+                    .clickable { onDistrictSelected(districtRegion) }
                     .padding(vertical = 12.dp, horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = district,
+                    text = district.location.toRegionDisplayName(),
                     style = TextStyle(
                         fontFamily = suiteFontFamily,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
@@ -683,147 +739,22 @@ fun SelectedRegionFooter(
     }
 }
 
-private val dummyProvinces = listOf(
-    "서울",
-    "경기",
-    "인천",
-    "강원",
-    "대전",
-    "세종",
-    "충남",
-    "충북",
-    "부산",
-    "울산",
-    "경남",
-    "경북"
-)
-
-private val dummyDistrictsMap = mapOf(
-    "서울" to listOf(
-        "전체",
-        "강남구",
-        "강동구",
-        "강북구",
-        "강서구",
-        "관악구",
-        "광진구",
-        "구로구",
-        "금천구",
-        "노원구",
-        "도봉구",
-        "동대문구",
-        "동작구",
-        "마포구",
-        "서대문구",
-        "서초구",
-        "성동구",
-        "성북구",
-        "송파구",
-        "양천구",
-        "영등포구",
-        "용산구",
-        "은평구",
-        "종로구",
-        "중구",
-        "중랑구"
+private val previewRegionGroups = listOf(
+    LocationRegionGroup(
+        superLocation = "서울특별시",
+        subLocations = listOf(
+            LocationRegionItem(locationId = 1L, location = "서울특별시 강남구"),
+            LocationRegionItem(locationId = 2L, location = "서울특별시 마포구"),
+            LocationRegionItem(locationId = 3L, location = "서울특별시 서대문구"),
+            LocationRegionItem(locationId = 4L, location = "서울특별시 종로구")
+        )
     ),
-    "경기" to listOf(
-        "전체",
-        "수원시",
-        "고양시",
-        "용인시",
-        "성남시",
-        "부천시",
-        "화성시",
-        "안산시",
-        "남양주시",
-        "안양시",
-        "평택시"
-    ),
-    "인천" to listOf(
-        "전체",
-        "중구",
-        "동구",
-        "미추홀구",
-        "연수구",
-        "남동구",
-        "부평구",
-        "계양구",
-        "서구"
-    ),
-    "강원" to listOf(
-        "전체",
-        "춘천시",
-        "원주시",
-        "강릉시",
-        "동해시",
-        "태백시",
-        "속초시",
-        "삼척시"
-    ),
-    "대전" to listOf(
-        "전체",
-        "동구",
-        "중구",
-        "서구",
-        "유성구",
-        "대덕구"
-    ),
-    "세종" to listOf(
-        "전체",
-        "세종시"
-    ),
-    "충남" to listOf(
-        "전체",
-        "천안시",
-        "공주시",
-        "보령시",
-        "아산시",
-        "서산시",
-        "논산시"
-    ),
-    "충북" to listOf(
-        "전체",
-        "청주시",
-        "충주시",
-        "제천시"
-    ),
-    "부산" to listOf(
-        "전체",
-        "중구",
-        "서구",
-        "동구",
-        "영도구",
-        "부산진구",
-        "동래구",
-        "남구",
-        "해운대구"
-    ),
-    "울산" to listOf(
-        "전체",
-        "중구",
-        "남구",
-        "동구",
-        "북구",
-        "울주군"
-    ),
-    "경남" to listOf(
-        "전체",
-        "창원시",
-        "진주시",
-        "통영시",
-        "사천시",
-        "김해시",
-        "양산시"
-    ),
-    "경북" to listOf(
-        "전체",
-        "포항시",
-        "경주시",
-        "김천시",
-        "안동시",
-        "구미시",
-        "경산시"
+    LocationRegionGroup(
+        superLocation = "경기도",
+        subLocations = listOf(
+            LocationRegionItem(locationId = 5L, location = "경기도 고양시"),
+            LocationRegionItem(locationId = 6L, location = "경기도 성남시")
+        )
     )
 )
 
@@ -1080,22 +1011,23 @@ fun PreviewRegionSelectorSheet() {
                         .fillMaxWidth()
                 ) {
                     RegionProvinceList(
-                        provinces = dummyProvinces,
-                        selectedProvince = "서울",
+                        provinces = previewRegionGroups.map { it.superLocation },
+                        selectedProvince = "서울특별시",
                         onProvinceSelected = {},
                         modifier = Modifier.width(120.dp)
                     )
 
                     RegionDistrictList(
-                        districts = dummyDistrictsMap["서울"].orEmpty(),
-                        selectedDistrict = "마포구",
+                        districts = previewRegionGroups.first().subLocations,
+                        superLocation = previewRegionGroups.first().superLocation,
+                        selectedDistrict = "서울특별시 마포구",
                         onDistrictSelected = {},
                         modifier = Modifier.weight(1f)
                     )
                 }
 
                 SelectedRegionFooter(
-                    selectedRegion = "마포구",
+                    selectedRegion = "서울특별시 마포구",
                     onApply = {}
                 )
             }

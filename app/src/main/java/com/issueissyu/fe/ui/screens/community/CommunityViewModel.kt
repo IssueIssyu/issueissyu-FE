@@ -2,6 +2,8 @@ package com.issueissyu.fe.ui.screens.community
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.domain.model.LocationRegionGroup
+import com.issueissyu.fe.domain.model.LocationRegions
 import com.issueissyu.fe.domain.model.community.CommunityTab
 import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityFeedUseCase
@@ -35,14 +37,20 @@ class CommunityViewModel @Inject constructor(
     }
 
     fun onRefresh() {
-        loadFeed(isRefreshing = true)
+        if (_uiState.value.region.isBlank()) {
+            loadInitialRegionAndFeed()
+        } else {
+            loadFeed(isRefreshing = true)
+        }
     }
 
     fun onRegionSelected(region: String) {
-        if (_uiState.value.region == region) return
+        val communityRegion = region.toCommunityRegion()
+        if (_uiState.value.region == communityRegion) return
         _uiState.update {
             it.copy(
-                region = region,
+                region = communityRegion,
+                isRegionSelectedByUser = true,
                 nextCursor = null,
                 hasNext = false,
                 feedItems = emptyList(),
@@ -53,11 +61,15 @@ class CommunityViewModel @Inject constructor(
     }
 
     private fun loadFeed(isRefreshing: Boolean = false) {
-        if (_uiState.value.region.isBlank()) return
+        val apiRegion = _uiState.value.region.toCommunityRegion()
+        if (apiRegion.isBlank()) return
+        if (_uiState.value.region != apiRegion) {
+            _uiState.update { it.copy(region = apiRegion) }
+        }
         viewModelScope.launch {
             getCommunityFeedUseCase(
                 tab = _uiState.value.selectedTab,
-                region = _uiState.value.region
+                region = apiRegion
             )
                 .onStart {
                     _uiState.update { it.copy(isLoading = !isRefreshing, isRefreshing = isRefreshing) }
@@ -82,20 +94,90 @@ class CommunityViewModel @Inject constructor(
 
     private fun loadInitialRegionAndFeed() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            locationRepository.getUserLocation()
-                .onSuccess { region ->
-                    _uiState.update { it.copy(region = region) }
-                    loadFeed()
-                }
-                .onFailure {
+            _uiState.update { it.copy(isLoading = true, isRegionLoading = true, error = null) }
+            val regions = locationRepository.getRegionList()
+                .onSuccess { regions ->
                     _uiState.update {
                         it.copy(
-                            isLoading = false,
-                            error = "동네 인증 정보를 불러오지 못했습니다."
+                            regionGroups = regions.groups,
+                            isRegionLoading = false,
+                            regionError = null
                         )
                     }
                 }
+                .onFailure { throwable ->
+                    _uiState.update {
+                        it.copy(
+                            isRegionLoading = false,
+                            regionError = throwable.message ?: "지역 목록을 불러오지 못했습니다."
+                        )
+                    }
+                }
+                .getOrNull()
+
+            locationRepository.getUserLocation()
+                .onSuccess { region ->
+                    _uiState.update {
+                        it.copy(
+                            region = regions?.defaultCommunityRegion()
+                                ?: region.toCommunityRegion(),
+                            isRegionSelectedByUser = false
+                        )
+                    }
+                    loadFeed()
+                }
+                .onFailure {
+                    val fallbackRegion = regions?.userRegion?.location.orEmpty()
+                    val communityRegion = regions?.defaultCommunityRegion()
+                        ?: fallbackRegion.toCommunityRegion()
+                    if (communityRegion.isNotBlank()) {
+                        _uiState.update {
+                            it.copy(
+                                region = communityRegion,
+                                isRegionSelectedByUser = false
+                            )
+                        }
+                        loadFeed()
+                    } else {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "동네 인증 정보를 불러오지 못했습니다."
+                            )
+                        }
+                    }
+                }
         }
+    }
+
+    private fun LocationRegions.defaultCommunityRegion(): String? {
+        val userRegion = userRegion ?: return null
+        return groups.toCommunityRegion(userRegion.locationId)
+            ?: userRegion.location.toCommunityRegion()
+                .takeIf { it.isNotBlank() }
+    }
+
+    private fun List<LocationRegionGroup>.toCommunityRegion(locationId: Long): String? {
+        forEach { group ->
+            val location = group.subLocations.firstOrNull { it.locationId == locationId }
+            if (location != null) {
+                return group.toCommunityRegion(location.location)
+            }
+        }
+        return null
+    }
+
+    private fun String.toCommunityRegion(): String {
+        val source = trim()
+        if (source.isBlank()) return source
+
+        return _uiState.value.regionGroups
+            .orEmpty()
+            .firstNotNullOfOrNull { group ->
+                group.subLocations.firstOrNull { region ->
+                    region.location == source || group.toCommunityRegion(region.location) == source
+                }?.let { region -> group.toCommunityRegion(region.location) }
+            }
+            ?: source
     }
 }
