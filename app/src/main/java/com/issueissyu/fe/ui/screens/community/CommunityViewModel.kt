@@ -2,8 +2,7 @@ package com.issueissyu.fe.ui.screens.community
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.domain.model.LocationRegionGroup
-import com.issueissyu.fe.domain.model.LocationRegions
+import com.issueissyu.fe.domain.model.LocationRegionItem
 import com.issueissyu.fe.domain.model.community.CommunityTab
 import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityFeedUseCase
@@ -43,21 +42,19 @@ class CommunityViewModel @Inject constructor(
     }
 
     fun onRefresh() {
-        if (_uiState.value.region.isBlank()) {
+        if (_uiState.value.locationId == null) {
             loadInitialRegionAndFeed()
         } else {
             loadFeed(isRefreshing = true)
         }
     }
 
-    fun onRegionSelected(region: String) {
-        val communityRegion = region.toCommunityRegion()
-        val locationId = communityRegion.toLocationId()
-        if (_uiState.value.region == communityRegion && _uiState.value.locationId == locationId) return
+    fun onRegionSelected(region: LocationRegionItem) {
+        if (_uiState.value.locationId == region.locationId) return
         _uiState.update {
             it.copy(
-                region = communityRegion,
-                locationId = locationId,
+                region = region.location,
+                locationId = region.locationId,
                 isRegionSelectedByUser = true,
                 nextCursor = null,
                 hasNext = false,
@@ -68,15 +65,17 @@ class CommunityViewModel @Inject constructor(
                 isLoading = true
             )
         }
-        loadFeed()
+        viewModelScope.launch {
+            val resolvedRegion = locationRepository.getRegionName(region.locationId)
+                .getOrNull()
+                ?: region.location
+            _uiState.update { it.copy(region = resolvedRegion) }
+            loadFeed()
+        }
     }
 
     private fun loadFeed(isRefreshing: Boolean = false) {
-        val apiRegion = _uiState.value.region.toCommunityRegion()
         val locationId = _uiState.value.locationId
-        if (_uiState.value.region != apiRegion) {
-            _uiState.update { it.copy(region = apiRegion) }
-        }
         viewModelScope.launch {
             getCommunityFeedUseCase(
                 tab = _uiState.value.selectedCategory,
@@ -144,28 +143,29 @@ class CommunityViewModel @Inject constructor(
 
             locationRepository.getUserLocation()
                 .onSuccess { region ->
-                    val defaultRegion = regions?.defaultCommunityRegion()
-                        ?: region.toCommunityRegion()
+                    val defaultLocationId = regions?.userRegion?.locationId
+                    val defaultRegion = defaultLocationId
+                        ?.let { locationRepository.getRegionName(it).getOrNull() }
+                        ?: region
                     _uiState.update {
                         it.copy(
                             region = defaultRegion,
-                            locationId = regions?.userRegion?.locationId
-                                ?: defaultRegion.toLocationId(),
+                            locationId = defaultLocationId,
                             isRegionSelectedByUser = false
                         )
                     }
                     loadFeed()
                 }
                 .onFailure {
-                    val fallbackRegion = regions?.userRegion?.location.orEmpty()
-                    val communityRegion = regions?.defaultCommunityRegion()
-                        ?: fallbackRegion.toCommunityRegion()
-                    if (communityRegion.isNotBlank()) {
+                    val fallbackLocationId = regions?.userRegion?.locationId
+                    val fallbackRegion = fallbackLocationId
+                        ?.let { locationRepository.getRegionName(it).getOrNull() }
+                        ?: regions?.userRegion?.location.orEmpty()
+                    if (fallbackLocationId != null && fallbackRegion.isNotBlank()) {
                         _uiState.update {
                             it.copy(
-                                region = communityRegion,
-                                locationId = regions?.userRegion?.locationId
-                                    ?: communityRegion.toLocationId(),
+                                region = fallbackRegion,
+                                locationId = fallbackLocationId,
                                 isRegionSelectedByUser = false
                             )
                         }
@@ -180,47 +180,5 @@ class CommunityViewModel @Inject constructor(
                     }
                 }
         }
-    }
-
-    private fun LocationRegions.defaultCommunityRegion(): String? {
-        val userRegion = userRegion ?: return null
-        return groups.toCommunityRegion(userRegion.locationId)
-            ?: userRegion.location.toCommunityRegion()
-                .takeIf { it.isNotBlank() }
-    }
-
-    private fun List<LocationRegionGroup>.toCommunityRegion(locationId: Long): String? {
-        forEach { group ->
-            val location = group.subLocations.firstOrNull { it.locationId == locationId }
-            if (location != null) {
-                return group.toCommunityRegion(location.location)
-            }
-        }
-        return null
-    }
-
-    private fun String.toCommunityRegion(): String {
-        val source = trim()
-        if (source.isBlank()) return source
-
-        return _uiState.value.regionGroups
-            .firstNotNullOfOrNull { group ->
-                group.subLocations.firstOrNull { region ->
-                    region.location == source || group.toCommunityRegion(region.location) == source
-                }?.let { region -> group.toCommunityRegion(region.location) }
-            }
-            ?: source
-    }
-
-    private fun String.toLocationId(): Long? {
-        val source = trim()
-        if (source.isBlank()) return null
-
-        return _uiState.value.regionGroups
-            .firstNotNullOfOrNull { group ->
-                group.subLocations.firstOrNull { region ->
-                    region.location == source || group.toCommunityRegion(region.location) == source
-                }?.locationId
-            }
     }
 }

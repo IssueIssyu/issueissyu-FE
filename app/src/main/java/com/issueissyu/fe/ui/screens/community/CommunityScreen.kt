@@ -102,7 +102,7 @@ fun CommunityScreenContent(
     onCommunityClick: (Long) -> Unit = {},
     onCategorySelected: (CommunityTab) -> Unit = {},
     onRefresh: () -> Unit = {},
-    onRegionSelected: (String) -> Unit = {}
+    onRegionSelected: (LocationRegionItem) -> Unit = {}
 ) {
     var showRegionSelector by remember { mutableStateOf(false) }
     val dismissRegionSelector = { showRegionSelector = false }
@@ -397,6 +397,7 @@ fun CommunityScreenContent(
     if (showRegionSelector) {
         RegionSelectorSheet(
             currentRegion = uiState.region,
+            currentLocationId = uiState.locationId,
             regionGroups = uiState.regionGroups,
             isRegionLoading = uiState.isRegionLoading,
             regionError = uiState.regionError,
@@ -458,19 +459,26 @@ fun RegionDropdownPill(
 @Composable
 fun RegionSelectorSheet(
     currentRegion: String,
+    currentLocationId: Long?,
     regionGroups: List<LocationRegionGroup>,
     isRegionLoading: Boolean,
     regionError: String?,
     onDismissRequest: () -> Unit,
-    onRegionSelected: (String) -> Unit
+    onRegionSelected: (LocationRegionItem) -> Unit
 ) {
     val initialProvince = regionGroups.find { group ->
-        group.subLocations.any { group.toCommunityRegion(it.location) == currentRegion }
+        group.subLocations.any { it.locationId == currentLocationId || it.location == currentRegion }
     }?.superLocation ?: regionGroups.firstOrNull()?.superLocation.orEmpty()
 
     var selectedProvince by remember(currentRegion, regionGroups) { mutableStateOf(initialProvince) }
-    var draftRegion by remember(currentRegion, regionGroups) { mutableStateOf(currentRegion) }
     val selectedGroup = regionGroups.find { it.superLocation == selectedProvince }
+    var draftRegion by remember(currentLocationId, currentRegion, regionGroups) {
+        mutableStateOf(
+            selectedGroup?.subLocations?.firstOrNull {
+                it.locationId == currentLocationId || it.location == currentRegion
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -557,16 +565,15 @@ fun RegionSelectorSheet(
                                 selectedProvince = province
                                 draftRegion = regionGroups
                                     .find { it.superLocation == province }
-                                    ?.let { group -> group.subLocations.firstOrNull()?.let { group.toCommunityRegion(it.location) } }
-                                    .orEmpty()
+                                    ?.subLocations
+                                    ?.firstOrNull()
                             },
                             modifier = Modifier.width(120.dp)
                         )
 
                         RegionDistrictList(
                             districts = selectedGroup?.subLocations.orEmpty(),
-                            superLocation = selectedGroup?.superLocation.orEmpty(),
-                            selectedDistrict = draftRegion,
+                            selectedLocationId = draftRegion?.locationId,
                             onDistrictSelected = { draftRegion = it },
                             modifier = Modifier.weight(1f)
                         )
@@ -575,10 +582,10 @@ fun RegionSelectorSheet(
             }
 
             SelectedRegionFooter(
-                selectedRegion = draftRegion,
+                selectedRegion = draftRegion?.location.orEmpty(),
                 onApply = {
-                    if (draftRegion.isNotBlank()) {
-                        onRegionSelected(draftRegion)
+                    draftRegion?.let {
+                        onRegionSelected(it)
                     }
                 }
             )
@@ -626,9 +633,8 @@ fun RegionProvinceList(
 @Composable
 fun RegionDistrictList(
     districts: List<LocationRegionItem>,
-    superLocation: String,
-    selectedDistrict: String,
-    onDistrictSelected: (String) -> Unit,
+    selectedLocationId: Long?,
+    onDistrictSelected: (LocationRegionItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -640,8 +646,7 @@ fun RegionDistrictList(
         item { Spacer(modifier = Modifier.height(8.dp)) }
 
         items(districts) { district ->
-            val districtRegion = superLocation.toCommunityRegion(district.location)
-            val isSelected = districtRegion == selectedDistrict
+            val isSelected = district.locationId == selectedLocationId
 
             Row(
                 modifier = Modifier
@@ -654,7 +659,7 @@ fun RegionDistrictList(
                             Color.Transparent
                         }
                     )
-                    .clickable { onDistrictSelected(districtRegion) }
+                    .clickable { onDistrictSelected(district) }
                     .padding(vertical = 12.dp, horizontal = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -1002,8 +1007,7 @@ fun PreviewRegionSelectorSheet() {
 
                     RegionDistrictList(
                         districts = previewRegionGroups.first().subLocations,
-                        superLocation = previewRegionGroups.first().superLocation,
-                        selectedDistrict = "서울특별시 마포구",
+                        selectedLocationId = 2L,
                         onDistrictSelected = {},
                         modifier = Modifier.weight(1f)
                     )

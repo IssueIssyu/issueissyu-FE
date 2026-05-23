@@ -187,6 +187,23 @@ class LocationRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getRegionName(locationId: Long): Result<String> {
+        return try {
+            val response = locationApi.getRegionName(locationId)
+            if (response.isSuccess) {
+                val region = response.result?.region?.takeIf { it.isNotBlank() }
+                    ?: return Result.failure(
+                        Exception(response.message.ifBlank { "지역구 이름을 찾을 수 없습니다." }),
+                    )
+                Result.success(region)
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "지역구 이름을 조회하지 못했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getUserLocation(): Result<String> {
         return try {
             val response = locationApi.getUserLocation()

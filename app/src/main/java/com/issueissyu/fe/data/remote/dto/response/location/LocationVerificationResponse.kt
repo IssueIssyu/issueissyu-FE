@@ -9,6 +9,10 @@ data class LocationResolveResponse(
     val address: String? = null,
 )
 
+data class LocationRegionResponse(
+    val region: String? = null,
+)
+
 data class LocationRegionListResponse(
     val user: UserRegionSnippetResponse? = null,
     val locations: List<LocationRegionGroupResponse>? = null,

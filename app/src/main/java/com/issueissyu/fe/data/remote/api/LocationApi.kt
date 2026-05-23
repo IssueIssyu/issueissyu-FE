@@ -2,10 +2,12 @@ package com.issueissyu.fe.data.remote.api
 
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.location.LocationBaseResponse
+import com.issueissyu.fe.data.remote.dto.response.location.LocationRegionResponse
 import com.issueissyu.fe.data.remote.dto.response.location.LocationRegionListResponse
 import com.issueissyu.fe.data.remote.dto.response.location.LocationResolveResponse
 import com.issueissyu.fe.data.remote.dto.response.location.LocationVerificationResponse
 import retrofit2.http.GET
+import retrofit2.http.Path
 import retrofit2.http.POST
 import retrofit2.http.Query
 
@@ -38,6 +40,12 @@ interface LocationApi {
     //지역구 목록 조회
     @GET("api/location/regions")
     suspend fun getRegionList(): BaseResponse<LocationRegionListResponse?>
+
+    //locationId → 도-시-군구 지역명 조회
+    @GET("api/location/region/{locationId}")
+    suspend fun getRegionName(
+        @Path("locationId") locationId: Long,
+    ): BaseResponse<LocationRegionResponse?>
 
     //인증된 사용자 동네 조회
     @GET("api/location/user")
