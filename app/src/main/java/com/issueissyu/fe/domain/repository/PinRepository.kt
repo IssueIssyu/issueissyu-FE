@@ -12,6 +12,7 @@ import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.PinSolveInfo
+import com.issueissyu.fe.domain.model.pin.PinSolveStatus
 import com.issueissyu.fe.domain.model.pin.PetitionJoinInfo
 import com.issueissyu.fe.domain.model.pin.PetitionStatusInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
@@ -47,6 +48,8 @@ interface PinRepository {
     suspend fun likePin(pinId: Long): Result<PinLike>
 
     suspend fun getPetitionStatus(pinId: Long): Result<PetitionStatus>
+
+    suspend fun getPinSolveStatus(pinId: Long): Result<PinSolveStatus>
 
     //핀 삭제
     suspend fun deletePin(pinId: Long): Result<Unit>

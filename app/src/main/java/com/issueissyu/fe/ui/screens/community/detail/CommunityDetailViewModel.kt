@@ -64,24 +64,32 @@ class CommunityDetailViewModel @Inject constructor(
                     }
                 }
                 .collect { detail ->
-                    val petitionStatus = if (detail.kind == CommunityItemKind.ISSUE) {
-                        detail.pinId?.let { pinRepository.getPetitionStatus(it).getOrNull() }
+                    val pinId = detail.pinId
+                    val petitionStatus = if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
+                        pinRepository.getPetitionStatus(pinId).getOrNull()
+                    } else {
+                        null
+                    }
+                    val solveStatus = if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
+                        pinRepository.getPinSolveStatus(pinId).getOrNull()
                     } else {
                         null
                     }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            detail = if (petitionStatus != null) {
-                                detail.copy(
-                                    petitionCount = petitionStatus.petitionCount,
-                                    petitionTargetCount = petitionStatus.targetPetition,
-                                    isPetitionedByMe = petitionStatus.isPetitioned,
-                                    isPetitioned = petitionStatus.isPetitioned,
-                                )
-                            } else {
-                                detail
-                            },
+                            detail = detail.copy(
+                                petitionCount = petitionStatus?.petitionCount ?: detail.petitionCount,
+                                petitionTargetCount = petitionStatus?.targetPetition ?: detail.petitionTargetCount,
+                                isPetitionedByMe = petitionStatus?.isPetitioned
+                                    ?: solveStatus?.isPetitioned
+                                    ?: detail.isPetitionedByMe,
+                                isPetitioned = petitionStatus?.isPetitioned
+                                    ?: solveStatus?.isPetitioned
+                                    ?: detail.isPetitioned,
+                                isProblemSolver = solveStatus?.isProblemSolver ?: detail.isProblemSolver,
+                                reliabilityScore = solveStatus?.reliability ?: detail.reliabilityScore,
+                            ),
                             errorMessage = null
                         )
                     }

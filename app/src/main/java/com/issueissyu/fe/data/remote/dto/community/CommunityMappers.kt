@@ -102,7 +102,7 @@ private fun String?.toCommunityItemKind(): CommunityItemKind {
 
 private fun String?.toIssueStatusText(): String? {
     return when (this?.trim()?.uppercase()) {
-        "BEFORE_RESOLUTION", "BEFORE", "READY" -> "해결 전"
+        "BEFORE_RESOLUTION", "BEFORE_PROGRESS", "BEFORE", "READY" -> "해결 전"
         "IN_PROGRESS", "PROGRESS", "RESOLVING" -> "진행중"
         "RESOLVED", "DONE" -> "해결 완료"
         null, "" -> null

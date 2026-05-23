@@ -699,7 +699,7 @@ private fun CommunityDetailIssueActionSection(detail: CommunityDetail) {
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         GoNowButton(
-            state = ActionState.DEFAULT,
+            state = if (detail.isProblemSolver) ActionState.MOVING else ActionState.DEFAULT,
             onClick = { /* TODO: 지금가요 기능 구현 필요 */ },
             modifier = Modifier.weight(1f)
         )

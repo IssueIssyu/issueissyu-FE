@@ -62,6 +62,12 @@ interface PinApi {
         @Path("pinId") pinId: Long,
     ): BaseResponse<PetitionStatusResponse?>
 
+    //이슈 핀 해결 상태 조회
+    @GET("api/pins/{pinId}/solve")
+    suspend fun getPinSolveStatus(
+        @Path("pinId") pinId: Long,
+    ): BaseResponse<PinSolveResponse?>
+
     //이모지 조회
     @GET("api/pins/{pinId}/emojis")
     suspend fun getPinEmojis(
