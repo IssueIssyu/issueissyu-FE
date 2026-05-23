@@ -8,6 +8,7 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ApplyPinEmojiResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsJoinResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsGetResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionStatusResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinCommentDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
@@ -54,6 +55,12 @@ interface PinApi {
     suspend fun pinLike(
         @Path("pinId") pinId: Long,
     ): BaseResponse<PinLikeResponse?>
+
+    //청원 현황 조회
+    @GET("api/pins/{pinId}/petitions/status")
+    suspend fun getPetitionStatus(
+        @Path("pinId") pinId: Long,
+    ): BaseResponse<PetitionStatusResponse?>
 
     //이모지 조회
     @GET("api/pins/{pinId}/emojis")

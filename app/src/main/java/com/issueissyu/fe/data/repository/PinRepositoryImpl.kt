@@ -22,11 +22,13 @@ import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionStatusResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.core.time.parseFlexibleDateTimeToEpochMilli
 import com.issueissyu.fe.domain.model.pin.PinComment
+import com.issueissyu.fe.domain.model.pin.PetitionStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
@@ -345,6 +347,25 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getPetitionStatus(pinId: Long): Result<PetitionStatus> {
+        return try {
+            val response = pinApi.getPetitionStatus(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "청원 현황 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPetitionStatus())
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "청원 현황 조회에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getEmojiCandidates(): Result<List<PinEmojiCandidate>> {
         return try {
             val response = pinApi.getEmojiCandidates()
@@ -418,6 +439,15 @@ class PinRepositoryImpl @Inject constructor(
             pinId = pinId,
             pinLikeCount = pinLikeCount,
             isLike = isLike,
+        )
+    }
+
+    private fun PetitionStatusResponse.toPetitionStatus(): PetitionStatus {
+        return PetitionStatus(
+            pinId = pinId,
+            petitionCount = petitionCount,
+            isPetitioned = isPetitioned,
+            targetPetition = targetPetition,
         )
     }
 

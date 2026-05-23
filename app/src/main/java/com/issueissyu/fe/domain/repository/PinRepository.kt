@@ -4,6 +4,7 @@ import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PetitionStatus
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
@@ -44,6 +45,8 @@ interface PinRepository {
 
     //핀 공감
     suspend fun likePin(pinId: Long): Result<PinLike>
+
+    suspend fun getPetitionStatus(pinId: Long): Result<PetitionStatus>
 
     //핀 삭제
     suspend fun deletePin(pinId: Long): Result<Unit>

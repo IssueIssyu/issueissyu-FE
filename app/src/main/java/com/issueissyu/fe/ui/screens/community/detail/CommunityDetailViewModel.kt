@@ -3,6 +3,8 @@ package com.issueissyu.fe.ui.screens.community.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.domain.model.community.CommunityItemKind
+import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +19,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CommunityDetailViewModel @Inject constructor(
     private val getCommunityDetailUseCase: GetCommunityDetailUseCase,
+    private val pinRepository: PinRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -61,10 +64,24 @@ class CommunityDetailViewModel @Inject constructor(
                     }
                 }
                 .collect { detail ->
+                    val petitionStatus = if (detail.kind == CommunityItemKind.ISSUE) {
+                        detail.pinId?.let { pinRepository.getPetitionStatus(it).getOrNull() }
+                    } else {
+                        null
+                    }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            detail = detail,
+                            detail = if (petitionStatus != null) {
+                                detail.copy(
+                                    petitionCount = petitionStatus.petitionCount,
+                                    petitionTargetCount = petitionStatus.targetPetition,
+                                    isPetitionedByMe = petitionStatus.isPetitioned,
+                                    isPetitioned = petitionStatus.isPetitioned,
+                                )
+                            } else {
+                                detail
+                            },
                             errorMessage = null
                         )
                     }
