@@ -259,7 +259,7 @@ class LocationRepositoryImpl @Inject constructor(
                     suspendCancellableCoroutine { continuation ->
                         geocoder.getFromLocation(lat, lng, 1) { list ->
                             if (continuation.isActive) {
-                                continuation.resume(list ?: emptyList())
+                                continuation.resume(list)
                             }
                         }
                     }

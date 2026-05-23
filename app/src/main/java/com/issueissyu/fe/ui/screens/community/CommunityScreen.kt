@@ -105,6 +105,7 @@ fun CommunityScreenContent(
     onRegionSelected: (String) -> Unit = {}
 ) {
     var showRegionSelector by remember { mutableStateOf(false) }
+    val dismissRegionSelector = { showRegionSelector = false }
 
     val colorScheme = MaterialTheme.colorScheme
 
@@ -425,12 +426,10 @@ fun CommunityScreenContent(
             regionGroups = uiState.regionGroups,
             isRegionLoading = uiState.isRegionLoading,
             regionError = uiState.regionError,
-            onDismissRequest = {
-                showRegionSelector = false
-            },
+            onDismissRequest = dismissRegionSelector,
             onRegionSelected = { region ->
                 onRegionSelected(region)
-                showRegionSelector = false
+                dismissRegionSelector()
             }
         )
     }

@@ -172,7 +172,6 @@ class CommunityViewModel @Inject constructor(
         if (source.isBlank()) return source
 
         return _uiState.value.regionGroups
-            .orEmpty()
             .firstNotNullOfOrNull { group ->
                 group.subLocations.firstOrNull { region ->
                     region.location == source || group.toCommunityRegion(region.location) == source
