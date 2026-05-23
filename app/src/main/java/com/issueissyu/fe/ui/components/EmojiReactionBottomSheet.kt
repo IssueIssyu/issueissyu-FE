@@ -58,6 +58,7 @@ fun EmojiReactionBottomSheet(
     onDismiss: () -> Unit,
     onEmojiClick: (Int) -> Unit,
     onApplyClick: () -> Unit,
+    allowLockedEmojiSelection: Boolean = false,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -82,12 +83,13 @@ fun EmojiReactionBottomSheet(
             onDismiss = onDismiss,
             onEmojiClick = onEmojiClick,
             onApplyClick = onApplyClick,
+            allowLockedEmojiSelection = allowLockedEmojiSelection,
         )
     }
 }
 
 @Composable
-private fun EmojiReactionBottomSheetContent(
+fun EmojiReactionBottomSheetContent(
     candidates: List<PinEmojiCandidate>,
     selectedEmojiId: Int?,
     isLoading: Boolean,
@@ -96,6 +98,7 @@ private fun EmojiReactionBottomSheetContent(
     onDismiss: () -> Unit,
     onEmojiClick: (Int) -> Unit,
     onApplyClick: () -> Unit,
+    allowLockedEmojiSelection: Boolean,
 ) {
     Column(
         modifier = Modifier
@@ -155,6 +158,7 @@ private fun EmojiReactionBottomSheetContent(
                         EmojiCandidateButton(
                             candidate = candidate,
                             isSelected = candidate.emojiId == selectedEmojiId,
+                            allowLockedEmojiSelection = allowLockedEmojiSelection,
                             onClick = { onEmojiClick(candidate.emojiId) }
                         )
                     }
@@ -213,8 +217,10 @@ private fun EmojiReactionBottomSheetContent(
 private fun EmojiCandidateButton(
     candidate: PinEmojiCandidate,
     isSelected: Boolean,
+    allowLockedEmojiSelection: Boolean,
     onClick: () -> Unit,
 ) {
+    val canTap = allowLockedEmojiSelection || candidate.canReact
     Box(
         modifier = Modifier.size(44.dp),
         contentAlignment = Alignment.Center
@@ -229,8 +235,8 @@ private fun EmojiCandidateButton(
                     color = if (isSelected) BrandColor else Color.Transparent,
                     shape = CircleShape
                 )
-                .clickable(enabled = candidate.canReact) { onClick() }
-                .alpha(if (candidate.canReact) 1f else 0.42f)
+                .clickable(enabled = canTap) { onClick() }
+                .alpha(if (canTap) 1f else 0.42f)
                 .padding(5.dp),
             contentAlignment = Alignment.Center
         ) {

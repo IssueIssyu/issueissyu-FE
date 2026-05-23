@@ -36,12 +36,12 @@ data class PinImageRef(
 
 // 이모지 조회
 data class PinEmojis(
-    val selectedEmojiId: Int?,
+    val selectedEmojiId: Long?,
     val emojis: List<PinEmoji>,
 )
 
 data class PinEmoji(
-    val emojiId: Int,
+    val emojiId: Long,
     val emojiImageUrl: String,
     val count: Int,
     val isDefault: Boolean,
@@ -64,6 +64,72 @@ data class PinLike(
     val pinId: Long,
     val pinLikeCount: Int,
     val isLike: Boolean,
+)
+
+//핀 상세 포스트
+data class PinPostSympathyContent(
+    val pinId: Long,
+    val pinType: PinCategory,
+    val pinTitle: String,
+    val sympathyCount: Int,
+    val isSympathizedByMe: Boolean,
+    val writer: PinUser?,
+    val discount: String? = null,
+    val mainPinImageUrl: String? = null,
+    val storeImageUrl: String? = null,
+) {
+    val avatarImageUrl: String?
+        get() = when (pinType) {
+            PinCategory.SHOP -> storeImageUrl?.takeIf { it.isNotBlank() }
+                ?: writer?.imageUrl?.takeIf { it.isNotBlank() }
+            else -> writer?.imageUrl?.takeIf { it.isNotBlank() }
+                ?: storeImageUrl?.takeIf { it.isNotBlank() }
+        }
+}
+
+
+fun Pin.toPostSympathyContent(): PinPostSympathyContent {
+    val numericPinId = id.toLongOrNull() ?: 0L
+    val writer = when (val detail = this.detail) {
+        is AuthoredPinDetail -> detail.writer
+        else -> author
+    }
+    val mainImage = imageAttachments.firstOrNull { it.isMain }?.imageUrl?.takeIf { it.isNotBlank() }
+        ?: imageUrls.firstOrNull()
+    val storeImage = if (category == PinCategory.SHOP) {
+        imageUrls.lastOrNull()?.takeIf { it.isNotBlank() }
+    } else {
+        null
+    }
+    return PinPostSympathyContent(
+        pinId = numericPinId,
+        pinType = category,
+        pinTitle = title,
+        sympathyCount = sympathyCount,
+        isSympathizedByMe = isSympathizedByMe,
+        writer = writer,
+        discount = (detail as? ShopPinDetail)?.currentNews?.takeIf { it.isNotBlank() },
+        mainPinImageUrl = if (category != PinCategory.SHOP) mainImage else null,
+        storeImageUrl = storeImage,
+    )
+}
+
+/** POST API 값이 비어 있을 때 홈 데이터로 보완 (레이아웃은 홈 pinType 기준) */
+fun PinPostSympathyContent.withHomeFallback(
+    fallback: PinPostSympathyContent,
+    layoutCategory: PinCategory,
+): PinPostSympathyContent = copy(
+    pinType = layoutCategory,
+    pinTitle = pinTitle.ifBlank { fallback.pinTitle },
+    discount = discount?.takeIf { it.isNotBlank() } ?: fallback.discount,
+    mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() } ?: fallback.mainPinImageUrl,
+    storeImageUrl = storeImageUrl?.takeIf { it.isNotBlank() } ?: fallback.storeImageUrl,
+    writer = when (layoutCategory) {
+        PinCategory.SHOP -> null
+        else -> writer?.takeIf { w ->
+            !w.imageUrl.isNullOrBlank() || w.name.isNotBlank()
+        } ?: fallback.writer
+    },
 )
 
 sealed interface PinDetail {

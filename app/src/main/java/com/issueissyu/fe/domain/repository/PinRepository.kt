@@ -8,6 +8,7 @@ import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
+import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 
 interface PinRepository {
     suspend fun getPins(): List<Pin>
@@ -22,13 +23,13 @@ interface PinRepository {
 
     suspend fun getPinDetailHome(pinId: Long): Result<Pin>
 
-    suspend fun getPinDetailPost(pinId: Long): Result<Pin>
+    suspend fun getPinDetailPost(pinId: Long): Result<PinPostSympathyContent?>
 
     suspend fun getPinEmojis(pinId: Long): Result<PinEmojis>
 
     suspend fun getEmojiCandidates(): Result<List<PinEmojiCandidate>>
 
-    suspend fun applyPinEmoji(pinId: Long, emojiId: Int): Result<Int?>
+    suspend fun applyPinEmoji(pinId: Long, emojiId: Int): Result<Long?>
 
     suspend fun likePin(pinId: Long): Result<PinLike>
 

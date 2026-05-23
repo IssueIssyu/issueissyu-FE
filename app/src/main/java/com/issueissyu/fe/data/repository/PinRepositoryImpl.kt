@@ -2,7 +2,9 @@ package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.PinApi
 import com.issueissyu.fe.data.remote.dto.pin.toPin
+import com.issueissyu.fe.data.remote.dto.pin.toPinEmojiCandidate
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojis
+import com.issueissyu.fe.data.remote.dto.pin.toPostSympathyContent
 import com.issueissyu.fe.data.remote.dto.pin.toPinLike
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
@@ -11,9 +13,9 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
-import com.issueissyu.fe.domain.model.pin.PinEmoji
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
+import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.issueissyu.fe.domain.model.MapPinMarker
@@ -190,17 +192,12 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getPinDetailPost(pinId: Long): Result<Pin> {
+    override suspend fun getPinDetailPost(pinId: Long): Result<PinPostSympathyContent?> {
         return try {
             val response = pinApi.pinPost(pinId)
             if (response.isSuccess) {
-                val result = response.result
-                    ?: return Result.failure(
-                        Exception(
-                            response.message.ifBlank { "핀 상세 포스트 응답이 올바르지 않습니다." },
-                        ),
-                    )
-                Result.success(result.toPin())
+                val result = response.result ?: return Result.success(null)
+                Result.success(result.toPostSympathyContent())
             } else {
                 when (response.code) {
                     "PIN_POST_404" ->
@@ -283,11 +280,7 @@ class PinRepositoryImpl @Inject constructor(
             val response = pinApi.getPinEmojis(pinId)
             if (response.isSuccess) {
                 val result = response.result
-                    ?: return Result.failure(
-                        Exception(
-                            response.message.ifBlank { "핀 반응 목록 응답이 올바르지 않습니다." },
-                        ),
-                    )
+                    ?: return Result.success(PinEmojis(selectedEmojiId = null, emojis = emptyList()))
                 Result.success(result.toPinEmojis())
             } else {
                 when (response.code) {
@@ -322,7 +315,7 @@ class PinRepositoryImpl @Inject constructor(
         return try {
             val response = pinApi.getEmojiCandidates()
             if (response.isSuccess) {
-                Result.success(response.result.orEmpty().mapNotNull { it.toPinEmojiCandidate() })
+                Result.success(response.result.orEmpty().mapNotNull { dto -> dto.toPinEmojiCandidate() })
             } else {
                 Result.failure(Exception(response.message.ifBlank { "이모지 목록 조회에 실패했습니다." }))
             }
@@ -331,19 +324,34 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun applyPinEmoji(pinId: Long, emojiId: Int): Result<Int?> {
+    override suspend fun applyPinEmoji(pinId: Long, emojiId: Int): Result<Long?> {
         return try {
             val response = pinApi.applyPinEmoji(
                 pinId = pinId,
-                request = ApplyPinEmojiRequest(emojiId = emojiId),
+                request = ApplyPinEmojiRequest(emojiId = emojiId.toLong()),
             )
             if (response.isSuccess) {
                 Result.success(response.result?.selectedEmojiId)
             } else {
-                Result.failure(Exception(response.message.ifBlank { "이모지 반응 등록에 실패했습니다." }))
+                val message = when (response.code) {
+                    "PIN_NOT_FOUND_404" ->
+                        response.message.ifBlank { "존재하지 않는 핀입니다." }
+                    "EMOJI_NOT_FOUND_404_1" ->
+                        response.message.ifBlank { "존재하지 않는 이모지입니다." }
+                    "EMOJI_NOT_OWNED_403_1" ->
+                        response.message.ifBlank { "구매하지 않은 이모지입니다." }
+                    else ->
+                        response.message.ifBlank { "이모지 반응 등록에 실패했습니다." }
+                }
+                Result.failure(Exception(message))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(
+                Exception(
+                    e.message?.takeIf { it.isNotBlank() } ?: "이모지 반응 등록에 실패했습니다.",
+                    e,
+                ),
+            )
         }
     }
 
@@ -352,36 +360,6 @@ class PinRepositoryImpl @Inject constructor(
             pinId = pinId,
             pinLikeCount = pinLikeCount,
             isLike = isLike,
-        )
-    }
-
-    private fun PinEmojisResponse.toPinEmojis(): PinEmojis {
-        return PinEmojis(
-            selectedEmojiId = selectedEmojiId,
-            emojis = emojis.orEmpty().mapNotNull { it.toPinEmoji() },
-        )
-    }
-
-    private fun PinEmojiDto.toPinEmojiCandidate(): PinEmojiCandidate? {
-        if (emojiId == 0 || emojiImageUrl.isBlank()) return null
-        return PinEmojiCandidate(
-            emojiId = emojiId,
-            emojiImageUrl = emojiImageUrl,
-            isDefault = isDefault,
-            isOwned = isOwned,
-            productId = productId,
-        )
-    }
-
-    private fun PinEmojiDto.toPinEmoji(): PinEmoji? {
-        if (emojiId == 0 || emojiImageUrl.isBlank()) return null
-        return PinEmoji(
-            emojiId = emojiId,
-            emojiImageUrl = emojiImageUrl,
-            count = count,
-            isDefault = isDefault,
-            isOwned = isOwned,
-            productId = productId,
         )
     }
 

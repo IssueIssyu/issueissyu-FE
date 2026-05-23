@@ -3,6 +3,10 @@ package com.issueissyu.fe.ui.screens.pindetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
+import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
+import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
+import com.issueissyu.fe.domain.model.pin.withHomeFallback
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -18,14 +22,25 @@ import javax.inject.Inject
 enum class PinDetailTab {
     HOME,
     POST,
-    RESOLUTION
+    RESOLUTION,
 }
 
 data class PinDetailUiState(
     val isLoading: Boolean = true,
     val isDeleting: Boolean = false,
     val pin: Pin? = null,
+    val postSympathy: PinPostSympathyContent? = null,
+    val postEmojis: PinDetailPostEmojis = PinDetailPostEmojis(),
     val selectedTab: PinDetailTab = PinDetailTab.HOME,
+    val errorMessage: String? = null,
+)
+
+data class PinDetailEmojiPickerUiState(
+    val isVisible: Boolean = false,
+    val candidates: List<PinEmojiCandidate> = emptyList(),
+    val pickedEmojiId: Int? = null,
+    val isLoading: Boolean = false,
+    val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
 )
 
@@ -35,30 +50,38 @@ sealed interface PinDetailEffect {
 
 @HiltViewModel
 class PinDetailViewModel @Inject constructor(
-    private val pinRepository: PinRepository
+    private val pinRepository: PinRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PinDetailUiState())
     val uiState: StateFlow<PinDetailUiState> = _uiState.asStateFlow()
 
-    private val _effect = MutableSharedFlow<PinDetailEffect>(extraBufferCapacity = 1)
+    private val _emojiPickerUiState = MutableStateFlow(PinDetailEmojiPickerUiState())
+    val emojiPickerUiState: StateFlow<PinDetailEmojiPickerUiState> = _emojiPickerUiState.asStateFlow()
+
+    private val _effect = MutableSharedFlow<PinDetailEffect>(extraBufferCapacity = 8)
     val effect: SharedFlow<PinDetailEffect> = _effect.asSharedFlow()
 
+    private var routePinId: Long? = null
+    private var emojiImageById: Map<Long, String> = emptyMap()
+
     fun loadPin(pinId: String) {
-        val id = pinId.toLongOrNull()
-        if (id == null) {
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    pin = null,
-                    errorMessage = "잘못된 핀 ID입니다.",
-                )
-            }
+        val id = pinId.toLongOrNull() ?: run {
+            routePinId = null
+            _uiState.update { it.copy(isLoading = false, errorMessage = "잘못된 핀 ID입니다.") }
             return
         }
+        routePinId = id
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    postSympathy = null,
+                    postEmojis = PinDetailPostEmojis(),
+                )
+            }
 
             pinRepository.getPinDetailHome(id)
                 .onSuccess { pin ->
@@ -66,34 +89,175 @@ class PinDetailViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             pin = pin,
+                            postSympathy = pin.toPostSympathyContent(),
+                        )
+                    }
+                    loadPostTab(id)
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                }
+        }
+    }
+
+    private fun loadPostTab(pinId: Long) {
+        viewModelScope.launch {
+            pinRepository.getPinDetailPost(pinId).onSuccess { sympathy ->
+                val pin = _uiState.value.pin?.takeIf { it.id == pinId.toString() } ?: return@onSuccess
+                if (sympathy == null) return@onSuccess
+                _uiState.update {
+                    it.copy(
+                        postSympathy = sympathy.withHomeFallback(
+                            fallback = pin.toPostSympathyContent(),
+                            layoutCategory = pin.category,
+                        ),
+                    )
+                }
+            }
+            refreshPostEmojis(pinId)
+        }
+    }
+
+    private suspend fun refreshPostEmojis(pinId: Long): Result<Unit> {
+        return pinRepository.getPinEmojis(pinId).fold(
+            onSuccess = { data ->
+                _uiState.update {
+                    it.copy(postEmojis = data.toPinDetailPostEmojis(::lookupEmojiImage))
+                }
+                Result.success(Unit)
+            },
+            onFailure = { Result.failure(it) },
+        )
+    }
+
+    private fun lookupEmojiImage(emojiId: Long): String? = emojiImageById[emojiId]
+
+    fun selectTab(tab: PinDetailTab) {
+        _uiState.update { it.copy(selectedTab = tab) }
+        if (tab == PinDetailTab.POST) {
+            resolvePinId()?.let { pinId ->
+                viewModelScope.launch { refreshPostEmojis(pinId) }
+            }
+        }
+    }
+
+    fun toggleSympathy() {
+        val sympathy = _uiState.value.postSympathy ?: return
+        if (sympathy.isSympathizedByMe) return
+
+        viewModelScope.launch {
+            pinRepository.likePin(sympathy.pinId)
+                .onSuccess { like ->
+                    val current = _uiState.value.postSympathy ?: return@onSuccess
+                    _uiState.update {
+                        it.copy(
+                            postSympathy = current.copy(
+                                isSympathizedByMe = like.isLike,
+                                sympathyCount = like.pinLikeCount,
+                            ),
+                        )
+                    }
+                }
+                .onFailure { e -> showToast(e.message ?: "공감에 실패했습니다.") }
+        }
+    }
+
+    fun openEmojiPicker() {
+        val myEmojiId = _uiState.value.postEmojis.myEmojiId?.toInt()
+
+        _emojiPickerUiState.value = PinDetailEmojiPickerUiState(
+            isVisible = true,
+            pickedEmojiId = myEmojiId,
+            isLoading = true,
+        )
+
+        viewModelScope.launch {
+            pinRepository.getEmojiCandidates()
+                .onSuccess { candidates ->
+                    emojiImageById = candidates.associate { it.emojiId.toLong() to it.emojiImageUrl }
+                    _emojiPickerUiState.update {
+                        it.copy(
+                            candidates = candidates,
+                            isLoading = false,
                             errorMessage = null,
                         )
                     }
                 }
-                .onFailure { throwable ->
-                    _uiState.update {
+                .onFailure { e ->
+                    _emojiPickerUiState.update {
                         it.copy(
                             isLoading = false,
-                            pin = null,
-                            errorMessage = throwable.message?.takeIf { msg -> msg.isNotBlank() }
-                                ?: "핀 정보를 불러오지 못했습니다.",
+                            errorMessage = e.message ?: "이모지 목록을 불러오지 못했습니다.",
                         )
                     }
                 }
         }
     }
 
-    fun deletePin(pinId: String, onSuccess: () -> Unit) {
-        if (_uiState.value.isDeleting) return
+    fun closeEmojiPicker() {
+        _emojiPickerUiState.value = PinDetailEmojiPickerUiState()
+    }
 
-        val id = pinId.toLongOrNull() ?: run {
-            emitToast("잘못된 핀 ID입니다.")
+    fun pickEmojiInPicker(emojiId: Int) {
+        val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
+            ?: return
+        if (!candidate.canReact) {
+            showToast("구매가 필요한 이모지입니다.")
             return
         }
+        _emojiPickerUiState.update { it.copy(pickedEmojiId = emojiId) }
+    }
+
+    fun submitPickedEmoji() {
+        val pinId = resolvePinId() ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            return
+        }
+        val emojiId = _emojiPickerUiState.value.pickedEmojiId ?: run {
+            showToast("이모지를 선택해 주세요.")
+            return
+        }
+        if (_emojiPickerUiState.value.isSubmitting) return
+
+        viewModelScope.launch {
+            _emojiPickerUiState.update { it.copy(isSubmitting = true) }
+
+            val applyResult = pinRepository.applyPinEmoji(pinId, emojiId)
+            if (applyResult.isFailure) {
+                _emojiPickerUiState.update { it.copy(isSubmitting = false) }
+                val error = applyResult.exceptionOrNull()
+                showToast(error?.message ?: "이모지 반응 등록에 실패했습니다.")
+                return@launch
+            }
+
+            val newMyEmojiId = applyResult.getOrNull()
+            _uiState.update { state ->
+                state.copy(
+                    postEmojis = state.postEmojis.applyMySelection(
+                        myEmojiId = newMyEmojiId,
+                        emojiImageLookup = ::lookupEmojiImage,
+                    ),
+                )
+            }
+
+            val refreshResult = refreshPostEmojis(pinId)
+            if (refreshResult.isFailure) {
+                _emojiPickerUiState.update { it.copy(isSubmitting = false) }
+                val error = refreshResult.exceptionOrNull()
+                showToast(error?.message ?: "반응 목록을 갱신하지 못했습니다.")
+                return@launch
+            }
+
+            closeEmojiPicker()
+        }
+    }
+
+    fun deletePin(pinId: String, onSuccess: () -> Unit) {
+        if (_uiState.value.isDeleting) return
+        val id = pinId.toLongOrNull() ?: return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true) }
-
             pinRepository.deletePin(id)
                 .onSuccess {
                     _uiState.update { it.copy(isDeleting = false) }
@@ -101,20 +265,18 @@ class PinDetailViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isDeleting = false) }
-                    emitToast(
-                        e.message?.takeIf { it.isNotBlank() } ?: "핀 삭제에 실패했습니다.",
-                    )
+                    showToast(e.message ?: "핀 삭제에 실패했습니다.")
                 }
         }
     }
 
-    private fun emitToast(message: String) {
-        viewModelScope.launch {
-            _effect.emit(PinDetailEffect.ShowToast(message))
-        }
+    private fun resolvePinId(): Long? {
+        return routePinId
+            ?: _uiState.value.postSympathy?.pinId?.takeIf { it > 0L }
+            ?: _uiState.value.pin?.id?.toLongOrNull()
     }
 
-    fun selectTab(tab: PinDetailTab) {
-        _uiState.update { it.copy(selectedTab = tab) }
+    private fun showToast(message: String) {
+        _effect.tryEmit(PinDetailEffect.ShowToast(message))
     }
 }

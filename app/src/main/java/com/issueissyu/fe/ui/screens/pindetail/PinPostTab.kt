@@ -34,17 +34,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
-import com.issueissyu.fe.domain.model.pin.IssuePinDetail
-import com.issueissyu.fe.domain.model.pin.Pin
-import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
-import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.data.sample.PinSamples
+import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_3
@@ -83,19 +83,13 @@ private val DummyComments = listOf(
 
 @Composable
 fun PinPostTab(
-    pin: Pin,
+    sympathy: PinPostSympathyContent,
+    postEmojis: PinDetailPostEmojis,
     currentUserId: String,
-    onSympathyClick: (String) -> Unit,
-    onEmojiClick: (String) -> Unit,
-    @Suppress("UNUSED_PARAMETER") onCommentSubmit: (String, String) -> Unit,
+    onSympathyClick: () -> Unit,
+    onEmojiClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val writer = when (val detail = pin.detail) {
-        is IssuePinDetail -> detail.writer
-        is CommunicationPinDetail -> detail.writer
-        else -> null
-    }
-
     Column(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -103,17 +97,26 @@ fun PinPostTab(
                 .padding(horizontal = 28.dp, vertical = 20.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            SympathyRequestSection(
-                writer = writer,
-                pinTitle = pin.title,
-                sympathyCount = pin.sympathyCount,
-                isSympathizedByMe = pin.isSympathizedByMe,
-                onSympathyClick = { onSympathyClick(pin.id) }
-            )
+            when (sympathy.pinType) {
+                PinCategory.SHOP -> ShopSympathyRequestSection(
+                    content = sympathy,
+                    onSympathyClick = onSympathyClick,
+                )
+
+                else -> {
+                    SympathyRequestSection(
+                        content = sympathy,
+                        onSympathyClick = onSympathyClick,
+                    )
+                    sympathy.mainPinImageUrl?.let { imageUrl ->
+                        PostCoverImage(imageUrl = imageUrl)
+                    }
+                }
+            }
 
             EmojiReactionRow(
-                reactions = pin.emojiReactions,
-                onAddEmojiClick = { onEmojiClick(pin.id) }
+                postEmojis = postEmojis,
+                onAddEmojiClick = onEmojiClick,
             )
         }
 
@@ -138,49 +141,141 @@ fun PinPostTab(
     }
 }
 
-@Composable
-private fun SympathyRequestSection(
-    writer: PinUser?,
+private fun buildSympathyRequestMessage(
+    writerName: String?,
     pinTitle: String,
-    sympathyCount: Int,
-    isSympathizedByMe: Boolean,
-    onSympathyClick: () -> Unit
+) = buildAnnotatedString {
+    val bodyStyle = IssueTypo.Regular15.copy(color = Title).toSpanStyle()
+    val authorStyle = IssueTypo.ExtraBold15.copy(color = BrandColor).toSpanStyle()
+    val titleStyle = IssueTypo.ExtraBold15.copy(color = Title).toSpanStyle()
+
+    if (writerName.isNullOrBlank()) {
+        withStyle(titleStyle) {
+            append(pinTitle)
+        }
+        withStyle(bodyStyle) {
+            append("에 대해 공감을 요청하고 있어요")
+        }
+        return@buildAnnotatedString
+    }
+
+    withStyle(authorStyle) {
+        append(writerName)
+    }
+    withStyle(bodyStyle) {
+        append("님이 ")
+    }
+    withStyle(titleStyle) {
+        append(pinTitle)
+    }
+    withStyle(bodyStyle) {
+        append("에 대해 공감을 요청했어요")
+    }
+}
+
+@Composable
+private fun ShopSympathyRequestSection(
+    content: PinPostSympathyContent,
+    onSympathyClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        WriterAvatar(imageUrl = writer?.imageUrl, size = 56.dp)
+        WriterAvatar(imageUrl = content.avatarImageUrl, size = 56.dp)
 
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 4.dp,
-                        topEnd = 18.dp,
-                        bottomEnd = 18.dp,
-                        bottomStart = 18.dp
+        Column(modifier = Modifier.weight(1f)) {
+            SpeechBubble {
+                val discount = content.discount
+                if (!discount.isNullOrBlank()) {
+                    Text(
+                        text = discount,
+                        style = IssueTypo.ExtraBold15.copy(color = Title),
+                        lineHeight = 22.sp,
                     )
-                )
-                .background(Gray_1)
-                .padding(horizontal = 18.dp, vertical = 16.dp)
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                val text = if (writer != null) {
-                    "${writer.name}님이 \"$pinTitle\"에 대해 공감을 요청했어요"
-                } else {
-                    "이 핀에 대한 공감을 요청하고 있어요"
+                } else if (content.pinTitle.isNotBlank()) {
+                    Text(
+                        text = content.pinTitle,
+                        style = IssueTypo.ExtraBold15.copy(color = Title),
+                        lineHeight = 22.sp,
+                    )
                 }
+                SympathyPill(
+                    sympathyCount = content.sympathyCount,
+                    isSympathizedByMe = content.isSympathizedByMe,
+                    onClick = onSympathyClick,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpeechBubble(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val bubbleShape = RoundedCornerShape(
+        topStart = 4.dp,
+        topEnd = 18.dp,
+        bottomEnd = 18.dp,
+        bottomStart = 18.dp
+    )
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .border(1.dp, Gray_3, bubbleShape)
+            .background(Gray_1, bubbleShape)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun PostCoverImage(
+    imageUrl: String,
+    modifier: Modifier = Modifier,
+) {
+    AsyncImage(
+        model = imageUrl,
+        contentDescription = "핀 대표 이미지",
+        modifier = modifier
+            .fillMaxWidth()
+            .height(160.dp)
+            .clip(RoundedCornerShape(12.dp)),
+        contentScale = ContentScale.Crop,
+    )
+}
+
+@Composable
+private fun SympathyRequestSection(
+    content: PinPostSympathyContent,
+    onSympathyClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        WriterAvatar(imageUrl = content.avatarImageUrl, size = 56.dp)
+
+        Column(modifier = Modifier.weight(1f)) {
+            SpeechBubble {
                 Text(
-                    text = text,
+                    text = buildSympathyRequestMessage(
+                        writerName = content.writer?.name,
+                        pinTitle = content.pinTitle,
+                    ),
                     style = IssueTypo.Regular15.copy(color = Title),
                     lineHeight = 22.sp
                 )
                 SympathyPill(
-                    sympathyCount = sympathyCount,
-                    isSympathizedByMe = isSympathizedByMe,
+                    sympathyCount = content.sympathyCount,
+                    isSympathizedByMe = content.isSympathizedByMe,
                     onClick = onSympathyClick
                 )
             }
@@ -249,26 +344,30 @@ private fun SympathyPill(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EmojiReactionRow(
-    reactions: List<PinEmojiReaction>,
-    onAddEmojiClick: () -> Unit
+    postEmojis: PinDetailPostEmojis,
+    onAddEmojiClick: () -> Unit,
 ) {
+    val visibleChips = postEmojis.visibleChips
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (reactions.isEmpty()) {
+        if (visibleChips.isEmpty()) {
             Text(
                 text = "아직 이모지 반응이 없어요.",
                 style = IssueTypo.Regular12.copy(color = Gray_5)
             )
         }
-        // TODO: 이모지 선택 BottomSheet 연결
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            reactions
-                .sortedByDescending { it.count }
-                .forEach { reaction ->
-                    EmojiReactionChip(reaction = reaction)
+            visibleChips
+                .sortedWith(
+                    compareByDescending<PinDetailEmojiChip> { it.isMine }
+                        .thenByDescending { it.count },
+                )
+                .forEach { chip ->
+                    EmojiReactionChip(chip = chip)
                 }
             AddEmojiChip(onClick = onAddEmojiClick)
         }
@@ -276,13 +375,13 @@ private fun EmojiReactionRow(
 }
 
 @Composable
-private fun EmojiReactionChip(reaction: PinEmojiReaction) {
-    val backgroundColor = if (reaction.reactedByMe) {
+private fun EmojiReactionChip(chip: PinDetailEmojiChip) {
+    val backgroundColor = if (chip.isMine) {
         BrandColor.copy(alpha = 0.12f)
     } else {
         Gray_3
     }
-    val borderColor = if (reaction.reactedByMe) BrandColor else Color.Transparent
+    val borderColor = if (chip.isMine) BrandColor else Color.Transparent
 
     Row(
         modifier = Modifier
@@ -292,16 +391,24 @@ private fun EmojiReactionChip(reaction: PinEmojiReaction) {
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // TODO: emojiId → 실제 이모지 이미지/유니코드 매핑
-        Box(
-            modifier = Modifier
-                .size(16.dp)
-                .clip(CircleShape)
-                .background(Gray_4)
-        )
+        if (!chip.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = chip.imageUrl,
+                contentDescription = "이모지",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(16.dp),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(Gray_4),
+            )
+        }
         Spacer(modifier = Modifier.width(6.dp))
         Text(
-            text = "${reaction.count}",
+            text = "${chip.count}",
             style = IssueTypo.Regular12.copy(color = TextColor)
         )
     }
@@ -499,11 +606,14 @@ private fun CommentInputBar(
 private fun PinPostTabPreview_Empty() {
     IssueissyuTheme {
         PinPostTab(
-            pin = PinSamples.findById(PinSamples.CommunicationPlainPinId),
+            sympathy = PinSamples.findById(PinSamples.IssuePinId).toPostSympathyContent().copy(
+                writer = null,
+                pinTitle = "",
+            ),
+            postEmojis = PinDetailPostEmojis(),
             currentUserId = DummyMyAuthorId,
             onSympathyClick = {},
             onEmojiClick = {},
-            onCommentSubmit = { _, _ -> }
         )
     }
 }
@@ -511,13 +621,32 @@ private fun PinPostTabPreview_Empty() {
 @Preview(name = "POST · 데이터 있음", showBackground = true, heightDp = 900)
 @Composable
 private fun PinPostTabPreview_Filled() {
+    val samplePin = PinSamples.findById(PinSamples.ShopPinId)
     IssueissyuTheme {
         PinPostTab(
-            pin = PinSamples.findById(PinSamples.IssuePinId),
+            sympathy = PinPostSympathyContent(
+                pinId = samplePin.id.toLongOrNull() ?: 1L,
+                pinType = PinCategory.SHOP,
+                pinTitle = samplePin.title,
+                sympathyCount = samplePin.sympathyCount,
+                isSympathizedByMe = samplePin.isSympathizedByMe,
+                writer = null,
+                discount = "전 품목 50% 할인",
+                storeImageUrl = samplePin.imageUrls.firstOrNull(),
+            ),
+            postEmojis = PinDetailPostEmojis(
+                chips = samplePin.emojiReactions.map { reaction ->
+                    PinDetailEmojiChip(
+                        emojiId = reaction.emojiId.toLongOrNull() ?: 0L,
+                        count = reaction.count,
+                        imageUrl = reaction.emojiImageUrl,
+                        isMine = reaction.reactedByMe,
+                    )
+                },
+            ),
             currentUserId = DummyMyAuthorId,
             onSympathyClick = {},
             onEmojiClick = {},
-            onCommentSubmit = { _, _ -> }
         )
     }
 }

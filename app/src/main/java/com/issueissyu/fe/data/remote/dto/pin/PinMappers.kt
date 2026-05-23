@@ -1,6 +1,7 @@
 package com.issueissyu.fe.data.remote.dto.pin
 
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
@@ -12,9 +13,12 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.model.pin.PinDetail
 import com.issueissyu.fe.domain.model.pin.PinEmoji
+import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinImageRef
 import com.issueissyu.fe.domain.model.pin.PinLike
+import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
@@ -23,6 +27,26 @@ data class PinDetailHomeImages(
     val attachments: List<PinImageRef>,
     val displayUrls: List<String>
 )
+fun PinDetailPostResponse.toPostSympathyContent(): PinPostSympathyContent {
+    val writer = pinUserId?.takeIf { it.isNotBlank() }?.let { id ->
+        PinUser(
+            id = id,
+            name = pinUserNickname?.takeIf { it.isNotBlank() } ?: "알 수 없음",
+            imageUrl = pinUserProfile,
+        )
+    }
+    return PinPostSympathyContent(
+        pinId = pinId,
+        pinType = pinType.toPinCategoryOrNull() ?: PinCategory.ISSUE,
+        pinTitle = pinTitle,
+        sympathyCount = likeCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+        isSympathizedByMe = isLike,
+        writer = writer,
+        discount = discount?.takeIf { it.isNotBlank() },
+        mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() },
+        storeImageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
+    )
+}
 
 fun PinDetailHomeResponse.toPin(
     coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
@@ -64,6 +88,28 @@ fun PinEmojisResponse.toPinEmojis(): PinEmojis {
     return PinEmojis(
         selectedEmojiId = selectedEmojiId,
         emojis = emojis.orEmpty().mapNotNull { it.toPinEmoji() },
+    )
+}
+
+fun PinEmojis.toEmojiReactions(): List<PinEmojiReaction> {
+    return emojis.map { emoji ->
+        PinEmojiReaction(
+            emojiId = emoji.emojiId.toString(),
+            count = emoji.count,
+            reactedByMe = emoji.emojiId == selectedEmojiId,
+            emojiImageUrl = emoji.emojiImageUrl.takeIf { it.isNotBlank() },
+        )
+    }
+}
+
+fun PinEmojiDto.toPinEmojiCandidate(): PinEmojiCandidate? {
+    if (emojiId == 0L || emojiId > Int.MAX_VALUE) return null
+    return PinEmojiCandidate(
+        emojiId = emojiId.toInt(),
+        emojiImageUrl = emojiImageUrl,
+        isDefault = isDefault,
+        isOwned = owned,
+        productId = productId,
     )
 }
 
@@ -115,12 +161,17 @@ private fun PinDetailHomeResponse.toPinImages(): PinDetailHomeImages {
 }
 
 private fun String.toPinCategory(): PinCategory {
+    return toPinCategoryOrNull()
+        ?: throw IllegalArgumentException("Unknown pin type: $this")
+}
+
+private fun String.toPinCategoryOrNull(): PinCategory? {
     return when (trim().uppercase()) {
         "ISSUE" -> PinCategory.ISSUE
         "COMMUNICATION" -> PinCategory.COMMUNICATION
         "STORE", "SHOP" -> PinCategory.SHOP
         "FESTIVAL" -> PinCategory.FESTIVAL
-        else -> throw IllegalArgumentException("Unknown pin type: $this")
+        else -> null
     }
 }
 
@@ -135,13 +186,13 @@ private fun String?.toResolutionStatus(): ResolutionStatus? {
 }
 
 private fun PinEmojiDto.toPinEmoji(): PinEmoji? {
-    if (emojiId == 0 || emojiImageUrl.isBlank()) return null
+    if (emojiId == 0L || emojiImageUrl.isBlank()) return null
     return PinEmoji(
         emojiId = emojiId,
         emojiImageUrl = emojiImageUrl,
         count = count,
         isDefault = isDefault,
-        isOwned = isOwned,
+        isOwned = owned,
         productId = productId,
     )
 }
