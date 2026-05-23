@@ -17,13 +17,13 @@ class CommunityRepositoryImpl @Inject constructor(
 
     override fun getCommunityFeed(
         tab: CommunityTab,
-        region: String?,
+        locationId: Long?,
         cursor: String?,
         size: Int
     ): Flow<CommunityFeed> = flow {
         val response = communityApi.getCommunityFeed(
             tab = tab.toApiTab(),
-            region = region,
+            locationId = locationId,
             cursor = cursor,
             size = size,
         )

@@ -7,6 +7,7 @@ import com.issueissyu.fe.domain.model.LocationRegionGroup
 data class CommunityUiState(
     val selectedCategory: CommunityTab = CommunityTab.ALL,
     val region: String = "",
+    val locationId: Long? = null,
     val isRegionSelectedByUser: Boolean = false,
     val regionGroups: List<LocationRegionGroup> = emptyList(),
     val isRegionLoading: Boolean = false,

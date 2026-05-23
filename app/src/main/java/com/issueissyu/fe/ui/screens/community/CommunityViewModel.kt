@@ -52,10 +52,12 @@ class CommunityViewModel @Inject constructor(
 
     fun onRegionSelected(region: String) {
         val communityRegion = region.toCommunityRegion()
-        if (_uiState.value.region == communityRegion) return
+        val locationId = communityRegion.toLocationId()
+        if (_uiState.value.region == communityRegion && _uiState.value.locationId == locationId) return
         _uiState.update {
             it.copy(
                 region = communityRegion,
+                locationId = locationId,
                 isRegionSelectedByUser = true,
                 nextCursor = null,
                 hasNext = false,
@@ -71,14 +73,14 @@ class CommunityViewModel @Inject constructor(
 
     private fun loadFeed(isRefreshing: Boolean = false) {
         val apiRegion = _uiState.value.region.toCommunityRegion()
-        if (apiRegion.isBlank()) return
+        val locationId = _uiState.value.locationId
         if (_uiState.value.region != apiRegion) {
             _uiState.update { it.copy(region = apiRegion) }
         }
         viewModelScope.launch {
             getCommunityFeedUseCase(
                 tab = _uiState.value.selectedCategory,
-                region = apiRegion
+                locationId = locationId
             )
                 .onStart {
                     _uiState.update { it.copy(isLoading = !isRefreshing, isRefreshing = isRefreshing) }
@@ -94,6 +96,7 @@ class CommunityViewModel @Inject constructor(
                                 hotPreviews = feed.hotPreviews,
                                 recentNews = feed.recentNews,
                                 feedItems = emptyList(),
+                                region = feed.region.ifBlank { it.region },
                                 nextCursor = feed.nextCursor,
                                 hasNext = feed.hasNext,
                                 isLoading = false,
@@ -103,6 +106,7 @@ class CommunityViewModel @Inject constructor(
                         } else {
                             it.copy(
                                 feedItems = feed.items,
+                                region = feed.region.ifBlank { it.region },
                                 nextCursor = feed.nextCursor,
                                 hasNext = feed.hasNext,
                                 isLoading = false,
@@ -140,10 +144,13 @@ class CommunityViewModel @Inject constructor(
 
             locationRepository.getUserLocation()
                 .onSuccess { region ->
+                    val defaultRegion = regions?.defaultCommunityRegion()
+                        ?: region.toCommunityRegion()
                     _uiState.update {
                         it.copy(
-                            region = regions?.defaultCommunityRegion()
-                                ?: region.toCommunityRegion(),
+                            region = defaultRegion,
+                            locationId = regions?.userRegion?.locationId
+                                ?: defaultRegion.toLocationId(),
                             isRegionSelectedByUser = false
                         )
                     }
@@ -157,6 +164,8 @@ class CommunityViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 region = communityRegion,
+                                locationId = regions?.userRegion?.locationId
+                                    ?: communityRegion.toLocationId(),
                                 isRegionSelectedByUser = false
                             )
                         }
@@ -201,5 +210,17 @@ class CommunityViewModel @Inject constructor(
                 }?.let { region -> group.toCommunityRegion(region.location) }
             }
             ?: source
+    }
+
+    private fun String.toLocationId(): Long? {
+        val source = trim()
+        if (source.isBlank()) return null
+
+        return _uiState.value.regionGroups
+            .firstNotNullOfOrNull { group ->
+                group.subLocations.firstOrNull { region ->
+                    region.location == source || group.toCommunityRegion(region.location) == source
+                }?.locationId
+            }
     }
 }

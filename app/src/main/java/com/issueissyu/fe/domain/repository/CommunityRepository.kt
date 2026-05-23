@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 interface CommunityRepository {
     fun getCommunityFeed(
         tab: CommunityTab,
-        region: String?,
+        locationId: Long?,
         cursor: String?,
         size: Int
     ): Flow<CommunityFeed>

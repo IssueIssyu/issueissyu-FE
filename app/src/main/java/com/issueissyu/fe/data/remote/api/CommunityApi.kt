@@ -11,7 +11,7 @@ interface CommunityApi {
     @GET("api/communities")
     suspend fun getCommunityFeed(
         @Query("tab") tab: String? = null,
-        @Query("region") region: String? = null,
+        @Query("locationId") locationId: Long? = null,
         @Query("cursor") cursor: String? = null,
         @Query("size") size: Int? = null,
     ): BaseResponse<CommunityFeedResponse?>
