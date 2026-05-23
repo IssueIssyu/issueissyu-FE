@@ -32,8 +32,8 @@ android {
         applicationId = "com.issueissyu.fe"
         minSdk = 26
         targetSdk = 35
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -131,4 +131,6 @@ dependencies {
     implementation(libs.firebase.messaging)
 
     implementation(libs.androidx.security.crypto)
+
+    implementation(libs.play.billing.ktx)
 }
