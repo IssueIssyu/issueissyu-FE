@@ -26,7 +26,7 @@ interface MapApi {
 
     @GET("api/map/patch-note")
     suspend fun getPatchNotes(
-        @Query("region") region: String? = null,
+        @Query("locationId") locationId: Long? = null,
         @Query("size") size: Int? = null,
         @Query("cursor") cursor: String? = null,
     ): BaseResponse<PatchNoteResponse?>

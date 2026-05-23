@@ -73,12 +73,12 @@ class MapRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getPatchNotes(
-        region: String?,
+        locationId: Long?,
         size: Int?,
         cursor: String?,
     ): Result<PatchNotePage> {
         return try {
-            val response = mapApi.getPatchNotes(region = region, size = size, cursor = cursor)
+            val response = mapApi.getPatchNotes(locationId = locationId, size = size, cursor = cursor)
             if (response.isSuccess) {
                 val result = response.result
                     ?: return Result.failure(Exception(response.message.ifBlank { "패치노트 응답이 올바르지 않습니다." }))

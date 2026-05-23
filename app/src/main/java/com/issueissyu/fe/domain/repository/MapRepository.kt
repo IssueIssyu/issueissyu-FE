@@ -16,7 +16,7 @@ interface MapRepository {
     suspend fun getPinCard(pinId: String): Result<Pin>
 
     suspend fun getPatchNotes(
-        region: String? = null,
+        locationId: Long? = null,
         size: Int? = null,
         cursor: String? = null,
     ): Result<PatchNotePage>
