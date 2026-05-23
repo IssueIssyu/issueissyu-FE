@@ -51,6 +51,7 @@ import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 import java.time.Instant
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -391,30 +392,30 @@ private fun CommunityDetailMetaSection(detail: CommunityDetail) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            WriterAvatar(imageUrl = detail.writerProfileUrl, size = 40.dp)
+            WriterAvatar(imageUrl = detail.writerProfileUrl, size = 48.dp)
             Spacer(modifier = Modifier.width(12.dp))
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = detail.writerNickname ?: "익명",
-                    style = IssueTypo.Bold12.copy(color = Title)
+                    style = IssueTypo.Bold18.copy(color = Title, fontSize = 16.sp)
                 )
                 Text(
                     text = "${formatTimestamp(detail.createdAt)} · 조회 ${detail.viewCount} · 공감 ${detail.likeCount}",
-                    style = IssueTypo.Regular12.copy(color = Gray_6)
+                    style = IssueTypo.Regular15.copy(color = Gray_6, fontSize = 14.sp)
                 )
             }
         }
 
         if (detail.kind == CommunityItemKind.ISSUE && detail.issueStatusText != null) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Surface(
-                shape = RoundedCornerShape(4.dp),
-                color = Orange.copy(alpha = 0.1f)
+                shape = RoundedCornerShape(10.dp),
+                color = Orange
             ) {
                 Text(
                     text = detail.issueStatusText,
-                    style = IssueTypo.Bold12.copy(color = Orange, fontSize = 10.sp),
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    style = IssueTypo.Bold12.copy(color = White, fontSize = 13.sp),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
                 )
             }
         }
@@ -838,7 +839,11 @@ private fun formatTimestamp(raw: String?): String {
             Instant.parse(raw)
                 .atZone(ZoneId.systemDefault())
                 .format(pattern)
-        }.getOrDefault(raw ?: "")
+        }.getOrElse {
+            runCatching {
+                LocalDateTime.parse(raw).format(pattern)
+            }.getOrDefault(raw)
+        }
     }
 }
 
