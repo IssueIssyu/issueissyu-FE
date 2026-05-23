@@ -30,9 +30,15 @@ class CommunityViewModel @Inject constructor(
         loadInitialRegionAndFeed()
     }
 
-    fun onTabSelected(tab: CommunityTab) {
-        if (_uiState.value.selectedTab == tab) return
-        _uiState.update { it.copy(selectedTab = tab) }
+    fun onCategorySelected(category: CommunityTab) {
+        if (_uiState.value.selectedCategory == category) return
+        _uiState.update {
+            it.copy(
+                selectedCategory = category,
+                nextCursor = null,
+                hasNext = false
+            )
+        }
         loadFeed()
     }
 
@@ -53,6 +59,9 @@ class CommunityViewModel @Inject constructor(
                 isRegionSelectedByUser = true,
                 nextCursor = null,
                 hasNext = false,
+                storePromotions = emptyList(),
+                hotPreviews = emptyList(),
+                recentNews = emptyList(),
                 feedItems = emptyList(),
                 isLoading = true
             )
@@ -68,7 +77,7 @@ class CommunityViewModel @Inject constructor(
         }
         viewModelScope.launch {
             getCommunityFeedUseCase(
-                tab = _uiState.value.selectedTab,
+                tab = _uiState.value.selectedCategory,
                 region = apiRegion
             )
                 .onStart {
@@ -79,14 +88,28 @@ class CommunityViewModel @Inject constructor(
                 }
                 .collect { feed ->
                     _uiState.update {
-                        it.copy(
-                            feedItems = feed.items,
-                            nextCursor = feed.nextCursor,
-                            hasNext = feed.hasNext,
-                            isLoading = false,
-                            isRefreshing = false,
-                            error = null
-                        )
+                        if (it.selectedCategory == CommunityTab.ALL) {
+                            it.copy(
+                                storePromotions = feed.storePromotions,
+                                hotPreviews = feed.hotPreviews,
+                                recentNews = feed.recentNews,
+                                feedItems = emptyList(),
+                                nextCursor = feed.nextCursor,
+                                hasNext = feed.hasNext,
+                                isLoading = false,
+                                isRefreshing = false,
+                                error = null
+                            )
+                        } else {
+                            it.copy(
+                                feedItems = feed.items,
+                                nextCursor = feed.nextCursor,
+                                hasNext = feed.hasNext,
+                                isLoading = false,
+                                isRefreshing = false,
+                                error = null
+                            )
+                        }
                     }
                 }
         }

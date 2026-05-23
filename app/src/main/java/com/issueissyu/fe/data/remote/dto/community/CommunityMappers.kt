@@ -12,19 +12,23 @@ private const val DEFAULT_COMMUNITY_TITLE = "제목 없음"
 
 @Suppress("unused") // TODO: 실제 CommunityApi 연결 시 사용 예정
 fun CommunityFeedResponse.toCommunityFeed(): CommunityFeed {
-    val hotIds = hotPreviews.orEmpty().mapNotNull { it.communityId }.toSet()
+    val storeItems = storePromotions.orEmpty().map { it.toCommunityFeedItem() }
+    val hotItems = hotPreviews.orEmpty().map { it.toCommunityFeedItem(isHot = true) }
+    val recentItems = recentNews?.content.orEmpty().map { it.toCommunityFeedItem() }
+    val hotIds = hotItems.map { it.communityId }.toSet()
     val items = when {
         recentNews?.content != null -> recentNews.content.map { item ->
             item.toCommunityFeedItem(isHot = item.communityId in hotIds)
         }
         content != null -> content.map { it.toCommunityFeedItem() }
-        else -> (storePromotions.orEmpty() + hotPreviews.orEmpty())
-            .distinctBy { it.communityId }
-            .map { item -> item.toCommunityFeedItem(isHot = item.communityId in hotIds) }
+        else -> (storeItems + hotItems).distinctBy { it.communityId }
     }
 
     return CommunityFeed(
         items = items,
+        storePromotions = storeItems,
+        hotPreviews = hotItems,
+        recentNews = recentItems,
         region = this.recentNews?.region ?: this.region ?: "",
         nextCursor = this.recentNews?.nextCursor ?: this.nextCursor,
         hasNext = this.recentNews?.hasNext ?: this.hasNext ?: false
