@@ -42,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -54,6 +53,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight.Companion.Medium
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -562,91 +562,65 @@ private fun CommentItem(
     onDeleteClick: () -> Unit
 ) {
     val formattedTime = formatPinCommentCreatedAt(createdAt)
+    val timeLabel = if (edited) "$formattedTime · 수정됨" else formattedTime
     val timeStyle = IssueTypo.Regular12.copy(color = Gray_5)
     val timeGap = 8.dp
 
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val density = LocalDensity.current
-        val textMeasurer = rememberTextMeasurer()
-        val timeWidth = remember(formattedTime, timeStyle) {
-            with(density) {
-                textMeasurer
-                    .measure(AnnotatedString(formattedTime), style = timeStyle)
-                    .size
-                    .width
-                    .toDp()
-            }
-        }
-        val bubbleAreaMax = (maxWidth - timeWidth - timeGap).coerceAtLeast(0.dp)
-        var contentBlockWidth by remember(content, edited) { mutableStateOf<Dp?>(null) }
-
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
         Row(
-            modifier = Modifier.wrapContentWidth(Alignment.Start),
-            verticalAlignment = Alignment.Bottom,
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = bubbleAreaMax)
-                    .wrapContentWidth(Alignment.Start)
-                    .then(
-                        contentBlockWidth?.let { Modifier.width(it) } ?: Modifier,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .then(
-                            if (contentBlockWidth != null) {
-                                Modifier.fillMaxWidth()
-                            } else {
-                                Modifier.wrapContentWidth()
-                            },
-                        ),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        ProfileImageFrame(
-                            size = 25.dp,
-                            imageUrl = authorImageUrl,
-                            contentDescription = "댓글 작성자 프로필",
-                            borderWidth = 1.dp,
-                        )
-                        Text(
-                            text = authorName,
-                            style = IssueTypo.Bold12.copy(color = Title),
-                        )
-                    }
-                    if (edited) {
-                        Text(
-                            text = "수정됨",
-                            style = IssueTypo.Regular12.copy(color = Gray_5),
-                        )
-                    }
-                }
+            ProfileImageFrame(
+                size = 25.dp,
+                imageUrl = authorImageUrl,
+                contentDescription = "댓글 작성자 프로필",
+                borderWidth = 1.dp,
+            )
+            Text(
+                text = authorName,
+                style = IssueTypo.Bold12.copy(color = Title),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
 
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val density = LocalDensity.current
+            val textMeasurer = rememberTextMeasurer()
+            val timeWidth = remember(timeLabel, timeStyle) {
+                with(density) {
+                    textMeasurer
+                        .measure(AnnotatedString(timeLabel), style = timeStyle)
+                        .size
+                        .width
+                        .toDp()
+                }
+            }
+            val bubbleAreaMax = (maxWidth - timeWidth - timeGap).coerceAtLeast(0.dp)
+
+            Row(
+                modifier = Modifier.wrapContentWidth(Alignment.Start),
+                verticalAlignment = Alignment.Bottom,
+            ) {
                 CommentBubble(
                     content = content,
                     maxOuterWidth = bubbleAreaMax,
                     isMine = isMine,
                     onEditClick = onEditClick,
                     onDeleteClick = onDeleteClick,
-                    modifier = Modifier.onSizeChanged { size ->
-                        val measuredWidth = with(density) { size.width.toDp() }
-                        if (contentBlockWidth != measuredWidth) {
-                            contentBlockWidth = measuredWidth
-                        }
-                    },
+                )
+                Spacer(modifier = Modifier.width(timeGap))
+                Text(
+                    text = timeLabel,
+                    style = timeStyle,
                 )
             }
-            Spacer(modifier = Modifier.width(timeGap))
-            Text(
-                text = formattedTime,
-                style = timeStyle,
-            )
         }
     }
 }
