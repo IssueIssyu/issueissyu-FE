@@ -28,7 +28,12 @@ import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,14 +42,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_3
@@ -57,38 +63,22 @@ import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 
-// TODO: PinCommentRepository 연결 후 댓글 목록 조회
-private const val DummyMyAuthorId = "user1_id"
-private const val DummyOtherAuthorId = "user2_id"
-
-private data class CommentPlaceholder(
-    val authorId: String,
-    val authorName: String,
-    val authorImageUrl: String? = null,
-    val content: String
-)
-
-private val DummyComments = listOf(
-    CommentPlaceholder(
-        authorId = DummyMyAuthorId,
-        authorName = "현재 사용자",
-        content = "여기에 내가 쓴 댓글이 표시될 예정이에요."
-    ),
-    CommentPlaceholder(
-        authorId = DummyOtherAuthorId,
-        authorName = "다른 사용자",
-        content = "여기에 다른 사람 댓글이 표시될 예정이에요."
-    )
-)
-
 @Composable
 fun PinPostTab(
     sympathy: PinPostSympathyContent,
     postEmojis: PinDetailPostEmojis,
-    currentUserId: String,
+    comments: List<PinComment>,
+    isCommentsLoading: Boolean,
+    isCommentSubmitting: Boolean,
+    commentInputRevision: Int,
+    editingCommentId: Long?,
     onSympathyClick: () -> Unit,
     onEmojiClick: () -> Unit,
-    modifier: Modifier = Modifier
+    onCommentSubmit: (String) -> Unit,
+    onCommentEdit: (Long) -> Unit,
+    onCommentEditCancel: () -> Unit,
+    onCommentDelete: (Long) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         Column(
@@ -123,17 +113,25 @@ fun PinPostTab(
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
         CommentList(
-            comments = DummyComments,
-            currentUserId = currentUserId,
+            comments = comments,
+            isLoading = isCommentsLoading,
+            editingCommentId = editingCommentId,
+            onCommentEdit = onCommentEdit,
+            onCommentDelete = onCommentDelete,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         )
 
+        val editingComment = comments.firstOrNull { it.commentId == editingCommentId }
         CommentInputBar(
-            onSubmit = {
-                // TODO: 입력값을 캡처해 onCommentSubmit(pin.id, content)으로 전달
-            },
+            resetKey = commentInputRevision,
+            editingCommentId = editingCommentId,
+            initialText = editingComment?.content.orEmpty(),
+            enabled = !isCommentSubmitting,
+            isEditing = editingCommentId != null,
+            onCancelEdit = onCommentEditCancel,
+            onSubmit = onCommentSubmit,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 28.dp, end = 28.dp, bottom = 30.dp)
@@ -183,7 +181,10 @@ private fun ShopSympathyRequestSection(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        WriterAvatar(imageUrl = content.avatarImageUrl, size = 56.dp)
+        ProfileImageFrame(
+            size = 66.dp,
+            imageUrl = content.avatarImageUrl,
+        )
 
         Column(modifier = Modifier.weight(1f)) {
             SpeechBubble {
@@ -261,7 +262,10 @@ private fun SympathyRequestSection(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.Top
     ) {
-        WriterAvatar(imageUrl = content.avatarImageUrl, size = 56.dp)
+        ProfileImageFrame(
+            size = 66.dp,
+            imageUrl = content.avatarImageUrl,
+        )
 
         Column(modifier = Modifier.weight(1f)) {
             SpeechBubble {
@@ -280,30 +284,6 @@ private fun SympathyRequestSection(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun WriterAvatar(
-    imageUrl: String?,
-    modifier: Modifier = Modifier,
-    size: Dp = 40.dp
-) {
-    // TODO: PinHomeTab WriterAvatar와 공통화 검토
-    val avatarModifier = modifier
-        .size(size)
-        .clip(CircleShape)
-        .background(Gray_3)
-
-    if (imageUrl.isNullOrBlank()) {
-        Box(modifier = avatarModifier)
-    } else {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "작성자 프로필",
-            modifier = avatarModifier,
-            contentScale = ContentScale.Crop
-        )
     }
 }
 
@@ -438,13 +418,14 @@ private fun AddEmojiChip(onClick: () -> Unit) {
     }
 }
 
-// TODO: PinCommentRepository 연결 후 실제 댓글 목록 전달
-@Suppress("SameParameterValue")
 @Composable
 private fun CommentList(
-    comments: List<CommentPlaceholder>,
-    currentUserId: String,
-    modifier: Modifier = Modifier
+    comments: List<PinComment>,
+    isLoading: Boolean,
+    editingCommentId: Long?,
+    onCommentEdit: (Long) -> Unit,
+    onCommentDelete: (Long) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.padding(horizontal = 28.dp)) {
         Spacer(modifier = Modifier.height(16.dp))
@@ -454,39 +435,55 @@ private fun CommentList(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        if (comments.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "첫 댓글을 남겨보세요!",
-                    style = IssueTypo.Regular15.copy(color = Gray_5)
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                contentPadding = PaddingValues(bottom = 16.dp)
-            ) {
-                items(comments) { comment ->
-                    CommentItem(
-                        authorName = comment.authorName,
-                        authorImageUrl = comment.authorImageUrl,
-                        content = comment.content,
-                        isMine = comment.authorId == currentUserId,
-                        onEditClick = {
-                            // TODO: PinCommentRepository.update 연결
-                        },
-                        onDeleteClick = {
-                            // TODO: PinCommentRepository.delete 연결
-                        }
+        when {
+            isLoading && comments.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "댓글을 불러오는 중...",
+                        style = IssueTypo.Regular15.copy(color = Gray_5),
                     )
+                }
+            }
+
+            comments.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "첫 댓글을 남겨보세요!",
+                        style = IssueTypo.Regular15.copy(color = Gray_5),
+                    )
+                }
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                ) {
+                    items(comments, key = { it.commentId }) { comment ->
+                        CommentItem(
+                            authorName = comment.nickname,
+                            authorImageUrl = comment.profileImageUrl,
+                            content = comment.content,
+                            edited = comment.edited,
+                            isMine = comment.isMine,
+                            isEditing = comment.commentId == editingCommentId,
+                            onEditClick = { onCommentEdit(comment.commentId) },
+                            onDeleteClick = { onCommentDelete(comment.commentId) },
+                        )
+                    }
                 }
             }
         }
@@ -498,7 +495,9 @@ private fun CommentItem(
     authorName: String,
     authorImageUrl: String?,
     content: String,
+    edited: Boolean,
     isMine: Boolean,
+    isEditing: Boolean,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
@@ -507,7 +506,12 @@ private fun CommentItem(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.Top
     ) {
-        WriterAvatar(imageUrl = authorImageUrl, size = 40.dp)
+        ProfileImageFrame(
+            size = 25.dp,
+            imageUrl = authorImageUrl,
+            contentDescription = "댓글 작성자 프로필",
+            borderWidth = 1.dp
+        )
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -522,16 +526,24 @@ private fun CommentItem(
                     style = IssueTypo.Bold12.copy(color = Title),
                     modifier = Modifier.weight(1f)
                 )
+                if (edited) {
+                    Text(
+                        text = "수정됨",
+                        style = IssueTypo.Regular12.copy(color = Gray_5),
+                    )
+                }
                 if (isMine) {
                     Text(
                         text = "수정",
-                        style = IssueTypo.Regular12.copy(color = Gray_5),
-                        modifier = Modifier.clickable(onClick = onEditClick)
+                        style = IssueTypo.Regular12.copy(
+                            color = if (isEditing) BrandColor else Gray_5,
+                        ),
+                        modifier = Modifier.clickable(onClick = onEditClick),
                     )
                     Text(
                         text = "삭제",
                         style = IssueTypo.Regular12.copy(color = Gray_5),
-                        modifier = Modifier.clickable(onClick = onDeleteClick)
+                        modifier = Modifier.clickable(onClick = onDeleteClick),
                     )
                 }
             }
@@ -557,17 +569,41 @@ private fun CommentItem(
     }
 }
 
-// TODO: CommonTextField 기반 입력 칸으로 교체 후 onSubmit으로 입력값 전달
 @Composable
 private fun CommentInputBar(
-    onSubmit: () -> Unit,
+    resetKey: Int,
+    editingCommentId: Long?,
+    initialText: String,
+    enabled: Boolean,
+    isEditing: Boolean,
+    onCancelEdit: () -> Unit,
+    onSubmit: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    var input by remember(resetKey, editingCommentId) { mutableStateOf(initialText) }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (isEditing) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "댓글 수정 중",
+                    style = IssueTypo.Regular12.copy(color = BrandColor),
+                )
+                Text(
+                    text = "취소",
+                    style = IssueTypo.Regular12.copy(color = Gray_5),
+                    modifier = Modifier.clickable(onClick = onCancelEdit),
+                )
+            }
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -578,9 +614,22 @@ private fun CommentInputBar(
                 .padding(horizontal = 18.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            Text(
-                text = "댓글 입력",
-                style = IssueTypo.Regular15.copy(color = Gray_5)
+            BasicTextField(
+                value = input,
+                onValueChange = { input = it },
+                enabled = enabled,
+                textStyle = IssueTypo.Regular15.copy(color = Title),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    if (input.isEmpty()) {
+                        Text(
+                            text = if (isEditing) "수정할 댓글을 입력하세요" else "댓글 입력",
+                            style = IssueTypo.Regular15.copy(color = Gray_5),
+                        )
+                    }
+                    innerTextField()
+                },
             )
         }
         Box(
@@ -588,15 +637,21 @@ private fun CommentInputBar(
                 .size(48.dp)
                 .clip(CircleShape)
                 .background(BrandColor)
-                .clickable(onClick = onSubmit),
+                .clickable(enabled = enabled) {
+                    val content = input.trim()
+                    if (content.isNotEmpty()) {
+                        onSubmit(content)
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.ArrowUpward,
-                contentDescription = "댓글 전송",
+                contentDescription = if (isEditing) "댓글 수정" else "댓글 전송",
                 tint = White,
                 modifier = Modifier.size(20.dp)
             )
+        }
         }
     }
 }
@@ -611,9 +666,17 @@ private fun PinPostTabPreview_Empty() {
                 pinTitle = "",
             ),
             postEmojis = PinDetailPostEmojis(),
-            currentUserId = DummyMyAuthorId,
+            comments = emptyList(),
+            isCommentsLoading = false,
+            isCommentSubmitting = false,
+            commentInputRevision = 0,
+            editingCommentId = null,
             onSympathyClick = {},
             onEmojiClick = {},
+            onCommentSubmit = {},
+            onCommentEdit = {},
+            onCommentEditCancel = {},
+            onCommentDelete = {},
         )
     }
 }
@@ -644,9 +707,17 @@ private fun PinPostTabPreview_Filled() {
                     )
                 },
             ),
-            currentUserId = DummyMyAuthorId,
+            comments = emptyList(),
+            isCommentsLoading = false,
+            isCommentSubmitting = false,
+            commentInputRevision = 0,
+            editingCommentId = null,
             onSympathyClick = {},
             onEmojiClick = {},
+            onCommentSubmit = {},
+            onCommentEdit = {},
+            onCommentEditCancel = {},
+            onCommentDelete = {}
         )
     }
 }

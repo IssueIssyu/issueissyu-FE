@@ -66,6 +66,17 @@ data class PinLike(
     val isLike: Boolean,
 )
 
+//핀 상세 포스트 - 댓글
+data class PinComment(
+    val commentId: Long,
+    val nickname: String,
+    val profileImageUrl: String?,
+    val content: String,
+    val edited: Boolean,
+    val createdAt: String,
+    val isMine: Boolean,
+)
+
 //핀 상세 포스트
 data class PinPostSympathyContent(
     val pinId: Long,

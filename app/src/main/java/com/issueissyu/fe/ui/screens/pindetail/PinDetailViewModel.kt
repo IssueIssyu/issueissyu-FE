@@ -3,6 +3,7 @@ package com.issueissyu.fe.ui.screens.pindetail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
@@ -31,6 +32,11 @@ data class PinDetailUiState(
     val pin: Pin? = null,
     val postSympathy: PinPostSympathyContent? = null,
     val postEmojis: PinDetailPostEmojis = PinDetailPostEmojis(),
+    val postComments: List<PinComment> = emptyList(),
+    val isCommentsLoading: Boolean = false,
+    val isCommentSubmitting: Boolean = false,
+    val commentInputRevision: Int = 0,
+    val editingCommentId: Long? = null,
     val selectedTab: PinDetailTab = PinDetailTab.HOME,
     val errorMessage: String? = null,
 )
@@ -80,6 +86,8 @@ class PinDetailViewModel @Inject constructor(
                     errorMessage = null,
                     postSympathy = null,
                     postEmojis = PinDetailPostEmojis(),
+                    postComments = emptyList(),
+                    isCommentsLoading = false,
                 )
             }
 
@@ -115,7 +123,20 @@ class PinDetailViewModel @Inject constructor(
                 }
             }
             refreshPostEmojis(pinId)
+            loadPinComments(pinId)
         }
+    }
+
+    private suspend fun loadPinComments(pinId: Long) {
+        _uiState.update { it.copy(isCommentsLoading = true) }
+        pinRepository.getPinComments(pinId)
+            .onSuccess { comments ->
+                _uiState.update { it.copy(postComments = comments, isCommentsLoading = false) }
+            }
+            .onFailure { e ->
+                _uiState.update { it.copy(isCommentsLoading = false) }
+                showToast(e.message ?: "댓글을 불러오지 못했습니다.")
+            }
     }
 
     private suspend fun refreshPostEmojis(pinId: Long): Result<Unit> {
@@ -136,8 +157,108 @@ class PinDetailViewModel @Inject constructor(
         _uiState.update { it.copy(selectedTab = tab) }
         if (tab == PinDetailTab.POST) {
             resolvePinId()?.let { pinId ->
-                viewModelScope.launch { refreshPostEmojis(pinId) }
+                viewModelScope.launch {
+                    refreshPostEmojis(pinId)
+                    loadPinComments(pinId)
+                }
             }
+        }
+    }
+
+    fun startEditComment(commentId: Long) {
+        val exists = _uiState.value.postComments.any { it.commentId == commentId && it.isMine }
+        if (!exists) return
+        _uiState.update { it.copy(editingCommentId = commentId) }
+    }
+
+    fun cancelEditComment() {
+        _uiState.update {
+            it.copy(
+                editingCommentId = null,
+                commentInputRevision = it.commentInputRevision + 1,
+            )
+        }
+    }
+
+    fun submitComment(content: String) {
+        val trimmed = content.trim()
+        if (trimmed.isBlank()) {
+            showToast("댓글을 입력해 주세요.")
+            return
+        }
+        if (_uiState.value.isCommentSubmitting) return
+
+        val editingCommentId = _uiState.value.editingCommentId
+        if (editingCommentId != null) {
+            submitCommentUpdate(editingCommentId, trimmed)
+            return
+        }
+
+        val pinId = resolvePinId() ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCommentSubmitting = true) }
+            pinRepository.createPinComment(pinId, trimmed)
+                .onSuccess { comment ->
+                    _uiState.update { state ->
+                        state.copy(
+                            postComments = listOf(comment) + state.postComments,
+                            isCommentSubmitting = false,
+                            commentInputRevision = state.commentInputRevision + 1,
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isCommentSubmitting = false) }
+                    showToast(e.message ?: "댓글 작성에 실패했습니다.")
+                }
+        }
+    }
+
+    private fun submitCommentUpdate(commentId: Long, content: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCommentSubmitting = true) }
+            pinRepository.updatePinComment(commentId, content)
+                .onSuccess { updated ->
+                    _uiState.update { state ->
+                        state.copy(
+                            postComments = state.postComments.map { comment ->
+                                if (comment.commentId == commentId) updated else comment
+                            },
+                            isCommentSubmitting = false,
+                            editingCommentId = null,
+                            commentInputRevision = state.commentInputRevision + 1,
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isCommentSubmitting = false) }
+                    showToast(e.message ?: "댓글 수정에 실패했습니다.")
+                }
+        }
+    }
+
+    fun deleteComment(commentId: Long) {
+        viewModelScope.launch {
+            pinRepository.deletePinComment(commentId)
+                .onSuccess {
+                    _uiState.update { state ->
+                        val wasEditing = state.editingCommentId == commentId
+                        state.copy(
+                            postComments = state.postComments.filterNot { it.commentId == commentId },
+                            editingCommentId = if (wasEditing) null else state.editingCommentId,
+                            commentInputRevision = if (wasEditing) {
+                                state.commentInputRevision + 1
+                            } else {
+                                state.commentInputRevision
+                            },
+                        )
+                    }
+                }
+                .onFailure { e -> showToast(e.message ?: "댓글 삭제에 실패했습니다.") }
         }
     }
 

@@ -2,16 +2,19 @@ package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.PinApi
 import com.issueissyu.fe.data.remote.dto.pin.toPin
+import com.issueissyu.fe.data.remote.dto.pin.toPinComment
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojiCandidate
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojis
 import com.issueissyu.fe.data.remote.dto.pin.toPostSympathyContent
 import com.issueissyu.fe.data.remote.dto.pin.toPinLike
+import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
+import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
@@ -442,6 +445,160 @@ class PinRepositoryImpl @Inject constructor(
                             Exception(
                                 response.message.ifBlank {"핀 신고에 실패했습니다."}
                             )
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getPinComments(pinId: Long): Result<List<PinComment>> {
+        return try {
+            val response = pinApi.getPinComments(pinId)
+            if (response.isSuccess) {
+                Result.success(response.result.orEmpty().map { it.toPinComment() })
+            } else {
+                when (response.code) {
+                    "PIN_NOT_FOUND_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀입니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 댓글 목록 조회에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun createPinComment(pinId: Long, content: String): Result<PinComment> {
+        return try {
+            val response = pinApi.createPinComments(
+                pinId = pinId,
+                request = PinCommentsRequest(commentContent = content),
+            )
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 댓글 작성 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinComment())
+            } else {
+                when (response.code) {
+                    "PIN_400" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "필수 값이 누락되었습니다." },
+                            ),
+                        )
+
+                    "PIN_401" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "인증이 필요합니다." },
+                            ),
+                        )
+
+                    "PIN_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀입니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 댓글 작성에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updatePinComment(commentId: Long, content: String): Result<PinComment> {
+        return try {
+            val response = pinApi.updatePinComments(
+                commentId = commentId,
+                request = PinCommentsRequest(commentContent = content),
+            )
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 댓글 수정 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinComment())
+            } else {
+                when (response.code) {
+                    "PIN_403" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "댓글 수정 권한이 없습니다." },
+                            ),
+                        )
+
+                    "COMMENT_NOT_FOUND_404_3" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 댓글입니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 댓글 수정에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun deletePinComment(commentId: Long): Result<Unit> {
+        return try {
+            val response = pinApi.deletePinComments(commentId)
+            if (response.isSuccess) {
+                Result.success(Unit)
+            } else {
+                when (response.code) {
+                    "PIN_403" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "댓글 삭제 권한이 없습니다." },
+                            ),
+                        )
+
+                    "PIN_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 댓글입니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 댓글 삭제에 실패했습니다." },
+                            ),
                         )
                 }
             }

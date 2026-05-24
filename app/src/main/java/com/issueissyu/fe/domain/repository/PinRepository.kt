@@ -1,5 +1,6 @@
 package com.issueissyu.fe.domain.repository
 
+import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.Pin
@@ -36,4 +37,9 @@ interface PinRepository {
     suspend fun deletePin(pinId: Long): Result<Unit>
 
     suspend fun declarePin(pinId: Long, reasonIndex: Int): Result<Unit>
+
+    suspend fun getPinComments(pinId: Long): Result<List<PinComment>>
+    suspend fun createPinComment(pinId: Long, content: String): Result<PinComment>
+    suspend fun updatePinComment(commentId: Long, content: String): Result<PinComment>
+    suspend fun deletePinComment(commentId: Long): Result<Unit>
 }

@@ -2,9 +2,11 @@ package com.issueissyu.fe.data.remote.api
 
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
+import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ApplyPinEmojiResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinCommentDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
@@ -12,6 +14,7 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.PUT
@@ -64,5 +67,31 @@ interface PinApi {
     suspend fun pinDeclare(
         @Path("pinId") pinId: Long,
         @Body request: PinDeclarationRequest
+    ): BaseResponse<Unit>
+
+    //핀 댓글 목록 조회
+    @GET("api/pins/{pinId}/comments")
+    suspend fun getPinComments(
+        @Path("pinId") pinId: Long
+    ): BaseResponse<List<PinCommentDto>?>
+
+    //핀 댓글 작성
+    @POST("api/pins/{pinId}/comments")
+    suspend fun createPinComments(
+        @Path("pinId") pinId: Long,
+        @Body request: PinCommentsRequest
+    ): BaseResponse<PinCommentDto?>
+
+    //핀 댓글 수정
+    @PATCH("api/pins/comments/{commentId}")
+    suspend fun updatePinComments(
+        @Path("commentId") commentId: Long,
+        @Body request: PinCommentsRequest
+    ): BaseResponse<PinCommentDto?>
+
+    //핀 댓글 삭제
+    @DELETE("api/pins/comments/{commentId}")
+    suspend fun deletePinComments(
+        @Path("commentId") commentId: Long
     ): BaseResponse<Unit>
 }

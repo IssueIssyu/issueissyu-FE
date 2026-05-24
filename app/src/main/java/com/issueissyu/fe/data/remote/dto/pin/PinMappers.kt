@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.remote.dto.pin
 
+import com.issueissyu.fe.data.remote.dto.response.pin.PinCommentDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
@@ -9,6 +10,7 @@ import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.model.pin.PinDetail
@@ -27,6 +29,18 @@ data class PinDetailHomeImages(
     val attachments: List<PinImageRef>,
     val displayUrls: List<String>
 )
+fun PinCommentDto.toPinComment(): PinComment {
+    return PinComment(
+        commentId = commentId,
+        nickname = nickname?.takeIf { it.isNotBlank() } ?: "알 수 없음",
+        profileImageUrl = profileImageUrl?.takeIf { it.isNotBlank() },
+        content = commentContent,
+        edited = edited,
+        createdAt = createdAt,
+        isMine = mine,
+    )
+}
+
 fun PinDetailPostResponse.toPostSympathyContent(): PinPostSympathyContent {
     val writer = pinUserId?.takeIf { it.isNotBlank() }?.let { id ->
         PinUser(
