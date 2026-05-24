@@ -5,8 +5,10 @@ import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PetitionStatus
+import com.issueissyu.fe.domain.model.pin.PetitionSubmit
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import com.issueissyu.fe.domain.model.MapPinMarker
+import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
@@ -50,6 +52,10 @@ interface PinRepository {
     suspend fun getPetitionStatus(pinId: Long): Result<PetitionStatus>
 
     suspend fun getPinSolveStatus(pinId: Long): Result<PinSolveStatus>
+
+    suspend fun submitPetition(pinId: Long): Result<PetitionSubmit>
+
+    suspend fun goNow(pinId: Long): Result<GoNow>
 
     //핀 삭제
     suspend fun deletePin(pinId: Long): Result<Unit>

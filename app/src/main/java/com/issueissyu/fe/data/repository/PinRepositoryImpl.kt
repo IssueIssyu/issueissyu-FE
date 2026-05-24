@@ -22,7 +22,9 @@ import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.GoNowResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionStatusResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionSubmitResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
@@ -51,6 +53,8 @@ import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.pin.GoNow
+import com.issueissyu.fe.domain.model.pin.PetitionSubmit
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinDetail
@@ -387,6 +391,44 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun submitPetition(pinId: Long): Result<PetitionSubmit> {
+        return try {
+            val response = pinApi.submitPetition(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "청원하기 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPetitionSubmit())
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "청원하기에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun goNow(pinId: Long): Result<GoNow> {
+        return try {
+            val response = pinApi.goNow(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "지금가요 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toGoNow())
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "지금가요 참여에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getEmojiCandidates(): Result<List<PinEmojiCandidate>> {
         return try {
             val response = pinApi.getEmojiCandidates()
@@ -468,6 +510,22 @@ class PinRepositoryImpl @Inject constructor(
             isPetitioned = isPetitioned ?: false,
             isProblemSolver = isProblemSolver,
             reliability = reliability,
+        )
+    }
+
+    private fun PetitionSubmitResponse.toPetitionSubmit(): PetitionSubmit {
+        return PetitionSubmit(
+            pinId = pinId,
+            petitionCount = petitionCount,
+            isPetitioned = isPetitioned,
+        )
+    }
+
+    private fun GoNowResponse.toGoNow(): GoNow {
+        return GoNow(
+            pinId = pinId,
+            problemSolverId = problemSolverId,
+            problemSolveState = problemSolveState,
         )
     }
 

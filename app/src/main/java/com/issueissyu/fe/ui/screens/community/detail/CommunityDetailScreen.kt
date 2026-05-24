@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.screens.community.detail
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -67,11 +69,20 @@ fun CommunityDetailScreen(
     onBackClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.toastMessage.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     CommunityDetailScreenContent(
         uiState = uiState,
         onBackClick = onBackClick,
-        onRetry = viewModel::loadDetail
+        onRetry = viewModel::loadDetail,
+        onGoNowClick = viewModel::goNow,
+        onPetitionClick = viewModel::submitPetition,
     )
 }
 
@@ -79,7 +90,9 @@ fun CommunityDetailScreen(
 fun CommunityDetailScreenContent(
     uiState: CommunityDetailUiState,
     onBackClick: () -> Unit,
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    onGoNowClick: () -> Unit = {},
+    onPetitionClick: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -123,7 +136,9 @@ fun CommunityDetailScreenContent(
                 else -> {
                     CommunityDetailBody(
                         detail = uiState.detail,
-                        onMapClick = { /* TODO: 지도 이동 기능 구현 필요 */ }
+                        onMapClick = { /* TODO: 지도 이동 기능 구현 필요 */ },
+                        onGoNowClick = onGoNowClick,
+                        onPetitionClick = onPetitionClick,
                     )
                 }
             }
@@ -169,7 +184,9 @@ private fun CommunityDetailErrorState(
 @Composable
 private fun CommunityDetailBody(
     detail: CommunityDetail,
-    onMapClick: () -> Unit
+    onMapClick: () -> Unit,
+    onGoNowClick: () -> Unit,
+    onPetitionClick: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -220,7 +237,11 @@ private fun CommunityDetailBody(
                 PetitionPlaceholderSection(detail = detail)
             }
             item {
-                CommunityDetailIssueActionSection(detail = detail)
+                CommunityDetailIssueActionSection(
+                    detail = detail,
+                    onGoNowClick = onGoNowClick,
+                    onPetitionClick = onPetitionClick,
+                )
             }
         }
 
@@ -692,7 +713,11 @@ private fun PetitionPlaceholderSection(detail: CommunityDetail) {
 }
 
 @Composable
-private fun CommunityDetailIssueActionSection(detail: CommunityDetail) {
+private fun CommunityDetailIssueActionSection(
+    detail: CommunityDetail,
+    onGoNowClick: () -> Unit,
+    onPetitionClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -701,13 +726,13 @@ private fun CommunityDetailIssueActionSection(detail: CommunityDetail) {
     ) {
         GoNowButton(
             state = if (detail.isProblemSolver) ActionState.MOVING else ActionState.DEFAULT,
-            onClick = { /* TODO: 지금가요 기능 구현 필요 */ },
+            onClick = onGoNowClick,
             modifier = Modifier.weight(1f)
         )
         SignButton(
             isSigned = detail.isPetitionedByMe,
             count = detail.petitionCount,
-            onClick = { /* TODO: 청원하기 기능 구현 필요 */ },
+            onClick = onPetitionClick,
             modifier = Modifier.weight(1f)
         )
     }

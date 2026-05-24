@@ -7,8 +7,11 @@ import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
@@ -27,6 +30,9 @@ class CommunityDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CommunityDetailUiState())
     val uiState: StateFlow<CommunityDetailUiState> = _uiState.asStateFlow()
+
+    private val _toastMessage = MutableSharedFlow<String>()
+    val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
 
     init {
         loadDetail()
@@ -93,6 +99,56 @@ class CommunityDetailViewModel @Inject constructor(
                             errorMessage = null
                         )
                     }
+                }
+        }
+    }
+
+    fun submitPetition() {
+        val detail = _uiState.value.detail ?: return
+        val pinId = detail.pinId ?: return
+        if (detail.kind != CommunityItemKind.ISSUE || detail.isPetitionedByMe) return
+
+        viewModelScope.launch {
+            pinRepository.submitPetition(pinId)
+                .onSuccess { petition ->
+                    _uiState.update { state ->
+                        state.copy(
+                            detail = state.detail?.copy(
+                                petitionCount = petition.petitionCount,
+                                isPetitioned = petition.isPetitioned,
+                                isPetitionedByMe = petition.isPetitioned,
+                            ),
+                        )
+                    }
+                    _toastMessage.emit("청원에 참여했습니다.")
+                }
+                .onFailure { throwable ->
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "청원하기에 실패했습니다.",
+                    )
+                }
+        }
+    }
+
+    fun goNow() {
+        val detail = _uiState.value.detail ?: return
+        val pinId = detail.pinId ?: return
+        if (detail.kind != CommunityItemKind.ISSUE || detail.isProblemSolver) return
+
+        viewModelScope.launch {
+            pinRepository.goNow(pinId)
+                .onSuccess {
+                    _uiState.update { state ->
+                        state.copy(
+                            detail = state.detail?.copy(isProblemSolver = true),
+                        )
+                    }
+                    _toastMessage.emit("지금가요 참여가 완료되었습니다.")
+                }
+                .onFailure { throwable ->
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "지금가요 참여에 실패했습니다.",
+                    )
                 }
         }
     }
