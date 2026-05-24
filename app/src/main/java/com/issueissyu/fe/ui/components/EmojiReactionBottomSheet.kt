@@ -59,6 +59,7 @@ fun EmojiReactionBottomSheet(
     onEmojiClick: (Int) -> Unit,
     onApplyClick: () -> Unit,
     allowLockedEmojiSelection: Boolean = false,
+    allowApplyWithoutSelection: Boolean = false,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -84,6 +85,7 @@ fun EmojiReactionBottomSheet(
             onEmojiClick = onEmojiClick,
             onApplyClick = onApplyClick,
             allowLockedEmojiSelection = allowLockedEmojiSelection,
+            allowApplyWithoutSelection = allowApplyWithoutSelection,
         )
     }
 }
@@ -99,6 +101,7 @@ fun EmojiReactionBottomSheetContent(
     onEmojiClick: (Int) -> Unit,
     onApplyClick: () -> Unit,
     allowLockedEmojiSelection: Boolean,
+    allowApplyWithoutSelection: Boolean = false,
 ) {
     Column(
         modifier = Modifier
@@ -195,7 +198,9 @@ fun EmojiReactionBottomSheetContent(
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp),
-                enabled = selectedEmojiId != null && !isLoading && !isSubmitting,
+                enabled = (selectedEmojiId != null || allowApplyWithoutSelection) &&
+                    !isLoading &&
+                    !isSubmitting,
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = BrandColor,
@@ -205,7 +210,11 @@ fun EmojiReactionBottomSheetContent(
                 )
             ) {
                 Text(
-                    text = if (isSubmitting) "등록 중" else "반응 남기기",
+                    text = when {
+                        isSubmitting -> "등록 중"
+                        selectedEmojiId == null && allowApplyWithoutSelection -> "반응 취소"
+                        else -> "반응 남기기"
+                    },
                     style = IssueTypo.Bold12.copy(color = White)
                 )
             }

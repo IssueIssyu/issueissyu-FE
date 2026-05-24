@@ -30,7 +30,11 @@ interface PinRepository {
 
     suspend fun getEmojiCandidates(): Result<List<PinEmojiCandidate>>
 
-    suspend fun applyPinEmoji(pinId: Long, emojiId: Int): Result<Long?>
+    /** 바텀시트(피커): POST. [emojiId]가 null이면 반응 삭제. */
+    suspend fun applyPinEmojiFromPicker(pinId: Long, emojiId: Int?): Result<Long?>
+
+    /** 목록 칩: PUT. 동일 이모지 재요청 시 백엔드에서 토글(취소) 처리. */
+    suspend fun togglePinEmojiFromList(pinId: Long, emojiId: Int): Result<Long?>
 
     suspend fun likePin(pinId: Long): Result<PinLike>
 

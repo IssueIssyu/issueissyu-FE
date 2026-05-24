@@ -326,7 +326,10 @@ class PinDetailViewModel @Inject constructor(
             showToast("구매가 필요한 이모지입니다.")
             return
         }
-        _emojiPickerUiState.update { it.copy(pickedEmojiId = emojiId) }
+        _emojiPickerUiState.update { state ->
+            val nextSelection = if (state.pickedEmojiId == emojiId) null else emojiId
+            state.copy(pickedEmojiId = nextSelection)
+        }
     }
 
     fun submitPickedEmoji() {
@@ -334,42 +337,46 @@ class PinDetailViewModel @Inject constructor(
             showToast("핀 정보를 찾을 수 없습니다.")
             return
         }
-        val emojiId = _emojiPickerUiState.value.pickedEmojiId ?: run {
-            showToast("이모지를 선택해 주세요.")
-            return
-        }
         if (_emojiPickerUiState.value.isSubmitting) return
+
+        val pickedEmojiId = _emojiPickerUiState.value.pickedEmojiId
 
         viewModelScope.launch {
             _emojiPickerUiState.update { it.copy(isSubmitting = true) }
 
-            val applyResult = pinRepository.applyPinEmoji(pinId, emojiId)
-            if (applyResult.isFailure) {
-                _emojiPickerUiState.update { it.copy(isSubmitting = false) }
-                val error = applyResult.exceptionOrNull()
-                showToast(error?.message ?: "이모지 반응 등록에 실패했습니다.")
-                return@launch
-            }
+            pinRepository.applyPinEmojiFromPicker(pinId, pickedEmojiId)
+                .onSuccess {
+                    refreshPostEmojis(pinId)
+                        .onFailure { e ->
+                            showToast(e.message ?: "반응 목록을 갱신하지 못했습니다.")
+                        }
+                    closeEmojiPicker()
+                }
+                .onFailure { e ->
+                    _emojiPickerUiState.update { it.copy(isSubmitting = false) }
+                    showToast(e.message ?: "이모지 반응 처리에 실패했습니다.")
+                }
+        }
+    }
 
-            val newMyEmojiId = applyResult.getOrNull()
-            _uiState.update { state ->
-                state.copy(
-                    postEmojis = state.postEmojis.applyMySelection(
-                        myEmojiId = newMyEmojiId,
-                        emojiImageLookup = ::lookupEmojiImage,
-                    ),
-                )
-            }
+    fun toggleEmojiFromList(emojiId: Long) {
+        val pinId = resolvePinId() ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            return
+        }
+        if (emojiId > Int.MAX_VALUE) return
 
-            val refreshResult = refreshPostEmojis(pinId)
-            if (refreshResult.isFailure) {
-                _emojiPickerUiState.update { it.copy(isSubmitting = false) }
-                val error = refreshResult.exceptionOrNull()
-                showToast(error?.message ?: "반응 목록을 갱신하지 못했습니다.")
-                return@launch
-            }
-
-            closeEmojiPicker()
+        viewModelScope.launch {
+            pinRepository.togglePinEmojiFromList(pinId, emojiId.toInt())
+                .onSuccess {
+                    refreshPostEmojis(pinId)
+                        .onFailure { e ->
+                            showToast(e.message ?: "반응 목록을 갱신하지 못했습니다.")
+                        }
+                }
+                .onFailure { e ->
+                    showToast(e.message ?: "이모지 반응 처리에 실패했습니다.")
+                }
         }
     }
 

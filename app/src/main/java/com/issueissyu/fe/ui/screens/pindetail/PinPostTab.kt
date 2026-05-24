@@ -74,6 +74,7 @@ fun PinPostTab(
     editingCommentId: Long?,
     onSympathyClick: () -> Unit,
     onEmojiClick: () -> Unit,
+    onEmojiChipClick: (Long) -> Unit,
     onCommentSubmit: (String) -> Unit,
     onCommentEdit: (Long) -> Unit,
     onCommentEditCancel: () -> Unit,
@@ -107,6 +108,7 @@ fun PinPostTab(
             EmojiReactionRow(
                 postEmojis = postEmojis,
                 onAddEmojiClick = onEmojiClick,
+                onEmojiChipClick = onEmojiChipClick,
             )
         }
 
@@ -326,6 +328,7 @@ private fun SympathyPill(
 private fun EmojiReactionRow(
     postEmojis: PinDetailPostEmojis,
     onAddEmojiClick: () -> Unit,
+    onEmojiChipClick: (Long) -> Unit
 ) {
     val visibleChips = postEmojis.visibleChips
 
@@ -341,13 +344,11 @@ private fun EmojiReactionRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            visibleChips
-                .sortedWith(
-                    compareByDescending<PinDetailEmojiChip> { it.isMine }
-                        .thenByDescending { it.count },
-                )
-                .forEach { chip ->
-                    EmojiReactionChip(chip = chip)
+            visibleChips.forEach { chip ->
+                    EmojiReactionChip(
+                        chip = chip,
+                        onClick = { onEmojiChipClick(chip.emojiId) },
+                    )
                 }
             AddEmojiChip(onClick = onAddEmojiClick)
         }
@@ -355,7 +356,10 @@ private fun EmojiReactionRow(
 }
 
 @Composable
-private fun EmojiReactionChip(chip: PinDetailEmojiChip) {
+private fun EmojiReactionChip(
+    chip: PinDetailEmojiChip,
+    onClick: () -> Unit
+) {
     val backgroundColor = if (chip.isMine) {
         BrandColor.copy(alpha = 0.12f)
     } else {
@@ -368,6 +372,7 @@ private fun EmojiReactionChip(chip: PinDetailEmojiChip) {
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
             .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -673,6 +678,7 @@ private fun PinPostTabPreview_Empty() {
             editingCommentId = null,
             onSympathyClick = {},
             onEmojiClick = {},
+            onEmojiChipClick = {},
             onCommentSubmit = {},
             onCommentEdit = {},
             onCommentEditCancel = {},
@@ -714,6 +720,7 @@ private fun PinPostTabPreview_Filled() {
             editingCommentId = null,
             onSympathyClick = {},
             onEmojiClick = {},
+            onEmojiChipClick = {},
             onCommentSubmit = {},
             onCommentEdit = {},
             onCommentEditCancel = {},

@@ -55,9 +55,16 @@ interface PinApi {
     @GET("api/emojis/candidates")
     suspend fun getEmojiCandidates(): BaseResponse<List<PinEmojiDto>?>
 
-    // 내 핀 반응 토글
+    // 이모지 등록 - 피커
+    @POST("api/pins/{pinId}/emojis/me")
+    suspend fun applyPinEmojiPicker(
+        @Path("pinId") pinId: Long,
+        @Body request: ApplyPinEmojiRequest,
+    ): BaseResponse<ApplyPinEmojiResponse?>
+
+    // 이모지 등록 - 목록
     @PUT("api/pins/{pinId}/emojis/me")
-    suspend fun applyPinEmoji(
+    suspend fun applyPinEmojiList(
         @Path("pinId") pinId: Long,
         @Body request: ApplyPinEmojiRequest,
     ): BaseResponse<ApplyPinEmojiResponse?>

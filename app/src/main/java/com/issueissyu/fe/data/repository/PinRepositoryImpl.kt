@@ -327,34 +327,58 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun applyPinEmoji(pinId: Long, emojiId: Int): Result<Long?> {
+    override suspend fun applyPinEmojiFromPicker(pinId: Long, emojiId: Int?): Result<Long?> {
+        return applyPinEmojiInternal(
+            pinId = pinId,
+            emojiId = emojiId?.toLong(),
+            apiCall = { id, request ->
+                pinApi.applyPinEmojiPicker(pinId = id, request = request)
+            },
+        )
+    }
+
+    override suspend fun togglePinEmojiFromList(pinId: Long, emojiId: Int): Result<Long?> {
+        return applyPinEmojiInternal(
+            pinId = pinId,
+            emojiId = emojiId.toLong(),
+            apiCall = { id, request ->
+                pinApi.applyPinEmojiList(pinId = id, request = request)
+            },
+        )
+    }
+
+    private suspend fun applyPinEmojiInternal(
+        pinId: Long,
+        emojiId: Long?,
+        apiCall: suspend (Long, ApplyPinEmojiRequest) -> com.issueissyu.fe.data.remote.dto.response.BaseResponse<com.issueissyu.fe.data.remote.dto.response.pin.ApplyPinEmojiResponse?>,
+    ): Result<Long?> {
         return try {
-            val response = pinApi.applyPinEmoji(
-                pinId = pinId,
-                request = ApplyPinEmojiRequest(emojiId = emojiId.toLong()),
-            )
+            val response = apiCall(pinId, ApplyPinEmojiRequest(emojiId = emojiId))
             if (response.isSuccess) {
                 Result.success(response.result?.selectedEmojiId)
             } else {
-                val message = when (response.code) {
-                    "PIN_NOT_FOUND_404" ->
-                        response.message.ifBlank { "존재하지 않는 핀입니다." }
-                    "EMOJI_NOT_FOUND_404_1" ->
-                        response.message.ifBlank { "존재하지 않는 이모지입니다." }
-                    "EMOJI_NOT_OWNED_403_1" ->
-                        response.message.ifBlank { "구매하지 않은 이모지입니다." }
-                    else ->
-                        response.message.ifBlank { "이모지 반응 등록에 실패했습니다." }
-                }
-                Result.failure(Exception(message))
+                Result.failure(Exception(resolveApplyPinEmojiErrorMessage(response.code, response.message)))
             }
         } catch (e: Exception) {
             Result.failure(
                 Exception(
-                    e.message?.takeIf { it.isNotBlank() } ?: "이모지 반응 등록에 실패했습니다.",
+                    e.message?.takeIf { it.isNotBlank() } ?: "이모지 반응 처리에 실패했습니다.",
                     e,
                 ),
             )
+        }
+    }
+
+    private fun resolveApplyPinEmojiErrorMessage(code: String, message: String): String {
+        return when (code) {
+            "PIN_NOT_FOUND_404" ->
+                message.ifBlank { "존재하지 않는 핀입니다." }
+            "EMOJI_NOT_FOUND_404_1" ->
+                message.ifBlank { "존재하지 않는 이모지입니다." }
+            "EMOJI_NOT_OWNED_403_1" ->
+                message.ifBlank { "구매하지 않은 이모지입니다." }
+            else ->
+                message.ifBlank { "이모지 반응 처리에 실패했습니다." }
         }
     }
 

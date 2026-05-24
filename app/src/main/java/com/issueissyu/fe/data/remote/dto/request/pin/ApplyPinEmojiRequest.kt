@@ -1,5 +1,5 @@
 package com.issueissyu.fe.data.remote.dto.request.pin
 
 data class ApplyPinEmojiRequest(
-    val emojiId: Long,
+    val emojiId: Long?,
 )

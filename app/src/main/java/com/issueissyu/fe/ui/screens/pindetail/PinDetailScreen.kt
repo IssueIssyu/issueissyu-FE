@@ -31,6 +31,7 @@ import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
+import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -111,6 +112,7 @@ fun PinDetailScreen(
                         onSelectTab = viewModel::selectTab,
                         onSympathyClick = viewModel::toggleSympathy,
                         onEmojiClick = viewModel::openEmojiPicker,
+                        onEmojiChipClick = viewModel::toggleEmojiFromList,
                         onCommentSubmit = viewModel::submitComment,
                         onCommentEdit = viewModel::startEditComment,
                         onCommentEditCancel = viewModel::cancelEditComment,
@@ -125,11 +127,20 @@ fun PinDetailScreen(
                     )
 
                     if (emojiPickerUiState.isVisible) {
-                        PinDetailEmojiPickerSheet(
-                            uiState = emojiPickerUiState,
-                            onDismiss = viewModel::closeEmojiPicker,
+                        EmojiReactionBottomSheet(
+                            candidates = emojiPickerUiState.candidates,
+                            selectedEmojiId = emojiPickerUiState.pickedEmojiId,
+                            isLoading = emojiPickerUiState.isLoading,
+                            isSubmitting = emojiPickerUiState.isSubmitting,
+                            errorMessage = emojiPickerUiState.errorMessage,
+                            onDismiss = {
+                                if (!emojiPickerUiState.isSubmitting) {
+                                    viewModel.closeEmojiPicker()
+                                }
+                            },
                             onEmojiClick = viewModel::pickEmojiInPicker,
-                            onSubmit = viewModel::submitPickedEmoji,
+                            onApplyClick = viewModel::submitPickedEmoji,
+                            allowApplyWithoutSelection = true,
                         )
                     }
                 }
@@ -152,6 +163,7 @@ private fun PinDetailContent(
     onSelectTab: (PinDetailTab) -> Unit,
     onSympathyClick: () -> Unit,
     onEmojiClick: () -> Unit,
+    onEmojiChipClick: (Long) -> Unit,
     onCommentSubmit: (String) -> Unit,
     onCommentEdit: (Long) -> Unit,
     onCommentEditCancel: () -> Unit,
@@ -201,6 +213,7 @@ private fun PinDetailContent(
                     editingCommentId = uiState.editingCommentId,
                     onSympathyClick = onSympathyClick,
                     onEmojiClick = onEmojiClick,
+                    onEmojiChipClick = onEmojiChipClick,
                     onCommentSubmit = onCommentSubmit,
                     onCommentEdit = onCommentEdit,
                     onCommentEditCancel = onCommentEditCancel,
