@@ -428,7 +428,7 @@ private fun EmojiReactionChip(
             .background(backgroundColor)
             .border(1.dp, borderColor, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!chip.imageUrl.isNullOrBlank()) {
@@ -436,20 +436,21 @@ private fun EmojiReactionChip(
                 model = chip.imageUrl,
                 contentDescription = "이모지",
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(5.dp))
             )
         } else {
             Box(
                 modifier = Modifier
-                    .size(16.dp)
-                    .clip(CircleShape)
-                    .background(Gray_4),
+                    .size(24.dp)
+                    .background(color = Gray_4, RoundedCornerShape(5.dp)),
             )
         }
-        Spacer(modifier = Modifier.width(6.dp))
+        Spacer(modifier = Modifier.width(5.dp))
         Text(
             text = "${chip.count}",
-            style = IssueTypo.Regular12.copy(color = TextColor)
+            style = IssueTypo.Regular16.copy(color = TextColor)
         )
     }
 }
@@ -461,19 +462,18 @@ private fun AddEmojiChip(onClick: () -> Unit) {
             .clip(RoundedCornerShape(16.dp))
             .background(Gray_3)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(12.dp,5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.Default.Add,
             contentDescription = "이모지 추가",
             tint = Gray_6,
-            modifier = Modifier.size(14.dp)
+            modifier = Modifier.size(28.dp)
         )
-        Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = "이모지",
-            style = IssueTypo.Regular12.copy(color = TextColor)
+            style = IssueTypo.Regular16.copy(color = TextColor)
         )
     }
 }
