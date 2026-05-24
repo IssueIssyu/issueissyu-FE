@@ -4,8 +4,11 @@ import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityCommentResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityDetailResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityFeedResponse
+import com.issueissyu.fe.data.remote.dto.request.community.CommunityCommentRequest
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Path
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface CommunityApi {
@@ -26,4 +29,10 @@ interface CommunityApi {
     suspend fun getCommunityComments(
         @Path("communityId") communityId: Long,
     ): BaseResponse<List<CommunityCommentResponse>?>
+
+    @POST("api/communities/{communityId}/comments")
+    suspend fun createCommunityComment(
+        @Path("communityId") communityId: Long,
+        @Body request: CommunityCommentRequest,
+    ): BaseResponse<CommunityCommentResponse?>
 }

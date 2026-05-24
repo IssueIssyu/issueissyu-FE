@@ -1,6 +1,7 @@
 package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.CommunityApi
+import com.issueissyu.fe.data.remote.dto.request.community.CommunityCommentRequest
 import com.issueissyu.fe.data.remote.dto.community.toCommunityComment
 import com.issueissyu.fe.data.remote.dto.community.toCommunityDetail
 import com.issueissyu.fe.data.remote.dto.community.toCommunityFeed
@@ -66,6 +67,30 @@ class CommunityRepositoryImpl @Inject constructor(
         }
 
         emit(response.result.orEmpty().mapNotNull { it.toCommunityComment() })
+    }
+
+    override suspend fun createCommunityComment(
+        communityId: Long,
+        content: String
+    ): Result<CommunityComment> {
+        return try {
+            val response = communityApi.createCommunityComment(
+                communityId = communityId,
+                request = CommunityCommentRequest(commentContent = content),
+            )
+
+            if (response.isSuccess) {
+                val comment = response.result?.toCommunityComment()
+                    ?: return Result.failure(
+                        IllegalStateException(response.message.ifBlank { "댓글 작성 응답이 올바르지 않습니다." })
+                    )
+                Result.success(comment)
+            } else {
+                Result.failure(IllegalStateException(response.message.ifBlank { "댓글 작성에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     private fun CommunityTab.toApiTab(): String? {

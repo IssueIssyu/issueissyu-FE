@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -86,6 +87,7 @@ fun CommunityDetailScreen(
         onGoNowClick = viewModel::goNow,
         onPetitionClick = viewModel::submitPetition,
         onMapClick = onMapClick,
+        onCommentSubmit = viewModel::createComment,
     )
 }
 
@@ -97,6 +99,7 @@ fun CommunityDetailScreenContent(
     onGoNowClick: () -> Unit = {},
     onPetitionClick: () -> Unit = {},
     onMapClick: (Long) -> Unit = {},
+    onCommentSubmit: (String) -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -107,7 +110,10 @@ fun CommunityDetailScreenContent(
         },
         bottomBar = {
             if (uiState.detail != null) {
-                CommunityDetailBottomBar()
+                CommunityDetailBottomBar(
+                    isSubmitting = uiState.isCommentSubmitting,
+                    onCommentSubmit = onCommentSubmit,
+                )
             }
         },
         containerColor = Color.White
@@ -861,7 +867,13 @@ private fun CommunityCommentItem(comment: CommunityComment) {
 }
 
 @Composable
-private fun CommunityDetailBottomBar() {
+private fun CommunityDetailBottomBar(
+    isSubmitting: Boolean,
+    onCommentSubmit: (String) -> Unit,
+) {
+    var commentText by remember { mutableStateOf("") }
+    val canSubmit = commentText.isNotBlank() && !isSubmitting
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shadowElevation = 16.dp,
@@ -873,7 +885,6 @@ private fun CommunityDetailBottomBar() {
                 .padding(horizontal = 24.dp)
                 .padding(top = 16.dp, bottom = 24.dp)
         ) {
-            // 댓글 입력창 placeholder
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -888,24 +899,49 @@ private fun CommunityDetailBottomBar() {
                         .padding(horizontal = 18.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
-                    Text(
-                        text = "댓글을 입력해주세요...",
-                        style = IssueTypo.Regular15.copy(color = Gray_5)
+                    BasicTextField(
+                        value = commentText,
+                        onValueChange = { commentText = it },
+                        enabled = !isSubmitting,
+                        singleLine = true,
+                        textStyle = IssueTypo.Regular15.copy(color = Title),
+                        modifier = Modifier.fillMaxWidth(),
+                        decorationBox = { innerTextField ->
+                            if (commentText.isBlank()) {
+                                Text(
+                                    text = "댓글을 입력해주세요...",
+                                    style = IssueTypo.Regular15.copy(color = Gray_5)
+                                )
+                            }
+                            innerTextField()
+                        }
                     )
                 }
                 Box(
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(BrandColor),
+                        .background(BrandColor)
+                        .clickable(enabled = canSubmit) {
+                            onCommentSubmit(commentText)
+                            commentText = ""
+                        },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowUpward,
-                        contentDescription = "전송",
-                        tint = White,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ArrowUpward,
+                            contentDescription = "전송",
+                            tint = White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }

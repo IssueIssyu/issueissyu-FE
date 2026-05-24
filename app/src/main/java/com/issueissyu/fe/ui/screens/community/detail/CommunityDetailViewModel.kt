@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.repository.PinRepository
+import com.issueissyu.fe.domain.usecase.community.CreateCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityCommentsUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,6 +25,7 @@ import javax.inject.Inject
 class CommunityDetailViewModel @Inject constructor(
     private val getCommunityDetailUseCase: GetCommunityDetailUseCase,
     private val getCommunityCommentsUseCase: GetCommunityCommentsUseCase,
+    private val createCommunityCommentUseCase: CreateCommunityCommentUseCase,
     private val pinRepository: PinRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -175,6 +177,32 @@ class CommunityDetailViewModel @Inject constructor(
                 .onFailure { throwable ->
                     _toastMessage.emit(
                         throwable.message?.takeIf { it.isNotBlank() } ?: "지금가요 참여에 실패했습니다.",
+                    )
+                }
+        }
+    }
+
+    fun createComment(content: String) {
+        val trimmedContent = content.trim()
+        if (trimmedContent.isBlank() || _uiState.value.isCommentSubmitting) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCommentSubmitting = true) }
+
+            createCommunityCommentUseCase(communityId, trimmedContent)
+                .onSuccess { comment ->
+                    _uiState.update { state ->
+                        state.copy(
+                            comments = listOf(comment) + state.comments,
+                            isCommentSubmitting = false,
+                        )
+                    }
+                    _toastMessage.emit("댓글이 등록되었습니다.")
+                }
+                .onFailure { throwable ->
+                    _uiState.update { it.copy(isCommentSubmitting = false) }
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "댓글 등록에 실패했습니다.",
                     )
                 }
         }

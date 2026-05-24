@@ -8,5 +8,6 @@ data class CommunityDetailUiState(
     val detail: CommunityDetail? = null,
     val comments: List<CommunityComment> = emptyList(),
     val isCommentLoading: Boolean = false,
+    val isCommentSubmitting: Boolean = false,
     val errorMessage: String? = null
 )
