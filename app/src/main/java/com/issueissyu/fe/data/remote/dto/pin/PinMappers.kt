@@ -5,6 +5,7 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
+import com.issueissyu.fe.core.text.decodePinContentNewlines
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
@@ -70,7 +71,7 @@ fun PinDetailHomeResponse.toPin(
     return Pin(
         id = pinId.toString(),
         title = pinTitle,
-        description = pinContent,
+        description = pinContent.decodePinContentNewlines(),
         coordinate = coordinate,
         address = pinDetailAddress,
         locationName = null,
