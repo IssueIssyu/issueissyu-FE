@@ -57,8 +57,8 @@ fun PinDetailPostResponse.toPostSympathyContent(): PinPostSympathyContent {
         isSympathizedByMe = isLike,
         writer = writer,
         discount = discount?.takeIf { it.isNotBlank() },
-        mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() },
         storeImageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
+        mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() },
     )
 }
 
@@ -81,6 +81,12 @@ fun PinDetailHomeResponse.toPin(
         isSympathizedByMe = isLike,
         communityPostId = communityId?.toString(),
         author = author,
+        storeImageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
+        mainPinImageUrl = pinImageUrls
+            .firstOrNull { it.isMain }
+            ?.pinImageUrl
+            ?.takeIf { it.isNotBlank() }
+            ?: pinImageUrls.firstOrNull()?.pinImageUrl?.takeIf { it.isNotBlank() },
         isMine = isMine,
         isReported = isReported,
         isUpdated = isUpdated,
@@ -149,11 +155,15 @@ private fun PinDetailHomeResponse.toPinDetail(author: PinUser?): PinDetail {
 }
 
 private fun PinDetailHomeResponse.toPinUserOrNull(): PinUser? {
-    val id = pinUserId?.takeIf { it.isNotBlank() } ?: return null
+    when (pinType.toPinCategoryOrNull()) {
+        PinCategory.ISSUE, PinCategory.COMMUNICATION -> Unit
+        else -> return null
+    }
+    val name = pinUserNickname?.takeIf { it.isNotBlank() } ?: return null
     return PinUser(
-        id = id,
-        name = pinUserNickname?.takeIf { it.isNotBlank() } ?: "알 수 없음",
-        imageUrl = pinUserProfile,
+        id = pinUserId?.takeIf { it.isNotBlank() }.orEmpty(),
+        name = name,
+        imageUrl = pinUserProfile?.takeIf { it.isNotBlank() },
     )
 }
 

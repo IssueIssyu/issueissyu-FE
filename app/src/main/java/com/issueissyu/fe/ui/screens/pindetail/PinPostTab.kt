@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -17,6 +18,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -27,6 +31,7 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.runtime.Composable
@@ -34,35 +39,48 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight.Companion.Medium
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
+import com.issueissyu.fe.core.time.formatPinCommentCreatedAt
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
-import com.issueissyu.fe.ui.theme.Gray_1
+import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
+import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
+import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-
 @Composable
 fun PinPostTab(
     sympathy: PinPostSympathyContent,
@@ -85,7 +103,7 @@ fun PinPostTab(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 28.dp, vertical = 20.dp),
+                .padding(20.dp, 50.dp, 20.dp, 0.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             when (sympathy.pinType) {
@@ -99,12 +117,13 @@ fun PinPostTab(
                         content = sympathy,
                         onSympathyClick = onSympathyClick,
                     )
-                    sympathy.mainPinImageUrl?.let { imageUrl ->
-                        PostCoverImage(imageUrl = imageUrl)
-                    }
                 }
             }
 
+            Text(
+                text = "반응",
+                style = IssueTypo.ExtraBold18.copy(color = Title),
+            )
             EmojiReactionRow(
                 postEmojis = postEmojis,
                 onAddEmojiClick = onEmojiClick,
@@ -112,7 +131,7 @@ fun PinPostTab(
             )
         }
 
-        HorizontalDivider(color = Gray_3, thickness = 1.dp)
+        HorizontalDivider(color = Gray_2, thickness = 1.dp, modifier = Modifier.padding(24.dp))
 
         CommentList(
             comments = comments,
@@ -142,6 +161,7 @@ fun PinPostTab(
 }
 
 private fun buildSympathyRequestMessage(
+    pinType: PinCategory,
     writerName: String?,
     pinTitle: String,
 ) = buildAnnotatedString {
@@ -149,27 +169,34 @@ private fun buildSympathyRequestMessage(
     val authorStyle = IssueTypo.ExtraBold15.copy(color = BrandColor).toSpanStyle()
     val titleStyle = IssueTypo.ExtraBold15.copy(color = Title).toSpanStyle()
 
-    if (writerName.isNullOrBlank()) {
-        withStyle(titleStyle) {
-            append(pinTitle)
+    when (pinType) {
+        PinCategory.SHOP -> {
+            pinTitle.takeIf { it.isNotBlank() }?.let { title ->
+                withStyle(titleStyle) { append(title) }
+                withStyle(bodyStyle) {
+                    append("${koreanSubjectParticle(title)} 공감을 요청했어요.")
+                }
+            } ?: withStyle(bodyStyle) { append("공감을 요청했어요.") }
         }
-        withStyle(bodyStyle) {
-            append("에 대해 공감을 요청하고 있어요")
-        }
-        return@buildAnnotatedString
-    }
 
-    withStyle(authorStyle) {
-        append(writerName)
-    }
-    withStyle(bodyStyle) {
-        append("님이 ")
-    }
-    withStyle(titleStyle) {
-        append(pinTitle)
-    }
-    withStyle(bodyStyle) {
-        append("에 대해 공감을 요청했어요")
+        PinCategory.FESTIVAL -> {
+            pinTitle.takeIf { it.isNotBlank() }?.let { title ->
+                withStyle(titleStyle) { append(title) }
+            }
+            withStyle(bodyStyle) { append("에 대한 공감을 요청했어요.") }
+        }
+
+        PinCategory.ISSUE,
+        PinCategory.COMMUNICATION -> {
+            writerName?.takeIf { it.isNotBlank() }?.let { name ->
+                withStyle(authorStyle) { append(name) }
+            }
+            withStyle(bodyStyle) { append("가 ") }
+            pinTitle.takeIf { it.isNotBlank() }?.let { title ->
+                withStyle(titleStyle) { append(title) }
+            }
+            withStyle(bodyStyle) { append("에 대한 공감을 요청했어요.") }
+        }
     }
 }
 
@@ -185,32 +212,69 @@ private fun ShopSympathyRequestSection(
     ) {
         ProfileImageFrame(
             size = 66.dp,
-            imageUrl = content.avatarImageUrl,
+            imageUrl = content.detailDisplayProfile().imageUrl,
         )
 
         Column(modifier = Modifier.weight(1f)) {
             SpeechBubble {
-                val discount = content.discount
-                if (!discount.isNullOrBlank()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
-                        text = discount,
-                        style = IssueTypo.ExtraBold15.copy(color = Title),
+                        text = buildSympathyRequestMessage(
+                            pinType = PinCategory.SHOP,
+                            writerName = content.writer?.name,
+                            pinTitle = content.pinTitle,
+                        ),
+                        style = IssueTypo.Regular15.copy(color = Title),
                         lineHeight = 22.sp,
                     )
-                } else if (content.pinTitle.isNotBlank()) {
-                    Text(
-                        text = content.pinTitle,
-                        style = IssueTypo.ExtraBold15.copy(color = Title),
-                        lineHeight = 22.sp,
+                    content.discount?.takeIf { it.isNotBlank() }?.let { discount ->
+                        ShopDiscountBanner(text = discount)
+                    }
+                    SympathyPill(
+                        sympathyCount = content.sympathyCount,
+                        isSympathizedByMe = content.isSympathizedByMe,
+                        onClick = onSympathyClick,
                     )
                 }
-                SympathyPill(
-                    sympathyCount = content.sympathyCount,
-                    isSympathizedByMe = content.isSympathizedByMe,
-                    onClick = onSympathyClick,
-                )
             }
         }
+    }
+}
+
+@Composable
+private fun ShopDiscountBanner(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(White)
+            .border(width = 1.dp, color = Orange, shape = shape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(Orange),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "%",
+                style = IssueTypo.Bold12.copy(color = White),
+            )
+        }
+        Text(
+            text = text,
+            style = IssueTypo.Bold12.copy(color = Title),
+            modifier = Modifier.weight(1f),
+            maxLines = 2,
+        )
     }
 }
 
@@ -225,33 +289,22 @@ private fun SpeechBubble(
         bottomEnd = 18.dp,
         bottomStart = 18.dp
     )
-    Box(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, Gray_3, bubbleShape)
-            .background(Gray_1, bubbleShape)
-            .padding(horizontal = 18.dp, vertical = 16.dp),
+            .shadow(elevation = 4.dp, shape = bubbleShape),
+        shape = bubbleShape,
+        color = Gray_2,
+        shadowElevation = 2.dp,
+        tonalElevation = 0.dp,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             content()
         }
     }
-}
-
-@Composable
-private fun PostCoverImage(
-    imageUrl: String,
-    modifier: Modifier = Modifier,
-) {
-    AsyncImage(
-        model = imageUrl,
-        contentDescription = "핀 대표 이미지",
-        modifier = modifier
-            .fillMaxWidth()
-            .height(160.dp)
-            .clip(RoundedCornerShape(12.dp)),
-        contentScale = ContentScale.Crop,
-    )
 }
 
 @Composable
@@ -266,13 +319,14 @@ private fun SympathyRequestSection(
     ) {
         ProfileImageFrame(
             size = 66.dp,
-            imageUrl = content.avatarImageUrl,
+            imageUrl = content.detailDisplayProfile().imageUrl,
         )
 
         Column(modifier = Modifier.weight(1f)) {
             SpeechBubble {
                 Text(
                     text = buildSympathyRequestMessage(
+                        pinType = content.pinType,
                         writerName = content.writer?.name,
                         pinTitle = content.pinTitle,
                     ),
@@ -433,10 +487,9 @@ private fun CommentList(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.padding(horizontal = 28.dp)) {
-        Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "댓글",
-            style = IssueTypo.Bold18.copy(color = Title)
+            text = "댓글 ${comments.size}",
+            style = IssueTypo.ExtraBold18.copy(color = Title),
         )
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -456,17 +509,11 @@ private fun CommentList(
             }
 
             comments.isEmpty() -> {
-                Box(
+                CommentEmptyState(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "첫 댓글을 남겨보세요!",
-                        style = IssueTypo.Regular15.copy(color = Gray_5),
-                    )
-                }
+                )
             }
 
             else -> {
@@ -483,8 +530,8 @@ private fun CommentList(
                             authorImageUrl = comment.profileImageUrl,
                             content = comment.content,
                             edited = comment.edited,
+                            createdAt = comment.createdAt,
                             isMine = comment.isMine,
-                            isEditing = comment.commentId == editingCommentId,
                             onEditClick = { onCommentEdit(comment.commentId) },
                             onDeleteClick = { onCommentDelete(comment.commentId) },
                         )
@@ -495,82 +542,217 @@ private fun CommentList(
     }
 }
 
+private val CommentBubbleShape = RoundedCornerShape(
+    topStart = 4.dp,
+    topEnd = 16.dp,
+    bottomEnd = 16.dp,
+    bottomStart = 16.dp,
+)
+
 @Composable
 private fun CommentItem(
     authorName: String,
     authorImageUrl: String?,
     content: String,
     edited: Boolean,
+    createdAt: String,
     isMine: Boolean,
-    isEditing: Boolean,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        ProfileImageFrame(
-            size = 25.dp,
-            imageUrl = authorImageUrl,
-            contentDescription = "댓글 작성자 프로필",
-            borderWidth = 1.dp
-        )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = authorName,
-                    style = IssueTypo.Bold12.copy(color = Title),
-                    modifier = Modifier.weight(1f)
-                )
-                if (edited) {
-                    Text(
-                        text = "수정됨",
-                        style = IssueTypo.Regular12.copy(color = Gray_5),
-                    )
-                }
-                if (isMine) {
-                    Text(
-                        text = "수정",
-                        style = IssueTypo.Regular12.copy(
-                            color = if (isEditing) BrandColor else Gray_5,
-                        ),
-                        modifier = Modifier.clickable(onClick = onEditClick),
-                    )
-                    Text(
-                        text = "삭제",
-                        style = IssueTypo.Regular12.copy(color = Gray_5),
-                        modifier = Modifier.clickable(onClick = onDeleteClick),
-                    )
-                }
+    val formattedTime = formatPinCommentCreatedAt(createdAt)
+    val timeStyle = IssueTypo.Regular12.copy(color = Gray_5)
+    val timeGap = 8.dp
+
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        val density = LocalDensity.current
+        val textMeasurer = rememberTextMeasurer()
+        val timeWidth = remember(formattedTime, timeStyle) {
+            with(density) {
+                textMeasurer
+                    .measure(AnnotatedString(formattedTime), style = timeStyle)
+                    .size
+                    .width
+                    .toDp()
             }
-            Box(
+        }
+        val bubbleAreaMax = (maxWidth - timeWidth - timeGap).coerceAtLeast(0.dp)
+        var contentBlockWidth by remember(content, edited) { mutableStateOf<Dp?>(null) }
+
+        Row(
+            modifier = Modifier.wrapContentWidth(Alignment.Start),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            Column(
                 modifier = Modifier
-                    .clip(
-                        RoundedCornerShape(
-                            topStart = 4.dp,
-                            topEnd = 16.dp,
-                            bottomEnd = 16.dp,
-                            bottomStart = 16.dp
+                    .widthIn(max = bubbleAreaMax)
+                    .wrapContentWidth(Alignment.Start)
+                    .then(
+                        contentBlockWidth?.let { Modifier.width(it) } ?: Modifier,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .then(
+                            if (contentBlockWidth != null) {
+                                Modifier.fillMaxWidth()
+                            } else {
+                                Modifier.wrapContentWidth()
+                            },
+                        ),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        ProfileImageFrame(
+                            size = 25.dp,
+                            imageUrl = authorImageUrl,
+                            contentDescription = "댓글 작성자 프로필",
+                            borderWidth = 1.dp,
                         )
-                    )
-                    .background(BrandColor)
-                    .padding(horizontal = 14.dp, vertical = 12.dp)
+                        Text(
+                            text = authorName,
+                            style = IssueTypo.Bold12.copy(color = Title),
+                        )
+                    }
+                    if (edited) {
+                        Text(
+                            text = "수정됨",
+                            style = IssueTypo.Regular12.copy(color = Gray_5),
+                        )
+                    }
+                }
+
+                CommentBubble(
+                    content = content,
+                    maxOuterWidth = bubbleAreaMax,
+                    isMine = isMine,
+                    onEditClick = onEditClick,
+                    onDeleteClick = onDeleteClick,
+                    modifier = Modifier.onSizeChanged { size ->
+                        val measuredWidth = with(density) { size.width.toDp() }
+                        if (contentBlockWidth != measuredWidth) {
+                            contentBlockWidth = measuredWidth
+                        }
+                    },
+                )
+            }
+            Spacer(modifier = Modifier.width(timeGap))
+            Text(
+                text = formattedTime,
+                style = timeStyle,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CommentBubble(
+    content: String,
+    maxOuterWidth: Dp,
+    isMine: Boolean,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val bubblePadding = 12.dp
+    val textStyle = IssueTypo.Regular15.copy(
+        color = White,
+        fontWeight = Medium,
+    )
+    val innerMaxWidth = (maxOuterWidth - bubblePadding * 2).coerceAtLeast(0.dp)
+
+    Box(
+        modifier = modifier
+            .widthIn(max = maxOuterWidth)
+            .wrapContentWidth(Alignment.Start)
+            .clip(CommentBubbleShape)
+            .background(BrandColor)
+            .padding(bubblePadding),
+    ) {
+        if (isMine) {
+            Column(
+                modifier = Modifier.widthIn(max = innerMaxWidth),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = content,
-                    style = IssueTypo.Regular15.copy(color = White)
+                    style = textStyle,
+                    modifier = Modifier.widthIn(max = innerMaxWidth),
                 )
+                Row(
+                    modifier = Modifier.align(Alignment.End),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CommentBubbleActionIcon(
+                        iconRes = R.drawable.ic_edit,
+                        contentDescription = "댓글 수정",
+                        onClick = onEditClick,
+                    )
+                    CommentBubbleActionIcon(
+                        iconRes = R.drawable.ic_delete,
+                        contentDescription = "댓글 삭제",
+                        onClick = onDeleteClick,
+                    )
+                }
             }
+        } else {
+            Text(
+                text = content,
+                style = textStyle,
+                modifier = Modifier.widthIn(max = innerMaxWidth),
+            )
         }
+    }
+}
+
+@Composable
+private fun CommentEmptyState(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.communicate),
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = Gray_3,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "첫 번째 댓글을 남겨보세요.",
+            style = IssueTypo.Regular12.copy(color = Gray_5),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun CommentBubbleActionIcon(
+    @DrawableRes iconRes: Int,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .requiredSize(20.dp)
+            .clip(CircleShape)
+            .background(White)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = contentDescription,
+            modifier = Modifier.size(12.dp),
+            tint = Gray_6
+        )
     }
 }
 
@@ -630,7 +812,7 @@ private fun CommentInputBar(
                     if (input.isEmpty()) {
                         Text(
                             text = if (isEditing) "수정할 댓글을 입력하세요" else "댓글 입력",
-                            style = IssueTypo.Regular15.copy(color = Gray_5),
+                            style = IssueTypo.Regular15.copy(color = Gray_5, fontWeight = Medium),
                         )
                     }
                     innerTextField()
@@ -661,17 +843,51 @@ private fun CommentInputBar(
     }
 }
 
-@Preview(name = "POST · 빈 상태", showBackground = true, heightDp = 900)
+/** 받침 유무에 따라 주격 조사 이/가 선택 */
+private fun koreanSubjectParticle(word: String): String {
+    val last = word.trim().lastOrNull() ?: return "가"
+    if (last.code !in 0xAC00..0xD7A3) return "가"
+    val hasBatchim = (last.code - 0xAC00) % 28 != 0
+    return if (hasBatchim) "이" else "가"
+}
+
+@Preview(name = "POST", showBackground = true, heightDp = 900)
 @Composable
-private fun PinPostTabPreview_Empty() {
+private fun PinPostTabPreview() {
+    val samplePin = PinSamples.findById(PinSamples.IssuePinId)
     IssueissyuTheme {
         PinPostTab(
-            sympathy = PinSamples.findById(PinSamples.IssuePinId).toPostSympathyContent().copy(
-                writer = null,
-                pinTitle = "",
+            sympathy = samplePin.toPostSympathyContent(),
+            postEmojis = PinDetailPostEmojis(
+                chips = samplePin.emojiReactions.map { reaction ->
+                    PinDetailEmojiChip(
+                        emojiId = reaction.emojiId.toLongOrNull() ?: 0L,
+                        count = reaction.count,
+                        imageUrl = reaction.emojiImageUrl,
+                        isMine = reaction.reactedByMe,
+                    )
+                },
             ),
-            postEmojis = PinDetailPostEmojis(),
-            comments = emptyList(),
+            comments = listOf(
+                PinComment(
+                    commentId = 1,
+                    nickname = "아좌",
+                    profileImageUrl = null,
+                    content = "와와 이거 없어요? ㄹㅇ혁명인데 이거. 헉 쓰바리",
+                    edited = true,
+                    createdAt = "2026-05-24T18:22:36",
+                    isMine = true,
+                ),
+                PinComment(
+                    commentId = 2,
+                    nickname = "아좌",
+                    profileImageUrl = null,
+                    content = "테스트 2",
+                    edited = false,
+                    createdAt = "2026-05-24T19:42:00",
+                    isMine = true,
+                ),
+            ),
             isCommentsLoading = false,
             isCommentSubmitting = false,
             commentInputRevision = 0,
@@ -683,48 +899,6 @@ private fun PinPostTabPreview_Empty() {
             onCommentEdit = {},
             onCommentEditCancel = {},
             onCommentDelete = {},
-        )
-    }
-}
-
-@Preview(name = "POST · 데이터 있음", showBackground = true, heightDp = 900)
-@Composable
-private fun PinPostTabPreview_Filled() {
-    val samplePin = PinSamples.findById(PinSamples.ShopPinId)
-    IssueissyuTheme {
-        PinPostTab(
-            sympathy = PinPostSympathyContent(
-                pinId = samplePin.id.toLongOrNull() ?: 1L,
-                pinType = PinCategory.SHOP,
-                pinTitle = samplePin.title,
-                sympathyCount = samplePin.sympathyCount,
-                isSympathizedByMe = samplePin.isSympathizedByMe,
-                writer = null,
-                discount = "전 품목 50% 할인",
-                storeImageUrl = samplePin.imageUrls.firstOrNull(),
-            ),
-            postEmojis = PinDetailPostEmojis(
-                chips = samplePin.emojiReactions.map { reaction ->
-                    PinDetailEmojiChip(
-                        emojiId = reaction.emojiId.toLongOrNull() ?: 0L,
-                        count = reaction.count,
-                        imageUrl = reaction.emojiImageUrl,
-                        isMine = reaction.reactedByMe,
-                    )
-                },
-            ),
-            comments = emptyList(),
-            isCommentsLoading = false,
-            isCommentSubmitting = false,
-            commentInputRevision = 0,
-            editingCommentId = null,
-            onSympathyClick = {},
-            onEmojiClick = {},
-            onEmojiChipClick = {},
-            onCommentSubmit = {},
-            onCommentEdit = {},
-            onCommentEditCancel = {},
-            onCommentDelete = {}
         )
     }
 }

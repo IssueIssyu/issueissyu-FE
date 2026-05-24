@@ -78,6 +78,11 @@ data class PinComment(
 )
 
 //핀 상세 포스트
+data class PinDetailDisplayProfile(
+    val imageUrl: String?,
+    val nickname: String,
+)
+
 data class PinPostSympathyContent(
     val pinId: Long,
     val pinType: PinCategory,
@@ -86,32 +91,62 @@ data class PinPostSympathyContent(
     val isSympathizedByMe: Boolean,
     val writer: PinUser?,
     val discount: String? = null,
-    val mainPinImageUrl: String? = null,
     val storeImageUrl: String? = null,
+    val mainPinImageUrl: String? = null,
 ) {
-    val avatarImageUrl: String?
-        get() = when (pinType) {
-            PinCategory.SHOP -> storeImageUrl?.takeIf { it.isNotBlank() }
-                ?: writer?.imageUrl?.takeIf { it.isNotBlank() }
-            else -> writer?.imageUrl?.takeIf { it.isNotBlank() }
-                ?: storeImageUrl?.takeIf { it.isNotBlank() }
+    fun detailDisplayProfile(): PinDetailDisplayProfile = when (pinType) {
+        PinCategory.ISSUE, PinCategory.COMMUNICATION -> PinDetailDisplayProfile(
+            imageUrl = writer?.imageUrl?.takeIf { it.isNotBlank() },
+            nickname = writer?.name?.takeIf { it.isNotBlank() } ?: "알 수 없음",
+        )
+        PinCategory.SHOP -> PinDetailDisplayProfile(
+            imageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
+            nickname = pinTitle,
+        )
+        PinCategory.FESTIVAL -> PinDetailDisplayProfile(
+            imageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() },
+            nickname = "관리자",
+        )
+    }
+}
+
+fun Pin.detailDisplayProfile(): PinDetailDisplayProfile? {
+    return when (category) {
+        PinCategory.ISSUE, PinCategory.COMMUNICATION -> {
+            val user = author ?: (detail as? AuthoredPinDetail)?.writer ?: return null
+            if (user.name.isBlank() && user.imageUrl.isNullOrBlank()) return null
+            PinDetailDisplayProfile(
+                imageUrl = user.imageUrl?.takeIf { it.isNotBlank() },
+                nickname = user.name.takeIf { it.isNotBlank() } ?: "알 수 없음",
+            )
         }
+        PinCategory.SHOP -> PinDetailDisplayProfile(
+            imageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
+            nickname = title,
+        )
+        PinCategory.FESTIVAL -> PinDetailDisplayProfile(
+            imageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() },
+            nickname = "관리자",
+        )
+    }
 }
 
 
 fun Pin.toPostSympathyContent(): PinPostSympathyContent {
     val numericPinId = id.toLongOrNull() ?: 0L
-    val writer = when (val detail = this.detail) {
-        is AuthoredPinDetail -> detail.writer
-        else -> author
+    val writer = when (category) {
+        PinCategory.ISSUE, PinCategory.COMMUNICATION -> when (val detail = detail) {
+            is AuthoredPinDetail -> detail.writer
+            else -> author
+        }
+        PinCategory.SHOP, PinCategory.FESTIVAL -> null
     }
-    val mainImage = imageAttachments.firstOrNull { it.isMain }?.imageUrl?.takeIf { it.isNotBlank() }
-        ?: imageUrls.firstOrNull()
-    val storeImage = if (category == PinCategory.SHOP) {
-        imageUrls.lastOrNull()?.takeIf { it.isNotBlank() }
-    } else {
-        null
-    }
+    val storeImage = storeImageUrl?.takeIf { it.isNotBlank() }
+        ?: if (category == PinCategory.SHOP) {
+            imageUrls.lastOrNull()?.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
     return PinPostSympathyContent(
         pinId = numericPinId,
         pinType = category,
@@ -120,8 +155,8 @@ fun Pin.toPostSympathyContent(): PinPostSympathyContent {
         isSympathizedByMe = isSympathizedByMe,
         writer = writer,
         discount = (detail as? ShopPinDetail)?.currentNews?.takeIf { it.isNotBlank() },
-        mainPinImageUrl = if (category != PinCategory.SHOP) mainImage else null,
         storeImageUrl = storeImage,
+        mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() },
     )
 }
 
@@ -133,13 +168,13 @@ fun PinPostSympathyContent.withHomeFallback(
     pinType = layoutCategory,
     pinTitle = pinTitle.ifBlank { fallback.pinTitle },
     discount = discount?.takeIf { it.isNotBlank() } ?: fallback.discount,
-    mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() } ?: fallback.mainPinImageUrl,
     storeImageUrl = storeImageUrl?.takeIf { it.isNotBlank() } ?: fallback.storeImageUrl,
+    mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() } ?: fallback.mainPinImageUrl,
     writer = when (layoutCategory) {
-        PinCategory.SHOP -> null
-        else -> writer?.takeIf { w ->
+        PinCategory.ISSUE, PinCategory.COMMUNICATION -> writer?.takeIf { w ->
             !w.imageUrl.isNullOrBlank() || w.name.isNotBlank()
         } ?: fallback.writer
+        PinCategory.SHOP, PinCategory.FESTIVAL -> null
     },
 )
 
@@ -222,6 +257,8 @@ data class Pin(
     val emojiReactions: List<PinEmojiReaction> = emptyList(),
     val communityPostId: String? = null,
     val author: PinUser? = null,
+    val storeImageUrl: String? = null,
+    val mainPinImageUrl: String? = null,
     val isReported: Boolean = false,
     val isUpdated: Boolean = false,
     val createdAt: String,

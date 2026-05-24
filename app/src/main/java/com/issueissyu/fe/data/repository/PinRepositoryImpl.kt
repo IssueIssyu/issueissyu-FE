@@ -14,6 +14,7 @@ import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
+import com.issueissyu.fe.core.time.parseFlexibleDateTimeToEpochMilli
 import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
@@ -33,8 +34,10 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinDetail
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
-import com.issueissyu.fe.domain.repository.PinRepository
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import com.issueissyu.fe.domain.repository.PinRepository
 import java.util.UUID
 
 @Singleton
@@ -481,7 +484,11 @@ class PinRepositoryImpl @Inject constructor(
         return try {
             val response = pinApi.getPinComments(pinId)
             if (response.isSuccess) {
-                Result.success(response.result.orEmpty().map { it.toPinComment() })
+                Result.success(
+                    response.result.orEmpty()
+                        .map { it.toPinComment() }
+                        .sortedBy { parsePinCommentInstant(it.createdAt) },
+                )
             } else {
                 when (response.code) {
                     "PIN_NOT_FOUND_404" ->
@@ -631,3 +638,6 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 }
+
+private fun parsePinCommentInstant(raw: String): Long =
+    parseFlexibleDateTimeToEpochMilli(raw)

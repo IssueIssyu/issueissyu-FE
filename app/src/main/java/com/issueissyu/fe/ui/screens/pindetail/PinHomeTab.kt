@@ -38,9 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
+import com.issueissyu.fe.core.time.formatPinHomeCreatedAt
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.detailDisplayProfile
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.ui.components.ProfileImageFrame
@@ -54,11 +56,6 @@ import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-
 @Composable
 fun PinHomeTab(
     pin: Pin,
@@ -69,7 +66,7 @@ fun PinHomeTab(
     isDeleting: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
-    val author = pin.author
+    val displayProfile = pin.detailDisplayProfile()
     val canEdit = pin.canEditBy()
     val issueDetail = pin.detail as? IssuePinDetail
 
@@ -118,28 +115,28 @@ fun PinHomeTab(
 
             Text(
                 text = listOf(
-                    formatCreatedAt(pin.createdAt),
+                    formatPinHomeCreatedAt(pin.createdAt),
                     "조회 ${pin.viewCount}",
                     "공감 ${pin.sympathyCount}",
                 ).joinToString(" · "),
                 style = IssueTypo.Regular12.copy(color = Gray_6),
             )
 
-            if (author != null || pin.communityPostId != null) {
+            if (displayProfile != null || pin.communityPostId != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (author != null) {
+                    if (displayProfile != null) {
                         ProfileImageFrame(
                             size = 35.dp,
-                            imageUrl = author.imageUrl,
-                            contentDescription = "댓글 작성자 프로필"
+                            imageUrl = displayProfile.imageUrl,
+                            contentDescription = "핀 프로필"
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = author.name,
+                            text = displayProfile.nickname,
                             style = IssueTypo.Bold12.copy(color = Title),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -307,19 +304,6 @@ private fun CommunityChip(
             text = "커뮤니티 >",
             style = IssueTypo.Bold12.copy(color = White)
         )
-    }
-}
-
-private fun formatCreatedAt(raw: String): String {
-    val pattern = DateTimeFormatter.ofPattern("MM.dd HH:mm")
-    return runCatching {
-        OffsetDateTime.parse(raw).format(pattern)
-    }.getOrElse {
-        runCatching {
-            Instant.parse(raw)
-                .atZone(ZoneId.systemDefault())
-                .format(pattern)
-        }.getOrDefault(raw)
     }
 }
 

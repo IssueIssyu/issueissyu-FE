@@ -1,25 +1,28 @@
 package com.issueissyu.fe.ui.screens.pindetail
 
 import android.widget.Toast
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -251,6 +254,10 @@ private fun PinDetailTabBar(
     onSelectTab: (PinDetailTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val selectedIndex = remember(tabs, selectedTab) {
+        tabs.indexOf(selectedTab).coerceAtLeast(0)
+    }
+
     Column(modifier = modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth()) {
             tabs.forEach { tab ->
@@ -262,7 +269,31 @@ private fun PinDetailTabBar(
                 )
             }
         }
-        HorizontalDivider(color = Gray_3, thickness = 1.dp)
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(2.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Gray_3),
+            )
+            val tabWidth = maxWidth / tabs.size
+            val indicatorWidth = tabWidth * 0.5f
+            val targetOffset = tabWidth * selectedIndex + (tabWidth - indicatorWidth) / 2
+            val indicatorOffset by animateDpAsState(
+                targetValue = targetOffset,
+                label = "pinDetailTabIndicator",
+            )
+            Box(
+                modifier = Modifier
+                    .offset(x = indicatorOffset)
+                    .width(indicatorWidth)
+                    .fillMaxHeight()
+                    .background(Orange),
+            )
+        }
     }
 }
 
@@ -279,20 +310,13 @@ private fun PinDetailTabItem(
         IssueTypo.Regular15.copy(color = Gray_5)
     }
 
-    Column(
+    Box(
         modifier = modifier
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(text = label, style = textStyle)
-        Box(
-            modifier = Modifier
-                .height(2.dp)
-                .fillMaxWidth(0.5f)
-                .background(if (selected) Orange else Color.Transparent),
-        )
     }
 }
 

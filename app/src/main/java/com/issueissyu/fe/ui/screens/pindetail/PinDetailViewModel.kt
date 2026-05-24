@@ -127,8 +127,10 @@ class PinDetailViewModel @Inject constructor(
         }
     }
 
-    private suspend fun loadPinComments(pinId: Long) {
-        _uiState.update { it.copy(isCommentsLoading = true) }
+    private suspend fun loadPinComments(pinId: Long, showLoading: Boolean = true) {
+        if (showLoading) {
+            _uiState.update { it.copy(isCommentsLoading = true) }
+        }
         pinRepository.getPinComments(pinId)
             .onSuccess { comments ->
                 _uiState.update { it.copy(postComments = comments, isCommentsLoading = false) }
@@ -202,14 +204,14 @@ class PinDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isCommentSubmitting = true) }
             pinRepository.createPinComment(pinId, trimmed)
-                .onSuccess { comment ->
+                .onSuccess {
                     _uiState.update { state ->
                         state.copy(
-                            postComments = listOf(comment) + state.postComments,
                             isCommentSubmitting = false,
                             commentInputRevision = state.commentInputRevision + 1,
                         )
                     }
+                    loadPinComments(pinId, showLoading = false)
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isCommentSubmitting = false) }
@@ -222,17 +224,15 @@ class PinDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isCommentSubmitting = true) }
             pinRepository.updatePinComment(commentId, content)
-                .onSuccess { updated ->
+                .onSuccess {
                     _uiState.update { state ->
                         state.copy(
-                            postComments = state.postComments.map { comment ->
-                                if (comment.commentId == commentId) updated else comment
-                            },
                             isCommentSubmitting = false,
                             editingCommentId = null,
                             commentInputRevision = state.commentInputRevision + 1,
                         )
                     }
+                    resolvePinId()?.let { loadPinComments(it, showLoading = false) }
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isCommentSubmitting = false) }
