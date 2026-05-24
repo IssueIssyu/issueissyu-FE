@@ -69,6 +69,7 @@ import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
@@ -294,7 +295,7 @@ private fun SpeechBubble(
             .fillMaxWidth()
             .shadow(elevation = 4.dp, shape = bubbleShape),
         shape = bubbleShape,
-        color = Gray_2,
+        color = Gray_1,
         shadowElevation = 2.dp,
         tonalElevation = 0.dp,
     ) {
