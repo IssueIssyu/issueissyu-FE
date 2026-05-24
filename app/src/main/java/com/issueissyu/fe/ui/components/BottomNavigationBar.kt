@@ -71,7 +71,8 @@ fun BottomNavigationBar(
         containerColor = White
     ) {
         items.forEach { item ->
-            val selected = currentRoute == item.route
+            val selected = currentRoute == item.route ||
+                (item.route == AppDestinations.TOWN_ROUTE && currentRoute == AppDestinations.TOWN_ROUTE_WITH_FOCUS_PIN)
             NavigationBarItem(
                 selected = selected,
                 onClick = {

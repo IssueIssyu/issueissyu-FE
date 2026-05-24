@@ -141,7 +141,10 @@ class MapRepositoryImpl @Inject constructor(
             id = pinId?.toString().orEmpty(),
             title = pinTitle.orEmpty(),
             description = pinContent.orEmpty().decodePinContentNewlines(),
-            coordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
+            coordinate = PinCoordinate(
+                latitude = latitude ?: 0.0,
+                longitude = longitude ?: 0.0,
+            ),
             address = pinDetailAddress.orEmpty(),
             locationName = pinDetailAddress,
             imageUrls = listOfNotNull(pinImageUrl, storeImageUrl).filter { it.isNotBlank() },

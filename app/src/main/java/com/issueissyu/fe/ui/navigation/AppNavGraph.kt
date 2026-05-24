@@ -180,12 +180,24 @@ fun AppNavGraph(
             )
         }
         composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
-        composable(AppDestinations.TOWN_ROUTE) {
+        composable(
+            route = AppDestinations.TOWN_ROUTE_WITH_FOCUS_PIN,
+            arguments = listOf(
+                navArgument("focusPinId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
+        ) { backStackEntry ->
             NavScreenWrapper(
                 paddingValues = paddingValues,
                 removeTopPadding = true
             ) {
-                MapScreen(navController = navController)
+                MapScreen(
+                    navController = navController,
+                    focusPinId = backStackEntry.arguments?.getString("focusPinId"),
+                )
             }
         }
         composable(AppDestinations.COMMUNITY_ROUTE) {
@@ -218,6 +230,13 @@ fun AppNavGraph(
                 CommunityDetailScreen(
                     onBackClick = {
                         navController.navigateUp()
+                    },
+                    onMapClick = { pinId ->
+                        navController.navigate(AppDestinations.townRouteWithFocusPin(pinId)) {
+                            popUpTo(AppDestinations.TOWN_ROUTE) {
+                                inclusive = true
+                            }
+                        }
                     }
                 )
             }

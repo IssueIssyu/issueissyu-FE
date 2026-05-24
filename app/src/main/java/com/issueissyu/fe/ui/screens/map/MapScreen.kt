@@ -72,6 +72,8 @@ import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Shop
 import com.naver.maps.map.LocationTrackingMode
 import com.naver.maps.map.NaverMap
+import com.naver.maps.map.CameraAnimation
+import com.naver.maps.map.CameraUpdate
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
 import com.naver.maps.map.util.FusedLocationSource
@@ -99,6 +101,7 @@ private fun Context.findActivity(): Activity? {
 @Composable
 fun MapScreen(
     navController: NavHostController,
+    focusPinId: String? = null,
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val showResearchButton by viewModel.showResearchButton.collectAsStateWithLifecycle()
@@ -176,7 +179,25 @@ fun MapScreen(
 
     LaunchedEffect(naverMapInstance) {
         if (naverMapInstance != null) {
-            moveToCurrentLocation()
+            if (focusPinId == null) {
+                moveToCurrentLocation()
+            }
+        }
+    }
+
+    LaunchedEffect(focusPinId, naverMapInstance) {
+        if (focusPinId != null && naverMapInstance != null) {
+            viewModel.focusPinById(focusPinId)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.focusPin.collectLatest { pin ->
+            val map = naverMapInstance ?: return@collectLatest
+            val cameraUpdate = CameraUpdate
+                .scrollAndZoomTo(pin.coordinate.toLatLng(), 16.0)
+                .animate(CameraAnimation.Easing)
+            map.moveCamera(cameraUpdate)
         }
     }
 

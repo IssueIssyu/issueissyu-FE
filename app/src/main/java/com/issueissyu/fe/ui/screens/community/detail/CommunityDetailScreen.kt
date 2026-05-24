@@ -66,7 +66,8 @@ private val COMMUNITY_DETAIL_ACTION_BUTTON_SIZE = 30.dp
 @Composable
 fun CommunityDetailScreen(
     viewModel: CommunityDetailViewModel = hiltViewModel(),
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    onMapClick: (Long) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -83,6 +84,7 @@ fun CommunityDetailScreen(
         onRetry = viewModel::loadDetail,
         onGoNowClick = viewModel::goNow,
         onPetitionClick = viewModel::submitPetition,
+        onMapClick = onMapClick,
     )
 }
 
@@ -93,6 +95,7 @@ fun CommunityDetailScreenContent(
     onRetry: () -> Unit = {},
     onGoNowClick: () -> Unit = {},
     onPetitionClick: () -> Unit = {},
+    onMapClick: (Long) -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -136,7 +139,7 @@ fun CommunityDetailScreenContent(
                 else -> {
                     CommunityDetailBody(
                         detail = uiState.detail,
-                        onMapClick = { /* TODO: 지도 이동 기능 구현 필요 */ },
+                        onMapClick = onMapClick,
                         onGoNowClick = onGoNowClick,
                         onPetitionClick = onPetitionClick,
                     )
@@ -184,7 +187,7 @@ private fun CommunityDetailErrorState(
 @Composable
 private fun CommunityDetailBody(
     detail: CommunityDetail,
-    onMapClick: () -> Unit,
+    onMapClick: (Long) -> Unit,
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
 ) {
@@ -319,7 +322,7 @@ private fun CommunityDetailOwnerActionMenu(detail: CommunityDetail) {
 @Composable
 private fun CommunityDetailCategoryRow(
     detail: CommunityDetail,
-    onMapClick: () -> Unit
+    onMapClick: (Long) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -362,17 +365,32 @@ private fun CommunityDetailCategoryRow(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        // Map Button
-        CommunityDetailOutlinedIconButton(onClick = onMapClick) {
-            Icon(
-                imageVector = Icons.Outlined.LocationOn,
-                contentDescription = "지도보기",
-                tint = BrandColor,
-                modifier = Modifier.size(24.dp)
-            )
+        if (detail.canOpenMap) {
+            CommunityDetailOutlinedIconButton(
+                onClick = {
+                    detail.pinId?.let(onMapClick)
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = "지도보기",
+                    tint = BrandColor,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
         }
     }
 }
+
+private val CommunityDetail.canOpenMap: Boolean
+    get() = pinId != null && kind in mapVisibleKinds
+
+private val mapVisibleKinds = setOf(
+    CommunityItemKind.ISSUE,
+    CommunityItemKind.COMMUNICATION,
+    CommunityItemKind.FESTIVAL,
+    CommunityItemKind.STORE,
+)
 
 @Composable
 private fun CommunityDetailOutlinedIconButton(

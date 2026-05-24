@@ -30,6 +30,7 @@ object AppDestinations {
     const val PIN_CREATION_ROUTE = "pin_creation_route"
     const val PIN_DETAIL_ROUTE = "pin_detail_route/{pinId}"
     const val PIN_REPORT_ROUTE = "pin_report_route/{pinId}"
+    const val TOWN_ROUTE_WITH_FOCUS_PIN = "town_route?focusPinId={focusPinId}"
 
     fun communityDetailRoute(communityId: Long): String {
         return "community_detail_route/$communityId"
@@ -37,6 +38,10 @@ object AppDestinations {
 
     fun pinDetailRoute(pinId: String): String {
         return "pin_detail_route/$pinId"
+    }
+
+    fun townRouteWithFocusPin(pinId: Long): String {
+        return "town_route?focusPinId=$pinId"
     }
 
     fun pinReportRoute(pinId: String): String {

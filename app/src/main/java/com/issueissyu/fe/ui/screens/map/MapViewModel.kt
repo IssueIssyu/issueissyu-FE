@@ -45,6 +45,9 @@ class MapViewModel @Inject constructor(
     private val _selectedPin = MutableStateFlow<Pin?>(null)
     val selectedPin: StateFlow<Pin?> = _selectedPin.asStateFlow()
 
+    private val _focusPin = MutableSharedFlow<Pin>(extraBufferCapacity = 1)
+    val focusPin = _focusPin.asSharedFlow()
+
     private val _selectedCategory = MutableStateFlow<PinCategory?>(null)
     val selectedCategory: StateFlow<PinCategory?> = _selectedCategory.asStateFlow()
 
@@ -186,6 +189,15 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val pin = mapRepository.getPinCard(pinId).getOrNull() ?: return@launch
             _selectedPin.value = pin
+            loadPinEmojis(pinId)
+        }
+    }
+
+    fun focusPinById(pinId: String) {
+        viewModelScope.launch {
+            val pin = mapRepository.getPinCard(pinId).getOrNull() ?: return@launch
+            _selectedPin.value = pin
+            _focusPin.emit(pin)
             loadPinEmojis(pinId)
         }
     }

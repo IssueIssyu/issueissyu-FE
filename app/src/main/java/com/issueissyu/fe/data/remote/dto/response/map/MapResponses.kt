@@ -28,6 +28,8 @@ data class MapPinCardResponse(
     val discount: String? = null,
     val storeImageUrl: String? = null,
     val communityId: Long? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val isLike: Boolean? = null,
     val isMine: Boolean? = null,
 )
