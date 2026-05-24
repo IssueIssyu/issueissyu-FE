@@ -43,6 +43,7 @@ import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.canEditBy
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_6
@@ -131,7 +132,11 @@ fun PinHomeTab(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (author != null) {
-                        WriterAvatar(imageUrl = author.imageUrl)
+                        ProfileImageFrame(
+                            size = 35.dp,
+                            imageUrl = author.imageUrl,
+                            contentDescription = "댓글 작성자 프로필"
+                        )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = author.name,
@@ -281,28 +286,6 @@ private fun CircleActionIcon(
             contentDescription = contentDescription,
             modifier = Modifier.size(size * 0.5f),
             colorFilter = iconTint?.let { ColorFilter.tint(it) }
-        )
-    }
-}
-
-@Composable
-private fun WriterAvatar(
-    imageUrl: String?,
-    modifier: Modifier = Modifier
-) {
-    val avatarModifier = modifier
-        .size(36.dp)
-        .clip(CircleShape)
-        .background(Gray_3)
-
-    if (imageUrl.isNullOrBlank()) {
-        Box(modifier = avatarModifier)
-    } else {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "작성자 프로필",
-            modifier = avatarModifier,
-            contentScale = ContentScale.Crop
         )
     }
 }
