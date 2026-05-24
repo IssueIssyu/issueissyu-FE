@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.repository.PinRepository
+import com.issueissyu.fe.domain.usecase.community.GetCommunityCommentsUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -22,6 +23,7 @@ import javax.inject.Inject
 @HiltViewModel
 class CommunityDetailViewModel @Inject constructor(
     private val getCommunityDetailUseCase: GetCommunityDetailUseCase,
+    private val getCommunityCommentsUseCase: GetCommunityCommentsUseCase,
     private val pinRepository: PinRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -97,6 +99,31 @@ class CommunityDetailViewModel @Inject constructor(
                                 reliabilityScore = solveStatus?.reliability ?: detail.reliabilityScore,
                             ),
                             errorMessage = null
+                        )
+                    }
+                }
+        }
+
+        loadComments()
+    }
+
+    private fun loadComments() {
+        viewModelScope.launch {
+            getCommunityCommentsUseCase(communityId)
+                .onStart {
+                    _uiState.update { it.copy(isCommentLoading = true) }
+                }
+                .catch { throwable ->
+                    _uiState.update { it.copy(isCommentLoading = false) }
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "댓글을 불러오지 못했습니다.",
+                    )
+                }
+                .collect { comments ->
+                    _uiState.update {
+                        it.copy(
+                            comments = comments,
+                            isCommentLoading = false,
                         )
                     }
                 }

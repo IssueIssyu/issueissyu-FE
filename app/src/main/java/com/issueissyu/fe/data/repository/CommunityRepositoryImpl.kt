@@ -1,8 +1,10 @@
 package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.CommunityApi
+import com.issueissyu.fe.data.remote.dto.community.toCommunityComment
 import com.issueissyu.fe.data.remote.dto.community.toCommunityDetail
 import com.issueissyu.fe.data.remote.dto.community.toCommunityFeed
+import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityFeed
 import com.issueissyu.fe.domain.model.community.CommunityTab
@@ -52,6 +54,18 @@ class CommunityRepositoryImpl @Inject constructor(
             ?: throw IllegalStateException(response.message.ifBlank { "게시글 응답이 올바르지 않습니다." })
 
         emit(result.toCommunityDetail())
+    }
+
+    override fun getCommunityComments(
+        communityId: Long
+    ): Flow<List<CommunityComment>> = flow {
+        val response = communityApi.getCommunityComments(communityId)
+
+        if (!response.isSuccess) {
+            throw IllegalStateException(response.message.ifBlank { "댓글을 불러오지 못했습니다." })
+        }
+
+        emit(response.result.orEmpty().mapNotNull { it.toCommunityComment() })
     }
 
     private fun CommunityTab.toApiTab(): String? {

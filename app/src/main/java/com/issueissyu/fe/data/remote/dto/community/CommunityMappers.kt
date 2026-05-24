@@ -1,8 +1,10 @@
 package com.issueissyu.fe.data.remote.dto.community
 
+import com.issueissyu.fe.data.remote.dto.response.community.CommunityCommentResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityDetailResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityFeedItemResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityFeedResponse
+import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityFeed
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem
@@ -63,6 +65,21 @@ fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
         petitionCount = 0,
         petitionTargetCount = null,
         isPetitionedByMe = false
+    )
+}
+
+fun CommunityCommentResponse.toCommunityComment(): CommunityComment? {
+    val id = commentId ?: return null
+    val content = commentContent?.takeIf { it.isNotBlank() } ?: return null
+
+    return CommunityComment(
+        commentId = id,
+        nickname = nickname?.takeIf { it.isNotBlank() } ?: "익명",
+        profileImageUrl = profileImageUrl,
+        content = content,
+        isEdited = edited ?: false,
+        createdAt = createdAt,
+        isMine = mine ?: false,
     )
 }
 

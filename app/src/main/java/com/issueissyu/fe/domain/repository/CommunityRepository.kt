@@ -1,5 +1,6 @@
 package com.issueissyu.fe.domain.repository
 
+import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityFeed
 import com.issueissyu.fe.domain.model.community.CommunityTab
@@ -14,4 +15,6 @@ interface CommunityRepository {
     ): Flow<CommunityFeed>
 
     fun getCommunityDetail(communityId: Long): Flow<CommunityDetail>
+
+    fun getCommunityComments(communityId: Long): Flow<List<CommunityComment>>
 }

@@ -1,6 +1,7 @@
 package com.issueissyu.fe.data.remote.api
 
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
+import com.issueissyu.fe.data.remote.dto.response.community.CommunityCommentResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityDetailResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityFeedResponse
 import retrofit2.http.GET
@@ -20,4 +21,9 @@ interface CommunityApi {
     suspend fun getCommunityDetail(
         @Path("communityId") communityId: Long,
     ): BaseResponse<CommunityDetailResponse?>
+
+    @GET("api/communities/{communityId}/comments")
+    suspend fun getCommunityComments(
+        @Path("communityId") communityId: Long,
+    ): BaseResponse<List<CommunityCommentResponse>?>
 }

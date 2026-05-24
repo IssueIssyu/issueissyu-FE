@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
+import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.ui.components.ActionState
@@ -142,6 +143,8 @@ fun CommunityDetailScreenContent(
                         onMapClick = onMapClick,
                         onGoNowClick = onGoNowClick,
                         onPetitionClick = onPetitionClick,
+                        comments = uiState.comments,
+                        isCommentLoading = uiState.isCommentLoading,
                     )
                 }
             }
@@ -190,6 +193,8 @@ private fun CommunityDetailBody(
     onMapClick: (Long) -> Unit,
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
+    comments: List<CommunityComment>,
+    isCommentLoading: Boolean,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -250,7 +255,10 @@ private fun CommunityDetailBody(
 
         // 8. 댓글 영역
         item {
-            CommentPlaceholderSection()
+            CommunityCommentSection(
+                comments = comments,
+                isLoading = isCommentLoading,
+            )
         }
     }
 }
@@ -757,33 +765,98 @@ private fun CommunityDetailIssueActionSection(
 }
 
 @Composable
-private fun CommentPlaceholderSection() {
+private fun CommunityCommentSection(
+    comments: List<CommunityComment>,
+    isLoading: Boolean,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .background(Gray_1)
             .padding(horizontal = 24.dp, vertical = 32.dp)
     ) {
-        Text(text = "댓글 0", style = IssueTypo.Bold18.copy(color = Title))
+        Text(text = "댓글 ${comments.size}", style = IssueTypo.Bold18.copy(color = Title))
         Spacer(modifier = Modifier.height(24.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.communicate),
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = Gray_3
-            )
-            Text(
-                text = "첫 번째 댓글을 남겨보세요.",
-                style = IssueTypo.Regular12.copy(color = Gray_5),
-                textAlign = TextAlign.Center
-            )
+
+        when {
+            isLoading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = BrandColor, modifier = Modifier.size(28.dp))
+                }
+            }
+            comments.isEmpty() -> {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.communicate),
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = Gray_3
+                    )
+                    Text(
+                        text = "첫 번째 댓글을 남겨보세요.",
+                        style = IssueTypo.Regular12.copy(color = Gray_5),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            else -> {
+                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                    comments.forEach { comment ->
+                        CommunityCommentItem(comment = comment)
+                    }
+                }
+            }
         }
         Spacer(modifier = Modifier.height(40.dp))
+    }
+}
+
+@Composable
+private fun CommunityCommentItem(comment: CommunityComment) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        WriterAvatar(imageUrl = comment.profileImageUrl, size = 36.dp)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = comment.nickname,
+                    style = IssueTypo.Bold12.copy(color = Title)
+                )
+                Text(
+                    text = formatTimestamp(comment.createdAt),
+                    style = IssueTypo.Regular12.copy(color = Gray_5)
+                )
+                if (comment.isEdited) {
+                    Text(
+                        text = "수정됨",
+                        style = IssueTypo.Regular12.copy(color = Gray_5)
+                    )
+                }
+            }
+            Text(
+                text = comment.content,
+                style = IssueTypo.Regular15.copy(color = Title)
+            )
+        }
     }
 }
 
