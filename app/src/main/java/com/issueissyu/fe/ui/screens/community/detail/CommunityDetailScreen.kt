@@ -1023,10 +1023,38 @@ private fun CommunityCommentItem(comment: CommunityComment) {
                     )
                 }
             }
-            Text(
-                text = comment.content,
-                style = IssueTypo.Regular15.copy(color = Title)
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(
+                        topStart = 2.dp,
+                        topEnd = 16.dp,
+                        bottomEnd = 16.dp,
+                        bottomStart = 16.dp
+                    ),
+                    color = BrandColor,
+                ) {
+                    Text(
+                        text = comment.content,
+                        style = IssueTypo.Regular15.copy(color = White),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
+                if (comment.isMine) {
+                    CompactCircleIconButton(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "댓글 수정",
+                        onClick = {},
+                    )
+                    CompactCircleIconButton(
+                        imageVector = Icons.Filled.Delete,
+                        contentDescription = "댓글 삭제",
+                        onClick = {},
+                    )
+                }
+            }
         }
     }
 }
