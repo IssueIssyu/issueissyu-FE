@@ -44,8 +44,10 @@ import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.CompactSympathyButton
+import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.SignButton
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -106,6 +108,10 @@ fun CommunityDetailScreen(
         onCommunityDeclareClick = viewModel::declareCommunity,
         onCommunityDeleteClick = viewModel::deleteCommunity,
         onCommunityTakedownClick = viewModel::takedownCommunity,
+        onEmojiAddClick = viewModel::openEmojiPicker,
+        onEmojiPickerDismiss = viewModel::closeEmojiPicker,
+        onEmojiCandidateClick = viewModel::selectEmojiCandidate,
+        onEmojiApplyClick = viewModel::applySelectedEmoji,
     )
 }
 
@@ -124,9 +130,26 @@ fun CommunityDetailScreenContent(
     onCommunityDeclareClick: (Int) -> Unit = {},
     onCommunityDeleteClick: () -> Unit = {},
     onCommunityTakedownClick: () -> Unit = {},
+    onEmojiAddClick: () -> Unit = {},
+    onEmojiPickerDismiss: () -> Unit = {},
+    onEmojiCandidateClick: (Int) -> Unit = {},
+    onEmojiApplyClick: () -> Unit = {},
 ) {
     var showDeclarationDialog by remember { mutableStateOf(false) }
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
+
+    if (uiState.emojiPicker.isVisible) {
+        EmojiReactionBottomSheet(
+            candidates = uiState.emojiPicker.candidates,
+            selectedEmojiId = uiState.emojiPicker.selectedEmojiId,
+            isLoading = uiState.emojiPicker.isLoading,
+            isSubmitting = uiState.emojiPicker.isSubmitting,
+            errorMessage = uiState.emojiPicker.errorMessage,
+            onDismiss = onEmojiPickerDismiss,
+            onEmojiClick = onEmojiCandidateClick,
+            onApplyClick = onEmojiApplyClick,
+        )
+    }
 
     if (showDeclarationDialog) {
         CommunityDeclarationDialog(
@@ -192,6 +215,7 @@ fun CommunityDetailScreenContent(
                     onGoNowClick = onGoNowClick,
                     onPetitionClick = onPetitionClick,
                         comments = uiState.comments,
+                        emojiReactions = uiState.emojiReactions,
                         isCommentLoading = uiState.isCommentLoading,
                         deletingCommentIds = uiState.deletingCommentIds,
                         isCommunityLikeSubmitting = uiState.isCommunityLikeSubmitting,
@@ -199,6 +223,7 @@ fun CommunityDetailScreenContent(
                         onCommunityLikeClick = onCommunityLikeClick,
                         onCommunityDeleteClick = onCommunityDeleteClick,
                         onCommunityTakedownClick = onCommunityTakedownClick,
+                        onEmojiAddClick = onEmojiAddClick,
                         onCommentEditClick = { editingComment = it },
                         onCommentDeleteClick = onCommentDelete,
                     )
@@ -251,6 +276,7 @@ private fun CommunityDetailBody(
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
     comments: List<CommunityComment>,
+    emojiReactions: List<PinEmojiReaction>,
     isCommentLoading: Boolean,
     deletingCommentIds: Set<Long>,
     isCommunityLikeSubmitting: Boolean,
@@ -258,6 +284,7 @@ private fun CommunityDetailBody(
     onCommunityLikeClick: () -> Unit,
     onCommunityDeleteClick: () -> Unit,
     onCommunityTakedownClick: () -> Unit,
+    onEmojiAddClick: () -> Unit,
     onCommentEditClick: (CommunityComment) -> Unit,
     onCommentDeleteClick: (Long) -> Unit,
 ) {
@@ -308,7 +335,10 @@ private fun CommunityDetailBody(
         // 6. 반응 영역 (ISSUE, COMMUNICATION 등)
         if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
             item {
-                ReactionPlaceholderSection()
+                CommunityEmojiReactionSection(
+                    reactions = emojiReactions,
+                    onAddClick = onEmojiAddClick,
+                )
             }
         }
 
@@ -901,24 +931,68 @@ private fun CommunityDetailContentSection(content: String) {
 }
 
 @Composable
-private fun ReactionPlaceholderSection() {
+private fun CommunityEmojiReactionSection(
+    reactions: List<PinEmojiReaction>,
+    onAddClick: () -> Unit,
+) {
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)) {
         Text(text = "반응", style = IssueTypo.Bold12.copy(color = Gray_6))
         Spacer(modifier = Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("👍", "😮", "🔥", "📍").forEach { emoji ->
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Gray_3),
-                    color = White
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .clickable(onClick = onAddClick),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "$emoji 0",
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = IssueTypo.Regular12.copy(color = Title)
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_add_emoji),
+                        contentDescription = "이모지 추가",
+                        tint = Color.Unspecified,
+                        modifier = Modifier.size(26.dp)
                     )
                 }
             }
+
+            items(reactions.sortedByDescending { it.count }, key = { it.emojiId }) { reaction ->
+                CommunityEmojiReactionChip(reaction = reaction)
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityEmojiReactionChip(reaction: PinEmojiReaction) {
+    val borderColor = if (reaction.reactedByMe) BrandColor else Gray_3
+    val backgroundColor = if (reaction.reactedByMe) BrandColor.copy(alpha = 0.08f) else White
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, borderColor),
+        color = backgroundColor
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (!reaction.emojiImageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = reaction.emojiImageUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Text(
+                text = reaction.count.toString(),
+                style = IssueTypo.Regular12.copy(color = Title)
+            )
         }
     }
 }

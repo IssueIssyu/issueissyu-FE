@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
+import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.usecase.community.CreateCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.DeclareCommunityUseCase
@@ -117,6 +119,11 @@ class CommunityDetailViewModel @Inject constructor(
                             ),
                             errorMessage = null
                         )
+                    }
+                    if (detail.canUseEmojiReaction && pinId != null) {
+                        loadPinEmojis(pinId)
+                    } else {
+                        _uiState.update { it.copy(emojiReactions = emptyList(), emojiPicker = CommunityEmojiPickerUiState()) }
                     }
                 }
         }
@@ -379,4 +386,119 @@ class CommunityDetailViewModel @Inject constructor(
                 }
         }
     }
+
+    fun openEmojiPicker() {
+        val detail = _uiState.value.detail ?: return
+        val pinId = detail.pinId ?: return
+        if (!detail.canUseEmojiReaction) return
+
+        val selectedEmojiId = _uiState.value.emojiReactions
+            .firstOrNull { it.reactedByMe }
+            ?.emojiId
+            ?.toIntOrNull()
+
+        _uiState.update {
+            it.copy(
+                emojiPicker = CommunityEmojiPickerUiState(
+                    targetPinId = pinId,
+                    selectedEmojiId = selectedEmojiId,
+                    isLoading = true,
+                )
+            )
+        }
+
+        viewModelScope.launch {
+            pinRepository.getEmojiCandidates()
+                .onSuccess { candidates ->
+                    _uiState.update {
+                        it.copy(
+                            emojiPicker = it.emojiPicker.copy(
+                                candidates = candidates,
+                                isLoading = false,
+                                errorMessage = null,
+                            )
+                        )
+                    }
+                }
+                .onFailure { throwable ->
+                    _uiState.update {
+                        it.copy(
+                            emojiPicker = it.emojiPicker.copy(
+                                isLoading = false,
+                                errorMessage = throwable.message?.takeIf { message -> message.isNotBlank() }
+                                    ?: "이모지 목록을 불러오지 못했습니다.",
+                            )
+                        )
+                    }
+                }
+        }
+    }
+
+    fun closeEmojiPicker() {
+        _uiState.update { it.copy(emojiPicker = CommunityEmojiPickerUiState()) }
+    }
+
+    fun selectEmojiCandidate(emojiId: Int) {
+        val candidate = _uiState.value.emojiPicker.candidates.firstOrNull { it.emojiId == emojiId }
+            ?: return
+        if (!candidate.canReact) {
+            viewModelScope.launch {
+                _toastMessage.emit("구매가 필요한 이모지입니다.")
+            }
+            return
+        }
+        _uiState.update { it.copy(emojiPicker = it.emojiPicker.copy(selectedEmojiId = emojiId)) }
+    }
+
+    fun applySelectedEmoji() {
+        val picker = _uiState.value.emojiPicker
+        val pinId = picker.targetPinId ?: return
+        val selectedEmojiId = picker.selectedEmojiId ?: return
+        val selectedCandidate = picker.candidates.firstOrNull { it.emojiId == selectedEmojiId } ?: return
+        if (!selectedCandidate.canReact || picker.isSubmitting) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(emojiPicker = it.emojiPicker.copy(isSubmitting = true)) }
+
+            pinRepository.applyPinEmoji(pinId, selectedEmojiId)
+                .onSuccess {
+                    loadPinEmojis(pinId)
+                    closeEmojiPicker()
+                }
+                .onFailure { throwable ->
+                    _uiState.update { it.copy(emojiPicker = it.emojiPicker.copy(isSubmitting = false)) }
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "이모지 반응 등록에 실패했습니다.",
+                    )
+                }
+        }
+    }
+
+    private suspend fun loadPinEmojis(pinId: Long) {
+        pinRepository.getPinEmojis(pinId)
+            .onSuccess { pinEmojis ->
+                _uiState.update { it.copy(emojiReactions = pinEmojis.toEmojiReactions()) }
+            }
+    }
+
+    private fun PinEmojis.toEmojiReactions(): List<PinEmojiReaction> {
+        return emojis
+            .filter { it.count > 0 }
+            .map { emoji ->
+                PinEmojiReaction(
+                    emojiId = emoji.emojiId.toString(),
+                    count = emoji.count,
+                    reactedByMe = emoji.emojiId == selectedEmojiId,
+                    emojiImageUrl = emoji.emojiImageUrl,
+                )
+            }
+    }
 }
+
+private val CommunityDetailCanUseEmojiKinds = setOf(
+    CommunityItemKind.ISSUE,
+    CommunityItemKind.COMMUNICATION,
+)
+
+private val com.issueissyu.fe.domain.model.community.CommunityDetail.canUseEmojiReaction: Boolean
+    get() = kind in CommunityDetailCanUseEmojiKinds && pinId != null
