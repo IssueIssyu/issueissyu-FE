@@ -12,6 +12,7 @@ import com.issueissyu.fe.domain.usecase.community.DeleteCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityCommentsUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import com.issueissyu.fe.domain.usecase.community.LikeCommunityUseCase
+import com.issueissyu.fe.domain.usecase.community.TakedownCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.UpdateCommunityCommentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -34,6 +35,7 @@ class CommunityDetailViewModel @Inject constructor(
     private val updateCommunityCommentUseCase: UpdateCommunityCommentUseCase,
     private val deleteCommunityCommentUseCase: DeleteCommunityCommentUseCase,
     private val deleteCommunityUseCase: DeleteCommunityUseCase,
+    private val takedownCommunityUseCase: TakedownCommunityUseCase,
     private val likeCommunityUseCase: LikeCommunityUseCase,
     private val declareCommunityUseCase: DeclareCommunityUseCase,
     private val pinRepository: PinRepository,
@@ -295,6 +297,29 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(isCommunityDeleting = false) }
                     _toastMessage.emit(
                         throwable.message?.takeIf { it.isNotBlank() } ?: "게시글 삭제에 실패했습니다.",
+                    )
+                }
+        }
+    }
+
+    fun takedownCommunity() {
+        val detail = _uiState.value.detail ?: return
+        val canTakedown = detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION
+        if (!detail.isMine || !canTakedown || _uiState.value.isCommunityDeleting) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCommunityDeleting = true) }
+
+            takedownCommunityUseCase(detail.communityId)
+                .onSuccess {
+                    _uiState.update { it.copy(isCommunityDeleting = false) }
+                    _toastMessage.emit("게시글이 내려갔습니다.")
+                    _deleteCompleted.emit(Unit)
+                }
+                .onFailure { throwable ->
+                    _uiState.update { it.copy(isCommunityDeleting = false) }
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "게시글 내리기에 실패했습니다.",
                     )
                 }
         }

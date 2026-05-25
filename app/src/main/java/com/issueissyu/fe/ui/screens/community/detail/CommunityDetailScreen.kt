@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -104,6 +105,7 @@ fun CommunityDetailScreen(
         onCommunityLikeClick = viewModel::likeCommunity,
         onCommunityDeclareClick = viewModel::declareCommunity,
         onCommunityDeleteClick = viewModel::deleteCommunity,
+        onCommunityTakedownClick = viewModel::takedownCommunity,
     )
 }
 
@@ -121,6 +123,7 @@ fun CommunityDetailScreenContent(
     onCommunityLikeClick: () -> Unit = {},
     onCommunityDeclareClick: (Int) -> Unit = {},
     onCommunityDeleteClick: () -> Unit = {},
+    onCommunityTakedownClick: () -> Unit = {},
 ) {
     var showDeclarationDialog by remember { mutableStateOf(false) }
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
@@ -195,6 +198,7 @@ fun CommunityDetailScreenContent(
                         isCommunityDeleting = uiState.isCommunityDeleting,
                         onCommunityLikeClick = onCommunityLikeClick,
                         onCommunityDeleteClick = onCommunityDeleteClick,
+                        onCommunityTakedownClick = onCommunityTakedownClick,
                         onCommentEditClick = { editingComment = it },
                         onCommentDeleteClick = onCommentDelete,
                     )
@@ -253,6 +257,7 @@ private fun CommunityDetailBody(
     isCommunityDeleting: Boolean,
     onCommunityLikeClick: () -> Unit,
     onCommunityDeleteClick: () -> Unit,
+    onCommunityTakedownClick: () -> Unit,
     onCommentEditClick: (CommunityComment) -> Unit,
     onCommentDeleteClick: (Long) -> Unit,
 ) {
@@ -284,6 +289,7 @@ private fun CommunityDetailBody(
                 onLikeClick = onCommunityLikeClick,
                 isDeleting = isCommunityDeleting,
                 onDeleteClick = onCommunityDeleteClick,
+                onTakedownClick = onCommunityTakedownClick,
             )
         }
 
@@ -605,6 +611,7 @@ private fun CommunityDetailTitleSection(
     onLikeClick: () -> Unit,
     isDeleting: Boolean,
     onDeleteClick: () -> Unit,
+    onTakedownClick: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
         Row(
@@ -623,6 +630,7 @@ private fun CommunityDetailTitleSection(
                 onLikeClick = onLikeClick,
                 isDeleting = isDeleting,
                 onDeleteClick = onDeleteClick,
+                onTakedownClick = onTakedownClick,
             )
         }
         
@@ -687,6 +695,7 @@ private fun CommunityDetailTitleActions(
     onLikeClick: () -> Unit,
     isDeleting: Boolean,
     onDeleteClick: () -> Unit,
+    onTakedownClick: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -708,12 +717,22 @@ private fun CommunityDetailTitleActions(
                 contentDescription = "수정",
                 onClick = {},
             )
-            CompactCircleIconButton(
-                imageVector = Icons.Filled.Delete,
-                contentDescription = "삭제",
-                onClick = onDeleteClick,
-                enabled = detail.kind == CommunityItemKind.COMMUNICATION && !isDeleting,
-            )
+            if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
+                CompactCircleIconButton(
+                    imageVector = Icons.Filled.VisibilityOff,
+                    contentDescription = "내리기",
+                    onClick = onTakedownClick,
+                    enabled = !isDeleting,
+                )
+            }
+            if (detail.kind == CommunityItemKind.COMMUNICATION) {
+                CompactCircleIconButton(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "삭제",
+                    onClick = onDeleteClick,
+                    enabled = !isDeleting,
+                )
+            }
         }
     }
 }
@@ -1369,6 +1388,78 @@ fun PreviewCommunityDetailScreenCommunicationMine() {
         reliabilityScore = null, reliabilityReason = null
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "작성자 액션 · ISSUE", showBackground = true)
+@Composable
+fun PreviewCommunityDetailIssueOwnerActions() {
+    val dummyDetail = CommunityDetail(
+        communityId = 8L,
+        pinId = 80L,
+        kind = CommunityItemKind.ISSUE,
+        title = "이슈 작성자 액션",
+        content = "",
+        imageUrls = emptyList(),
+        writerNickname = "나",
+        writerProfileUrl = null,
+        address = null,
+        viewCount = 0,
+        likeCount = 21,
+        createdAt = null,
+        updatedAt = null,
+        isReported = false,
+        isPetitioned = false,
+        isProblemSolver = false,
+        isMine = true,
+        reliabilityScore = null,
+        reliabilityReason = null
+    )
+    Row(modifier = Modifier.padding(16.dp)) {
+        CommunityDetailTitleActions(
+            detail = dummyDetail,
+            isLikeSubmitting = false,
+            onLikeClick = {},
+            isDeleting = false,
+            onDeleteClick = {},
+            onTakedownClick = {},
+        )
+    }
+}
+
+@Preview(name = "작성자 액션 · COMMUNICATION", showBackground = true)
+@Composable
+fun PreviewCommunityDetailCommunicationOwnerActions() {
+    val dummyDetail = CommunityDetail(
+        communityId = 9L,
+        pinId = 90L,
+        kind = CommunityItemKind.COMMUNICATION,
+        title = "소통 작성자 액션",
+        content = "",
+        imageUrls = emptyList(),
+        writerNickname = "나",
+        writerProfileUrl = null,
+        address = null,
+        viewCount = 0,
+        likeCount = 21,
+        createdAt = null,
+        updatedAt = null,
+        isReported = false,
+        isPetitioned = false,
+        isProblemSolver = false,
+        isMine = true,
+        reliabilityScore = null,
+        reliabilityReason = null
+    )
+    Row(modifier = Modifier.padding(16.dp)) {
+        CommunityDetailTitleActions(
+            detail = dummyDetail,
+            isLikeSubmitting = false,
+            onLikeClick = {},
+            isDeleting = false,
+            onDeleteClick = {},
+            onTakedownClick = {},
+        )
+    }
 }
 
 @Preview(name = "STORE 상세", showBackground = true, heightDp = 1000)

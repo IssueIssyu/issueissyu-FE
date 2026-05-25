@@ -73,6 +73,20 @@ class CommunityRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun takedownCommunity(communityId: Long): Result<Unit> {
+        return try {
+            val response = communityApi.takedownCommunity(communityId)
+
+            if (response.isSuccess) {
+                Result.success(Unit)
+            } else {
+                Result.failure(IllegalStateException(response.message.ifBlank { "게시글 내리기에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override fun getCommunityComments(
         communityId: Long
     ): Flow<List<CommunityComment>> = flow {
