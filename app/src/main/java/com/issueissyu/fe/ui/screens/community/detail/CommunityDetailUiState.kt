@@ -12,5 +12,6 @@ data class CommunityDetailUiState(
     val deletingCommentIds: Set<Long> = emptySet(),
     val isCommunityLikeSubmitting: Boolean = false,
     val isCommunityDeclarationSubmitting: Boolean = false,
+    val isCommunityDeleting: Boolean = false,
     val errorMessage: String? = null
 )

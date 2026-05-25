@@ -8,6 +8,7 @@ import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.usecase.community.CreateCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.DeclareCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.DeleteCommunityCommentUseCase
+import com.issueissyu.fe.domain.usecase.community.DeleteCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityCommentsUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import com.issueissyu.fe.domain.usecase.community.LikeCommunityUseCase
@@ -32,6 +33,7 @@ class CommunityDetailViewModel @Inject constructor(
     private val createCommunityCommentUseCase: CreateCommunityCommentUseCase,
     private val updateCommunityCommentUseCase: UpdateCommunityCommentUseCase,
     private val deleteCommunityCommentUseCase: DeleteCommunityCommentUseCase,
+    private val deleteCommunityUseCase: DeleteCommunityUseCase,
     private val likeCommunityUseCase: LikeCommunityUseCase,
     private val declareCommunityUseCase: DeclareCommunityUseCase,
     private val pinRepository: PinRepository,
@@ -45,6 +47,9 @@ class CommunityDetailViewModel @Inject constructor(
 
     private val _toastMessage = MutableSharedFlow<String>()
     val toastMessage: SharedFlow<String> = _toastMessage.asSharedFlow()
+
+    private val _deleteCompleted = MutableSharedFlow<Unit>()
+    val deleteCompleted: SharedFlow<Unit> = _deleteCompleted.asSharedFlow()
 
     init {
         loadDetail()
@@ -268,6 +273,28 @@ class CommunityDetailViewModel @Inject constructor(
                     }
                     _toastMessage.emit(
                         throwable.message?.takeIf { it.isNotBlank() } ?: "댓글 삭제에 실패했습니다.",
+                    )
+                }
+        }
+    }
+
+    fun deleteCommunity() {
+        val detail = _uiState.value.detail ?: return
+        if (!detail.isMine || detail.kind != CommunityItemKind.COMMUNICATION || _uiState.value.isCommunityDeleting) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCommunityDeleting = true) }
+
+            deleteCommunityUseCase(detail.communityId)
+                .onSuccess {
+                    _uiState.update { it.copy(isCommunityDeleting = false) }
+                    _toastMessage.emit("게시글이 삭제되었습니다.")
+                    _deleteCompleted.emit(Unit)
+                }
+                .onFailure { throwable ->
+                    _uiState.update { it.copy(isCommunityDeleting = false) }
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "게시글 삭제에 실패했습니다.",
                     )
                 }
         }

@@ -17,6 +17,8 @@ interface CommunityRepository {
 
     fun getCommunityDetail(communityId: Long): Flow<CommunityDetail>
 
+    suspend fun deleteCommunity(communityId: Long): Result<Unit>
+
     fun getCommunityComments(communityId: Long): Flow<List<CommunityComment>>
 
     suspend fun createCommunityComment(communityId: Long, content: String): Result<CommunityComment>

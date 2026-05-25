@@ -29,6 +29,11 @@ interface CommunityApi {
         @Path("communityId") communityId: Long,
     ): BaseResponse<CommunityDetailResponse?>
 
+    @DELETE("api/communities/{communityId}")
+    suspend fun deleteCommunity(
+        @Path("communityId") communityId: Long,
+    ): BaseResponse<Unit?>
+
     @GET("api/communities/{communityId}/comments")
     suspend fun getCommunityComments(
         @Path("communityId") communityId: Long,

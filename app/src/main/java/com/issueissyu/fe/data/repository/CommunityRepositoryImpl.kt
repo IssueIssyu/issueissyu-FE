@@ -59,6 +59,20 @@ class CommunityRepositoryImpl @Inject constructor(
         emit(result.toCommunityDetail())
     }
 
+    override suspend fun deleteCommunity(communityId: Long): Result<Unit> {
+        return try {
+            val response = communityApi.deleteCommunity(communityId)
+
+            if (response.isSuccess) {
+                Result.success(Unit)
+            } else {
+                Result.failure(IllegalStateException(response.message.ifBlank { "게시글 삭제에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override fun getCommunityComments(
         communityId: Long
     ): Flow<List<CommunityComment>> = flow {

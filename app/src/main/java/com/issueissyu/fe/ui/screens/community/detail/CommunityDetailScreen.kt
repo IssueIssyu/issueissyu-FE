@@ -74,6 +74,7 @@ fun CommunityDetailScreen(
     viewModel: CommunityDetailViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
     onMapClick: (Long) -> Unit = {},
+    onDeleteComplete: () -> Unit = onBackClick,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -81,6 +82,12 @@ fun CommunityDetailScreen(
     LaunchedEffect(viewModel) {
         viewModel.toastMessage.collect { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.deleteCompleted.collect {
+            onDeleteComplete()
         }
     }
 
@@ -96,6 +103,7 @@ fun CommunityDetailScreen(
         onCommentDelete = viewModel::deleteComment,
         onCommunityLikeClick = viewModel::likeCommunity,
         onCommunityDeclareClick = viewModel::declareCommunity,
+        onCommunityDeleteClick = viewModel::deleteCommunity,
     )
 }
 
@@ -112,6 +120,7 @@ fun CommunityDetailScreenContent(
     onCommentDelete: (Long) -> Unit = {},
     onCommunityLikeClick: () -> Unit = {},
     onCommunityDeclareClick: (Int) -> Unit = {},
+    onCommunityDeleteClick: () -> Unit = {},
 ) {
     var showDeclarationDialog by remember { mutableStateOf(false) }
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
@@ -183,7 +192,9 @@ fun CommunityDetailScreenContent(
                         isCommentLoading = uiState.isCommentLoading,
                         deletingCommentIds = uiState.deletingCommentIds,
                         isCommunityLikeSubmitting = uiState.isCommunityLikeSubmitting,
+                        isCommunityDeleting = uiState.isCommunityDeleting,
                         onCommunityLikeClick = onCommunityLikeClick,
+                        onCommunityDeleteClick = onCommunityDeleteClick,
                         onCommentEditClick = { editingComment = it },
                         onCommentDeleteClick = onCommentDelete,
                     )
@@ -239,7 +250,9 @@ private fun CommunityDetailBody(
     isCommentLoading: Boolean,
     deletingCommentIds: Set<Long>,
     isCommunityLikeSubmitting: Boolean,
+    isCommunityDeleting: Boolean,
     onCommunityLikeClick: () -> Unit,
+    onCommunityDeleteClick: () -> Unit,
     onCommentEditClick: (CommunityComment) -> Unit,
     onCommentDeleteClick: (Long) -> Unit,
 ) {
@@ -269,6 +282,8 @@ private fun CommunityDetailBody(
                 detail = detail,
                 isLikeSubmitting = isCommunityLikeSubmitting,
                 onLikeClick = onCommunityLikeClick,
+                isDeleting = isCommunityDeleting,
+                onDeleteClick = onCommunityDeleteClick,
             )
         }
 
@@ -588,6 +603,8 @@ private fun CommunityDetailTitleSection(
     detail: CommunityDetail,
     isLikeSubmitting: Boolean,
     onLikeClick: () -> Unit,
+    isDeleting: Boolean,
+    onDeleteClick: () -> Unit,
 ) {
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
         Row(
@@ -604,6 +621,8 @@ private fun CommunityDetailTitleSection(
                 detail = detail,
                 isLikeSubmitting = isLikeSubmitting,
                 onLikeClick = onLikeClick,
+                isDeleting = isDeleting,
+                onDeleteClick = onDeleteClick,
             )
         }
         
@@ -666,6 +685,8 @@ private fun CommunityDetailTitleActions(
     detail: CommunityDetail,
     isLikeSubmitting: Boolean,
     onLikeClick: () -> Unit,
+    isDeleting: Boolean,
+    onDeleteClick: () -> Unit,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -690,7 +711,8 @@ private fun CommunityDetailTitleActions(
             CompactCircleIconButton(
                 imageVector = Icons.Filled.Delete,
                 contentDescription = "삭제",
-                onClick = {},
+                onClick = onDeleteClick,
+                enabled = detail.kind == CommunityItemKind.COMMUNICATION && !isDeleting,
             )
         }
     }
