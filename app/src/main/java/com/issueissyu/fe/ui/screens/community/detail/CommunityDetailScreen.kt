@@ -92,6 +92,7 @@ fun CommunityDetailScreen(
         onPetitionClick = viewModel::submitPetition,
         onMapClick = onMapClick,
         onCommentSubmit = viewModel::createComment,
+        onCommunityLikeClick = viewModel::likeCommunity,
     )
 }
 
@@ -104,6 +105,7 @@ fun CommunityDetailScreenContent(
     onPetitionClick: () -> Unit = {},
     onMapClick: (Long) -> Unit = {},
     onCommentSubmit: (String) -> Unit = {},
+    onCommunityLikeClick: () -> Unit = {},
 ) {
     Scaffold(
         topBar = {
@@ -155,6 +157,8 @@ fun CommunityDetailScreenContent(
                         onPetitionClick = onPetitionClick,
                         comments = uiState.comments,
                         isCommentLoading = uiState.isCommentLoading,
+                        isCommunityLikeSubmitting = uiState.isCommunityLikeSubmitting,
+                        onCommunityLikeClick = onCommunityLikeClick,
                     )
                 }
             }
@@ -205,6 +209,8 @@ private fun CommunityDetailBody(
     onPetitionClick: () -> Unit,
     comments: List<CommunityComment>,
     isCommentLoading: Boolean,
+    isCommunityLikeSubmitting: Boolean,
+    onCommunityLikeClick: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -227,7 +233,11 @@ private fun CommunityDetailBody(
 
         // 3. 제목 및 주소
         item {
-            CommunityDetailTitleSection(detail = detail)
+            CommunityDetailTitleSection(
+                detail = detail,
+                isLikeSubmitting = isCommunityLikeSubmitting,
+                onLikeClick = onCommunityLikeClick,
+            )
         }
 
         // 4. 이미지 섹션
@@ -480,7 +490,11 @@ private fun CommunityDetailMetaSection(detail: CommunityDetail) {
 }
 
 @Composable
-private fun CommunityDetailTitleSection(detail: CommunityDetail) {
+private fun CommunityDetailTitleSection(
+    detail: CommunityDetail,
+    isLikeSubmitting: Boolean,
+    onLikeClick: () -> Unit,
+) {
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -492,7 +506,11 @@ private fun CommunityDetailTitleSection(detail: CommunityDetail) {
                 style = IssueTypo.Bold18.copy(color = Title, fontSize = 22.sp),
                 modifier = Modifier.weight(1f)
             )
-            CommunityDetailTitleActions(detail = detail)
+            CommunityDetailTitleActions(
+                detail = detail,
+                isLikeSubmitting = isLikeSubmitting,
+                onLikeClick = onLikeClick,
+            )
         }
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -550,15 +568,20 @@ private fun CommunityDetailTitleSection(detail: CommunityDetail) {
 }
 
 @Composable
-private fun CommunityDetailTitleActions(detail: CommunityDetail) {
+private fun CommunityDetailTitleActions(
+    detail: CommunityDetail,
+    isLikeSubmitting: Boolean,
+    onLikeClick: () -> Unit,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         CompactSympathyButton(
             sympathyCount = detail.likeCount,
-            isSympathizedByMe = false,
-            onClick = {},
+            isSympathizedByMe = detail.isLikedByMe,
+            onClick = onLikeClick,
+            enabled = !detail.isLikedByMe && !isLikeSubmitting,
             height = 28.dp,
             horizontalPadding = 10.dp,
             iconSize = 15.dp,

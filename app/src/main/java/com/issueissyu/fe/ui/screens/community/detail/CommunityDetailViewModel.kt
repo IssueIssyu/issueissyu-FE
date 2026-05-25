@@ -8,6 +8,7 @@ import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.usecase.community.CreateCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityCommentsUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
+import com.issueissyu.fe.domain.usecase.community.LikeCommunityUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ class CommunityDetailViewModel @Inject constructor(
     private val getCommunityDetailUseCase: GetCommunityDetailUseCase,
     private val getCommunityCommentsUseCase: GetCommunityCommentsUseCase,
     private val createCommunityCommentUseCase: CreateCommunityCommentUseCase,
+    private val likeCommunityUseCase: LikeCommunityUseCase,
     private val pinRepository: PinRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -203,6 +205,35 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(isCommentSubmitting = false) }
                     _toastMessage.emit(
                         throwable.message?.takeIf { it.isNotBlank() } ?: "댓글 등록에 실패했습니다.",
+                    )
+                }
+        }
+    }
+
+    fun likeCommunity() {
+        val detail = _uiState.value.detail ?: return
+        if (detail.isLikedByMe || _uiState.value.isCommunityLikeSubmitting) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCommunityLikeSubmitting = true) }
+
+            likeCommunityUseCase(detail.communityId)
+                .onSuccess { like ->
+                    _uiState.update { state ->
+                        state.copy(
+                            detail = state.detail?.copy(
+                                likeCount = like.pinLikeCount,
+                                isLikedByMe = like.isLike,
+                            ),
+                            isCommunityLikeSubmitting = false,
+                        )
+                    }
+                    _toastMessage.emit("게시글에 공감했습니다.")
+                }
+                .onFailure { throwable ->
+                    _uiState.update { it.copy(isCommunityLikeSubmitting = false) }
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "공감에 실패했습니다.",
                     )
                 }
         }

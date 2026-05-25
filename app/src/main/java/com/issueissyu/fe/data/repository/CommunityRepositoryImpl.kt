@@ -9,6 +9,7 @@ import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityFeed
 import com.issueissyu.fe.domain.model.community.CommunityTab
+import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.repository.CommunityRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -87,6 +88,31 @@ class CommunityRepositoryImpl @Inject constructor(
                 Result.success(comment)
             } else {
                 Result.failure(IllegalStateException(response.message.ifBlank { "댓글 작성에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun likeCommunity(communityId: Long): Result<PinLike> {
+        return try {
+            val response = communityApi.likeCommunity(communityId)
+
+            if (response.isSuccess) {
+                val like = response.result
+                    ?: return Result.failure(
+                        IllegalStateException(response.message.ifBlank { "커뮤니티 공감 응답이 올바르지 않습니다." })
+                    )
+
+                Result.success(
+                    PinLike(
+                        pinId = like.pinId,
+                        pinLikeCount = like.pinLikeCount,
+                        isLike = like.isLike,
+                    )
+                )
+            } else {
+                Result.failure(IllegalStateException(response.message.ifBlank { "커뮤니티 공감에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)
