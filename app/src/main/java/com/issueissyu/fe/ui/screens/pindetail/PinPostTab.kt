@@ -64,7 +64,6 @@ import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
-import com.issueissyu.fe.core.text.koreanSubjectParticle
 import com.issueissyu.fe.core.time.formatPinCommentCreatedAt
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
@@ -171,34 +170,36 @@ private fun buildSympathyRequestMessage(
     val bodyStyle = IssueTypo.Regular15.copy(color = Title).toSpanStyle()
     val authorStyle = IssueTypo.ExtraBold15.copy(color = BrandColor).toSpanStyle()
     val titleStyle = IssueTypo.ExtraBold15.copy(color = Title).toSpanStyle()
+    val safeWriterName = writerName?.takeIf { it.isNotBlank() }
+    val safeTitle = pinTitle.takeIf { it.isNotBlank() }
 
     when (pinType) {
         PinCategory.SHOP -> {
-            pinTitle.takeIf { it.isNotBlank() }?.let { title ->
+            safeTitle?.let { title ->
                 withStyle(titleStyle) { append(title) }
-                withStyle(bodyStyle) {
-                    append("${koreanSubjectParticle(title)} 공감을 요청했어요.")
-                }
+                withStyle(bodyStyle) { append("님이 공감을 요청했어요.") }
             } ?: withStyle(bodyStyle) { append("공감을 요청했어요.") }
         }
 
         PinCategory.FESTIVAL -> {
-            pinTitle.takeIf { it.isNotBlank() }?.let { title ->
+            safeTitle?.let { title ->
                 withStyle(titleStyle) { append(title) }
-            }
-            withStyle(bodyStyle) { append("에 대한 공감을 요청했어요.") }
+                withStyle(bodyStyle) { append("에 대한 공감을 요청했어요.") }
+            } ?: withStyle(bodyStyle) { append("공감을 요청했어요.") }
         }
 
         PinCategory.ISSUE,
         PinCategory.COMMUNICATION -> {
-            writerName?.takeIf { it.isNotBlank() }?.let { name ->
+            safeWriterName?.let { name ->
                 withStyle(authorStyle) { append(name) }
-                withStyle(bodyStyle) { append("${koreanSubjectParticle(name)} ") }
+                withStyle(bodyStyle) { append(" 님이 ") }
             }
-            pinTitle.takeIf { it.isNotBlank() }?.let { title ->
+            safeTitle?.let { title ->
                 withStyle(titleStyle) { append(title) }
+                withStyle(bodyStyle) { append("에 대한 공감을 요청했어요.") }
+            } ?: withStyle(bodyStyle) {
+                append("공감을 요청했어요.")
             }
-            withStyle(bodyStyle) { append("에 대한 공감을 요청했어요.") }
         }
     }
 }
