@@ -43,11 +43,11 @@ fun PinCommentDto.toPinComment(): PinComment {
 }
 
 fun PinDetailPostResponse.toPostSympathyContent(): PinPostSympathyContent {
-    val writer = pinUserId?.takeIf { it.isNotBlank() }?.let { id ->
+    val writer = pinUserNickname?.takeIf { it.isNotBlank() }?.let { name ->
         PinUser(
-            id = id,
-            name = pinUserNickname?.takeIf { it.isNotBlank() } ?: "알 수 없음",
-            imageUrl = pinUserProfile,
+            id = pinUserId?.takeIf { it.isNotBlank() }.orEmpty(),
+            name = name,
+            imageUrl = pinUserProfile?.takeIf { it.isNotBlank() },
         )
     }
     return PinPostSympathyContent(
@@ -157,7 +157,7 @@ private fun PinDetailHomeResponse.toPinDetail(author: PinUser?): PinDetail {
 
 private fun PinDetailHomeResponse.toPinUserOrNull(): PinUser? {
     when (pinType.toPinCategoryOrNull()) {
-        PinCategory.ISSUE, PinCategory.COMMUNICATION -> Unit
+        PinCategory.ISSUE, PinCategory.COMMUNICATION, PinCategory.FESTIVAL -> Unit
         else -> return null
     }
     val name = pinUserNickname?.takeIf { it.isNotBlank() } ?: return null

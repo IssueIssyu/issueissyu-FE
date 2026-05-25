@@ -64,6 +64,7 @@ import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
+import com.issueissyu.fe.core.text.koreanSubjectParticle
 import com.issueissyu.fe.core.time.formatPinCommentCreatedAt
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
@@ -105,7 +106,7 @@ fun PinPostTab(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp, 50.dp, 20.dp, 0.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             when (sympathy.pinType) {
                 PinCategory.SHOP -> ShopSympathyRequestSection(
@@ -132,7 +133,7 @@ fun PinPostTab(
             )
         }
 
-        HorizontalDivider(color = Gray_2, thickness = 1.dp, modifier = Modifier.padding(24.dp))
+        HorizontalDivider(color = Gray_2, thickness = 1.dp, modifier = Modifier.padding(20.dp))
 
         CommentList(
             comments = comments,
@@ -143,6 +144,7 @@ fun PinPostTab(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
+                .padding(0.dp,0.dp, 0.dp, 20.dp)
         )
 
         val editingComment = comments.firstOrNull { it.commentId == editingCommentId }
@@ -156,7 +158,7 @@ fun PinPostTab(
             onSubmit = onCommentSubmit,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 28.dp, end = 28.dp, bottom = 30.dp)
+                .padding(start = 20.dp, end = 20.dp, bottom = 30.dp)
         )
     }
 }
@@ -191,8 +193,8 @@ private fun buildSympathyRequestMessage(
         PinCategory.COMMUNICATION -> {
             writerName?.takeIf { it.isNotBlank() }?.let { name ->
                 withStyle(authorStyle) { append(name) }
+                withStyle(bodyStyle) { append("${koreanSubjectParticle(name)} ") }
             }
-            withStyle(bodyStyle) { append("가 ") }
             pinTitle.takeIf { it.isNotBlank() }?.let { title ->
                 withStyle(titleStyle) { append(title) }
             }
@@ -378,6 +380,9 @@ private fun SympathyPill(
     }
 }
 
+private val EmojiReactionChipHeight = 38.dp
+private val EmojiReactionStatusHeight = 18.dp
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun EmojiReactionRow(
@@ -387,17 +392,21 @@ private fun EmojiReactionRow(
 ) {
     val visibleChips = postEmojis.visibleChips
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (visibleChips.isEmpty()) {
-            Text(
-                text = "아직 이모지 반응이 없어요.",
-                style = IssueTypo.Regular12.copy(color = Gray_5)
-            )
+    Column() {
+        Box(
+            contentAlignment = Alignment.TopStart,
+        ) {
+            if (visibleChips.isEmpty()) {
+                Text(
+                    text = "아직 이모지 반응이 없어요.",
+                    style = IssueTypo.Regular12.copy(color = Gray_5),
+                    modifier = Modifier.padding(0.dp, 8.dp)
+                )
+            }
         }
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             visibleChips.forEach { chip ->
                     EmojiReactionChip(
@@ -424,18 +433,19 @@ private fun EmojiReactionChip(
 
     Row(
         modifier = Modifier
+            .height(EmojiReactionChipHeight)
             .clip(RoundedCornerShape(16.dp))
             .background(backgroundColor)
             .border(1.dp, borderColor, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
-            .padding(5.dp),
+            .padding(horizontal = 5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (!chip.imageUrl.isNullOrBlank()) {
             AsyncImage(
                 model = chip.imageUrl,
                 contentDescription = "이모지",
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(28.dp)
                     .clip(RoundedCornerShape(5.dp))
@@ -459,17 +469,18 @@ private fun EmojiReactionChip(
 private fun AddEmojiChip(onClick: () -> Unit) {
     Row(
         modifier = Modifier
+            .height(EmojiReactionChipHeight)
             .clip(RoundedCornerShape(16.dp))
             .background(Gray_3)
             .clickable(onClick = onClick)
-            .padding(12.dp,5.dp),
+            .padding(horizontal = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             imageVector = Icons.Default.Add,
             contentDescription = "이모지 추가",
             tint = Gray_6,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(24.dp)
         )
         Text(
             text = "이모지",
@@ -487,12 +498,12 @@ private fun CommentList(
     onCommentDelete: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.padding(horizontal = 28.dp)) {
+    Column(modifier = modifier.padding(horizontal = 20.dp)) {
         Text(
             text = "댓글 ${comments.size}",
             style = IssueTypo.ExtraBold18.copy(color = Title),
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         when {
             isLoading && comments.isEmpty() -> {
@@ -816,14 +827,6 @@ private fun CommentInputBar(
         }
         }
     }
-}
-
-/** 받침 유무에 따라 주격 조사 이/가 선택 */
-private fun koreanSubjectParticle(word: String): String {
-    val last = word.trim().lastOrNull() ?: return "가"
-    if (last.code !in 0xAC00..0xD7A3) return "가"
-    val hasBatchim = (last.code - 0xAC00) % 28 != 0
-    return if (hasBatchim) "이" else "가"
 }
 
 @Preview(name = "POST", showBackground = true, heightDp = 900)

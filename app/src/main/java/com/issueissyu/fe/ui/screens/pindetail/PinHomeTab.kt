@@ -44,6 +44,7 @@ import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.detailDisplayProfile
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
+import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -69,6 +70,7 @@ fun PinHomeTab(
     val displayProfile = pin.detailDisplayProfile()
     val canEdit = pin.canEditBy()
     val issueDetail = pin.detail as? IssuePinDetail
+    val shopDetail = pin.detail as? ShopPinDetail
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp)) {
@@ -161,6 +163,11 @@ fun PinHomeTab(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 28.dp, vertical = 16.dp),
         ) {
+            shopDetail?.currentNews?.takeIf { it.isNotBlank() }?.let { discount ->
+                PinHomeDiscountBanner(text = discount)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             Text(
                 text = pin.description,
                 style = IssueTypo.Regular15.copy(color = TextColor),
@@ -187,6 +194,43 @@ fun PinHomeTab(
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun PinHomeDiscountBanner(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(White)
+            .border(width = 1.dp, color = Orange, shape = shape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(Orange),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "%",
+                style = IssueTypo.Bold12.copy(color = White),
+            )
+        }
+        Text(
+            text = text,
+            style = IssueTypo.Bold12.copy(color = Title),
+            modifier = Modifier.weight(1f),
+            maxLines = 2,
+        )
     }
 }
 

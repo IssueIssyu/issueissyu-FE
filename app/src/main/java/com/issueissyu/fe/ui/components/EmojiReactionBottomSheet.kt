@@ -257,7 +257,9 @@ private fun EmojiCandidateButton(
                 model = candidate.emojiImageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(10.dp))
             )
         }
 
