@@ -37,11 +37,11 @@ private const val DEFAULT_REASON_VISIBLE_THRESHOLD = 70
 fun IssueReliabilityIndicator(
     score: Int?,
     reason: String?,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.width(100.dp),
     reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD,
 ) {
     Column(
-        modifier = modifier.width(100.dp),
+        modifier = modifier,
         horizontalAlignment = Alignment.End
     ) {
         Row(
