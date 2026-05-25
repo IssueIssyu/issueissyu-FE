@@ -42,7 +42,8 @@ fun PinCommentDto.toPinComment(): PinComment {
     )
 }
 
-fun PinDetailPostResponse.toPostSympathyContent(): PinPostSympathyContent {
+fun PinDetailPostResponse.toPostSympathyContentOrNull(): PinPostSympathyContent? {
+    val category = pinType.toPinCategoryOrNull() ?: return null
     val writer = pinUserNickname?.takeIf { it.isNotBlank() }?.let { name ->
         PinUser(
             id = pinUserId?.takeIf { it.isNotBlank() }.orEmpty(),
@@ -52,7 +53,7 @@ fun PinDetailPostResponse.toPostSympathyContent(): PinPostSympathyContent {
     }
     return PinPostSympathyContent(
         pinId = pinId,
-        pinType = pinType.toPinCategoryOrNull() ?: PinCategory.ISSUE,
+        pinType = category,
         pinTitle = pinTitle,
         sympathyCount = likeCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
         isSympathizedByMe = isLike,
@@ -63,10 +64,11 @@ fun PinDetailPostResponse.toPostSympathyContent(): PinPostSympathyContent {
     )
 }
 
-fun PinDetailHomeResponse.toPin(
+fun PinDetailHomeResponse.toPinOrNull(
     coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
-): Pin {
-    val author = toPinUserOrNull()
+): Pin? {
+    val category = pinType.toPinCategoryOrNull() ?: return null
+    val author = toPinUserOrNull(category)
     val images = toPinImages()
     return Pin(
         id = pinId.toString(),
@@ -93,7 +95,7 @@ fun PinDetailHomeResponse.toPin(
         isUpdated = isUpdated,
         createdAt = createdAt,
         updatedAt = updatedAt,
-        detail = toPinDetail(author),
+        detail = toPinDetail(category, author),
     )
 }
 
@@ -134,8 +136,10 @@ fun PinEmojiDto.toPinEmojiCandidate(): PinEmojiCandidate? {
     )
 }
 
-private fun PinDetailHomeResponse.toPinDetail(author: PinUser?): PinDetail {
-    val category = pinType.toPinCategory()
+private fun PinDetailHomeResponse.toPinDetail(
+    category: PinCategory,
+    author: PinUser?,
+): PinDetail {
     val writer = author ?: unknownWriter()
     return when (category) {
         PinCategory.ISSUE -> IssuePinDetail(
@@ -149,14 +153,12 @@ private fun PinDetailHomeResponse.toPinDetail(author: PinUser?): PinDetail {
             keywords = DETAIL_HOME_NO_KEYWORDS,
             currentNews = discount,
         )
-        PinCategory.FESTIVAL -> FestivalPinDetail(
-            keywords = DETAIL_HOME_NO_KEYWORDS,
-        )
+        PinCategory.FESTIVAL -> FestivalPinDetail(keywords = DETAIL_HOME_NO_KEYWORDS)
     }
 }
 
-private fun PinDetailHomeResponse.toPinUserOrNull(): PinUser? {
-    when (pinType.toPinCategoryOrNull()) {
+private fun PinDetailHomeResponse.toPinUserOrNull(category: PinCategory): PinUser? {
+    when (category) {
         PinCategory.ISSUE, PinCategory.COMMUNICATION, PinCategory.FESTIVAL -> Unit
         else -> return null
     }
@@ -183,21 +185,6 @@ private fun PinDetailHomeResponse.toPinImages(): PinDetailHomeImages {
     val storeImage = storeImageUrl?.takeIf { it.isNotBlank() }
     val allUrls = if (storeImage == null) urlsFromPin else (urlsFromPin + storeImage).distinct()
     return PinDetailHomeImages(attachments = attachments, displayUrls = allUrls)
-}
-
-private fun String.toPinCategory(): PinCategory {
-    return toPinCategoryOrNull()
-        ?: throw IllegalArgumentException("Unknown pin type: $this")
-}
-
-private fun String.toPinCategoryOrNull(): PinCategory? {
-    return when (trim().uppercase()) {
-        "ISSUE" -> PinCategory.ISSUE
-        "COMMUNICATION" -> PinCategory.COMMUNICATION
-        "STORE", "SHOP" -> PinCategory.SHOP
-        "FESTIVAL" -> PinCategory.FESTIVAL
-        else -> null
-    }
 }
 
 private fun String?.toResolutionStatus(): ResolutionStatus? {

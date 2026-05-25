@@ -1,12 +1,13 @@
 package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.PinApi
-import com.issueissyu.fe.data.remote.dto.pin.toPin
+import com.issueissyu.fe.data.remote.dto.pin.toPinOrNull
 import com.issueissyu.fe.data.remote.dto.pin.toPinComment
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojiCandidate
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojis
-import com.issueissyu.fe.data.remote.dto.pin.toPostSympathyContent
+import com.issueissyu.fe.data.remote.dto.pin.toPostSympathyContentOrNull
 import com.issueissyu.fe.data.remote.dto.pin.toPinLike
+import com.issueissyu.fe.data.remote.dto.pin.toUnsupportedPinTypeMessage
 import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
@@ -168,7 +169,9 @@ class PinRepositoryImpl @Inject constructor(
                             response.message.ifBlank { "핀 상세 홈 응답이 올바르지 않습니다." },
                         ),
                     )
-                Result.success(result.toPin())
+                val pin = result.toPinOrNull()
+                    ?: return Result.failure(Exception(result.pinType.toUnsupportedPinTypeMessage()))
+                Result.success(pin)
             } else {
                 when (response.code) {
                     "PIN_HOME_404" ->
@@ -203,7 +206,7 @@ class PinRepositoryImpl @Inject constructor(
             val response = pinApi.pinPost(pinId)
             if (response.isSuccess) {
                 val result = response.result ?: return Result.success(null)
-                Result.success(result.toPostSympathyContent())
+                Result.success(result.toPostSympathyContentOrNull())
             } else {
                 when (response.code) {
                     "PIN_POST_404" ->
