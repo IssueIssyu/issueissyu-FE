@@ -10,6 +10,7 @@ import com.issueissyu.fe.domain.usecase.community.DeclareCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityCommentsUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import com.issueissyu.fe.domain.usecase.community.LikeCommunityUseCase
+import com.issueissyu.fe.domain.usecase.community.UpdateCommunityCommentUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,7 @@ class CommunityDetailViewModel @Inject constructor(
     private val getCommunityDetailUseCase: GetCommunityDetailUseCase,
     private val getCommunityCommentsUseCase: GetCommunityCommentsUseCase,
     private val createCommunityCommentUseCase: CreateCommunityCommentUseCase,
+    private val updateCommunityCommentUseCase: UpdateCommunityCommentUseCase,
     private val likeCommunityUseCase: LikeCommunityUseCase,
     private val declareCommunityUseCase: DeclareCommunityUseCase,
     private val pinRepository: PinRepository,
@@ -207,6 +209,34 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(isCommentSubmitting = false) }
                     _toastMessage.emit(
                         throwable.message?.takeIf { it.isNotBlank() } ?: "댓글 등록에 실패했습니다.",
+                    )
+                }
+        }
+    }
+
+    fun updateComment(commentId: Long, content: String) {
+        val trimmedContent = content.trim()
+        if (trimmedContent.isBlank() || _uiState.value.isCommentSubmitting) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCommentSubmitting = true) }
+
+            updateCommunityCommentUseCase(commentId, trimmedContent)
+                .onSuccess { updatedComment ->
+                    _uiState.update { state ->
+                        state.copy(
+                            comments = state.comments.map { comment ->
+                                if (comment.commentId == updatedComment.commentId) updatedComment else comment
+                            },
+                            isCommentSubmitting = false,
+                        )
+                    }
+                    _toastMessage.emit("댓글이 수정되었습니다.")
+                }
+                .onFailure { throwable ->
+                    _uiState.update { it.copy(isCommentSubmitting = false) }
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "댓글 수정에 실패했습니다.",
                     )
                 }
         }

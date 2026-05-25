@@ -9,6 +9,7 @@ import com.issueissyu.fe.data.remote.dto.request.community.CommunityDeclarationR
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.Path
 import retrofit2.http.POST
 import retrofit2.http.Query
@@ -35,6 +36,12 @@ interface CommunityApi {
     @POST("api/communities/{communityId}/comments")
     suspend fun createCommunityComment(
         @Path("communityId") communityId: Long,
+        @Body request: CommunityCommentRequest,
+    ): BaseResponse<CommunityCommentResponse?>
+
+    @PATCH("api/communities/comments/{commentId}")
+    suspend fun updateCommunityComment(
+        @Path("commentId") commentId: Long,
         @Body request: CommunityCommentRequest,
     ): BaseResponse<CommunityCommentResponse?>
 

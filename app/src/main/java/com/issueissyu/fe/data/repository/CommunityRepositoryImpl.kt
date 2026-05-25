@@ -95,6 +95,30 @@ class CommunityRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun updateCommunityComment(
+        commentId: Long,
+        content: String
+    ): Result<CommunityComment> {
+        return try {
+            val response = communityApi.updateCommunityComment(
+                commentId = commentId,
+                request = CommunityCommentRequest(commentContent = content),
+            )
+
+            if (response.isSuccess) {
+                val comment = response.result?.toCommunityComment()
+                    ?: return Result.failure(
+                        IllegalStateException(response.message.ifBlank { "댓글 수정 응답이 올바르지 않습니다." })
+                    )
+                Result.success(comment)
+            } else {
+                Result.failure(IllegalStateException(response.message.ifBlank { "댓글 수정에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun likeCommunity(communityId: Long): Result<PinLike> {
         return try {
             val response = communityApi.likeCommunity(communityId)

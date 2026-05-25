@@ -92,6 +92,7 @@ fun CommunityDetailScreen(
         onPetitionClick = viewModel::submitPetition,
         onMapClick = onMapClick,
         onCommentSubmit = viewModel::createComment,
+        onCommentUpdate = viewModel::updateComment,
         onCommunityLikeClick = viewModel::likeCommunity,
         onCommunityDeclareClick = viewModel::declareCommunity,
     )
@@ -106,10 +107,12 @@ fun CommunityDetailScreenContent(
     onPetitionClick: () -> Unit = {},
     onMapClick: (Long) -> Unit = {},
     onCommentSubmit: (String) -> Unit = {},
+    onCommentUpdate: (Long, String) -> Unit = { _, _ -> },
     onCommunityLikeClick: () -> Unit = {},
     onCommunityDeclareClick: (Int) -> Unit = {},
 ) {
     var showDeclarationDialog by remember { mutableStateOf(false) }
+    var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
 
     if (showDeclarationDialog) {
         CommunityDeclarationDialog(
@@ -133,7 +136,10 @@ fun CommunityDetailScreenContent(
             if (uiState.detail != null) {
                 CommunityDetailBottomBar(
                     isSubmitting = uiState.isCommentSubmitting,
+                    editingComment = editingComment,
+                    onEditComplete = { editingComment = null },
                     onCommentSubmit = onCommentSubmit,
+                    onCommentUpdate = onCommentUpdate,
                 )
             }
         },
@@ -175,6 +181,7 @@ fun CommunityDetailScreenContent(
                         isCommentLoading = uiState.isCommentLoading,
                         isCommunityLikeSubmitting = uiState.isCommunityLikeSubmitting,
                         onCommunityLikeClick = onCommunityLikeClick,
+                        onCommentEditClick = { editingComment = it },
                     )
                 }
             }
@@ -228,6 +235,7 @@ private fun CommunityDetailBody(
     isCommentLoading: Boolean,
     isCommunityLikeSubmitting: Boolean,
     onCommunityLikeClick: () -> Unit,
+    onCommentEditClick: (CommunityComment) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -296,6 +304,7 @@ private fun CommunityDetailBody(
             CommunityCommentSection(
                 comments = comments,
                 isLoading = isCommentLoading,
+                onCommentEditClick = onCommentEditClick,
             )
         }
     }
@@ -939,6 +948,7 @@ private fun CommunityDetailIssueActionSection(
 private fun CommunityCommentSection(
     comments: List<CommunityComment>,
     isLoading: Boolean,
+    onCommentEditClick: (CommunityComment) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -982,7 +992,10 @@ private fun CommunityCommentSection(
             else -> {
                 Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
                     comments.forEach { comment ->
-                        CommunityCommentItem(comment = comment)
+                        CommunityCommentItem(
+                            comment = comment,
+                            onEditClick = { onCommentEditClick(comment) },
+                        )
                     }
                 }
             }
@@ -992,7 +1005,10 @@ private fun CommunityCommentSection(
 }
 
 @Composable
-private fun CommunityCommentItem(comment: CommunityComment) {
+private fun CommunityCommentItem(
+    comment: CommunityComment,
+    onEditClick: () -> Unit,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1046,7 +1062,7 @@ private fun CommunityCommentItem(comment: CommunityComment) {
                     CompactCircleIconButton(
                         imageVector = Icons.Filled.Edit,
                         contentDescription = "댓글 수정",
-                        onClick = {},
+                        onClick = onEditClick,
                     )
                     CompactCircleIconButton(
                         imageVector = Icons.Filled.Delete,
@@ -1062,13 +1078,20 @@ private fun CommunityCommentItem(comment: CommunityComment) {
 @Composable
 private fun CommunityDetailBottomBar(
     isSubmitting: Boolean,
+    editingComment: CommunityComment?,
+    onEditComplete: () -> Unit,
     onCommentSubmit: (String) -> Unit,
+    onCommentUpdate: (Long, String) -> Unit,
 ) {
     var commentText by remember { mutableStateOf("") }
     val canSubmit = commentText.isNotBlank() && !isSubmitting
     val density = LocalDensity.current
     val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
     val bottomPadding = if (isKeyboardVisible) 36.dp else 16.dp
+
+    LaunchedEffect(editingComment?.commentId) {
+        commentText = editingComment?.content.orEmpty()
+    }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1104,7 +1127,11 @@ private fun CommunityDetailBottomBar(
                         decorationBox = { innerTextField ->
                             if (commentText.isBlank()) {
                                 Text(
-                                    text = "댓글을 입력해주세요...",
+                                    text = if (editingComment == null) {
+                                        "댓글을 입력해주세요..."
+                                    } else {
+                                        "댓글을 수정해주세요..."
+                                    },
                                     style = IssueTypo.Regular15.copy(color = Gray_5)
                                 )
                             }
@@ -1118,7 +1145,13 @@ private fun CommunityDetailBottomBar(
                         .clip(CircleShape)
                         .background(BrandColor)
                         .clickable(enabled = canSubmit) {
-                            onCommentSubmit(commentText)
+                            val targetComment = editingComment
+                            if (targetComment == null) {
+                                onCommentSubmit(commentText)
+                            } else {
+                                onCommentUpdate(targetComment.commentId, commentText)
+                                onEditComplete()
+                            }
                             commentText = ""
                         },
                     contentAlignment = Alignment.Center

@@ -21,6 +21,8 @@ interface CommunityRepository {
 
     suspend fun createCommunityComment(communityId: Long, content: String): Result<CommunityComment>
 
+    suspend fun updateCommunityComment(commentId: Long, content: String): Result<CommunityComment>
+
     suspend fun likeCommunity(communityId: Long): Result<PinLike>
 
     suspend fun declareCommunity(communityId: Long, reasonIndex: Int): Result<Unit>
