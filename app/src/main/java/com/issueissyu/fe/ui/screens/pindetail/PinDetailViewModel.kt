@@ -44,7 +44,7 @@ data class PinDetailUiState(
 data class PinDetailEmojiPickerUiState(
     val isVisible: Boolean = false,
     val candidates: List<PinEmojiCandidate> = emptyList(),
-    val pickedEmojiId: Int? = null,
+    val pickedEmojiId: Long? = null,
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
@@ -284,7 +284,7 @@ class PinDetailViewModel @Inject constructor(
     }
 
     fun openEmojiPicker() {
-        val myEmojiId = _uiState.value.postEmojis.myEmojiId?.toInt()
+        val myEmojiId = _uiState.value.postEmojis.myEmojiId
 
         _emojiPickerUiState.value = PinDetailEmojiPickerUiState(
             isVisible = true,
@@ -295,7 +295,7 @@ class PinDetailViewModel @Inject constructor(
         viewModelScope.launch {
             pinRepository.getEmojiCandidates()
                 .onSuccess { candidates ->
-                    emojiImageById = candidates.associate { it.emojiId.toLong() to it.emojiImageUrl }
+                    emojiImageById = candidates.associate { it.emojiId to it.emojiImageUrl }
                     _emojiPickerUiState.update {
                         it.copy(
                             candidates = candidates,
@@ -319,7 +319,7 @@ class PinDetailViewModel @Inject constructor(
         _emojiPickerUiState.value = PinDetailEmojiPickerUiState()
     }
 
-    fun pickEmojiInPicker(emojiId: Int) {
+    fun pickEmojiInPicker(emojiId: Long) {
         val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
             ?: return
         if (!candidate.canReact) {
@@ -364,10 +364,9 @@ class PinDetailViewModel @Inject constructor(
             showToast("핀 정보를 찾을 수 없습니다.")
             return
         }
-        if (emojiId > Int.MAX_VALUE) return
 
         viewModelScope.launch {
-            pinRepository.togglePinEmojiFromList(pinId, emojiId.toInt())
+            pinRepository.togglePinEmojiFromList(pinId, emojiId)
                 .onSuccess {
                     refreshPostEmojis(pinId)
                         .onFailure { e ->

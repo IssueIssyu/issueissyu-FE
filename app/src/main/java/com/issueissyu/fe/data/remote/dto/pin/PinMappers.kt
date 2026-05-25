@@ -126,9 +126,9 @@ fun PinEmojis.toEmojiReactions(): List<PinEmojiReaction> {
 }
 
 fun PinEmojiDto.toPinEmojiCandidate(): PinEmojiCandidate? {
-    if (emojiId == 0L || emojiId > Int.MAX_VALUE) return null
+    if (emojiId == 0L) return null
     return PinEmojiCandidate(
-        emojiId = emojiId.toInt(),
+        emojiId = emojiId,
         emojiImageUrl = emojiImageUrl,
         isDefault = isDefault,
         isOwned = owned,

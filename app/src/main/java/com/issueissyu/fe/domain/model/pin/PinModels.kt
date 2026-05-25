@@ -50,7 +50,7 @@ data class PinEmoji(
 )
 
 data class PinEmojiCandidate(
-    val emojiId: Int,
+    val emojiId: Long,
     val emojiImageUrl: String,
     val isDefault: Boolean,
     val isOwned: Boolean,

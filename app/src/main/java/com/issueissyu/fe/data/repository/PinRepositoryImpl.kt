@@ -333,20 +333,20 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun applyPinEmojiFromPicker(pinId: Long, emojiId: Int?): Result<Long?> {
+    override suspend fun applyPinEmojiFromPicker(pinId: Long, emojiId: Long?): Result<Long?> {
         return applyPinEmojiInternal(
             pinId = pinId,
-            emojiId = emojiId?.toLong(),
+            emojiId = emojiId,
             apiCall = { id, request ->
                 pinApi.applyPinEmojiPicker(pinId = id, request = request)
             },
         )
     }
 
-    override suspend fun togglePinEmojiFromList(pinId: Long, emojiId: Int): Result<Long?> {
+    override suspend fun togglePinEmojiFromList(pinId: Long, emojiId: Long): Result<Long?> {
         return applyPinEmojiInternal(
             pinId = pinId,
-            emojiId = emojiId.toLong(),
+            emojiId = emojiId,
             apiCall = { id, request ->
                 pinApi.applyPinEmojiList(pinId = id, request = request)
             },

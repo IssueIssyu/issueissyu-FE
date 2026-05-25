@@ -54,12 +54,12 @@ import com.issueissyu.fe.ui.theme.White
 @Composable
 fun EmojiReactionBottomSheet(
     candidates: List<PinEmojiCandidate>,
-    selectedEmojiId: Int?,
+    selectedEmojiId: Long?,
     isLoading: Boolean,
     isSubmitting: Boolean,
     errorMessage: String?,
     onDismiss: () -> Unit,
-    onEmojiClick: (Int) -> Unit,
+    onEmojiClick: (Long) -> Unit,
     onApplyClick: () -> Unit,
     allowLockedEmojiSelection: Boolean = false,
     allowApplyWithoutSelection: Boolean = false,
@@ -96,12 +96,12 @@ fun EmojiReactionBottomSheet(
 @Composable
 fun EmojiReactionBottomSheetContent(
     candidates: List<PinEmojiCandidate>,
-    selectedEmojiId: Int?,
+    selectedEmojiId: Long?,
     isLoading: Boolean,
     isSubmitting: Boolean,
     errorMessage: String?,
     onDismiss: () -> Unit,
-    onEmojiClick: (Int) -> Unit,
+    onEmojiClick: (Long) -> Unit,
     onApplyClick: () -> Unit,
     allowLockedEmojiSelection: Boolean,
     allowApplyWithoutSelection: Boolean = false,
@@ -284,16 +284,16 @@ private fun EmojiCandidateButton(
 }
 
 private fun previewEmojiCandidates(): List<PinEmojiCandidate> = listOf(
-    PinEmojiCandidate(1, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f525.png", isDefault = true, isOwned = true, productId = null),
-    PinEmojiCandidate(2, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2764.png", isDefault = true, isOwned = true, productId = null),
-    PinEmojiCandidate(3, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f44f.png", isDefault = true, isOwned = false, productId = "p1"),
-    PinEmojiCandidate(4, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f602.png", isDefault = true, isOwned = true, productId = null),
-    PinEmojiCandidate(5, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f622.png", isDefault = false, isOwned = false, productId = "p2"),
-    PinEmojiCandidate(6, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f389.png", isDefault = true, isOwned = true, productId = null),
-    PinEmojiCandidate(7, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f60e.png", isDefault = true, isOwned = true, productId = null),
-    PinEmojiCandidate(8, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f44d.png", isDefault = false, isOwned = true, productId = null),
-    PinEmojiCandidate(9, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2728.png", isDefault = true, isOwned = false, productId = "p3"),
-    PinEmojiCandidate(10, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f64f.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(1L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f525.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(2L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2764.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(3L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f44f.png", isDefault = true, isOwned = false, productId = "p1"),
+    PinEmojiCandidate(4L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f602.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(5L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f622.png", isDefault = false, isOwned = false, productId = "p2"),
+    PinEmojiCandidate(6L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f389.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(7L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f60e.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(8L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f44d.png", isDefault = false, isOwned = true, productId = null),
+    PinEmojiCandidate(9L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2728.png", isDefault = true, isOwned = false, productId = "p3"),
+    PinEmojiCandidate(10L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f64f.png", isDefault = true, isOwned = true, productId = null),
 )
 
 @Composable
@@ -317,7 +317,7 @@ private fun EmojiReactionBottomSheetPreview_Default() {
     EmojiReactionBottomSheetPreviewSurface {
         EmojiReactionBottomSheetContent(
             candidates = previewEmojiCandidates(),
-            selectedEmojiId = 2,
+            selectedEmojiId = 2L,
             isLoading = false,
             isSubmitting = false,
             errorMessage = null,
