@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.remote.dto.community
 
+import com.issueissyu.fe.data.remote.dto.decodeEscapedNewlines
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityCommentResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityDetailResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityFeedItemResponse
@@ -43,7 +44,7 @@ fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
         pinId = pinId,
         kind = kind.toCommunityItemKind(),
         title = title ?: DEFAULT_COMMUNITY_TITLE,
-        content = this.content ?: "",
+        content = this.content?.decodeEscapedNewlines() ?: "",
         imageUrls = imageUrls.orEmpty().ifEmpty { listOfNotNull(thumbnailUrl) },
         writerNickname = writerNickname,
         writerProfileUrl = writerProfileUrl,
@@ -91,7 +92,7 @@ fun CommunityFeedItemResponse.toCommunityFeedItem(isHot: Boolean = false): Commu
         pinId = this.pinId,
         kind = this.kind.toCommunityItemKind(),
         title = this.title ?: this.pinTitle ?: DEFAULT_COMMUNITY_TITLE,
-        content = this.content,
+        content = this.content?.decodeEscapedNewlines(),
         thumbnailUrl = this.pinImageUrl ?: this.thumbnailUrl ?: this.storeImageUrl,
         writerNickname = this.pinUserNickname ?: this.writerNickname,
         writerProfileUrl = this.pinUserProfile ?: this.writerProfileUrl,
