@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
@@ -937,6 +938,9 @@ private fun CommunityDetailBottomBar(
 ) {
     var commentText by remember { mutableStateOf("") }
     val canSubmit = commentText.isNotBlank() && !isSubmitting
+    val density = LocalDensity.current
+    val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
+    val bottomPadding = if (isKeyboardVisible) 36.dp else 16.dp
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -946,7 +950,7 @@ private fun CommunityDetailBottomBar(
         Column(
             modifier = Modifier
                 .padding(horizontal = 24.dp)
-                .padding(top = 16.dp, bottom = 16.dp)
+                .padding(top = 16.dp, bottom = bottomPadding)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
