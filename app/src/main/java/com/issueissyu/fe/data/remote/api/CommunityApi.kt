@@ -5,6 +5,7 @@ import com.issueissyu.fe.data.remote.dto.response.community.CommunityCommentResp
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityDetailResponse
 import com.issueissyu.fe.data.remote.dto.response.community.CommunityFeedResponse
 import com.issueissyu.fe.data.remote.dto.request.community.CommunityCommentRequest
+import com.issueissyu.fe.data.remote.dto.request.community.CommunityDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -41,4 +42,10 @@ interface CommunityApi {
     suspend fun likeCommunity(
         @Path("communityId") communityId: Long,
     ): BaseResponse<PinLikeResponse?>
+
+    @POST("api/communities/{communityId}/declaration")
+    suspend fun declareCommunity(
+        @Path("communityId") communityId: Long,
+        @Body request: CommunityDeclarationRequest,
+    ): BaseResponse<Any?>
 }

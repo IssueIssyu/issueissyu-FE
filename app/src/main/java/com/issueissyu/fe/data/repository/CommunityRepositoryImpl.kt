@@ -2,6 +2,7 @@ package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.CommunityApi
 import com.issueissyu.fe.data.remote.dto.request.community.CommunityCommentRequest
+import com.issueissyu.fe.data.remote.dto.request.community.CommunityDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.community.toCommunityComment
 import com.issueissyu.fe.data.remote.dto.community.toCommunityDetail
 import com.issueissyu.fe.data.remote.dto.community.toCommunityFeed
@@ -113,6 +114,23 @@ class CommunityRepositoryImpl @Inject constructor(
                 )
             } else {
                 Result.failure(IllegalStateException(response.message.ifBlank { "커뮤니티 공감에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun declareCommunity(communityId: Long, reasonIndex: Int): Result<Unit> {
+        return try {
+            val response = communityApi.declareCommunity(
+                communityId = communityId,
+                request = CommunityDeclarationRequest(reasonIndex = reasonIndex),
+            )
+
+            if (response.isSuccess) {
+                Result.success(Unit)
+            } else {
+                Result.failure(IllegalStateException(response.message.ifBlank { "커뮤니티 게시물 신고에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)

@@ -93,6 +93,7 @@ fun CommunityDetailScreen(
         onMapClick = onMapClick,
         onCommentSubmit = viewModel::createComment,
         onCommunityLikeClick = viewModel::likeCommunity,
+        onCommunityDeclareClick = viewModel::declareCommunity,
     )
 }
 
@@ -106,7 +107,21 @@ fun CommunityDetailScreenContent(
     onMapClick: (Long) -> Unit = {},
     onCommentSubmit: (String) -> Unit = {},
     onCommunityLikeClick: () -> Unit = {},
+    onCommunityDeclareClick: (Int) -> Unit = {},
 ) {
+    var showDeclarationDialog by remember { mutableStateOf(false) }
+
+    if (showDeclarationDialog) {
+        CommunityDeclarationDialog(
+            isSubmitting = uiState.isCommunityDeclarationSubmitting,
+            onDismiss = { showDeclarationDialog = false },
+            onReasonClick = { reasonIndex ->
+                showDeclarationDialog = false
+                onCommunityDeclareClick(reasonIndex)
+            },
+        )
+    }
+
     Scaffold(
         topBar = {
             CommunityDetailTopBar(
@@ -150,11 +165,12 @@ fun CommunityDetailScreenContent(
                     }
                 }
                 else -> {
-                    CommunityDetailBody(
-                        detail = uiState.detail,
-                        onMapClick = onMapClick,
-                        onGoNowClick = onGoNowClick,
-                        onPetitionClick = onPetitionClick,
+                CommunityDetailBody(
+                    detail = uiState.detail,
+                    onMapClick = onMapClick,
+                    onReportClick = { showDeclarationDialog = true },
+                    onGoNowClick = onGoNowClick,
+                    onPetitionClick = onPetitionClick,
                         comments = uiState.comments,
                         isCommentLoading = uiState.isCommentLoading,
                         isCommunityLikeSubmitting = uiState.isCommunityLikeSubmitting,
@@ -205,6 +221,7 @@ private fun CommunityDetailErrorState(
 private fun CommunityDetailBody(
     detail: CommunityDetail,
     onMapClick: (Long) -> Unit,
+    onReportClick: () -> Unit,
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
     comments: List<CommunityComment>,
@@ -220,7 +237,8 @@ private fun CommunityDetailBody(
         item {
             CommunityDetailCategoryRow(
                 detail = detail,
-                onMapClick = onMapClick
+                onMapClick = onMapClick,
+                onReportClick = onReportClick,
             )
         }
 
@@ -350,7 +368,8 @@ private fun CommunityDetailOwnerActionMenu(detail: CommunityDetail) {
 @Composable
 private fun CommunityDetailCategoryRow(
     detail: CommunityDetail,
-    onMapClick: (Long) -> Unit
+    onMapClick: (Long) -> Unit,
+    onReportClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -377,7 +396,7 @@ private fun CommunityDetailCategoryRow(
             CommunityDetailOutlinedIconButton(
                 onClick = {
                     if (!detail.isReported) {
-                        // TODO: 커뮤니티 신고 API 연결
+                        onReportClick()
                     }
                 },
                 enabled = !detail.isReported
@@ -450,6 +469,64 @@ private fun CommunityDetailOutlinedIconButton(
             content()
         }
     }
+}
+
+private val CommunityDeclarationReasons = listOf(
+    "거짓 정보를 포함한 글이에요",
+    "욕설 또는 비하 표현이 포함된 글이에요",
+    "스팸 또는 도배성 글이에요",
+    "불쾌감을 주는 글이에요",
+    "종교 포교 목적의 글이에요",
+)
+
+@Composable
+private fun CommunityDeclarationDialog(
+    isSubmitting: Boolean,
+    onDismiss: () -> Unit,
+    onReasonClick: (Int) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = {
+            if (!isSubmitting) onDismiss()
+        },
+        title = {
+            Text(
+                text = "게시글 신고",
+                style = IssueTypo.Bold18.copy(color = Title)
+            )
+        },
+        text = {
+            Column {
+                CommunityDeclarationReasons.forEachIndexed { index, reason ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(enabled = !isSubmitting) {
+                                onReasonClick(index + 1)
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = reason,
+                            style = IssueTypo.Regular15.copy(color = Title),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isSubmitting,
+            ) {
+                Text(text = "취소", style = IssueTypo.Regular15.copy(color = Gray_6))
+            }
+        },
+        containerColor = White,
+    )
 }
 
 @Composable
