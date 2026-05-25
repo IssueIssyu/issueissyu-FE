@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -18,8 +17,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -42,20 +39,20 @@ import androidx.compose.runtime.setValue
 import androidx.annotation.DrawableRes
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight.Companion.Medium
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,7 +72,6 @@ import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
-import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
@@ -602,37 +598,77 @@ private fun CommentItem(
             )
         }
 
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            val density = LocalDensity.current
-            val textMeasurer = rememberTextMeasurer()
-            val timeWidth = remember(timeLabel, timeStyle) {
-                with(density) {
-                    textMeasurer
-                        .measure(AnnotatedString(timeLabel), style = timeStyle)
-                        .size
-                        .width
-                        .toDp()
-                }
-            }
-            val bubbleAreaMax = (maxWidth - timeWidth - timeGap).coerceAtLeast(0.dp)
-
-            Row(
-                modifier = Modifier.wrapContentWidth(Alignment.Start),
-                verticalAlignment = Alignment.Bottom,
-            ) {
+        CommentBubbleWithTimestamp(
+            timeLabel = timeLabel,
+            timeStyle = timeStyle,
+            timeGap = timeGap,
+        ) {
                 CommentBubble(
                     content = content,
-                    maxOuterWidth = bubbleAreaMax,
                     isMine = isMine,
                     onEditClick = onEditClick,
                     onDeleteClick = onDeleteClick,
                 )
-                Spacer(modifier = Modifier.width(timeGap))
-                Text(
-                    text = timeLabel,
-                    style = timeStyle,
-                )
-            }
+        }
+    }
+}
+
+@Composable
+private fun CommentBubbleWithTimestamp(
+    timeLabel: String,
+    timeStyle: TextStyle,
+    timeGap: Dp,
+    modifier: Modifier = Modifier,
+    bubbleContent: @Composable () -> Unit,
+) {
+    Layout(
+        modifier = modifier,
+        content = {
+            bubbleContent()
+            Text(
+                text = timeLabel,
+                style = timeStyle,
+            )
+        },
+    ) { measurables, constraints ->
+        val bubbleMeasurable = measurables[0]
+        val timeMeasurable = measurables[1]
+        val gapPx = timeGap.roundToPx()
+
+        val timePlaceable = timeMeasurable.measure(
+            Constraints(
+                maxWidth = constraints.maxWidth,
+                maxHeight = constraints.maxHeight,
+            )
+        )
+        val bubbleMaxWidth = (constraints.maxWidth - timePlaceable.width - gapPx).coerceAtLeast(0)
+        val bubblePlaceable = bubbleMeasurable.measure(
+            Constraints(
+                maxWidth = bubbleMaxWidth,
+                maxHeight = constraints.maxHeight,
+            )
+        )
+
+        val layoutWidth = (bubblePlaceable.width + gapPx + timePlaceable.width)
+            .coerceIn(constraints.minWidth, constraints.maxWidth)
+        val layoutHeight = maxOf(
+            constraints.minHeight,
+            bubblePlaceable.height,
+            timePlaceable.height,
+        )
+        val timeX = (bubblePlaceable.width + gapPx)
+            .coerceAtMost(layoutWidth - timePlaceable.width)
+            .coerceAtLeast(0)
+
+        layout(layoutWidth, layoutHeight) {
+            bubblePlaceable.placeRelative(
+                x = 0,
+                y = layoutHeight - bubblePlaceable.height,
+            )
+            timePlaceable.placeRelative(
+                x = timeX,
+                y = layoutHeight - timePlaceable.height,
+            )
         }
     }
 }
@@ -640,7 +676,6 @@ private fun CommentItem(
 @Composable
 private fun CommentBubble(
     content: String,
-    maxOuterWidth: Dp,
     isMine: Boolean,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -651,25 +686,20 @@ private fun CommentBubble(
         color = White,
         fontWeight = Medium,
     )
-    val innerMaxWidth = (maxOuterWidth - bubblePadding * 2).coerceAtLeast(0.dp)
 
     Box(
         modifier = modifier
-            .widthIn(max = maxOuterWidth)
-            .wrapContentWidth(Alignment.Start)
             .clip(CommentBubbleShape)
             .background(BrandColor)
             .padding(bubblePadding),
     ) {
         if (isMine) {
             Column(
-                modifier = Modifier.widthIn(max = innerMaxWidth),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
                     text = content,
                     style = textStyle,
-                    modifier = Modifier.widthIn(max = innerMaxWidth),
                 )
                 Row(
                     modifier = Modifier.align(Alignment.End),
@@ -692,7 +722,6 @@ private fun CommentBubble(
             Text(
                 text = content,
                 style = textStyle,
-                modifier = Modifier.widthIn(max = innerMaxWidth),
             )
         }
     }
