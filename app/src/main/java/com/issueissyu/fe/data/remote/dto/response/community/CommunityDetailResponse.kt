@@ -13,6 +13,7 @@ data class CommunityDetailResponse(
     val detailAddress: String?,
     val viewCount: Int?,
     val likeCount: Long?,
+    val isLike: Boolean?,
     val discount: String?,
     val eventStartTime: String?,
     val eventEndTime: String?,

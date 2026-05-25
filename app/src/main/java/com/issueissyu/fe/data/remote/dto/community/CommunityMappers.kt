@@ -64,7 +64,8 @@ fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
         eventEndTime = this.eventEndTime,
         petitionCount = 0,
         petitionTargetCount = null,
-        isPetitionedByMe = false
+        isPetitionedByMe = false,
+        isLikedByMe = this.isLike ?: false
     )
 }
 
