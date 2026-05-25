@@ -7,6 +7,7 @@ import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.usecase.community.CreateCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.DeclareCommunityUseCase
+import com.issueissyu.fe.domain.usecase.community.DeleteCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityCommentsUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import com.issueissyu.fe.domain.usecase.community.LikeCommunityUseCase
@@ -30,6 +31,7 @@ class CommunityDetailViewModel @Inject constructor(
     private val getCommunityCommentsUseCase: GetCommunityCommentsUseCase,
     private val createCommunityCommentUseCase: CreateCommunityCommentUseCase,
     private val updateCommunityCommentUseCase: UpdateCommunityCommentUseCase,
+    private val deleteCommunityCommentUseCase: DeleteCommunityCommentUseCase,
     private val likeCommunityUseCase: LikeCommunityUseCase,
     private val declareCommunityUseCase: DeclareCommunityUseCase,
     private val pinRepository: PinRepository,
@@ -237,6 +239,35 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(isCommentSubmitting = false) }
                     _toastMessage.emit(
                         throwable.message?.takeIf { it.isNotBlank() } ?: "댓글 수정에 실패했습니다.",
+                    )
+                }
+        }
+    }
+
+    fun deleteComment(commentId: Long) {
+        if (commentId in _uiState.value.deletingCommentIds) return
+
+        viewModelScope.launch {
+            _uiState.update { state ->
+                state.copy(deletingCommentIds = state.deletingCommentIds + commentId)
+            }
+
+            deleteCommunityCommentUseCase(commentId)
+                .onSuccess {
+                    _uiState.update { state ->
+                        state.copy(
+                            comments = state.comments.filterNot { it.commentId == commentId },
+                            deletingCommentIds = state.deletingCommentIds - commentId,
+                        )
+                    }
+                    _toastMessage.emit("댓글이 삭제되었습니다.")
+                }
+                .onFailure { throwable ->
+                    _uiState.update { state ->
+                        state.copy(deletingCommentIds = state.deletingCommentIds - commentId)
+                    }
+                    _toastMessage.emit(
+                        throwable.message?.takeIf { it.isNotBlank() } ?: "댓글 삭제에 실패했습니다.",
                     )
                 }
         }

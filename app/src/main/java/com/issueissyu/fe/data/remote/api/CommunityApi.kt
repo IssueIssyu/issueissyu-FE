@@ -8,6 +8,7 @@ import com.issueissyu.fe.data.remote.dto.request.community.CommunityCommentReque
 import com.issueissyu.fe.data.remote.dto.request.community.CommunityDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.Path
@@ -44,6 +45,11 @@ interface CommunityApi {
         @Path("commentId") commentId: Long,
         @Body request: CommunityCommentRequest,
     ): BaseResponse<CommunityCommentResponse?>
+
+    @DELETE("api/communities/comments/{commentId}")
+    suspend fun deleteCommunityComment(
+        @Path("commentId") commentId: Long,
+    ): BaseResponse<Unit?>
 
     @POST("api/communities/{communityId}/like")
     suspend fun likeCommunity(

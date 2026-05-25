@@ -119,6 +119,20 @@ class CommunityRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun deleteCommunityComment(commentId: Long): Result<Unit> {
+        return try {
+            val response = communityApi.deleteCommunityComment(commentId)
+
+            if (response.isSuccess) {
+                Result.success(Unit)
+            } else {
+                Result.failure(IllegalStateException(response.message.ifBlank { "댓글 삭제에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun likeCommunity(communityId: Long): Result<PinLike> {
         return try {
             val response = communityApi.likeCommunity(communityId)

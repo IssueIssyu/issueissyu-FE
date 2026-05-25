@@ -93,6 +93,7 @@ fun CommunityDetailScreen(
         onMapClick = onMapClick,
         onCommentSubmit = viewModel::createComment,
         onCommentUpdate = viewModel::updateComment,
+        onCommentDelete = viewModel::deleteComment,
         onCommunityLikeClick = viewModel::likeCommunity,
         onCommunityDeclareClick = viewModel::declareCommunity,
     )
@@ -108,6 +109,7 @@ fun CommunityDetailScreenContent(
     onMapClick: (Long) -> Unit = {},
     onCommentSubmit: (String) -> Unit = {},
     onCommentUpdate: (Long, String) -> Unit = { _, _ -> },
+    onCommentDelete: (Long) -> Unit = {},
     onCommunityLikeClick: () -> Unit = {},
     onCommunityDeclareClick: (Int) -> Unit = {},
 ) {
@@ -179,9 +181,11 @@ fun CommunityDetailScreenContent(
                     onPetitionClick = onPetitionClick,
                         comments = uiState.comments,
                         isCommentLoading = uiState.isCommentLoading,
+                        deletingCommentIds = uiState.deletingCommentIds,
                         isCommunityLikeSubmitting = uiState.isCommunityLikeSubmitting,
                         onCommunityLikeClick = onCommunityLikeClick,
                         onCommentEditClick = { editingComment = it },
+                        onCommentDeleteClick = onCommentDelete,
                     )
                 }
             }
@@ -233,9 +237,11 @@ private fun CommunityDetailBody(
     onPetitionClick: () -> Unit,
     comments: List<CommunityComment>,
     isCommentLoading: Boolean,
+    deletingCommentIds: Set<Long>,
     isCommunityLikeSubmitting: Boolean,
     onCommunityLikeClick: () -> Unit,
     onCommentEditClick: (CommunityComment) -> Unit,
+    onCommentDeleteClick: (Long) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -304,7 +310,9 @@ private fun CommunityDetailBody(
             CommunityCommentSection(
                 comments = comments,
                 isLoading = isCommentLoading,
+                deletingCommentIds = deletingCommentIds,
                 onCommentEditClick = onCommentEditClick,
+                onCommentDeleteClick = onCommentDeleteClick,
             )
         }
     }
@@ -693,6 +701,7 @@ private fun CompactCircleIconButton(
     imageVector: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = Modifier
@@ -700,13 +709,13 @@ private fun CompactCircleIconButton(
             .clip(CircleShape)
             .background(White)
             .border(1.dp, Gray_3, CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = imageVector,
             contentDescription = contentDescription,
-            tint = Gray_5,
+            tint = if (enabled) Gray_5 else Gray_3,
             modifier = Modifier.size(13.dp)
         )
     }
@@ -948,7 +957,9 @@ private fun CommunityDetailIssueActionSection(
 private fun CommunityCommentSection(
     comments: List<CommunityComment>,
     isLoading: Boolean,
+    deletingCommentIds: Set<Long>,
     onCommentEditClick: (CommunityComment) -> Unit,
+    onCommentDeleteClick: (Long) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -994,7 +1005,9 @@ private fun CommunityCommentSection(
                     comments.forEach { comment ->
                         CommunityCommentItem(
                             comment = comment,
+                            isDeleting = comment.commentId in deletingCommentIds,
                             onEditClick = { onCommentEditClick(comment) },
+                            onDeleteClick = { onCommentDeleteClick(comment.commentId) },
                         )
                     }
                 }
@@ -1007,7 +1020,9 @@ private fun CommunityCommentSection(
 @Composable
 private fun CommunityCommentItem(
     comment: CommunityComment,
+    isDeleting: Boolean,
     onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1067,7 +1082,8 @@ private fun CommunityCommentItem(
                     CompactCircleIconButton(
                         imageVector = Icons.Filled.Delete,
                         contentDescription = "댓글 삭제",
-                        onClick = {},
+                        onClick = onDeleteClick,
+                        enabled = !isDeleting,
                     )
                 }
             }
