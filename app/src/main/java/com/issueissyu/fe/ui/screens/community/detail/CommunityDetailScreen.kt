@@ -15,6 +15,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.LocationOn
@@ -41,6 +43,7 @@ import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.ui.components.ActionState
+import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.SignButton
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -478,11 +481,18 @@ private fun CommunityDetailMetaSection(detail: CommunityDetail) {
 @Composable
 private fun CommunityDetailTitleSection(detail: CommunityDetail) {
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
-        Text(
-            text = detail.title,
-            style = IssueTypo.Bold18.copy(color = Title, fontSize = 22.sp),
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = detail.title,
+                style = IssueTypo.Bold18.copy(color = Title, fontSize = 22.sp),
+                modifier = Modifier.weight(1f)
+            )
+            CommunityDetailTitleActions(detail = detail)
+        }
         
         Spacer(modifier = Modifier.height(8.dp))
         
@@ -535,6 +545,60 @@ private fun CommunityDetailTitleSection(detail: CommunityDetail) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CommunityDetailTitleActions(detail: CommunityDetail) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        CompactSympathyButton(
+            sympathyCount = detail.likeCount,
+            isSympathizedByMe = false,
+            onClick = {},
+            height = 28.dp,
+            horizontalPadding = 10.dp,
+            iconSize = 15.dp,
+        )
+
+        if (detail.isMine) {
+            CompactCircleIconButton(
+                imageVector = Icons.Filled.Edit,
+                contentDescription = "수정",
+                onClick = {},
+            )
+            CompactCircleIconButton(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = "삭제",
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Composable
+private fun CompactCircleIconButton(
+    imageVector: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(White)
+            .border(1.dp, Gray_3, CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = contentDescription,
+            tint = Gray_5,
+            modifier = Modifier.size(13.dp)
+        )
     }
 }
 
