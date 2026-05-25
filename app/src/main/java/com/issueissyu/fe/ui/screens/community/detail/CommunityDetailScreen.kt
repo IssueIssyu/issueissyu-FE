@@ -876,14 +876,13 @@ private fun CommunityDetailBottomBar(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shadowElevation = 16.dp,
+        shadowElevation = 0.dp,
         color = White
     ) {
         Column(
             modifier = Modifier
-                .navigationBarsPadding()
                 .padding(horizontal = 24.dp)
-                .padding(top = 16.dp, bottom = 24.dp)
+                .padding(top = 16.dp, bottom = 16.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
