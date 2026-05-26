@@ -742,11 +742,6 @@ private fun CommunityDetailTitleActions(
         )
 
         if (detail.isMine) {
-            CompactCircleIconButton(
-                imageVector = Icons.Filled.Edit,
-                contentDescription = "수정",
-                onClick = {},
-            )
             if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
                 CompactCircleIconButton(
                     imageVector = Icons.Filled.VisibilityOff,
