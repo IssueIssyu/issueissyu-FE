@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material3.*
@@ -408,52 +407,8 @@ private fun CommunityDetailTopBar(
                 )
             }
         },
-        actions = {
-            if (detail != null && detail.isMine) {
-                if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
-                    CommunityDetailOwnerActionMenu(detail = detail)
-                }
-            }
-        },
         colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
     )
-}
-
-@Composable
-private fun CommunityDetailOwnerActionMenu(detail: CommunityDetail) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Box {
-        IconButton(onClick = { showMenu = true }) {
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = "더보기",
-                tint = Gray_6
-            )
-        }
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { showMenu = false },
-            modifier = Modifier.background(White)
-        ) {
-            if (detail.kind == CommunityItemKind.COMMUNICATION) {
-                DropdownMenuItem(
-                    text = { Text("삭제", style = IssueTypo.Regular15) },
-                    onClick = {
-                        showMenu = false
-                        // TODO: 삭제 API 연결 필요
-                    }
-                )
-            }
-            DropdownMenuItem(
-                text = { Text("글 내리기", style = IssueTypo.Regular15) },
-                onClick = {
-                    showMenu = false
-                    // TODO: 글 내리기 API 연결 필요
-                }
-            )
-        }
-    }
 }
 
 @Composable
