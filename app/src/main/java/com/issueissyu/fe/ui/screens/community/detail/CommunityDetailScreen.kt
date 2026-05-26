@@ -335,7 +335,7 @@ private fun CommunityDetailBody(
             }
         } else {
             // 2. 작성자 및 메타 정보 (ISSUE, COMMUNICATION 등)
-            if (detail.writerNickname != null) {
+            if (!detail.writerNickname.isNullOrBlank()) {
                 item {
                     CommunityDetailMetaSection(detail = detail)
                 }
@@ -363,9 +363,10 @@ private fun CommunityDetailBody(
                 }
             }
 
-            // 5. 본문 내용
-            item {
-                CommunityDetailContentSection(content = detail.content)
+            if (detail.content.isNotBlank()) {
+                item {
+                    CommunityDetailContentSection(content = detail.content)
+                }
             }
 
             // 7. 청원 영역 (ISSUE 전용)
@@ -673,7 +674,7 @@ private fun CommunityDetailTitleSection(
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            if (detail.address != null) {
+            if (!detail.address.isNullOrBlank()) {
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically
@@ -704,7 +705,9 @@ private fun CommunityDetailTitleSection(
         }
 
         // 가게/행사 전용 정보
-        if ((detail.kind == CommunityItemKind.STORE || detail.kind == CommunityItemKind.FESTIVAL) && detail.discount != null) {
+        if ((detail.kind == CommunityItemKind.STORE || detail.kind == CommunityItemKind.FESTIVAL) &&
+            !detail.discount.isNullOrBlank()
+        ) {
             Spacer(modifier = Modifier.height(12.dp))
             Surface(
                 shape = RoundedCornerShape(8.dp),
