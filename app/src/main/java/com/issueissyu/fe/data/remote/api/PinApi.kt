@@ -120,7 +120,7 @@ interface PinApi {
     @GET("api/pins/{pinId}/problem-solver/{userUid}")
     suspend fun getProblemSolver(
         @Path("pinId") pinId: Long,
-        @Path("userUid") userUid: Long
+        @Path("userUid") userUid: String
     ): BaseResponse<ProblemSolverListResponse?>
 
     //시민 해결사 참여 (지금가요)

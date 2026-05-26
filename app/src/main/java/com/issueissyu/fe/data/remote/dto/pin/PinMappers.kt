@@ -7,6 +7,7 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverJoinResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverItemResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverListResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverPhotoResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverVerificationResponse
@@ -31,6 +32,7 @@ import com.issueissyu.fe.domain.model.pin.PinSolveInfo
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverJoinInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverParticipantInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverPhotoInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverVerificationInfo
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
@@ -133,12 +135,19 @@ fun PinSolveResponse.toPinSolveInfo(): PinSolveInfo {
 
 fun ProblemSolverListResponse.toProblemSolverInfo(): ProblemSolverInfo {
     return ProblemSolverInfo(
+        isGoNow = isGoNow,
+        problemSolvers = problemSolvers.map { it.toProblemSolverParticipantInfo() },
+    )
+}
+
+fun ProblemSolverItemResponse.toProblemSolverParticipantInfo(): ProblemSolverParticipantInfo {
+    return ProblemSolverParticipantInfo(
         problemSolverId = problemSolverId,
         problemSolveState = problemSolveState,
         problemSolverImageUrl = problemSolverImageUrl?.takeIf { it.isNotBlank() },
         nickname = nickname,
         createdAt = createdAt,
-        profileUrl = profileUrl.takeIf { it.isNotBlank() },
+        profileUrl = profileUrl?.takeIf { it.isNotBlank() },
         checkAction = checkAction?.takeIf { it.isNotBlank() },
     )
 }
@@ -146,7 +155,7 @@ fun ProblemSolverListResponse.toProblemSolverInfo(): ProblemSolverInfo {
 fun ProblemSolverJoinResponse.toProblemSolverJoinInfo(): ProblemSolverJoinInfo {
     return ProblemSolverJoinInfo(
         pinId = pinId,
-        problemSolverId = problemSolverId,
+        problemSolverId = problemSolverId.toLong(),
         problemSolveState = problemSolveState,
     )
 }

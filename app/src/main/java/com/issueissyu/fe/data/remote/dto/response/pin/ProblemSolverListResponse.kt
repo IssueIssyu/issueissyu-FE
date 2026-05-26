@@ -1,6 +1,11 @@
 package com.issueissyu.fe.data.remote.dto.response.pin
 
-data class ProblemSolverListResponse (
+data class ProblemSolverListResponse(
+    val isGoNow: Boolean,
+    val problemSolvers: List<ProblemSolverItemResponse> = emptyList(),
+)
+
+data class ProblemSolverItemResponse(
     val problemSolverId: Long,
     val problemSolveState: String,
     val problemSolverImageUrl: String?,

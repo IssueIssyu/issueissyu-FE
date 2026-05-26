@@ -29,10 +29,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,22 +88,30 @@ fun PinResolutionTab(
     currentUserId: String,
     onGoNowClick: (String) -> Unit,
     onPetitionClick: (String) -> Unit,
+    onConfirmResolverClick: (Long) -> Unit = {},
     onAttachProofClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isResolved = issueDetail.resolutionStatus == ResolutionStatus.RESOLVED
-    val isWriter = issueDetail.writer.id == currentUserId
+    val isWriter = pin.isMine == true
     var showGoNowConfirmCard by remember { mutableStateOf(false) }
     val myParticipation = issueDetail.resolverParticipations
-        .firstOrNull { it.user.id == currentUserId }
-    val isAlreadyResolver = myParticipation != null
+        .firstOrNull {
+            it.user.id == currentUserId ||
+                (issueDetail.myProblemSolverId != null && it.problemSolverId == issueDetail.myProblemSolverId)
+        }
+    val normalizedMyProblemSolveState = issueDetail.myProblemSolveState?.trim()?.uppercase()
+    val isAlreadyResolver = issueDetail.isProblemSolverByMe || myParticipation != null || issueDetail.myProblemSolverId != null
 
     val canGoNow = !isResolved && !isAlreadyResolver && !isWriter
 
     val goNowState = when {
+        normalizedMyProblemSolveState == "RESOLVED" -> ActionState.DONE
+        normalizedMyProblemSolveState == "VERIFIED" -> ActionState.DONE
+        normalizedMyProblemSolveState == "EN_ROUTE" -> ActionState.MOVING
         myParticipation?.isConfirmedByWriter == true -> ActionState.DONE
         myParticipation?.proofImageUrls?.isNotEmpty() == true -> ActionState.DONE
-        myParticipation != null -> ActionState.MOVING
+        isAlreadyResolver -> ActionState.MOVING
         else -> ActionState.DEFAULT
     }
 
@@ -123,6 +133,8 @@ fun PinResolutionTab(
                 currentUserId = currentUserId,
                 resolutionStatus = issueDetail.resolutionStatus,
                 resolvedAt = issueDetail.resolvedAt,
+                isWriterSelectionMode = isWriter && !isResolved,
+                onConfirmResolverClick = onConfirmResolverClick,
                 modifier = Modifier.height(ResolverParticipationCardHeight)
             )
 
@@ -150,6 +162,7 @@ fun PinResolutionTab(
         ) {
             ResolutionActionRow(
                 pinId = pin.id,
+                isResolved = isResolved,
                 canGoNow = canGoNow,
                 goNowState = goNowState,
                 isWriter = isWriter,
@@ -243,6 +256,8 @@ private fun ResolverParticipationCard(
     currentUserId: String,
     resolutionStatus: ResolutionStatus,
     resolvedAt: String?,
+    isWriterSelectionMode: Boolean = false,
+    onConfirmResolverClick: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val resolverItems = buildResolverParticipationItems(
@@ -251,6 +266,22 @@ private fun ResolverParticipationCard(
         resolvedAt = resolvedAt,
         currentUserId = currentUserId
     )
+    val displayItems = if (isWriterSelectionMode) {
+        resolverItems.sortedBy { it.progressStatus.authorSelectionPriority }
+    } else {
+        resolverItems
+    }
+    var selectedResolverId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(isWriterSelectionMode, displayItems.map { it.userId }) {
+        if (!isWriterSelectionMode) {
+            selectedResolverId = null
+            return@LaunchedEffect
+        }
+        if (selectedResolverId !in displayItems.map { it.userId }) {
+            selectedResolverId = displayItems.firstOrNull()?.userId
+        }
+    }
 
     SectionCard(modifier = modifier) {
         SectionHeader(
@@ -277,11 +308,21 @@ private fun ResolverParticipationCard(
                 else -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(items = resolverItems, key = { it.userId }) { item ->
+                        items(items = displayItems, key = { it.userId }) { item ->
                             ResolverParticipationItem(
-                                item = item
+                                item = item,
+                                isWriterSelectionMode = isWriterSelectionMode,
+                                isSelected = item.userId == selectedResolverId,
+                                onClick = {
+                                    if (isWriterSelectionMode) {
+                                        selectedResolverId = item.userId
+                                    }
+                                },
+                                onConfirmClick = {
+                                    item.problemSolverId?.let(onConfirmResolverClick)
+                                },
                             )
                         }
                     }
@@ -360,6 +401,7 @@ private fun ResolutionPhotoProofCard(
 private val ResolverParticipationCardHeight = 340.dp
 
 private data class ResolverParticipationItemUiModel(
+    val problemSolverId: Long?,
     val userId: String,
     val profileImageUrl: String?,
     val displayName: String,
@@ -372,21 +414,25 @@ private enum class ResolverProgressStatus(
     val label: String,
     val chipColor: Color,
     val fallbackImageLabel: String,
+    val authorSelectionPriority: Int,
 ) {
     RESOLVED(
         label = "해결 완료",
         chipColor = Success,
-        fallbackImageLabel = "사진 없음"
+        fallbackImageLabel = "사진 없음",
+        authorSelectionPriority = 2,
     ),
     WAITING_CONFIRMATION(
         label = "확인 대기",
         chipColor = BrandColor,
-        fallbackImageLabel = "사진 확인중"
+        fallbackImageLabel = "사진 확인중",
+        authorSelectionPriority = 0,
     ),
     MOVING(
         label = "이동중",
         chipColor = Orange,
-        fallbackImageLabel = "사진 대기"
+        fallbackImageLabel = "사진 대기",
+        authorSelectionPriority = 1,
     ),
 }
 
@@ -432,6 +478,7 @@ private fun IssueResolverParticipation.toResolverParticipationItemUiModel(
     }
 
     return ResolverParticipationItemUiModel(
+        problemSolverId = problemSolverId,
         userId = user.id,
         profileImageUrl = user.imageUrl,
         displayName = user.name + if (user.id == currentUserId) " (나)" else "",
@@ -446,6 +493,7 @@ private fun PinUser.toResolvedFallbackItemUiModel(
     resolvedAt: String?,
 ): ResolverParticipationItemUiModel {
     return ResolverParticipationItemUiModel(
+        problemSolverId = null,
         userId = id,
         profileImageUrl = imageUrl,
         displayName = name + if (id == currentUserId) " (나)" else "",
@@ -493,8 +541,22 @@ private fun EmptyResolverPlaceholder(modifier: Modifier = Modifier) {
 
 @Composable
 private fun ResolverParticipationItem(
-    item: ResolverParticipationItemUiModel
+    item: ResolverParticipationItemUiModel,
+    isWriterSelectionMode: Boolean,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onConfirmClick: () -> Unit,
 ) {
+    if (isWriterSelectionMode) {
+        WriterResolverParticipationItem(
+            item = item,
+            isSelected = isSelected,
+            onClick = onClick,
+            onConfirmClick = onConfirmClick,
+        )
+        return
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -502,7 +564,54 @@ private fun ResolverParticipationItem(
             .background(Gray_1)
             .padding(20.dp),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        ResolverParticipationRowContent(item = item)
+    }
+}
+
+@Composable
+private fun WriterResolverParticipationItem(
+    item: ResolverParticipationItemUiModel,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onConfirmClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(White)
+            .let { base ->
+                if (isSelected) {
+                    base.border(1.5.dp, Orange, shape)
+                } else {
+                    base
+                }
+            }
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(if (isSelected) 14.dp else 0.dp),
+    ) {
+        ResolverParticipationRowContent(item = item)
+        if (isSelected) {
+            WriterResolverConfirmButton(
+                status = item.progressStatus,
+                isEnabled = item.problemSolverId != null,
+                onClick = onConfirmClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResolverParticipationRowContent(
+    item: ResolverParticipationItemUiModel,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
             modifier = Modifier.weight(1f),
@@ -537,6 +646,42 @@ private fun ResolverParticipationItem(
                 fallbackLabel = item.progressStatus.fallbackImageLabel
             )
         }
+    }
+}
+
+@Composable
+private fun WriterResolverConfirmButton(
+    status: ResolverProgressStatus,
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val enabled = status == ResolverProgressStatus.WAITING_CONFIRMATION && isEnabled
+    val label = when (status) {
+        ResolverProgressStatus.WAITING_CONFIRMATION ->
+            if (isEnabled) "인증 완료" else "인증 정보 없음"
+        ResolverProgressStatus.MOVING -> "사진 인증 대기중"
+        ResolverProgressStatus.RESOLVED -> "인증 완료됨"
+    }
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(34.dp),
+        shape = RoundedCornerShape(999.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Orange,
+            contentColor = White,
+            disabledContainerColor = Gray_3,
+            disabledContentColor = Gray_5,
+        ),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+    ) {
+        Text(
+            text = label,
+            style = IssueTypo.Bold12.copy(color = if (enabled) White else Gray_5),
+        )
     }
 }
 
@@ -810,6 +955,7 @@ private fun ResolutionGoNowFloatingConfirmCard(
 @Composable
 private fun ResolutionActionRow(
     pinId: String,
+    isResolved: Boolean,
     canGoNow: Boolean,
     goNowState: ActionState,
     isWriter: Boolean,
@@ -824,6 +970,7 @@ private fun ResolutionActionRow(
     ) {
         if (!isWriter) {
             ResolutionGoNowButton(
+                isResolved = isResolved,
                 canGoNow = canGoNow,
                 goNowState = goNowState,
                 onClick = { onGoNowClick(pinId) },
@@ -841,13 +988,14 @@ private fun ResolutionActionRow(
 
 @Composable
 private fun ResolutionGoNowButton(
+    isResolved: Boolean,
     canGoNow: Boolean,
     goNowState: ActionState,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // TODO: GoNowButton에 외부 enabled 파라미터 추가 후 공통화 검토
-    if (!canGoNow && goNowState == ActionState.DEFAULT) {
+    if (isResolved || (!canGoNow && goNowState == ActionState.DEFAULT)) {
         DisabledGoNowFallback(modifier = modifier)
     } else {
         GoNowButton(state = goNowState, onClick = onClick, modifier = modifier)

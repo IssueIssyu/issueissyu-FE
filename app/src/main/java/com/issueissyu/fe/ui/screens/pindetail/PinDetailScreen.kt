@@ -70,7 +70,6 @@ import java.io.File
 import java.io.FileOutputStream
 
 internal const val PIN_DETAIL_REFRESH_KEY = "pin_detail_refresh"
-private const val DEMO_CURRENT_USER_ID = "user1_id"
 
 @Composable
 fun PinDetailScreen(
@@ -83,6 +82,7 @@ fun PinDetailScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
+    val currentUserId = viewModel.currentUserId.orEmpty()
     val context = LocalContext.current
     var pendingResolutionProofUri by remember { mutableStateOf<String?>(null) }
 
@@ -176,7 +176,7 @@ fun PinDetailScreen(
                     PinDetailContent(
                         pin = uiState.pin!!,
                         uiState = uiState,
-                        currentUserId = DEMO_CURRENT_USER_ID,
+                        currentUserId = currentUserId,
                         onSelectTab = viewModel::selectTab,
                         onSympathyClick = viewModel::toggleSympathy,
                         onEmojiClick = viewModel::openEmojiPicker,
@@ -192,9 +192,8 @@ fun PinDetailScreen(
                         },
                         onCommunityClick = { /* TODO: 커뮤니티 상세 */ },
                         onAttachProofClick = launchResolutionProofCamera,
-                        onGoNowClick = {
-                            viewModel.joinResolution(currentUserId = DEMO_CURRENT_USER_ID)
-                        },
+                        onGoNowClick = viewModel::joinProblemSolver,
+                        onConfirmResolverClick = viewModel::verifyProblemSolver,
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -222,8 +221,7 @@ fun PinDetailScreen(
                             isSubmitting = uiState.isResolutionProofSubmitting,
                             onDismiss = { pendingResolutionProofUri = null },
                             onConfirm = {
-                                viewModel.submitResolutionProof(
-                                    currentUserId = DEMO_CURRENT_USER_ID,
+                                viewModel.submitProblemSolverPhoto(
                                     imageUri = imageUri,
                                     onSuccess = { pendingResolutionProofUri = null }
                                 )
@@ -262,6 +260,7 @@ private fun PinDetailContent(
     onCommunityClick: (String) -> Unit,
     onAttachProofClick: () -> Unit,
     onGoNowClick: () -> Unit,
+    onConfirmResolverClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tabs = buildList {
@@ -321,6 +320,7 @@ private fun PinDetailContent(
                         currentUserId = currentUserId,
                         onGoNowClick = { onGoNowClick() },
                         onPetitionClick = { /* TODO */ },
+                        onConfirmResolverClick = onConfirmResolverClick,
                         onAttachProofClick = onAttachProofClick,
                         modifier = Modifier.fillMaxSize(),
                     )

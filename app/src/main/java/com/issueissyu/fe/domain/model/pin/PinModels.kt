@@ -191,6 +191,7 @@ sealed interface AuthoredPinDetail : PinDetail {
 // 시민해결사 한 명의 참여 단위.
 // TODO: 서버 명세 확정 후 필드 타입(시간 포맷 등) 정합성 재검토 필요.
 data class IssueResolverParticipation(
+    val problemSolverId: Long? = null,
     val user: PinUser,
     val joinedAt: String,
     val proofImageUrls: List<String> = emptyList(),
@@ -206,6 +207,11 @@ data class PinSolveInfo(
 )
 
 data class ProblemSolverInfo(
+    val isGoNow: Boolean,
+    val problemSolvers: List<ProblemSolverParticipantInfo> = emptyList(),
+)
+
+data class ProblemSolverParticipantInfo(
     val problemSolverId: Long,
     val problemSolveState: String,
     val problemSolverImageUrl: String?,
@@ -234,6 +240,9 @@ data class ProblemSolverVerificationInfo(
 data class IssuePinDetail(
     override val writer: PinUser,
     val resolutionStatus: ResolutionStatus = ResolutionStatus.BEFORE_RESOLUTION,
+    val isProblemSolverByMe: Boolean = false,
+    val myProblemSolverId: Long? = null,
+    val myProblemSolveState: String? = null,
     // 지금가요를 누른 시민해결사 전체 목록.
     // TODO: 서버 응답 구조 확정 시 필요한 필드(예: 페이지네이션 등) 보강.
     val resolverParticipations: List<IssueResolverParticipation> = emptyList(),

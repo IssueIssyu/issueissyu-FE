@@ -55,15 +55,11 @@ interface PinRepository {
     suspend fun updatePinComment(commentId: Long, content: String): Result<PinComment>
     suspend fun deletePinComment(commentId: Long): Result<Unit>
 
-
-    suspend fun joinResolution(pinId: Long): Result<Unit>
-    suspend fun submitResolutionProof(pinId: Long, imageUri: String): Result<Unit>
-
     //해결하기 조회
     suspend fun getPinSolve(pinId: Long): Result<PinSolveInfo>
 
     //시민 해결사
-    suspend fun getProblemSolver(pinId: Long, userUid: Long): Result<ProblemSolverInfo>
+    suspend fun getProblemSolver(pinId: Long, userUid: String): Result<ProblemSolverInfo>
     suspend fun joinProblemSolver(pinId: Long): Result<ProblemSolverJoinInfo>
     suspend fun photoProblemSolver(
         problemSolverId: Long,

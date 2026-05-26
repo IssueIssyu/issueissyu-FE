@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.pindetail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.IssueResolverParticipation
 import com.issueissyu.fe.domain.model.pin.PinDetail
@@ -9,7 +10,10 @@ import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
+import com.issueissyu.fe.domain.model.pin.PinSolveInfo
 import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverParticipantInfo
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.withHomeFallback
@@ -65,6 +69,7 @@ sealed interface PinDetailEffect {
 @HiltViewModel
 class PinDetailViewModel @Inject constructor(
     private val pinRepository: PinRepository,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PinDetailUiState())
@@ -78,6 +83,9 @@ class PinDetailViewModel @Inject constructor(
 
     private var routePinId: Long? = null
     private var emojiImageById: Map<Long, String> = emptyMap()
+
+    val currentUserId: String?
+        get() = tokenManager.getCurrentUserUuid()
 
     fun loadPin(pinId: String) {
         val id = pinId.toLongOrNull() ?: run {
@@ -111,6 +119,11 @@ class PinDetailViewModel @Inject constructor(
                         )
                     }
                     loadPostTab(id)
+                    if (pin.detail is IssuePinDetail) {
+                        viewModelScope.launch {
+                            refreshResolutionTab(id, currentUserId)
+                        }
+                    }
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
@@ -174,6 +187,46 @@ class PinDetailViewModel @Inject constructor(
                     loadPinComments(pinId)
                 }
             }
+        } else if (tab == PinDetailTab.RESOLUTION) {
+            resolvePinId()?.let { pinId ->
+                viewModelScope.launch {
+                    refreshResolutionTab(pinId, currentUserId)
+                }
+            }
+        }
+    }
+
+    private suspend fun refreshResolutionTab(pinId: Long, currentUserId: String?) {
+        var solveInfo: PinSolveInfo? = null
+        var problemSolverInfo: ProblemSolverInfo? = null
+
+        pinRepository.getPinSolve(pinId)
+            .onSuccess { solveInfo = it }
+            .onFailure { e ->
+                showToast(e.message ?: "해결하기 정보를 불러오지 못했습니다.")
+            }
+
+        if (!currentUserId.isNullOrBlank()) {
+            pinRepository.getProblemSolver(pinId, currentUserId)
+                .onSuccess { problemSolverInfo = it }
+                .onFailure { e ->
+                    showToast(e.message ?: "시민해결사 목록을 불러오지 못했습니다.")
+                }
+        }
+
+        if (solveInfo == null && problemSolverInfo == null) return
+
+        _uiState.update { state ->
+            val currentPin = state.pin ?: return@update state
+            val currentUser = buildResolutionCurrentUser(currentPin)
+            state.copy(
+                pin = currentPin.withResolutionApiState(
+                    currentUserId = currentUserId,
+                    currentUser = currentUser,
+                    solveInfo = solveInfo,
+                    problemSolverInfo = problemSolverInfo,
+                ),
+            )
         }
     }
 
@@ -407,10 +460,8 @@ class PinDetailViewModel @Inject constructor(
         }
     }
 
-    fun joinResolution(
-        currentUserId: String,
-        onSuccess: () -> Unit = {},
-    ) {
+    fun joinProblemSolver(onSuccess: () -> Unit = {}) {
+        val currentUserId = resolveRequiredCurrentUserId() ?: return
         val pinId = resolvePinId() ?: run {
             showToast("핀 정보를 찾을 수 없습니다.")
             return
@@ -428,25 +479,30 @@ class PinDetailViewModel @Inject constructor(
             showToast("작성자는 시민해결사로 참여할 수 없습니다.")
             return
         }
-        if (issueDetail.resolverParticipations.any { it.user.id == currentUserId }) {
+        if (issueDetail.isProblemSolverByMe || issueDetail.myProblemSolverId != null) {
             showToast("이미 참여 중입니다.")
             return
         }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isResolutionJoining = true) }
-            pinRepository.joinResolution(pinId)
-                .onSuccess {
+            val result = pinRepository.joinProblemSolver(pinId)
+            result
+                .onSuccess { joined ->
                     val joinedAt = Instant.now().toString()
                     _uiState.update { state ->
                         state.copy(
                             isResolutionJoining = false,
-                            pin = state.pin?.withJoinedResolution(
-                                currentUser = buildResolutionCurrentUser(
-                                    currentUserId = currentUserId,
-                                    existingPin = state.pin
-                                ),
+                            pin = state.pin?.withJoinedProblemSolver(
+                                currentUser = buildResolutionCurrentUser(state.pin)
+                                    ?: PinUser(
+                                        id = currentUserId,
+                                        name = resolveCurrentUserName(),
+                                        imageUrl = null,
+                                    ),
                                 joinedAt = joinedAt,
+                                problemSolverId = joined.problemSolverId,
+                                problemSolveState = joined.problemSolveState,
                             ),
                         )
                     }
@@ -456,14 +512,17 @@ class PinDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(isResolutionJoining = false) }
                     showToast(e.message ?: "시민해결사 참여에 실패했습니다.")
                 }
+            if (result.isSuccess) {
+                refreshResolutionTab(pinId, currentUserId)
+            }
         }
     }
 
-    fun submitResolutionProof(
-        currentUserId: String,
+    fun submitProblemSolverPhoto(
         imageUri: String,
         onSuccess: () -> Unit = {},
     ) {
+        val currentUserId = resolveRequiredCurrentUserId() ?: return
         val pinId = resolvePinId() ?: run {
             showToast("핀 정보를 찾을 수 없습니다.")
             return
@@ -477,23 +536,33 @@ class PinDetailViewModel @Inject constructor(
             return
         }
         if (_uiState.value.isResolutionProofSubmitting) return
-        if (issueDetail.resolverParticipations.none { it.user.id == currentUserId }) {
+        if (!issueDetail.isProblemSolverByMe && issueDetail.myProblemSolverId == null) {
             showToast("참여한 시민해결사만 사진 인증을 할 수 있어요.")
+            return
+        }
+        val problemSolverId = issueDetail.myProblemSolverId
+            ?: issueDetail.resolverParticipations
+                .firstOrNull { it.user.id == currentUserId }
+                ?.problemSolverId
+            ?: run {
+            showToast("시민해결사 인증 정보를 찾을 수 없습니다.")
             return
         }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isResolutionProofSubmitting = true) }
-            pinRepository.submitResolutionProof(pinId, imageUri)
-                .onSuccess {
+            val result = pinRepository.photoProblemSolver(problemSolverId, imageUri)
+            result
+                .onSuccess { photoInfo ->
                     val submittedAt = Instant.now().toString()
                     _uiState.update { state ->
                         state.copy(
                             isResolutionProofSubmitting = false,
-                            pin = state.pin?.withResolutionProofSubmitted(
+                            pin = state.pin?.withSubmittedProblemSolverPhoto(
                                 currentUserId = currentUserId,
-                                imageUri = imageUri,
+                                imageUri = photoInfo.photoUrl.ifBlank { imageUri },
                                 submittedAt = submittedAt,
+                                problemSolveState = photoInfo.problemSolveState,
                             ),
                         )
                     }
@@ -504,7 +573,79 @@ class PinDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(isResolutionProofSubmitting = false) }
                     showToast(e.message ?: "사진 인증 등록에 실패했습니다.")
                 }
+            if (result.isSuccess) {
+                refreshResolutionTab(pinId, currentUserId)
+            }
         }
+    }
+
+    fun verifyProblemSolver(problemSolverId: Long) {
+        val currentUserId = resolveRequiredCurrentUserId() ?: return
+        val pinId = resolvePinId() ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            return
+        }
+        val currentPin = _uiState.value.pin ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            return
+        }
+        val issueDetail = currentPin.detail as? IssuePinDetail ?: run {
+            showToast("해결 인증은 이슈 핀에서만 가능합니다.")
+            return
+        }
+        if (issueDetail.writer.id != currentUserId) {
+            showToast("작성자만 시민해결사 인증을 완료할 수 있어요.")
+            return
+        }
+        if (issueDetail.resolutionStatus == ResolutionStatus.RESOLVED) {
+            showToast("이미 해결 완료된 핀입니다.")
+            return
+        }
+        val targetParticipation = issueDetail.resolverParticipations
+            .firstOrNull { it.problemSolverId == problemSolverId } ?: run {
+            showToast("선택한 시민해결사를 찾을 수 없습니다.")
+            return
+        }
+        if (targetParticipation.proofImageUrls.isEmpty()) {
+            showToast("사진 인증이 등록된 참여자만 확인할 수 있어요.")
+            return
+        }
+
+        viewModelScope.launch {
+            val result = pinRepository.verificationProblemSolver(problemSolverId)
+            result
+                .onSuccess {
+                    val confirmedAt = Instant.now().toString()
+                    _uiState.update { state ->
+                        state.copy(
+                            pin = state.pin?.withVerifiedProblemSolver(
+                                problemSolverId = problemSolverId,
+                                confirmedAt = confirmedAt,
+                            ),
+                        )
+                    }
+                    showToast("시민해결사 인증을 완료했습니다.")
+                }
+                .onFailure { e ->
+                    showToast(e.message ?: "시민해결사 인증에 실패했습니다.")
+                }
+            if (result.isSuccess) {
+                refreshResolutionTab(pinId, currentUserId)
+            }
+        }
+    }
+
+    private fun resolveRequiredCurrentUserId(): String? {
+        return tokenManager.getCurrentUserUuid()?.takeIf { it.isNotBlank() } ?: run {
+            showToast("로그인 정보를 찾을 수 없습니다. 다시 로그인해 주세요.")
+            null
+        }
+    }
+
+    fun resolveCurrentUserName(): String {
+        return tokenManager.getCurrentUserName()
+            ?.takeIf { it.isNotBlank() }
+            ?: "현재 사용자"
     }
 
     private fun resolvePinId(): Long? {
@@ -518,10 +659,11 @@ class PinDetailViewModel @Inject constructor(
     }
 }
 
-private fun Pin.withResolutionProofSubmitted(
+private fun Pin.withSubmittedProblemSolverPhoto(
     currentUserId: String,
     imageUri: String,
     submittedAt: String,
+    problemSolveState: String,
 ): Pin {
     val issueDetail = detail as? IssuePinDetail ?: return this
     val updatedParticipations = issueDetail.resolverParticipations.map { participation ->
@@ -536,26 +678,33 @@ private fun Pin.withResolutionProofSubmitted(
     }
     return copy(
         detail = issueDetail.copy(
+            myProblemSolveState = problemSolveState,
             resolverParticipations = updatedParticipations,
         ) as PinDetail
     )
 }
 
-private fun Pin.withJoinedResolution(
+private fun Pin.withJoinedProblemSolver(
     currentUser: PinUser,
     joinedAt: String,
+    problemSolverId: Long,
+    problemSolveState: String,
 ): Pin {
     val issueDetail = detail as? IssuePinDetail ?: return this
     if (issueDetail.resolverParticipations.any { it.user.id == currentUser.id }) return this
 
     return copy(
         detail = issueDetail.copy(
+            isProblemSolverByMe = true,
+            myProblemSolverId = problemSolverId,
+            myProblemSolveState = problemSolveState,
             resolutionStatus = if (issueDetail.resolutionStatus == ResolutionStatus.BEFORE_RESOLUTION) {
                 ResolutionStatus.IN_PROGRESS
             } else {
                 issueDetail.resolutionStatus
             },
             resolverParticipations = issueDetail.resolverParticipations + IssueResolverParticipation(
+                problemSolverId = problemSolverId,
                 user = currentUser,
                 joinedAt = joinedAt,
             ),
@@ -563,31 +712,132 @@ private fun Pin.withJoinedResolution(
     )
 }
 
-private fun buildResolutionCurrentUser(
-    currentUserId: String,
-    existingPin: Pin?,
-): PinUser {
+private fun Pin.withVerifiedProblemSolver(
+    problemSolverId: Long,
+    confirmedAt: String,
+): Pin {
+    val issueDetail = detail as? IssuePinDetail ?: return this
+    val targetParticipation = issueDetail.resolverParticipations
+        .firstOrNull { it.problemSolverId == problemSolverId } ?: return this
+
+    val updatedParticipations = issueDetail.resolverParticipations.map { participation ->
+        if (participation.problemSolverId != problemSolverId) {
+            participation
+        } else {
+            participation.copy(
+                isConfirmedByWriter = true,
+                confirmedAt = confirmedAt,
+            )
+        }
+    }
+
+    return copy(
+        detail = issueDetail.copy(
+            resolutionStatus = ResolutionStatus.RESOLVED,
+            resolverParticipations = updatedParticipations,
+            resolvedBy = targetParticipation.user,
+            resolvedAt = confirmedAt,
+        ) as PinDetail,
+    )
+}
+
+private fun Pin.withResolutionApiState(
+    currentUserId: String?,
+    currentUser: PinUser?,
+    solveInfo: PinSolveInfo?,
+    problemSolverInfo: ProblemSolverInfo?,
+): Pin {
+    val issueDetail = detail as? IssuePinDetail ?: return this
+    val knownMyProblemSolverId = issueDetail.myProblemSolverId
+        ?: issueDetail.resolverParticipations
+            .firstOrNull { it.user.id == currentUserId }
+            ?.problemSolverId
+        ?: problemSolverInfo
+            ?.takeIf { it.isGoNow && it.problemSolvers.size == 1 }
+            ?.problemSolvers
+            ?.firstOrNull()
+            ?.problemSolverId
+    val nextParticipations = problemSolverInfo?.problemSolvers?.map { solver ->
+        solver.toIssueResolverParticipation(
+            currentUserId = currentUserId,
+            currentUser = currentUser,
+            knownMyProblemSolverId = knownMyProblemSolverId,
+        )
+    } ?: issueDetail.resolverParticipations
+    val myProblemSolverInfo = problemSolverInfo?.problemSolvers
+        ?.firstOrNull { it.problemSolverId == knownMyProblemSolverId }
+    val resolvedParticipation = nextParticipations.firstOrNull { it.isConfirmedByWriter }
+    val nextResolutionStatus = when {
+        resolvedParticipation != null -> ResolutionStatus.RESOLVED
+        nextParticipations.isNotEmpty() ||
+            (solveInfo?.isProblemSolver == true) -> ResolutionStatus.IN_PROGRESS
+        else -> issueDetail.resolutionStatus
+    }
+    return copy(
+        detail = issueDetail.copy(
+            resolutionStatus = nextResolutionStatus,
+            isProblemSolverByMe = problemSolverInfo?.isGoNow
+                ?: solveInfo?.isProblemSolver
+                ?: issueDetail.isProblemSolverByMe,
+            myProblemSolverId = knownMyProblemSolverId,
+            myProblemSolveState = myProblemSolverInfo?.problemSolveState ?: issueDetail.myProblemSolveState,
+            resolverParticipations = nextParticipations,
+            resolvedBy = resolvedParticipation?.user ?: issueDetail.resolvedBy,
+            resolvedAt = resolvedParticipation?.confirmedAt ?: issueDetail.resolvedAt,
+            isPetitionedByMe = solveInfo?.isPetitioned ?: issueDetail.isPetitionedByMe,
+        ) as PinDetail,
+    )
+}
+
+private fun ProblemSolverParticipantInfo.toIssueResolverParticipation(
+    currentUserId: String?,
+    currentUser: PinUser?,
+    knownMyProblemSolverId: Long?,
+): IssueResolverParticipation {
+    val isCurrentUser = knownMyProblemSolverId != null && problemSolverId == knownMyProblemSolverId
+    val user = if (isCurrentUser && currentUser != null && currentUserId != null) {
+        currentUser.copy(
+            name = nickname.ifBlank { currentUser.name },
+            imageUrl = profileUrl ?: currentUser.imageUrl,
+        )
+    } else {
+        PinUser(
+            id = problemSolverId.toString(),
+            name = nickname,
+            imageUrl = profileUrl,
+        )
+    }
+    val normalizedState = problemSolveState.trim().uppercase()
+    return IssueResolverParticipation(
+        problemSolverId = problemSolverId,
+        user = if (isCurrentUser && currentUserId != null) {
+            user.copy(id = currentUserId)
+        } else {
+            user
+        },
+        joinedAt = createdAt,
+        proofImageUrls = problemSolverImageUrl?.takeIf { it.isNotBlank() }?.let(::listOf).orEmpty(),
+        proofSubmittedAt = if (normalizedState == "VERIFIED" || normalizedState == "RESOLVED") {
+            createdAt
+        } else {
+            null
+        },
+        isConfirmedByWriter = normalizedState == "RESOLVED",
+        confirmedAt = if (normalizedState == "RESOLVED") createdAt else null,
+    )
+}
+
+private fun PinDetailViewModel.buildResolutionCurrentUser(existingPin: Pin?): PinUser? {
+    val resolvedCurrentUserId = currentUserId ?: return null
     val existingDetail = existingPin?.detail as? IssuePinDetail
     val existingUser = existingDetail?.resolverParticipations
-        ?.firstOrNull { it.user.id == currentUserId }
+        ?.firstOrNull { it.user.id == resolvedCurrentUserId }
         ?.user
     if (existingUser != null) return existingUser
 
-    return when (currentUserId) {
-        "user1_id" -> PinUser(
-            id = "user1_id",
-            name = "현재 사용자",
-            imageUrl = "https://example.com/user1.jpg"
-        )
-        "user2_id" -> PinUser(
-            id = "user2_id",
-            name = "박개발",
-            imageUrl = "https://example.com/user2.jpg"
-        )
-        else -> PinUser(
-            id = currentUserId,
-            name = "현재 사용자",
-            imageUrl = null
-        )
-    }
+    return PinUser(
+        id = resolvedCurrentUserId,
+        name = resolveCurrentUserName(),
+        imageUrl = null,
+    )
 }
