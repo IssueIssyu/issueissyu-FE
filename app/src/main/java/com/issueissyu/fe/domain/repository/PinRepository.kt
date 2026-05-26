@@ -46,4 +46,7 @@ interface PinRepository {
     suspend fun createPinComment(pinId: Long, content: String): Result<PinComment>
     suspend fun updatePinComment(commentId: Long, content: String): Result<PinComment>
     suspend fun deletePinComment(commentId: Long): Result<Unit>
+
+    suspend fun joinResolution(pinId: Long): Result<Unit>
+    suspend fun submitResolutionProof(pinId: Long, imageUri: String): Result<Unit>
 }

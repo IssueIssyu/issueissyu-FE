@@ -49,6 +49,7 @@ class PinRepositoryImpl @Inject constructor(
     // TODO: 실제 백엔드와 연결 시 PinSamples 의존을 제거하고 네트워크 호출 로직으로 대체.
     private val dummyPins: MutableList<Pin> = PinSamples.pins.toMutableList()
     private val currentUser: PinUser = PinSamples.user1
+    private val resolutionProofStore: MutableMap<Long, MutableList<String>> = mutableMapOf()
 
     override suspend fun getPins(): List<Pin> {
         // TODO: 실제 백엔드 API 호출로 핀 목록을 가져오도록 구현해야 합니다.
@@ -635,6 +636,33 @@ class PinRepositoryImpl @Inject constructor(
                             ),
                         )
                 }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun joinResolution(pinId: Long): Result<Unit> {
+        return try {
+            if (pinId <= 0L) {
+                Result.failure(Exception("잘못된 핀 정보입니다."))
+            } else {
+                Result.success(Unit)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun submitResolutionProof(pinId: Long, imageUri: String): Result<Unit> {
+        return try {
+            if (pinId <= 0L) {
+                Result.failure(Exception("잘못된 핀 정보입니다."))
+            } else if (imageUri.isBlank()) {
+                Result.failure(Exception("인증 사진이 필요합니다."))
+            } else {
+                resolutionProofStore.getOrPut(pinId) { mutableListOf() }.add(imageUri)
+                Result.success(Unit)
             }
         } catch (e: Exception) {
             Result.failure(e)

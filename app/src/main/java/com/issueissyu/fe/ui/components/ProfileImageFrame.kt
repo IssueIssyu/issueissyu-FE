@@ -24,11 +24,7 @@ import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.White
 
-/**
- * 원형 프로필 이미지 틀.
- *
- * @param size 이미지 지름. 테두리는 원 내부에 그려져 실제 차지 크기는 `size`입니다.
- */
+
 @Composable
 fun ProfileImageFrame(
     size: Dp,

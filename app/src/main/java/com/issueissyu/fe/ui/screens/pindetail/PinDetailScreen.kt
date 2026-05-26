@@ -1,49 +1,76 @@
 package com.issueissyu.fe.ui.screens.pindetail
 
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
+import com.issueissyu.fe.ui.theme.White
+import java.io.File
+import java.io.FileOutputStream
 
 internal const val PIN_DETAIL_REFRESH_KEY = "pin_detail_refresh"
+private const val DEMO_CURRENT_USER_ID = "user1_id"
 
 @Composable
 fun PinDetailScreen(
@@ -57,6 +84,43 @@ fun PinDetailScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var pendingResolutionProofUri by remember { mutableStateOf<String?>(null) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
+        val proofUri = bitmap?.let { saveResolutionProofBitmap(context, it) }
+        if (proofUri == null) {
+            Toast.makeText(context, "사진 촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
+        } else {
+            pendingResolutionProofUri = proofUri
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            cameraLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val launchResolutionProofCamera = remember(context, cameraLauncher, cameraPermissionLauncher) {
+        {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasPermission) {
+                cameraLauncher.launch(null)
+            } else {
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
 
     LaunchedEffect(pinId) {
         viewModel.loadPin(pinId)
@@ -85,7 +149,7 @@ fun PinDetailScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .background(White),
     ) {
         IssueissyuTopAppBar(
             onBackClick = onBackClick,
@@ -112,6 +176,7 @@ fun PinDetailScreen(
                     PinDetailContent(
                         pin = uiState.pin!!,
                         uiState = uiState,
+                        currentUserId = DEMO_CURRENT_USER_ID,
                         onSelectTab = viewModel::selectTab,
                         onSympathyClick = viewModel::toggleSympathy,
                         onEmojiClick = viewModel::openEmojiPicker,
@@ -126,6 +191,10 @@ fun PinDetailScreen(
                             viewModel.deletePin(deletePinId, onSuccess = onBackClick)
                         },
                         onCommunityClick = { /* TODO: 커뮤니티 상세 */ },
+                        onAttachProofClick = launchResolutionProofCamera,
+                        onGoNowClick = {
+                            viewModel.joinResolution(currentUserId = DEMO_CURRENT_USER_ID)
+                        },
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -146,6 +215,21 @@ fun PinDetailScreen(
                             allowApplyWithoutSelection = true,
                         )
                     }
+
+                    pendingResolutionProofUri?.let { imageUri ->
+                        ResolutionProofConfirmDialog(
+                            imageUri = imageUri,
+                            isSubmitting = uiState.isResolutionProofSubmitting,
+                            onDismiss = { pendingResolutionProofUri = null },
+                            onConfirm = {
+                                viewModel.submitResolutionProof(
+                                    currentUserId = DEMO_CURRENT_USER_ID,
+                                    imageUri = imageUri,
+                                    onSuccess = { pendingResolutionProofUri = null }
+                                )
+                            }
+                        )
+                    }
                 }
             }
 
@@ -163,6 +247,7 @@ fun PinDetailScreen(
 private fun PinDetailContent(
     pin: Pin,
     uiState: PinDetailUiState,
+    currentUserId: String,
     onSelectTab: (PinDetailTab) -> Unit,
     onSympathyClick: () -> Unit,
     onEmojiClick: () -> Unit,
@@ -175,6 +260,8 @@ private fun PinDetailContent(
     onEditClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
     onCommunityClick: (String) -> Unit,
+    onAttachProofClick: () -> Unit,
+    onGoNowClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val tabs = buildList {
@@ -231,9 +318,10 @@ private fun PinDetailContent(
                     PinResolutionTab(
                         pin = pin,
                         issueDetail = issueDetail,
-                        currentUserId = "user1_id",
-                        onGoNowClick = { /* TODO */ },
+                        currentUserId = currentUserId,
+                        onGoNowClick = { onGoNowClick() },
                         onPetitionClick = { /* TODO */ },
+                        onAttachProofClick = onAttachProofClick,
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {
@@ -335,10 +423,111 @@ private fun CenteredPlaceholder(
     }
 }
 
+@Composable
+private fun ResolutionProofConfirmDialog(
+    imageUri: String,
+    isSubmitting: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = { if (!isSubmitting) onDismiss() }) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(White)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "사진 첨부 확인",
+                    style = IssueTypo.Bold18.copy(color = Title)
+                )
+                AsyncImage(
+                    model = imageUri,
+                    contentDescription = "촬영한 인증 사진",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(260.dp)
+                        .background(Gray_3, RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(16.dp))
+                )
+                Text(
+                    text = "이 사진으로 현장 인증을 진행할까요?",
+                    style = IssueTypo.Regular15.copy(color = Gray_5)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        enabled = !isSubmitting,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Gray_3,
+                            contentColor = Gray_5,
+                            disabledContainerColor = Gray_3,
+                            disabledContentColor = Gray_5
+                        )
+                    ) {
+                        Text(
+                            text = "다시 찍기",
+                            style = IssueTypo.Bold18.copy(color = Gray_5)
+                        )
+                    }
+                    Button(
+                        onClick = onConfirm,
+                        enabled = !isSubmitting,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Orange,
+                            contentColor = White,
+                            disabledContainerColor = Orange.copy(alpha = 0.5f),
+                            disabledContentColor = White
+                        )
+                    ) {
+                        Text(
+                            text = if (isSubmitting) "저장 중..." else "첨부 확인",
+                            style = IssueTypo.Bold18.copy(color = White)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 private fun PinDetailTab.label(): String = when (this) {
     PinDetailTab.HOME -> "홈"
     PinDetailTab.POST -> "포스트"
     PinDetailTab.RESOLUTION -> "해결하기"
+}
+
+private fun saveResolutionProofBitmap(
+    context: Context,
+    bitmap: Bitmap,
+): String? {
+    return runCatching {
+        val file = File(
+            context.cacheDir,
+            "resolution-proof-${System.currentTimeMillis()}.jpg"
+        )
+        FileOutputStream(file).use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)
+        }
+        file.toUri().toString()
+    }.getOrNull()
 }
 
 @Preview(showBackground = true, heightDp = 900)
