@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.components
 
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -24,7 +25,6 @@ import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import androidx.compose.material3.MaterialTheme
-import com.issueissyu.fe.ui.theme.White
 
 data class BottomNavItem(
     val label: String,
@@ -68,7 +68,7 @@ fun BottomNavigationBar(
     }
 
     NavigationBar(
-        containerColor = White
+        modifier = Modifier.height(64.dp)
     ) {
         items.forEach { item ->
             val selected = currentRoute == item.route

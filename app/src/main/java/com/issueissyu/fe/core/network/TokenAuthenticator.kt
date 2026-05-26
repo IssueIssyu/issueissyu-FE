@@ -1,6 +1,5 @@
 package com.issueissyu.fe.core.network
 
-import com.issueissyu.fe.core.auth.SessionManager
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.dto.request.auth.RefreshTokenRequest
@@ -18,7 +17,6 @@ import javax.inject.Singleton
 @Singleton
 class TokenAuthenticator @Inject constructor(
     private val tokenManager: TokenManager,
-    private val sessionManager: SessionManager,
     @Named("auth_plain") private val plainAuthApi: AuthApi,
 ) : Authenticator {
 
@@ -47,7 +45,7 @@ class TokenAuthenticator @Inject constructor(
                 }
 
                 val refreshToken = tokenManager.getRefreshToken() ?: run {
-                    sessionManager.expireSession()
+                    tokenManager.clearTokens()
                     return@withLock null
                 }
 
@@ -59,7 +57,7 @@ class TokenAuthenticator @Inject constructor(
                             .build()
                     }
                     RefreshOutcome.InvalidToken -> {
-                        sessionManager.expireSession()
+                        tokenManager.clearTokens()
                         null
                     }
                     RefreshOutcome.Failed -> null
