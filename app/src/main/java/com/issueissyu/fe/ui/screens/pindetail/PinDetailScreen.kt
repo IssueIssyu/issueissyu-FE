@@ -445,7 +445,7 @@ private fun ResolutionProofConfirmDialog(
             ) {
                 Text(
                     text = "사진 첨부 확인",
-                    style = IssueTypo.Bold18.copy(color = Title)
+                    style = IssueTypo.Bold18.copy(color = BrandColor)
                 )
                 AsyncImage(
                     model = imageUri,
@@ -491,9 +491,9 @@ private fun ResolutionProofConfirmDialog(
                             .height(48.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Orange,
+                            containerColor = BrandColor,
                             contentColor = White,
-                            disabledContainerColor = Orange.copy(alpha = 0.5f),
+                            disabledContainerColor = BrandColor.copy(alpha = 0.5f),
                             disabledContentColor = White
                         )
                     ) {
