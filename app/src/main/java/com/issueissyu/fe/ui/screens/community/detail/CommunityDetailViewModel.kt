@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
+import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.repository.PinRepository
@@ -16,6 +17,7 @@ import com.issueissyu.fe.domain.usecase.community.GetCommunityDetailUseCase
 import com.issueissyu.fe.domain.usecase.community.LikeCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.TakedownCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.UpdateCommunityCommentUseCase
+import com.issueissyu.fe.domain.usecase.issue.GetIssueReliabilityUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,6 +42,7 @@ class CommunityDetailViewModel @Inject constructor(
     private val takedownCommunityUseCase: TakedownCommunityUseCase,
     private val likeCommunityUseCase: LikeCommunityUseCase,
     private val declareCommunityUseCase: DeclareCommunityUseCase,
+    private val getIssueReliabilityUseCase: GetIssueReliabilityUseCase,
     private val pinRepository: PinRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -115,8 +118,8 @@ class CommunityDetailViewModel @Inject constructor(
                                     ?: solveStatus?.isPetitioned
                                     ?: detail.isPetitioned,
                                 isProblemSolver = solveStatus?.isProblemSolver ?: detail.isProblemSolver,
-                                reliabilityScore = solveStatus?.reliability ?: detail.reliabilityScore,
                             ),
+                            reliabilityStatus = IssueReliabilityStatus.PENDING,
                             errorMessage = null
                         )
                     }
@@ -124,6 +127,9 @@ class CommunityDetailViewModel @Inject constructor(
                         loadPinEmojis(pinId)
                     } else {
                         _uiState.update { it.copy(emojiReactions = emptyList(), emojiPicker = CommunityEmojiPickerUiState()) }
+                    }
+                    if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
+                        loadIssueReliability(pinId)
                     }
                 }
         }
@@ -477,6 +483,21 @@ class CommunityDetailViewModel @Inject constructor(
         pinRepository.getPinEmojis(pinId)
             .onSuccess { pinEmojis ->
                 _uiState.update { it.copy(emojiReactions = pinEmojis.toEmojiReactions()) }
+            }
+    }
+
+    private suspend fun loadIssueReliability(pinId: Long) {
+        getIssueReliabilityUseCase(pinId)
+            .onSuccess { reliability ->
+                _uiState.update { state ->
+                    state.copy(
+                        detail = state.detail?.copy(
+                            reliabilityScore = reliability.score,
+                            reliabilityReason = reliability.reason,
+                        ),
+                        reliabilityStatus = reliability.status,
+                    )
+                }
             }
     }
 

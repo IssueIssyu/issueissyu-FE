@@ -51,14 +51,16 @@ import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
+import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
+import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
+import com.issueissyu.fe.ui.components.IssueReliabilityStatus as UiIssueReliabilityStatus
 import com.issueissyu.fe.ui.components.SignButton
 import com.issueissyu.fe.ui.theme.BrandColor
-import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_3
@@ -74,8 +76,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-// TODO: 백엔드/기획 기준 확정 후 사유 노출 임계값 조정
-private const val RELIABILITY_REASON_VISIBLE_THRESHOLD = 70
 private val COMMUNITY_DETAIL_ACTION_TOUCH_SIZE = 48.dp
 private val COMMUNITY_DETAIL_ACTION_BUTTON_SIZE = 30.dp
 
@@ -227,6 +227,7 @@ fun CommunityDetailScreenContent(
                 else -> {
                 CommunityDetailBody(
                     detail = uiState.detail,
+                    reliabilityStatus = uiState.reliabilityStatus.toUiReliabilityStatus(),
                     onMapClick = onMapClick,
                     onReportClick = { showDeclarationDialog = true },
                     onGoNowClick = onGoNowClick,
@@ -289,6 +290,7 @@ private fun CommunityDetailErrorState(
 @Composable
 private fun CommunityDetailBody(
     detail: CommunityDetail,
+    reliabilityStatus: UiIssueReliabilityStatus,
     onMapClick: (Long) -> Unit,
     onReportClick: () -> Unit,
     onGoNowClick: () -> Unit,
@@ -345,6 +347,7 @@ private fun CommunityDetailBody(
             item {
                 CommunityDetailTitleSection(
                     detail = detail,
+                    reliabilityStatus = reliabilityStatus,
                     isLikeSubmitting = isCommunityLikeSubmitting,
                     onLikeClick = onCommunityLikeClick,
                     isDeleting = isCommunityDeleting,
@@ -501,6 +504,14 @@ private val mapVisibleKinds = setOf(
     CommunityItemKind.STORE,
 )
 
+private fun IssueReliabilityStatus.toUiReliabilityStatus(): UiIssueReliabilityStatus {
+    return when (this) {
+        IssueReliabilityStatus.PENDING -> UiIssueReliabilityStatus.PENDING
+        IssueReliabilityStatus.COMPLETED -> UiIssueReliabilityStatus.COMPLETED
+        IssueReliabilityStatus.FAILED -> UiIssueReliabilityStatus.FAILED
+    }
+}
+
 @Composable
 private fun CommunityDetailOutlinedIconButton(
     onClick: () -> Unit,
@@ -640,6 +651,7 @@ private fun CommunityDetailMetaSection(detail: CommunityDetail) {
 @Composable
 private fun CommunityDetailTitleSection(
     detail: CommunityDetail,
+    reliabilityStatus: UiIssueReliabilityStatus,
     isLikeSubmitting: Boolean,
     onLikeClick: () -> Unit,
     isDeleting: Boolean,
@@ -696,10 +708,13 @@ private fun CommunityDetailTitleSection(
             }
 
             if (detail.kind == CommunityItemKind.ISSUE) {
-                IssueReliabilityInline(
+                IssueReliabilityIndicator(
                     score = detail.reliabilityScore,
                     reason = detail.reliabilityReason,
-                    modifier = Modifier.padding(start = 16.dp)
+                    status = reliabilityStatus,
+                    modifier = Modifier
+                        .padding(start = 16.dp)
+                        .width(100.dp)
                 )
             }
         }
@@ -789,87 +804,6 @@ private fun CompactCircleIconButton(
             tint = if (enabled) Gray_5 else Gray_3,
             modifier = Modifier.size(13.dp)
         )
-    }
-}
-
-@Composable
-private fun IssueReliabilityInline(
-    score: Int?,
-    reason: String?,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier.width(100.dp),
-        horizontalAlignment = Alignment.End
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "AI 신뢰도",
-                style = IssueTypo.Bold12.copy(color = Title, fontSize = 10.sp)
-            )
-            Text(
-                text = if (score != null) "$score%" else "검사중",
-                style = IssueTypo.Bold12.copy(
-                    color = if (score != null) getReliabilityColor(score) else Gray_5,
-                    fontSize = 10.sp
-                )
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(Gray_2)
-        ) {
-            if (score != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(score / 100f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(getReliabilityColor(score))
-                )
-            }
-
-            // 33%, 66% dividers
-            Row(modifier = Modifier.fillMaxSize()) {
-                Spacer(modifier = Modifier.weight(0.33f))
-                Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(White.copy(alpha = 0.5f)))
-                Spacer(modifier = Modifier.weight(0.33f))
-                Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(White.copy(alpha = 0.5f)))
-                Spacer(modifier = Modifier.weight(0.34f))
-            }
-        }
-
-        if (score != null &&
-            score < RELIABILITY_REASON_VISIBLE_THRESHOLD &&
-            !reason.isNullOrBlank()
-        ) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = reason,
-                style = IssueTypo.Regular12.copy(color = Gray_6, fontSize = 10.sp),
-                textAlign = TextAlign.End,
-                lineHeight = 14.sp
-            )
-        }
-    }
-}
-
-private fun getReliabilityColor(score: Int): Color {
-    val percentage = score.coerceIn(0, 100)
-    return when {
-        percentage <= 33 -> Orange
-        percentage <= 66 -> Festival // TODO: AI 신뢰도 중간 구간 색상 theme 토큰 확정 필요
-        else -> BrandColor
     }
 }
 

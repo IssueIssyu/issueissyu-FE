@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.community.detail
 
 import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
+import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 
@@ -17,6 +18,7 @@ data class CommunityDetailUiState(
     val isCommunityLikeSubmitting: Boolean = false,
     val isCommunityDeclarationSubmitting: Boolean = false,
     val isCommunityDeleting: Boolean = false,
+    val reliabilityStatus: IssueReliabilityStatus = IssueReliabilityStatus.PENDING,
     val errorMessage: String? = null
 )
 
