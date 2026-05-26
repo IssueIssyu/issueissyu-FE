@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -30,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -38,6 +41,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
@@ -137,6 +142,14 @@ fun CommunityDetailScreenContent(
 ) {
     var showDeclarationDialog by remember { mutableStateOf(false) }
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
+    var expandedImageUrl by remember { mutableStateOf<String?>(null) }
+
+    expandedImageUrl?.let { imageUrl ->
+        CommunityImagePreviewDialog(
+            imageUrl = imageUrl,
+            onDismiss = { expandedImageUrl = null },
+        )
+    }
 
     if (uiState.emojiPicker.isVisible) {
         EmojiReactionBottomSheet(
@@ -224,6 +237,7 @@ fun CommunityDetailScreenContent(
                         onCommunityDeleteClick = onCommunityDeleteClick,
                         onCommunityTakedownClick = onCommunityTakedownClick,
                         onEmojiAddClick = onEmojiAddClick,
+                        onImageClick = { expandedImageUrl = it },
                         onCommentEditClick = { editingComment = it },
                         onCommentDeleteClick = onCommentDelete,
                     )
@@ -285,6 +299,7 @@ private fun CommunityDetailBody(
     onCommunityDeleteClick: () -> Unit,
     onCommunityTakedownClick: () -> Unit,
     onEmojiAddClick: () -> Unit,
+    onImageClick: (String) -> Unit,
     onCommentEditClick: (CommunityComment) -> Unit,
     onCommentDeleteClick: (Long) -> Unit,
 ) {
@@ -323,7 +338,10 @@ private fun CommunityDetailBody(
         // 4. 이미지 섹션
         if (detail.imageUrls.isNotEmpty()) {
             item {
-                CommunityDetailImageSection(imageUrls = detail.imageUrls)
+                CommunityDetailImageSection(
+                    imageUrls = detail.imageUrls,
+                    onImageClick = onImageClick,
+                )
             }
         }
 
@@ -869,7 +887,10 @@ private fun getReliabilityColor(score: Int): Color {
 }
 
 @Composable
-private fun CommunityDetailImageSection(imageUrls: List<String>) {
+private fun CommunityDetailImageSection(
+    imageUrls: List<String>,
+    onImageClick: (String) -> Unit,
+) {
     val listState = rememberLazyListState()
     
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -887,7 +908,8 @@ private fun CommunityDetailImageSection(imageUrls: List<String>) {
                         .width(110.dp)
                         .height(110.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Gray_3),
+                        .background(Gray_3)
+                        .clickable { onImageClick(imageUrl) },
                     contentScale = ContentScale.Crop
                 )
             }
@@ -909,6 +931,50 @@ private fun CommunityDetailImageSection(imageUrls: List<String>) {
                         .fillMaxWidth(0.3f)
                         .fillMaxHeight()
                         .background(BrandColor)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityImagePreviewDialog(
+    imageUrl: String,
+    onDismiss: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.92f))
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { onDismiss() })
+                }
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "게시글 이미지 확대",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = {})
+                    },
+                contentScale = ContentScale.Fit,
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "닫기",
+                    tint = White
                 )
             }
         }
