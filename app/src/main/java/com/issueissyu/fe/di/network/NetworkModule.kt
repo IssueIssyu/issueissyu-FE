@@ -6,6 +6,7 @@ import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
+import com.issueissyu.fe.data.remote.api.AiIssueApiService
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.data.remote.api.MapApi
@@ -91,8 +92,14 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideIssueApiService(@Named("ai") retrofit: Retrofit): IssueApiService {
+    fun provideIssueApiService(retrofit: Retrofit): IssueApiService {
         return retrofit.create(IssueApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAiIssueApiService(@Named("ai") retrofit: Retrofit): AiIssueApiService {
+        return retrofit.create(AiIssueApiService::class.java)
     }
 
     @Provides

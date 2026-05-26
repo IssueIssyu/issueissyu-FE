@@ -25,9 +25,9 @@ fun IssueReliabilityResponse.toDomain(): IssueReliability {
 }
 
 private fun String?.toIssueReliabilityStatus(): IssueReliabilityStatus {
-    return when (this?.lowercase()) {
-        "completed" -> IssueReliabilityStatus.COMPLETED
-        "failed" -> IssueReliabilityStatus.FAILED
+    return when {
+        this.equals("completed", ignoreCase = true) -> IssueReliabilityStatus.COMPLETED
+        this.equals("failed", ignoreCase = true) -> IssueReliabilityStatus.FAILED
         else -> IssueReliabilityStatus.PENDING
     }
 }
