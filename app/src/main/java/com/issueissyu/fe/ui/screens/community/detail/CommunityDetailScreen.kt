@@ -320,38 +320,67 @@ private fun CommunityDetailBody(
             )
         }
 
-        // 2. 작성자 및 메타 정보 (ISSUE, COMMUNICATION 등)
-        if (detail.writerNickname != null) {
+        if (detail.kind == CommunityItemKind.CARDNEWS) {
             item {
-                CommunityDetailMetaSection(detail = detail)
+                CommunityCardNewsTitleSection(title = detail.title)
             }
-        }
 
-        // 3. 제목 및 주소
-        item {
-            CommunityDetailTitleSection(
-                detail = detail,
-                isLikeSubmitting = isCommunityLikeSubmitting,
-                onLikeClick = onCommunityLikeClick,
-                isDeleting = isCommunityDeleting,
-                onDeleteClick = onCommunityDeleteClick,
-                onTakedownClick = onCommunityTakedownClick,
-            )
-        }
+            if (detail.imageUrls.isNotEmpty()) {
+                item {
+                    CommunityCardNewsImageSection(
+                        imageUrls = detail.imageUrls,
+                        onImageClick = onImageClick,
+                    )
+                }
+            }
+        } else {
+            // 2. 작성자 및 메타 정보 (ISSUE, COMMUNICATION 등)
+            if (detail.writerNickname != null) {
+                item {
+                    CommunityDetailMetaSection(detail = detail)
+                }
+            }
 
-        // 4. 이미지 섹션
-        if (detail.imageUrls.isNotEmpty()) {
+            // 3. 제목 및 주소
             item {
-                CommunityDetailImageSection(
-                    imageUrls = detail.imageUrls,
-                    onImageClick = onImageClick,
+                CommunityDetailTitleSection(
+                    detail = detail,
+                    isLikeSubmitting = isCommunityLikeSubmitting,
+                    onLikeClick = onCommunityLikeClick,
+                    isDeleting = isCommunityDeleting,
+                    onDeleteClick = onCommunityDeleteClick,
+                    onTakedownClick = onCommunityTakedownClick,
                 )
             }
-        }
 
-        // 5. 본문 내용
-        item {
-            CommunityDetailContentSection(content = detail.content)
+            // 4. 이미지 섹션
+            if (detail.imageUrls.isNotEmpty()) {
+                item {
+                    CommunityDetailImageSection(
+                        imageUrls = detail.imageUrls,
+                        onImageClick = onImageClick,
+                    )
+                }
+            }
+
+            // 5. 본문 내용
+            item {
+                CommunityDetailContentSection(content = detail.content)
+            }
+
+            // 7. 청원 영역 (ISSUE 전용)
+            if (detail.kind == CommunityItemKind.ISSUE) {
+                item {
+                    PetitionPlaceholderSection(detail = detail)
+                }
+                item {
+                    CommunityDetailIssueActionSection(
+                        detail = detail,
+                        onGoNowClick = onGoNowClick,
+                        onPetitionClick = onPetitionClick,
+                    )
+                }
+            }
         }
 
         // 6. 반응 영역
@@ -360,20 +389,6 @@ private fun CommunityDetailBody(
                 CommunityEmojiReactionSection(
                     reactions = emojiReactions,
                     onAddClick = onEmojiAddClick,
-                )
-            }
-        }
-
-        // 7. 청원 영역 (ISSUE 전용)
-        if (detail.kind == CommunityItemKind.ISSUE) {
-            item {
-                PetitionPlaceholderSection(detail = detail)
-            }
-            item {
-                CommunityDetailIssueActionSection(
-                    detail = detail,
-                    onGoNowClick = onGoNowClick,
-                    onPetitionClick = onPetitionClick,
                 )
             }
         }
@@ -572,6 +587,15 @@ private fun CommunityDeclarationDialog(
             }
         },
         containerColor = White,
+    )
+}
+
+@Composable
+private fun CommunityCardNewsTitleSection(title: String) {
+    Text(
+        text = title,
+        style = IssueTypo.Bold18.copy(color = Title, fontSize = 16.sp),
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
     )
 }
 
@@ -893,6 +917,33 @@ private fun CommunityDetailImageSection(
                         .background(BrandColor)
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CommunityCardNewsImageSection(
+    imageUrls: List<String>,
+    onImageClick: (Int) -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        imageUrls.forEachIndexed { index, imageUrl ->
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = "카드뉴스 이미지",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(0.72f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Gray_2)
+                    .clickable { onImageClick(index) },
+                contentScale = ContentScale.Fit,
+            )
         }
     }
 }
@@ -1615,6 +1666,37 @@ fun PreviewCommunityDetailScreenFestival() {
         isReported = false, isPetitioned = false, isProblemSolver = false, isMine = false,
         reliabilityScore = null, reliabilityReason = null,
         eventStartTime = "2026-05-14T00:00:00.000Z", eventEndTime = "2026-05-20T00:00:00.000Z"
+    )
+    CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
+}
+
+@Preview(name = "CARDNEWS 상세", showBackground = true, heightDp = 1200)
+@Composable
+fun PreviewCommunityDetailScreenCardNews() {
+    val dummyDetail = CommunityDetail(
+        communityId = 10L,
+        pinId = 100L,
+        kind = CommunityItemKind.CARDNEWS,
+        title = "카드뉴스제목제목제목제목",
+        content = "",
+        imageUrls = listOf(
+            "https://picsum.photos/seed/card-news-1/720/1000",
+            "https://picsum.photos/seed/card-news-2/720/1000",
+            "https://picsum.photos/seed/card-news-3/720/1000",
+        ),
+        writerNickname = null,
+        writerProfileUrl = null,
+        address = null,
+        viewCount = 208,
+        likeCount = 30,
+        createdAt = "2026-05-26T10:00:00.000Z",
+        updatedAt = null,
+        isReported = false,
+        isPetitioned = false,
+        isProblemSolver = false,
+        isMine = false,
+        reliabilityScore = null,
+        reliabilityReason = null,
     )
     CommunityDetailScreenContent(uiState = CommunityDetailUiState(detail = dummyDetail), onBackClick = {})
 }
