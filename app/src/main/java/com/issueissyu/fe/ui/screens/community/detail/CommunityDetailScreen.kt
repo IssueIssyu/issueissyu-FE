@@ -355,8 +355,8 @@ private fun CommunityDetailBody(
             CommunityDetailContentSection(content = detail.content)
         }
 
-        // 6. 반응 영역 (ISSUE, COMMUNICATION 등)
-        if (detail.kind == CommunityItemKind.ISSUE || detail.kind == CommunityItemKind.COMMUNICATION) {
+        // 6. 반응 영역
+        if (detail.pinId != null) {
             item {
                 CommunityEmojiReactionSection(
                     reactions = emojiReactions,

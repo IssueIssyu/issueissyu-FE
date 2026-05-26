@@ -120,7 +120,7 @@ class CommunityDetailViewModel @Inject constructor(
                             errorMessage = null
                         )
                     }
-                    if (detail.canUseEmojiReaction && pinId != null) {
+                    if (pinId != null) {
                         loadPinEmojis(pinId)
                     } else {
                         _uiState.update { it.copy(emojiReactions = emptyList(), emojiPicker = CommunityEmojiPickerUiState()) }
@@ -390,7 +390,6 @@ class CommunityDetailViewModel @Inject constructor(
     fun openEmojiPicker() {
         val detail = _uiState.value.detail ?: return
         val pinId = detail.pinId ?: return
-        if (!detail.canUseEmojiReaction) return
 
         val selectedEmojiId = _uiState.value.emojiReactions
             .firstOrNull { it.reactedByMe }
@@ -494,14 +493,6 @@ class CommunityDetailViewModel @Inject constructor(
             }
     }
 }
-
-private val CommunityDetailCanUseEmojiKinds = setOf(
-    CommunityItemKind.ISSUE,
-    CommunityItemKind.COMMUNICATION,
-)
-
-private val com.issueissyu.fe.domain.model.community.CommunityDetail.canUseEmojiReaction: Boolean
-    get() = kind in CommunityDetailCanUseEmojiKinds && pinId != null
 
 private fun List<com.issueissyu.fe.domain.model.community.CommunityComment>.sortedByCreatedAt() =
     sortedWith(compareBy(nullsLast()) { it.createdAt })
