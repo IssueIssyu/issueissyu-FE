@@ -11,6 +11,12 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverJoinResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverListResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverPhotoResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverVerificationResponse
+import okhttp3.MultipartBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -18,6 +24,8 @@ import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.PUT
+import retrofit2.http.Part
+import retrofit2.http.Multipart
 
 interface PinApi {
 
@@ -101,4 +109,41 @@ interface PinApi {
     suspend fun deletePinComments(
         @Path("commentId") commentId: Long
     ): BaseResponse<Unit>
+
+    //핀 해결하기 조회
+    @GET("api/pins/{pinId}/solve")
+    suspend fun getPinSolve(
+        @Path("pinId") pinId: Long
+    ): BaseResponse<PinSolveResponse?>
+
+    //시민 해결사 목록 조회
+    @GET("api/pins/{pinId}/problem-solver/{userUid}")
+    suspend fun getProblemSolver(
+        @Path("pinId") pinId: Long,
+        @Path("userUid") userUid: Long
+    ): BaseResponse<ProblemSolverListResponse?>
+
+    //시민 해결사 참여 (지금가요)
+    @POST("api/pins/{pinId}/go-now")
+    suspend fun joinProblemSolver(
+        @Path("pinId") pinId: Long
+    ): BaseResponse<ProblemSolverJoinResponse?>
+
+    //시민 해결사 인증 사진 첨부
+    @Multipart
+    @POST("api/pins/{problemSolverId}/photo")
+    suspend fun photoProblemSolver(
+        @Path("problemSolverId") problemSolverId: Long,
+        @Part photo: MultipartBody.Part
+    ): BaseResponse<ProblemSolverPhotoResponse?>
+
+    //시민 해결사 인증 완료(내 핀)
+    @PATCH("api/pins/{problemSolverId}")
+    suspend fun verificationProblemSolver(
+        @Path("problemSolverId") problemSolverId: Long
+    ): BaseResponse<ProblemSolverVerificationResponse?>
+
+    //청원 현황 조회
+
+    //청원하기
 }

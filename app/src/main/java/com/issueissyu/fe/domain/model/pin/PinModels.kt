@@ -199,6 +199,38 @@ data class IssueResolverParticipation(
     val confirmedAt: String? = null
 )
 
+//해결하기
+data class PinSolveInfo(
+    val isPetitioned: Boolean,
+    val isProblemSolver: Boolean,
+)
+
+data class ProblemSolverInfo(
+    val problemSolverId: Long,
+    val problemSolveState: String,
+    val problemSolverImageUrl: String?,
+    val nickname: String,
+    val createdAt: String,
+    val profileUrl: String?,
+    val checkAction: String?,
+)
+
+data class ProblemSolverJoinInfo(
+    val pinId: Long,
+    val problemSolverId: Long,
+    val problemSolveState: String,
+)
+
+data class ProblemSolverPhotoInfo(
+    val photoId: Long,
+    val photoUrl: String,
+    val problemSolveState: String,
+)
+
+data class ProblemSolverVerificationInfo(
+    val problemSolveState: String,
+)
+
 data class IssuePinDetail(
     override val writer: PinUser,
     val resolutionStatus: ResolutionStatus = ResolutionStatus.BEFORE_RESOLUTION,

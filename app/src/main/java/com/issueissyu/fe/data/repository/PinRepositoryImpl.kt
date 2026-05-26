@@ -1,12 +1,20 @@
 package com.issueissyu.fe.data.repository
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import com.issueissyu.fe.data.remote.api.PinApi
+import com.issueissyu.fe.data.remote.dto.pin.toPinSolveInfo
 import com.issueissyu.fe.data.remote.dto.pin.toPinOrNull
 import com.issueissyu.fe.data.remote.dto.pin.toPinComment
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojiCandidate
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojis
 import com.issueissyu.fe.data.remote.dto.pin.toPostSympathyContentOrNull
 import com.issueissyu.fe.data.remote.dto.pin.toPinLike
+import com.issueissyu.fe.data.remote.dto.pin.toProblemSolverInfo
+import com.issueissyu.fe.data.remote.dto.pin.toProblemSolverJoinInfo
+import com.issueissyu.fe.data.remote.dto.pin.toProblemSolverPhotoInfo
+import com.issueissyu.fe.data.remote.dto.pin.toProblemSolverVerificationInfo
 import com.issueissyu.fe.data.remote.dto.pin.toUnsupportedPinTypeMessage
 import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
@@ -21,6 +29,12 @@ import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
+import com.issueissyu.fe.domain.model.pin.PinSolveInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverJoinInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverPhotoInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverVerificationInfo
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import com.issueissyu.fe.domain.model.MapPinMarker
@@ -39,11 +53,18 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import com.issueissyu.fe.domain.repository.PinRepository
+import java.io.File
 import java.util.UUID
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @Singleton
 class PinRepositoryImpl @Inject constructor(
     private val pinApi: PinApi,
+    @ApplicationContext private val context: Context,
 ) : PinRepository {
 
     // TODO: 실제 백엔드와 연결 시 PinSamples 의존을 제거하고 네트워크 호출 로직으로 대체.
@@ -668,6 +689,231 @@ class PinRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    //해결하기 조회
+    override suspend fun getPinSolve(pinId: Long): Result<PinSolveInfo> {
+        return try {
+            val response = pinApi.getPinSolve(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "핀 상세 해결하기 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinSolveInfo())
+            } else {
+                when (response.code) {
+                    "PIN_SOLVE_404" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀 입니다." },
+                            ),
+                        )
+
+                    "PIN_SOLVE_400" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 상세 해결하기 조회 API를 실행 할 수 없습니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "핀 상세 해결하기 조회에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    //시민 해결사
+    override suspend fun joinProblemSolver(pinId: Long): Result<ProblemSolverJoinInfo> {
+        return try {
+            val response = pinApi.joinProblemSolver(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "시민 해결사 참여 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toProblemSolverJoinInfo())
+            } else {
+                Result.failure(problemSolverJoinException(response.code, response.message))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getProblemSolver(pinId: Long, userUid: Long): Result<ProblemSolverInfo> {
+        return try {
+            val response = pinApi.getProblemSolver(pinId = pinId, userUid = userUid)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "시민 해결사 조회 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toProblemSolverInfo())
+            } else {
+                Result.failure(problemSolverGetException(response.code, response.message))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun photoProblemSolver(
+        problemSolverId: Long,
+        imageUri: String,
+    ): Result<ProblemSolverPhotoInfo> {
+        return try {
+            val photoPart = createProblemSolverPhotoPart(context, imageUri)
+                .getOrElse { return Result.failure(it) }
+            val response = pinApi.photoProblemSolver(
+                problemSolverId = problemSolverId,
+                photo = photoPart,
+            )
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "시민 해결사 사진 첨부 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toProblemSolverPhotoInfo())
+            } else {
+                Result.failure(problemSolverPhotoException(response.code, response.message))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun verificationProblemSolver(problemSolverId: Long): Result<ProblemSolverVerificationInfo> {
+        return try {
+            val response = pinApi.verificationProblemSolver(problemSolverId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "시민 해결사 인증 완료 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toProblemSolverVerificationInfo())
+            } else {
+                Result.failure(problemSolverVerificationException(response.code, response.message))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+
+private suspend fun createProblemSolverPhotoPart(
+    context: Context,
+    imageUri: String,
+): Result<MultipartBody.Part> = withContext(Dispatchers.IO) {
+    runCatching {
+        val uri = Uri.parse(imageUri)
+        val mimeType = context.contentResolver.getType(uri)?.takeIf { it.isNotBlank() } ?: "image/jpeg"
+        val fileName = resolveUploadFileName(context, uri)
+        val photoBytes = readUploadBytes(context, uri, imageUri)
+            ?: throw IllegalArgumentException("첨부한 이미지 파일을 읽을 수 없습니다.")
+        val requestBody = photoBytes.toRequestBody(mimeType.toMediaType())
+        MultipartBody.Part.createFormData(
+            name = "photo",
+            filename = fileName,
+            body = requestBody,
+        )
+    }
+}
+
+private fun readUploadBytes(context: Context, uri: Uri, rawImageUri: String): ByteArray? {
+    return when (uri.scheme?.lowercase()) {
+        null -> File(rawImageUri).takeIf { it.exists() }?.readBytes()
+        "file" -> uri.path?.let { File(it) }?.takeIf { it.exists() }?.readBytes()
+        else -> context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+    }
+}
+
+private fun resolveUploadFileName(context: Context, uri: Uri): String {
+    if (uri.scheme == "content") {
+        context.contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (index >= 0 && cursor.moveToFirst()) {
+                cursor.getString(index)?.takeIf { it.isNotBlank() }?.let { return it }
+            }
+        }
+    }
+    return uri.lastPathSegment
+        ?.substringAfterLast('/')
+        ?.takeIf { it.isNotBlank() }
+        ?: "problem-solver-photo.jpg"
+}
+
+private fun problemSolverJoinException(code: String, message: String): Exception {
+    return Exception(
+        message.ifBlank {
+            when (code) {
+                "GO_NOW_400_1" -> "이미 시민해결사로 참여한 핀입니다."
+                "GO_NOW_400_2" -> "시민해결사 참여가 가능한 핀 종류가 아닙니다."
+                "GO_NOW_404" -> "존재하지 않는 핀입니다."
+                else -> "시민해결사 참여에 실패했습니다."
+            }
+        },
+    )
+}
+
+private fun problemSolverGetException(code: String, message: String): Exception {
+    return Exception(
+        message.ifBlank {
+            when (code) {
+                "PROBLEM_SOLVER_404_1" -> "존재하지 않는 핀입니다."
+                "PROBLEM_SOLVER_404_2" -> "존재하지 않는 사용자입니다."
+                else -> "시민해결사 조회에 실패했습니다."
+            }
+        },
+    )
+}
+
+private fun problemSolverPhotoException(code: String, message: String): Exception {
+    return Exception(
+        message.ifBlank {
+            when (code) {
+                "PROBLEM_SOLVER_PHOTO_404" -> "존재하지 않는 시민해결사 입니다."
+                "PROBLEM_SOLVER_PHOTO_400_1" -> "첨부한 사진 용량이 너무 큽니다."
+                "PROBLEM_SOLVER_PHOTO_400_2" -> "시민해결사 사진 첨부에 실패했습니다."
+                else -> "시민해결사 사진 첨부에 실패했습니다."
+            }
+        },
+    )
+}
+
+private fun problemSolverVerificationException(code: String, message: String): Exception {
+    return Exception(
+        message.ifBlank {
+            when (code) {
+                "PROBLEM_SOLVER_CHECK_404" -> "존재하지 않는 시민해결사 입니다."
+                "PROBLEM_SOLVER_CHECK_400_1" -> "인증 가능한 진행 상태가 아닙니다."
+                "PROBLEM_SOLVER_CHECK_400_2" -> "내 핀 시민해결사 인증에 실패했습니다."
+                else -> "시민해결사 인증에 실패했습니다."
+            }
+        },
+    )
 }
 
 private fun parsePinCommentInstant(raw: String): Long =

@@ -5,6 +5,11 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverJoinResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverListResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverPhotoResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverVerificationResponse
 import com.issueissyu.fe.core.text.decodePinContentNewlines
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
@@ -22,7 +27,12 @@ import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinImageRef
 import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
+import com.issueissyu.fe.domain.model.pin.PinSolveInfo
 import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverJoinInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverPhotoInfo
+import com.issueissyu.fe.domain.model.pin.ProblemSolverVerificationInfo
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 
@@ -111,6 +121,47 @@ fun PinEmojisResponse.toPinEmojis(): PinEmojis {
     return PinEmojis(
         selectedEmojiId = selectedEmojiId,
         emojis = emojis.orEmpty().mapNotNull { it.toPinEmoji() },
+    )
+}
+//해결하기
+fun PinSolveResponse.toPinSolveInfo(): PinSolveInfo {
+    return PinSolveInfo(
+        isPetitioned = isPetitioned,
+        isProblemSolver = isProblemSolver,
+    )
+}
+
+fun ProblemSolverListResponse.toProblemSolverInfo(): ProblemSolverInfo {
+    return ProblemSolverInfo(
+        problemSolverId = problemSolverId,
+        problemSolveState = problemSolveState,
+        problemSolverImageUrl = problemSolverImageUrl?.takeIf { it.isNotBlank() },
+        nickname = nickname,
+        createdAt = createdAt,
+        profileUrl = profileUrl.takeIf { it.isNotBlank() },
+        checkAction = checkAction?.takeIf { it.isNotBlank() },
+    )
+}
+
+fun ProblemSolverJoinResponse.toProblemSolverJoinInfo(): ProblemSolverJoinInfo {
+    return ProblemSolverJoinInfo(
+        pinId = pinId,
+        problemSolverId = problemSolverId,
+        problemSolveState = problemSolveState,
+    )
+}
+
+fun ProblemSolverPhotoResponse.toProblemSolverPhotoInfo(): ProblemSolverPhotoInfo {
+    return ProblemSolverPhotoInfo(
+        photoId = photoId,
+        photoUrl = photoUrl,
+        problemSolveState = problemSolveState,
+    )
+}
+
+fun ProblemSolverVerificationResponse.toProblemSolverVerificationInfo(): ProblemSolverVerificationInfo {
+    return ProblemSolverVerificationInfo(
+        problemSolveState = problemSolveState,
     )
 }
 
