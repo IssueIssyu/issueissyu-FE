@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.navigation
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -44,6 +47,18 @@ fun AppNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues
 ) {
+    val sessionViewModel: AppSessionViewModel = hiltViewModel()
+    val context = LocalContext.current
+
+    LaunchedEffect(sessionViewModel, navController, context) {
+        sessionViewModel.sessionExpiredMessages.collect { message ->
+            if (navController.currentDestination?.route != LOGIN_ROUTE) {
+                navController.navigateToLoginClearingBackStack()
+            }
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = AppDestinations.Onboarding.SPLASH_ROUTE
