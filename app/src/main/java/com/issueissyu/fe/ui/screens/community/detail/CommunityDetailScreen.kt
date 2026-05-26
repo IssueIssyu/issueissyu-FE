@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -142,12 +145,14 @@ fun CommunityDetailScreenContent(
 ) {
     var showDeclarationDialog by remember { mutableStateOf(false) }
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
-    var expandedImageUrl by remember { mutableStateOf<String?>(null) }
+    var expandedImageIndex by remember { mutableStateOf<Int?>(null) }
 
-    expandedImageUrl?.let { imageUrl ->
+    val previewImages = uiState.detail?.imageUrls.orEmpty()
+    expandedImageIndex?.let { imageIndex ->
         CommunityImagePreviewDialog(
-            imageUrl = imageUrl,
-            onDismiss = { expandedImageUrl = null },
+            imageUrls = previewImages,
+            initialPage = imageIndex,
+            onDismiss = { expandedImageIndex = null },
         )
     }
 
@@ -237,7 +242,7 @@ fun CommunityDetailScreenContent(
                         onCommunityDeleteClick = onCommunityDeleteClick,
                         onCommunityTakedownClick = onCommunityTakedownClick,
                         onEmojiAddClick = onEmojiAddClick,
-                        onImageClick = { expandedImageUrl = it },
+                        onImageClick = { expandedImageIndex = it },
                         onCommentEditClick = { editingComment = it },
                         onCommentDeleteClick = onCommentDelete,
                     )
@@ -299,7 +304,7 @@ private fun CommunityDetailBody(
     onCommunityDeleteClick: () -> Unit,
     onCommunityTakedownClick: () -> Unit,
     onEmojiAddClick: () -> Unit,
-    onImageClick: (String) -> Unit,
+    onImageClick: (Int) -> Unit,
     onCommentEditClick: (CommunityComment) -> Unit,
     onCommentDeleteClick: (Long) -> Unit,
 ) {
@@ -889,7 +894,7 @@ private fun getReliabilityColor(score: Int): Color {
 @Composable
 private fun CommunityDetailImageSection(
     imageUrls: List<String>,
-    onImageClick: (String) -> Unit,
+    onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
     
@@ -900,7 +905,7 @@ private fun CommunityDetailImageSection(
             contentPadding = PaddingValues(horizontal = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(imageUrls) { imageUrl ->
+            itemsIndexed(imageUrls) { index, imageUrl ->
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = "게시글 이미지",
@@ -909,7 +914,7 @@ private fun CommunityDetailImageSection(
                         .height(110.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Gray_3)
-                        .clickable { onImageClick(imageUrl) },
+                        .clickable { onImageClick(index) },
                     contentScale = ContentScale.Crop
                 )
             }
@@ -939,9 +944,18 @@ private fun CommunityDetailImageSection(
 
 @Composable
 private fun CommunityImagePreviewDialog(
-    imageUrl: String,
+    imageUrls: List<String>,
+    initialPage: Int,
     onDismiss: () -> Unit,
 ) {
+    if (imageUrls.isEmpty()) return
+
+    val safeInitialPage = initialPage.coerceIn(0, imageUrls.lastIndex)
+    val pagerState = rememberPagerState(
+        initialPage = safeInitialPage,
+        pageCount = { imageUrls.size },
+    )
+
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -954,17 +968,26 @@ private fun CommunityImagePreviewDialog(
                     detectTapGestures(onTap = { onDismiss() })
                 }
         ) {
-            AsyncImage(
-                model = imageUrl,
-                contentDescription = "게시글 이미지 확대",
+            HorizontalPager(
+                state = pagerState,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.Center)
-                    .pointerInput(Unit) {
-                        detectTapGestures(onTap = {})
-                    },
-                contentScale = ContentScale.Fit,
-            )
+                    .fillMaxSize()
+                    .align(Alignment.Center),
+            ) { page ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = imageUrls[page],
+                        contentDescription = "게시글 이미지 확대",
+                        modifier = Modifier.fillMaxWidth(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
+            }
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
@@ -975,6 +998,17 @@ private fun CommunityImagePreviewDialog(
                     imageVector = Icons.Filled.Close,
                     contentDescription = "닫기",
                     tint = White
+                )
+            }
+            if (imageUrls.size > 1) {
+                Text(
+                    text = "${pagerState.currentPage + 1} / ${imageUrls.size}",
+                    style = IssueTypo.Bold12.copy(color = White),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 32.dp)
+                        .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(999.dp))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 )
             }
         }
