@@ -1,6 +1,7 @@
 package com.issueissyu.fe.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,13 +34,48 @@ import com.issueissyu.fe.ui.theme.White
 
 private const val DEFAULT_REASON_VISIBLE_THRESHOLD = 70
 
+enum class IssueReliabilityStatus {
+    PENDING,
+    COMPLETED,
+    FAILED,
+}
+
 @Composable
 fun IssueReliabilityIndicator(
     score: Int?,
     reason: String?,
     modifier: Modifier = Modifier.width(100.dp),
+    status: IssueReliabilityStatus = if (score == null) {
+        IssueReliabilityStatus.PENDING
+    } else {
+        IssueReliabilityStatus.COMPLETED
+    },
     reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD,
 ) {
+    val displayScore = score?.coerceIn(0, 100)
+    val displayText = when (status) {
+        IssueReliabilityStatus.PENDING -> "검사중"
+        IssueReliabilityStatus.COMPLETED -> displayScore?.let { "$it%" } ?: "검사중"
+        IssueReliabilityStatus.FAILED -> "fail"
+    }
+    val indicatorColor = when (status) {
+        IssueReliabilityStatus.PENDING -> Gray_5
+        IssueReliabilityStatus.COMPLETED -> displayScore?.let { getReliabilityColor(it) } ?: Gray_5
+        IssueReliabilityStatus.FAILED -> Orange
+    }
+    val progress = when (status) {
+        IssueReliabilityStatus.COMPLETED -> displayScore?.div(100f)
+        IssueReliabilityStatus.FAILED -> 0f
+        IssueReliabilityStatus.PENDING -> null
+    }
+    val showReason = when (status) {
+        IssueReliabilityStatus.FAILED -> !reason.isNullOrBlank()
+        IssueReliabilityStatus.COMPLETED -> displayScore != null &&
+            displayScore < reasonVisibleThreshold &&
+            !reason.isNullOrBlank()
+        IssueReliabilityStatus.PENDING -> false
+    }
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.End
@@ -54,9 +90,9 @@ fun IssueReliabilityIndicator(
                 style = IssueTypo.Bold12.copy(color = Title, fontSize = 10.sp)
             )
             Text(
-                text = if (score != null) "$score%" else "검사중",
+                text = displayText,
                 style = IssueTypo.Bold12.copy(
-                    color = if (score != null) getReliabilityColor(score) else Gray_5,
+                    color = indicatorColor,
                     fontSize = 10.sp
                 )
             )
@@ -71,13 +107,13 @@ fun IssueReliabilityIndicator(
                 .clip(RoundedCornerShape(999.dp))
                 .background(Gray_2)
         ) {
-            if (score != null) {
+            if (progress != null) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(score.coerceIn(0, 100) / 100f)
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(999.dp))
-                        .background(getReliabilityColor(score))
+                        .background(indicatorColor)
                 )
             }
 
@@ -90,13 +126,10 @@ fun IssueReliabilityIndicator(
             }
         }
 
-        if (score != null &&
-            score < reasonVisibleThreshold &&
-            !reason.isNullOrBlank()
-        ) {
+        if (showReason) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = reason,
+                text = reason.orEmpty(),
                 style = IssueTypo.Regular12.copy(color = Gray_6, fontSize = 10.sp),
                 textAlign = TextAlign.End,
                 lineHeight = 14.sp
@@ -139,4 +172,14 @@ private fun IssueReliabilityIndicatorMediumPreview() {
 @Composable
 private fun IssueReliabilityIndicatorLoadingPreview() {
     IssueReliabilityIndicator(score = null, reason = null)
+}
+
+@Preview(name = "신뢰도 평가 실패", showBackground = true)
+@Composable
+private fun IssueReliabilityIndicatorFailedPreview() {
+    IssueReliabilityIndicator(
+        score = 0,
+        reason = "- 지금은 이 제보에 대한 AI 검토 결과를 불러오지 못했어요.\n- 잠시 후 다시 열어보세요.",
+        status = IssueReliabilityStatus.FAILED,
+    )
 }
