@@ -22,13 +22,12 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
-import com.issueissyu.fe.ui.theme.LightAppExtraColors
 import com.issueissyu.fe.ui.theme.White
 
 /**
  * 원형 프로필 이미지 틀.
  *
- * @param size 이미지(콘텐츠) 지름. 테두리는 바깥에 그려져 실제 차지 크기는 `size + borderWidth * 2`입니다.
+ * @param size 이미지 지름. 테두리는 원 내부에 그려져 실제 차지 크기는 `size`입니다.
  */
 @Composable
 fun ProfileImageFrame(
@@ -37,7 +36,7 @@ fun ProfileImageFrame(
     modifier: Modifier = Modifier,
     contentDescription: String = "프로필 사진",
     borderWidth: Dp = 3.dp,
-    borderColor: Color = LightAppExtraColors.communicationContainer,
+    borderColor: Color = White.copy(alpha = 0.7f),
     imageScale: Float = 1.2f,
     contentAlignment: Alignment = BiasAlignment(
         horizontalBias = 0f,
@@ -45,33 +44,28 @@ fun ProfileImageFrame(
     ),
 ) {
     Box(
-        modifier = modifier.size(size + borderWidth * 2),
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(White, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(White, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (!imageUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = contentDescription,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .scale(imageScale),
-                    contentScale = ContentScale.Crop,
-                    alignment = contentAlignment,
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(Gray_3, CircleShape),
-                )
-            }
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = contentDescription,
+                modifier = Modifier
+                    .matchParentSize()
+                    .scale(imageScale),
+                contentScale = ContentScale.Crop,
+                alignment = contentAlignment,
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(Gray_3, CircleShape),
+            )
         }
         Box(
             modifier = Modifier
