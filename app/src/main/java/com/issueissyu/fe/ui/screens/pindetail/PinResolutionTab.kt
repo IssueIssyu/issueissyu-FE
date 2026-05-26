@@ -147,7 +147,8 @@ fun PinResolutionTab(
             }
 
             PetitionStatusCard(
-                petitionCount = issueDetail.petitionCount
+                petitionCount = issueDetail.petitionCount,
+                petitionTargetCount = issueDetail.petitionTargetCount,
             )
 
             ResolutionGuideCard()
@@ -687,9 +688,10 @@ private fun WriterResolverConfirmButton(
 
 @Composable
 private fun PetitionStatusCard(
-    petitionCount: Int
+    petitionCount: Int,
+    petitionTargetCount: Int?,
 ) {
-    val displayTargetCount = PetitionMailThresholdCount
+    val displayTargetCount = petitionTargetCount?.takeIf { it > 0 } ?: PetitionMailThresholdCount
     val progress = (petitionCount / displayTargetCount.toFloat()).coerceIn(0f, 1f)
 
     SectionCard {

@@ -12,6 +12,7 @@ import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.PinSolveInfo
 import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.PetitionStatusInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverParticipantInfo
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
@@ -41,6 +42,7 @@ data class PinDetailUiState(
     val isDeleting: Boolean = false,
     val isResolutionJoining: Boolean = false,
     val isResolutionProofSubmitting: Boolean = false,
+    val isPetitionSubmitting: Boolean = false,
     val pin: Pin? = null,
     val postSympathy: PinPostSympathyContent? = null,
     val postEmojis: PinDetailPostEmojis = PinDetailPostEmojis(),
@@ -106,6 +108,7 @@ class PinDetailViewModel @Inject constructor(
                     isCommentsLoading = false,
                     isResolutionJoining = false,
                     isResolutionProofSubmitting = false,
+                    isPetitionSubmitting = false,
                 )
             }
 
@@ -199,11 +202,18 @@ class PinDetailViewModel @Inject constructor(
     private suspend fun refreshResolutionTab(pinId: Long, currentUserId: String?) {
         var solveInfo: PinSolveInfo? = null
         var problemSolverInfo: ProblemSolverInfo? = null
+        var petitionStatusInfo: PetitionStatusInfo? = null
 
         pinRepository.getPinSolve(pinId)
             .onSuccess { solveInfo = it }
             .onFailure { e ->
                 showToast(e.message ?: "해결하기 정보를 불러오지 못했습니다.")
+            }
+
+        pinRepository.getPetition(pinId)
+            .onSuccess { petitionStatusInfo = it }
+            .onFailure { e ->
+                showToast(e.message ?: "청원 현황을 불러오지 못했습니다.")
             }
 
         if (!currentUserId.isNullOrBlank()) {
@@ -214,18 +224,19 @@ class PinDetailViewModel @Inject constructor(
                 }
         }
 
-        if (solveInfo == null && problemSolverInfo == null) return
+        if (solveInfo == null && problemSolverInfo == null && petitionStatusInfo == null) return
 
         _uiState.update { state ->
             val currentPin = state.pin ?: return@update state
             val currentUser = buildResolutionCurrentUser(currentPin)
+            val resolutionUpdatedPin = currentPin.withResolutionApiState(
+                currentUserId = currentUserId,
+                currentUser = currentUser,
+                solveInfo = solveInfo,
+                problemSolverInfo = problemSolverInfo,
+            )
             state.copy(
-                pin = currentPin.withResolutionApiState(
-                    currentUserId = currentUserId,
-                    currentUser = currentUser,
-                    solveInfo = solveInfo,
-                    problemSolverInfo = problemSolverInfo,
-                ),
+                pin = resolutionUpdatedPin.withPetitionApiState(petitionStatusInfo),
             )
         }
     }
@@ -635,6 +646,47 @@ class PinDetailViewModel @Inject constructor(
         }
     }
 
+    fun joinPetition() {
+        val pinId = resolvePinId() ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            return
+        }
+        val currentPin = _uiState.value.pin ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            return
+        }
+        val issueDetail = currentPin.detail as? IssuePinDetail ?: run {
+            showToast("청원은 이슈 핀에서만 가능합니다.")
+            return
+        }
+        if (_uiState.value.isPetitionSubmitting) return
+        if (issueDetail.isPetitionedByMe) {
+            showToast("이미 청원되었습니다.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isPetitionSubmitting = true) }
+            pinRepository.joinPetition(pinId)
+                .onSuccess { petitionInfo ->
+                    _uiState.update { state ->
+                        state.copy(
+                            isPetitionSubmitting = false,
+                            pin = state.pin?.withPetitionJoinState(
+                                petitionCount = petitionInfo.petitionCount,
+                                isPetitioned = petitionInfo.isPetitioned,
+                            ),
+                        )
+                    }
+                    showToast("청원에 성공했습니다.")
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isPetitionSubmitting = false) }
+                    showToast(e.message ?: "청원에 실패했습니다.")
+                }
+        }
+    }
+
     private fun resolveRequiredCurrentUserId(): String? {
         return tokenManager.getCurrentUserUuid()?.takeIf { it.isNotBlank() } ?: run {
             showToast("로그인 정보를 찾을 수 없습니다. 다시 로그인해 주세요.")
@@ -737,6 +789,33 @@ private fun Pin.withVerifiedProblemSolver(
             resolverParticipations = updatedParticipations,
             resolvedBy = targetParticipation.user,
             resolvedAt = confirmedAt,
+        ) as PinDetail,
+    )
+}
+
+private fun Pin.withPetitionApiState(
+    petitionStatusInfo: PetitionStatusInfo?,
+): Pin {
+    if (petitionStatusInfo == null) return this
+    val issueDetail = detail as? IssuePinDetail ?: return this
+    return copy(
+        detail = issueDetail.copy(
+            petitionCount = petitionStatusInfo.petitionCount,
+            isPetitionedByMe = petitionStatusInfo.isPetitioned,
+            petitionTargetCount = petitionStatusInfo.targetPetitionCount,
+        ) as PinDetail,
+    )
+}
+
+private fun Pin.withPetitionJoinState(
+    petitionCount: Int,
+    isPetitioned: Boolean,
+): Pin {
+    val issueDetail = detail as? IssuePinDetail ?: return this
+    return copy(
+        detail = issueDetail.copy(
+            petitionCount = petitionCount,
+            isPetitionedByMe = isPetitioned,
         ) as PinDetail,
     )
 }

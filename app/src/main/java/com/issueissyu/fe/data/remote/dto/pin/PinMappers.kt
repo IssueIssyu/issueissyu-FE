@@ -6,6 +6,8 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsGetResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsJoinResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverJoinResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverItemResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverListResponse
@@ -30,6 +32,8 @@ import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.PinSolveInfo
 import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.PetitionJoinInfo
+import com.issueissyu.fe.domain.model.pin.PetitionStatusInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverJoinInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverParticipantInfo
@@ -130,6 +134,23 @@ fun PinSolveResponse.toPinSolveInfo(): PinSolveInfo {
     return PinSolveInfo(
         isPetitioned = isPetitioned,
         isProblemSolver = isProblemSolver,
+    )
+}
+
+fun PetitionsGetResponse.toPetitionStatusInfo(): PetitionStatusInfo {
+    return PetitionStatusInfo(
+        pinId = pinId,
+        petitionCount = petitionCount,
+        isPetitioned = isPetitioned,
+        targetPetitionCount = targetPetition.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+    )
+}
+
+fun PetitionsJoinResponse.toPetitionJoinInfo(): PetitionJoinInfo {
+    return PetitionJoinInfo(
+        pinId = pinId,
+        petitionCount = petitionCount,
+        isPetitioned = isPetitioned,
     )
 }
 

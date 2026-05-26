@@ -193,6 +193,7 @@ fun PinDetailScreen(
                         onCommunityClick = { /* TODO: 커뮤니티 상세 */ },
                         onAttachProofClick = launchResolutionProofCamera,
                         onGoNowClick = viewModel::joinProblemSolver,
+                        onPetitionClick = viewModel::joinPetition,
                         onConfirmResolverClick = viewModel::verifyProblemSolver,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -260,6 +261,7 @@ private fun PinDetailContent(
     onCommunityClick: (String) -> Unit,
     onAttachProofClick: () -> Unit,
     onGoNowClick: () -> Unit,
+    onPetitionClick: () -> Unit,
     onConfirmResolverClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -319,7 +321,7 @@ private fun PinDetailContent(
                         issueDetail = issueDetail,
                         currentUserId = currentUserId,
                         onGoNowClick = { onGoNowClick() },
-                        onPetitionClick = { /* TODO */ },
+                        onPetitionClick = { onPetitionClick() },
                         onConfirmResolverClick = onConfirmResolverClick,
                         onAttachProofClick = onAttachProofClick,
                         modifier = Modifier.fillMaxSize(),

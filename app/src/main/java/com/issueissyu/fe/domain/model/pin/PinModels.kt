@@ -237,6 +237,19 @@ data class ProblemSolverVerificationInfo(
     val problemSolveState: String,
 )
 
+data class PetitionStatusInfo(
+    val pinId: Long,
+    val petitionCount: Int,
+    val isPetitioned: Boolean,
+    val targetPetitionCount: Int,
+)
+
+data class PetitionJoinInfo(
+    val pinId: Long,
+    val petitionCount: Int,
+    val isPetitioned: Boolean,
+)
+
 data class IssuePinDetail(
     override val writer: PinUser,
     val resolutionStatus: ResolutionStatus = ResolutionStatus.BEFORE_RESOLUTION,
