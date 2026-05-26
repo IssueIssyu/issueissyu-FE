@@ -146,7 +146,7 @@ class CommunityDetailViewModel @Inject constructor(
                 .collect { comments ->
                     _uiState.update {
                         it.copy(
-                            comments = comments,
+                            comments = comments.sortedByCreatedAt(),
                             isCommentLoading = false,
                         )
                     }
@@ -215,7 +215,7 @@ class CommunityDetailViewModel @Inject constructor(
                 .onSuccess { comment ->
                     _uiState.update { state ->
                         state.copy(
-                            comments = listOf(comment) + state.comments,
+                            comments = (state.comments + comment).sortedByCreatedAt(),
                             isCommentSubmitting = false,
                         )
                     }
@@ -243,7 +243,7 @@ class CommunityDetailViewModel @Inject constructor(
                         state.copy(
                             comments = state.comments.map { comment ->
                                 if (comment.commentId == updatedComment.commentId) updatedComment else comment
-                            },
+                            }.sortedByCreatedAt(),
                             isCommentSubmitting = false,
                         )
                     }
@@ -502,3 +502,6 @@ private val CommunityDetailCanUseEmojiKinds = setOf(
 
 private val com.issueissyu.fe.domain.model.community.CommunityDetail.canUseEmojiReaction: Boolean
     get() = kind in CommunityDetailCanUseEmojiKinds && pinId != null
+
+private fun List<com.issueissyu.fe.domain.model.community.CommunityComment>.sortedByCreatedAt() =
+    sortedWith(compareBy(nullsLast()) { it.createdAt })
