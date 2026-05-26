@@ -109,6 +109,7 @@ fun MapScreen(
     val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
+    val currentUserId = viewModel.currentUserId
 
     // TODO: ViewModel에서 combine(_mapPins, _selectedCategory)로 visibleMapPins StateFlow를 노출하고, UI는 collect만 하도록 정리
 
@@ -485,7 +486,7 @@ fun MapScreen(
         selectedPin?.let { pin ->
             PinSummaryCard(
                 pin = pin,
-                currentUserId = "user1_id", // TODO: 로그인 연동 후 실제 currentUserId로 교체
+                currentUserId = currentUserId,
                 onDetailClick = { pinId ->
                     viewModel.clearSelectedPin()
                     navController.navigateToPinDetail(pinId)

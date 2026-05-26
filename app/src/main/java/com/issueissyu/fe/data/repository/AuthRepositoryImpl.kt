@@ -163,6 +163,8 @@ class AuthRepositoryImpl @Inject constructor(
                         isNewUser = result.isNew,
                         tempUuid = resolvedTempUuid,
                         loginSocialType = result.socialType.takeIf { it.isNotBlank() },
+                        userUuid = resolvedUuid,
+                        userName = resolvedUserName,
                     )
 
                     Result.success(
@@ -257,6 +259,8 @@ class AuthRepositoryImpl @Inject constructor(
                         isNewUser = result.isNew,
                         tempUuid = resolvedTempUuid,
                         loginSocialType = result.socialType.takeIf { it.isNotBlank() },
+                        userUuid = resolvedUuid,
+                        userName = resolvedUserName,
                     )
 
                     val authUser = AuthUser(
@@ -582,12 +586,13 @@ class AuthRepositoryImpl @Inject constructor(
                             response.message.ifBlank { "로그인 연동 응답이 올바르지 않습니다." },
                         ),
                     )
-                result.uuid?.takeIf { it.isNotBlank() }
+                val resolvedUuid = result.uuid?.takeIf { it.isNotBlank() }
                     ?: return Result.failure(
                         Exception(
                             response.message.ifBlank { "연동 응답(uuid)이 올바르지 않습니다." },
                         ),
                     )
+                tokenManager.saveCurrentUser(userUuid = resolvedUuid)
                 // 연동 직후에는 로그아웃·로그인 화면으로만 갈 것 — isNew/토큰 재저장으로 스플래시·다른 화면이 메인으로 튀는 레이스 방지
                 tokenManager.clearTempUuid()
                 return Result.success(Unit)
@@ -640,6 +645,11 @@ class AuthRepositoryImpl @Inject constructor(
                                 response.message.ifBlank { "온보딩 응답이 올바르지 않습니다." },
                             ),
                         )
+                    tokenManager.saveCurrentUser(
+                        userUuid = r.uuid,
+                        userName = nickname,
+                    )
+                    tokenManager.clearTempUuid()
                     Result.success(r.toDomain())
                 }
                 "ONBOAREDING_400" ->
@@ -649,6 +659,11 @@ class AuthRepositoryImpl @Inject constructor(
                 else -> {
                     val result = response.result
                     if (response.isSuccess && result != null) {
+                        tokenManager.saveCurrentUser(
+                            userUuid = result.uuid,
+                            userName = nickname,
+                        )
+                        tokenManager.clearTempUuid()
                         Result.success(result.toDomain())
                     } else {
                         Result.failure(

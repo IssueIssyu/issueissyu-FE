@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.MapNotice
 import com.issueissyu.fe.domain.model.pin.Pin
@@ -32,7 +33,11 @@ data class PinCreationNavigationEvent(
 class MapViewModel @Inject constructor(
     private val mapRepository: MapRepository,
     private val pinRepository: PinRepository,
+    private val tokenManager: TokenManager,
 ) : ViewModel() {
+
+    val currentUserId: String
+        get() = tokenManager.getCurrentUserUuid().orEmpty()
 
     private val _mapPins = MutableStateFlow<List<MapPinMarker>>(emptyList())
     val mapPins: StateFlow<List<MapPinMarker>> = _mapPins.asStateFlow()
