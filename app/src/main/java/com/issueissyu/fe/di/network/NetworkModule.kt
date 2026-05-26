@@ -18,6 +18,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -76,7 +77,21 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideIssueApiService(retrofit: Retrofit): IssueApiService {
+    @Named("ai")
+    fun provideAiRetrofit(
+        okHttpClient: OkHttpClient,
+        gson: Gson,
+    ): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(NetworkConstants.AI_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideIssueApiService(@Named("ai") retrofit: Retrofit): IssueApiService {
         return retrofit.create(IssueApiService::class.java)
     }
 
