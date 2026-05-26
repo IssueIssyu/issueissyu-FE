@@ -5,6 +5,8 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.issueissyu.fe.data.remote.api.PinApi
 import com.issueissyu.fe.data.remote.dto.pin.toPinSolveInfo
+import com.issueissyu.fe.data.remote.dto.pin.toPetitionJoinInfo
+import com.issueissyu.fe.data.remote.dto.pin.toPetitionStatusInfo
 import com.issueissyu.fe.data.remote.dto.pin.toPinOrNull
 import com.issueissyu.fe.data.remote.dto.pin.toPinComment
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojiCandidate
@@ -30,6 +32,8 @@ import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.PinSolveInfo
+import com.issueissyu.fe.domain.model.pin.PetitionJoinInfo
+import com.issueissyu.fe.domain.model.pin.PetitionStatusInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverJoinInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverPhotoInfo
@@ -787,6 +791,45 @@ class PinRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    //청원하기
+    override suspend fun getPetition(pinId: Long): Result<PetitionStatusInfo> {
+        return try {
+            val response = pinApi.getIssuePetition(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "청원 현황 조회 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPetitionStatusInfo())
+            } else {
+                Result.failure(petitionStatusException(response.code, response.message))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun joinPetition(pinId: Long): Result<PetitionJoinInfo> {
+        return try {
+            val response = pinApi.joinIssuePetition(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "청원 등록 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPetitionJoinInfo())
+            } else {
+                Result.failure(petitionJoinException(response.code, response.message))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 private suspend fun createProblemSolverPhotoPart(
@@ -883,6 +926,30 @@ private fun problemSolverVerificationException(code: String, message: String): E
                 "PROBLEM_SOLVER_CHECK_400_1" -> "인증 가능한 진행 상태가 아닙니다."
                 "PROBLEM_SOLVER_CHECK_400_2" -> "내 핀 시민해결사 인증에 실패했습니다."
                 else -> "시민해결사 인증에 실패했습니다."
+            }
+        },
+    )
+}
+
+private fun petitionStatusException(code: String, message: String): Exception {
+    return Exception(
+        message.ifBlank {
+            when (code) {
+                "PETITION_STATUS_404", "PETITION_STATUS_404_1" -> "청원 현황을 조회할 수 없는 핀입니다."
+                else -> "청원 현황 조회에 실패했습니다."
+            }
+        },
+    )
+}
+
+private fun petitionJoinException(code: String, message: String): Exception {
+    return Exception(
+        message.ifBlank {
+            when (code) {
+                "PETITION_400_1" -> "이미 청원되었습니다."
+                "PETITION_400_2" -> "청원이 가능한 핀 종류가 아닙니다."
+                "PETITION_404" -> "존재하지 않는 핀 입니다."
+                else -> "청원 등록에 실패했습니다."
             }
         },
     )
