@@ -59,6 +59,7 @@ import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
 import com.issueissyu.fe.ui.components.IssueReliabilityStatus as UiIssueReliabilityStatus
+import com.issueissyu.fe.ui.components.IssueReliabilityType
 import com.issueissyu.fe.ui.components.SignButton
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_1
@@ -711,6 +712,7 @@ private fun CommunityDetailTitleSection(
                 IssueReliabilityIndicator(
                     score = detail.reliabilityScore,
                     reason = detail.reliabilityReason,
+                    type = IssueReliabilityType.COMMUNITY,
                     status = reliabilityStatus,
                     modifier = Modifier
                         .padding(start = 16.dp)
