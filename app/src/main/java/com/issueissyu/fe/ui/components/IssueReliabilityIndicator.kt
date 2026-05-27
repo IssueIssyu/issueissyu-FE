@@ -20,15 +20,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.issueissyu.fe.ui.theme.BrandColor
-import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
+import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Orange
+import com.issueissyu.fe.ui.theme.Shop
+import com.issueissyu.fe.ui.theme.Success
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 
@@ -40,18 +43,56 @@ enum class IssueReliabilityStatus {
     FAILED,
 }
 
+enum class IssueReliabilityType {
+    PIN,
+    COMMUNITY
+}
+
+private data class IssueReliabilityStyle(
+    val labelFontSize: TextUnit,
+    val barHeight: Dp,
+    val barWidth: Dp,
+    val labelBarSpacing: Dp,
+    val reasonFontSize: TextUnit,
+    val reasonLineHeight: TextUnit,
+    val reasonTopSpacing: Dp,
+)
+
+private fun IssueReliabilityType.toStyle(): IssueReliabilityStyle = when (this) {
+    IssueReliabilityType.PIN -> IssueReliabilityStyle(
+        labelFontSize = 15.sp,
+        barHeight = 10.dp,
+        barWidth = 140.dp,
+        labelBarSpacing = 6.dp,
+        reasonFontSize = 12.sp,
+        reasonLineHeight = 16.sp,
+        reasonTopSpacing = 6.dp,
+    )
+    IssueReliabilityType.COMMUNITY -> IssueReliabilityStyle(
+        labelFontSize = 10.sp,
+        barHeight = 6.dp,
+        barWidth = 100.dp,
+        labelBarSpacing = 4.dp,
+        reasonFontSize = 10.sp,
+        reasonLineHeight = 14.sp,
+        reasonTopSpacing = 4.dp,
+    )
+}
+
 @Composable
 fun IssueReliabilityIndicator(
     score: Int?,
     reason: String?,
-    modifier: Modifier = Modifier.width(100.dp),
+    type: IssueReliabilityType,
+    modifier: Modifier = Modifier,
     status: IssueReliabilityStatus = if (score == null) {
         IssueReliabilityStatus.PENDING
     } else {
         IssueReliabilityStatus.COMPLETED
     },
-    reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD,
+    reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD
 ) {
+    val style = type.toStyle()
     val displayScore = score?.coerceIn(0, 100)
     val displayText = when (status) {
         IssueReliabilityStatus.PENDING -> "검사중"
@@ -68,71 +109,84 @@ fun IssueReliabilityIndicator(
         IssueReliabilityStatus.FAILED -> 0f
         IssueReliabilityStatus.PENDING -> null
     }
-    val showReason = when (status) {
-        IssueReliabilityStatus.FAILED -> !reason.isNullOrBlank()
-        IssueReliabilityStatus.COMPLETED -> displayScore != null &&
-            displayScore < reasonVisibleThreshold &&
-            !reason.isNullOrBlank()
-        IssueReliabilityStatus.PENDING -> false
-    }
+    val showReason = status == IssueReliabilityStatus.COMPLETED &&
+        displayScore != null &&
+        displayScore < reasonVisibleThreshold &&
+        reason != null
 
     Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.End
+        modifier = Modifier.fillMaxWidth().then(modifier),
+        horizontalAlignment = Alignment.Start,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "AI 신뢰도",
-                style = IssueTypo.Bold12.copy(color = Title, fontSize = 10.sp)
-            )
-            Text(
-                text = displayText,
-                style = IssueTypo.Bold12.copy(
-                    color = indicatorColor,
-                    fontSize = 10.sp
+        Column(modifier = Modifier.width(style.barWidth)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "AI 신뢰도",
+                    style = IssueTypo.Bold12.copy(color = Title, fontSize = style.labelFontSize),
                 )
-            )
-        }
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(999.dp))
-                .background(Gray_2)
-        ) {
-            if (progress != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(progress.coerceIn(0f, 1f))
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(indicatorColor)
+                Text(
+                    text = displayText,
+                    style = IssueTypo.Bold12.copy(
+                        color = indicatorColor,
+                        fontSize = style.labelFontSize,
+                    ),
                 )
             }
 
-            Row(modifier = Modifier.fillMaxSize()) {
-                Spacer(modifier = Modifier.weight(0.33f))
-                Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(White.copy(alpha = 0.5f)))
-                Spacer(modifier = Modifier.weight(0.33f))
-                Box(modifier = Modifier.fillMaxHeight().width(1.dp).background(White.copy(alpha = 0.5f)))
-                Spacer(modifier = Modifier.weight(0.34f))
+            Spacer(modifier = Modifier.height(style.labelBarSpacing))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(style.barHeight)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Gray_2),
+            ) {
+                if (progress != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(indicatorColor),
+                    )
+                }
+
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Spacer(modifier = Modifier.weight(0.33f))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(1.dp)
+                            .background(White.copy(alpha = 0.5f)),
+                    )
+                    Spacer(modifier = Modifier.weight(0.33f))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(1.dp)
+                            .background(White.copy(alpha = 0.5f)),
+                    )
+                    Spacer(modifier = Modifier.weight(0.34f))
+                }
             }
         }
 
         if (showReason) {
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(style.reasonTopSpacing))
             Text(
-                text = reason.orEmpty(),
-                style = IssueTypo.Regular12.copy(color = Gray_6, fontSize = 10.sp),
-                textAlign = TextAlign.End,
-                lineHeight = 14.sp
+                text = reason,
+                modifier = Modifier.fillMaxWidth(),
+                style = IssueTypo.Regular12.copy(
+                    color = Gray_6,
+                    fontSize = style.reasonFontSize,
+                    lineHeight = style.reasonLineHeight,
+                ),
+                textAlign = TextAlign.Start,
             )
         }
     }
@@ -141,45 +195,51 @@ fun IssueReliabilityIndicator(
 private fun getReliabilityColor(score: Int): Color {
     val percentage = score.coerceIn(0, 100)
     return when {
-        percentage <= 33 -> Orange
-        percentage <= 66 -> Festival
-        else -> BrandColor
+        percentage <= 33 -> Issue
+        percentage <= 66 -> Shop
+        else -> Success
     }
 }
 
-@Preview(name = "신뢰도 높음", showBackground = true)
+@Preview(name = "핀 - 신뢰도 높음", showBackground = true)
 @Composable
-private fun IssueReliabilityIndicatorHighPreview() {
-    IssueReliabilityIndicator(score = 90, reason = null)
-}
-
-@Preview(name = "신뢰도 낮음", showBackground = true)
-@Composable
-private fun IssueReliabilityIndicatorLowPreview() {
+private fun IssueReliabilityIndicatorPinHighPreview() {
     IssueReliabilityIndicator(
-        score = 20,
-        reason = "출처가 불분명하며 허위 정보일 가능성이 있습니다."
+        score = 90,
+        reason = null,
+        type = IssueReliabilityType.PIN,
     )
 }
 
-@Preview(name = "신뢰도 중간", showBackground = true)
+@Preview(name = "핀 - 신뢰도 낮음", showBackground = true)
 @Composable
-private fun IssueReliabilityIndicatorMediumPreview() {
-    IssueReliabilityIndicator(score = 55, reason = null)
+private fun IssueReliabilityIndicatorPinLowPreview() {
+    IssueReliabilityIndicator(
+        score = 20,
+        reason = "출처가 불분명하며 허위 정보일 가능성이 있습니다.",
+        type = IssueReliabilityType.PIN,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
-@Preview(name = "신뢰도 검사중", showBackground = true)
+@Preview(name = "커뮤니티 - 신뢰도 검사중", showBackground = true)
 @Composable
-private fun IssueReliabilityIndicatorLoadingPreview() {
-    IssueReliabilityIndicator(score = null, reason = null)
+private fun IssueReliabilityIndicatorCommunityLoadingPreview() {
+    IssueReliabilityIndicator(
+        score = null,
+        reason = null,
+        type = IssueReliabilityType.COMMUNITY,
+    )
 }
 
-@Preview(name = "신뢰도 평가 실패", showBackground = true)
+@Preview(name = "핀 - 신뢰도 평가 실패", showBackground = true)
 @Composable
-private fun IssueReliabilityIndicatorFailedPreview() {
+private fun IssueReliabilityIndicatorPinFailedPreview() {
     IssueReliabilityIndicator(
         score = 0,
         reason = "- 지금은 이 제보에 대한 AI 검토 결과를 불러오지 못했어요.\n- 잠시 후 다시 열어보세요.",
         status = IssueReliabilityStatus.FAILED,
+        type = IssueReliabilityType.PIN,
+        modifier = Modifier.fillMaxWidth(),
     )
 }
