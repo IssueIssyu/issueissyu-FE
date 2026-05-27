@@ -54,7 +54,7 @@ fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
         createdAt = this.createdAt,
         updatedAt = this.updatedAt,
         isReported = this.isReported ?: false,
-        isPetitioned = false,
+        isPetitioned = this.isPetitioned ?: false,
         isProblemSolver = this.isProblemSolver ?: false,
         isMine = this.isMine ?: false,
         reliabilityScore = null,
@@ -63,9 +63,9 @@ fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
         discount = this.discount,
         eventStartTime = this.eventStartTime,
         eventEndTime = this.eventEndTime,
-        petitionCount = 0,
+        petitionCount = this.petitionCount ?: 0,
         petitionTargetCount = null,
-        isPetitionedByMe = false,
+        isPetitionedByMe = this.isPetitioned ?: false,
         isLikedByMe = this.isLike ?: false
     )
 }

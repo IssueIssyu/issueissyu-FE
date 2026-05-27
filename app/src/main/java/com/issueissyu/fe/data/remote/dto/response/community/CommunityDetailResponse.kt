@@ -23,5 +23,6 @@ data class CommunityDetailResponse(
     val isPetitioned: Boolean?,
     val isProblemSolver: Boolean?,
     val issuePinState: String?,
+    val petitionCount: Int?,
     val isMine: Boolean?,
 )
