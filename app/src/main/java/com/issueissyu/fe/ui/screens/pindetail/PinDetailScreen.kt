@@ -324,6 +324,9 @@ private fun PinDetailContent(
                         onPetitionClick = { onPetitionClick() },
                         onConfirmResolverClick = onConfirmResolverClick,
                         onAttachProofClick = onAttachProofClick,
+                        reliabilityScore = uiState.reliabilityScore,
+                        reliabilityReason = uiState.reliabilityReason,
+                        reliabilityStatus = uiState.reliabilityStatus,
                         modifier = Modifier.fillMaxSize(),
                     )
                 } else {

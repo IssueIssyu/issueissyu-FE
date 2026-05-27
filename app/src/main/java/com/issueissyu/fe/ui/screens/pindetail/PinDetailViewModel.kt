@@ -15,10 +15,13 @@ import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.PetitionStatusInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverParticipantInfo
+import com.issueissyu.fe.domain.model.issue.IssueReliability
+import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.withHomeFallback
 import com.issueissyu.fe.domain.repository.PinRepository
+import com.issueissyu.fe.domain.usecase.issue.GetIssueReliabilityUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -52,6 +55,9 @@ data class PinDetailUiState(
     val commentInputRevision: Int = 0,
     val editingCommentId: Long? = null,
     val selectedTab: PinDetailTab = PinDetailTab.HOME,
+    val reliabilityScore: Int? = null,
+    val reliabilityReason: String? = null,
+    val reliabilityStatus: IssueReliabilityStatus? = null,
     val errorMessage: String? = null,
 )
 
@@ -71,6 +77,7 @@ sealed interface PinDetailEffect {
 @HiltViewModel
 class PinDetailViewModel @Inject constructor(
     private val pinRepository: PinRepository,
+    private val getIssueReliabilityUseCase: GetIssueReliabilityUseCase,
     private val tokenManager: TokenManager,
 ) : ViewModel() {
 
@@ -109,6 +116,9 @@ class PinDetailViewModel @Inject constructor(
                     isResolutionJoining = false,
                     isResolutionProofSubmitting = false,
                     isPetitionSubmitting = false,
+                    reliabilityScore = null,
+                    reliabilityReason = null,
+                    reliabilityStatus = null,
                 )
             }
 
@@ -203,6 +213,8 @@ class PinDetailViewModel @Inject constructor(
         var solveInfo: PinSolveInfo? = null
         var problemSolverInfo: ProblemSolverInfo? = null
         var petitionStatusInfo: PetitionStatusInfo? = null
+        var issueReliability: IssueReliability? = null
+        var issueReliabilityFailed = false
 
         pinRepository.getPinSolve(pinId)
             .onSuccess { solveInfo = it }
@@ -224,19 +236,35 @@ class PinDetailViewModel @Inject constructor(
                 }
         }
 
-        if (solveInfo == null && problemSolverInfo == null && petitionStatusInfo == null) return
+        getIssueReliabilityUseCase(pinId)
+            .onSuccess { issueReliability = it }
+            .onFailure { issueReliabilityFailed = true }
+
+        val hasResolutionData = solveInfo != null ||
+            problemSolverInfo != null ||
+            petitionStatusInfo != null
+        if (!hasResolutionData && issueReliability == null && !issueReliabilityFailed) return
 
         _uiState.update { state ->
-            val currentPin = state.pin ?: return@update state
-            val currentUser = buildResolutionCurrentUser(currentPin)
-            val resolutionUpdatedPin = currentPin.withResolutionApiState(
-                currentUserId = currentUserId,
-                currentUser = currentUser,
-                solveInfo = solveInfo,
-                problemSolverInfo = problemSolverInfo,
-            )
+            val updatedPin = if (hasResolutionData) {
+                val currentPin = state.pin ?: return@update state
+                val currentUser = buildResolutionCurrentUser(currentPin)
+                val resolutionUpdatedPin = currentPin.withResolutionApiState(
+                    currentUserId = currentUserId,
+                    currentUser = currentUser,
+                    solveInfo = solveInfo,
+                    problemSolverInfo = problemSolverInfo,
+                )
+                resolutionUpdatedPin.withPetitionApiState(petitionStatusInfo)
+            } else {
+                state.pin
+            }
             state.copy(
-                pin = resolutionUpdatedPin.withPetitionApiState(petitionStatusInfo),
+                pin = updatedPin,
+                reliabilityScore = issueReliability?.score,
+                reliabilityReason = issueReliability?.reason,
+                reliabilityStatus = issueReliability?.status
+                    ?: if (issueReliabilityFailed) IssueReliabilityStatus.FAILED else null,
             )
         }
     }

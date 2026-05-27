@@ -59,6 +59,9 @@ import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.GoNowButton
+import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus as DomainIssueReliabilityStatus
+import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
+import com.issueissyu.fe.ui.components.IssueReliabilityStatus
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.components.SignButton
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -90,6 +93,9 @@ fun PinResolutionTab(
     onPetitionClick: (String) -> Unit,
     onConfirmResolverClick: (Long) -> Unit = {},
     onAttachProofClick: () -> Unit = {},
+    reliabilityScore: Int? = null,
+    reliabilityReason: String? = null,
+    reliabilityStatus: DomainIssueReliabilityStatus? = null,
     modifier: Modifier = Modifier
 ) {
     val isResolved = issueDetail.resolutionStatus == ResolutionStatus.RESOLVED
@@ -139,6 +145,17 @@ fun PinResolutionTab(
             )
 
             HorizontalDivider( thickness = 1.dp, color = Gray_3 )
+
+            IssueReliabilityIndicator(
+                score = reliabilityScore,
+                reason = reliabilityReason,
+                status = reliabilityStatus?.toIndicatorStatus()
+                    ?: if (reliabilityScore == null) {
+                        IssueReliabilityStatus.PENDING
+                    } else {
+                        IssueReliabilityStatus.COMPLETED
+                    },
+            )
 
             if (goNowState == ActionState.MOVING) {
                 ResolutionPhotoProofCard(
@@ -1123,6 +1140,14 @@ private fun ResolverParticipationCardPreview_InProgress() {
                 resolvedAt = detail.resolvedAt
             )
         }
+    }
+}
+
+private fun DomainIssueReliabilityStatus.toIndicatorStatus(): IssueReliabilityStatus {
+    return when (this) {
+        DomainIssueReliabilityStatus.PENDING -> IssueReliabilityStatus.PENDING
+        DomainIssueReliabilityStatus.COMPLETED -> IssueReliabilityStatus.COMPLETED
+        DomainIssueReliabilityStatus.FAILED -> IssueReliabilityStatus.FAILED
     }
 }
 
