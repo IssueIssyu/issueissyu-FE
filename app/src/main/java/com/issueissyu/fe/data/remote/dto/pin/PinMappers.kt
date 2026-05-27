@@ -132,8 +132,9 @@ fun PinEmojisResponse.toPinEmojis(): PinEmojis {
 //해결하기
 fun PinSolveResponse.toPinSolveInfo(): PinSolveInfo {
     return PinSolveInfo(
-        isPetitioned = isPetitioned,
-        isProblemSolver = isProblemSolver,
+        isPetitioned = isPetitioned ?: false,
+        userProblemSolverId = userProblemSolverId,
+        userProblemSolveState = userProblemSolveState,
     )
 }
 

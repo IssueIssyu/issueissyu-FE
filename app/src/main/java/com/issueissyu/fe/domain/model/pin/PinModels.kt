@@ -203,8 +203,12 @@ data class IssueResolverParticipation(
 //해결하기
 data class PinSolveInfo(
     val isPetitioned: Boolean,
-    val isProblemSolver: Boolean,
-)
+    val userProblemSolverId: Long? = null,
+    val userProblemSolveState: String? = null,
+) {
+    val isProblemSolver: Boolean
+        get() = userProblemSolverId != null
+}
 
 data class ProblemSolverInfo(
     val isGoNow: Boolean,

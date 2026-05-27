@@ -855,14 +855,10 @@ private fun Pin.withResolutionApiState(
     problemSolverInfo: ProblemSolverInfo?,
 ): Pin {
     val issueDetail = detail as? IssuePinDetail ?: return this
-    val knownMyProblemSolverId = issueDetail.myProblemSolverId
+    val knownMyProblemSolverId = solveInfo?.userProblemSolverId
+        ?: issueDetail.myProblemSolverId
         ?: issueDetail.resolverParticipations
             .firstOrNull { it.user.id == currentUserId }
-            ?.problemSolverId
-        ?: problemSolverInfo
-            ?.takeIf { it.isGoNow && it.problemSolvers.size == 1 }
-            ?.problemSolvers
-            ?.firstOrNull()
             ?.problemSolverId
     val nextParticipations = problemSolverInfo?.problemSolvers?.map { solver ->
         solver.toIssueResolverParticipation(
@@ -874,20 +870,24 @@ private fun Pin.withResolutionApiState(
     val myProblemSolverInfo = problemSolverInfo?.problemSolvers
         ?.firstOrNull { it.problemSolverId == knownMyProblemSolverId }
     val resolvedParticipation = nextParticipations.firstOrNull { it.isConfirmedByWriter }
+    val isMyProblemSolver = solveInfo?.userProblemSolverId != null
     val nextResolutionStatus = when {
         resolvedParticipation != null -> ResolutionStatus.RESOLVED
-        nextParticipations.isNotEmpty() ||
-            (solveInfo?.isProblemSolver == true) -> ResolutionStatus.IN_PROGRESS
+        nextParticipations.isNotEmpty() || isMyProblemSolver -> ResolutionStatus.IN_PROGRESS
         else -> issueDetail.resolutionStatus
     }
     return copy(
         detail = issueDetail.copy(
             resolutionStatus = nextResolutionStatus,
-            isProblemSolverByMe = problemSolverInfo?.isGoNow
-                ?: solveInfo?.isProblemSolver
-                ?: issueDetail.isProblemSolverByMe,
+            isProblemSolverByMe = when {
+                solveInfo != null -> isMyProblemSolver
+                problemSolverInfo != null -> problemSolverInfo.isGoNow
+                else -> issueDetail.isProblemSolverByMe
+            },
             myProblemSolverId = knownMyProblemSolverId,
-            myProblemSolveState = myProblemSolverInfo?.problemSolveState ?: issueDetail.myProblemSolveState,
+            myProblemSolveState = solveInfo?.userProblemSolveState
+                ?: myProblemSolverInfo?.problemSolveState
+                ?: issueDetail.myProblemSolveState,
             resolverParticipations = nextParticipations,
             resolvedBy = resolvedParticipation?.user ?: issueDetail.resolvedBy,
             resolvedAt = resolvedParticipation?.confirmedAt ?: issueDetail.resolvedAt,
