@@ -70,5 +70,5 @@ interface CommunityApi {
     suspend fun declareCommunity(
         @Path("communityId") communityId: Long,
         @Body request: CommunityDeclarationRequest,
-    ): BaseResponse<Any?>
+    ): BaseResponse<Unit?>
 }

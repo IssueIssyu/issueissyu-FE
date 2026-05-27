@@ -27,6 +27,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -93,15 +95,19 @@ class CommunityDetailViewModel @Inject constructor(
                 }
                 .collect { detail ->
                     val pinId = detail.pinId
-                    val petitionStatus = if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
-                        pinRepository.getPetitionStatus(pinId).getOrNull()
+                    val (petitionStatus, solveStatus) = if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
+                        coroutineScope {
+                            val petitionDeferred = async {
+                                pinRepository.getPetitionStatus(pinId).getOrNull()
+                            }
+                            val solveDeferred = async {
+                                pinRepository.getPinSolveStatus(pinId).getOrNull()
+                            }
+
+                            petitionDeferred.await() to solveDeferred.await()
+                        }
                     } else {
-                        null
-                    }
-                    val solveStatus = if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
-                        pinRepository.getPinSolveStatus(pinId).getOrNull()
-                    } else {
-                        null
+                        null to null
                     }
                     _uiState.update {
                         it.copy(

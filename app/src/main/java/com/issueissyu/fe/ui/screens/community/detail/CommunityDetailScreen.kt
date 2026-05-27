@@ -1205,7 +1205,7 @@ private fun CommunityDetailBottomBar(
     val canSubmit = commentText.isNotBlank() && !isSubmitting
     val density = LocalDensity.current
     val isKeyboardVisible = WindowInsets.ime.getBottom(density) > 0
-    val bottomPadding = if (isKeyboardVisible) 36.dp else 16.dp
+    val bottomPadding = if (isKeyboardVisible) 36.dp else 8.dp
 
     LaunchedEffect(editingComment?.commentId) {
         commentText = editingComment?.content.orEmpty()

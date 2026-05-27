@@ -7,6 +7,7 @@ import com.issueissyu.fe.domain.model.community.CommunityTab
 import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityFeedUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -121,7 +122,13 @@ class CommunityViewModel @Inject constructor(
     private fun loadInitialRegionAndFeed() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, isRegionLoading = true, error = null) }
-            val regions = locationRepository.getRegionList()
+            val regionsDeferred = async { locationRepository.getRegionList() }
+            val userLocationDeferred = async { locationRepository.getUserLocation() }
+
+            val regionsResult = regionsDeferred.await()
+            val userLocationResult = userLocationDeferred.await()
+
+            val regions = regionsResult
                 .onSuccess { regions ->
                     _uiState.update {
                         it.copy(
@@ -141,7 +148,7 @@ class CommunityViewModel @Inject constructor(
                 }
                 .getOrNull()
 
-            locationRepository.getUserLocation()
+            userLocationResult
                 .onSuccess { region ->
                     val defaultLocationId = regions?.userRegion?.locationId
                     val defaultRegion = defaultLocationId
