@@ -58,6 +58,7 @@ import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
+import com.issueissyu.fe.ui.components.IssueReliabilityReasonDisplayMode
 import com.issueissyu.fe.ui.components.IssueReliabilityStatus as UiIssueReliabilityStatus
 import com.issueissyu.fe.ui.components.IssueReliabilityType
 import com.issueissyu.fe.ui.components.SignButton
@@ -714,6 +715,7 @@ private fun CommunityDetailTitleSection(
                     reason = detail.reliabilityReason,
                     type = IssueReliabilityType.COMMUNITY,
                     status = reliabilityStatus,
+                    reasonDisplayMode = IssueReliabilityReasonDisplayMode.MODAL,
                     modifier = Modifier
                         .padding(start = 16.dp)
                         .width(100.dp)
