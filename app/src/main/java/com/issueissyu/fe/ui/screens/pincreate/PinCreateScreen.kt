@@ -72,6 +72,12 @@ fun PinCreateScreen(
         viewModel.initialize(category, pinLat, pinLng, userLat, userLng)
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.createdEvents.collect {
+            onBackClick()
+        }
+    }
+
     PinCreateContent(
         category = category,
         uiState = uiState,
@@ -173,10 +179,9 @@ private fun PinCreateContent(
 
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-        // TODO: PinRepository.createPin 연결
         CommonButton(
             onClick = onSubmit,
-            text = "작성 완료",
+            text = if (uiState.isSubmitting) "작성 중" else "작성 완료",
             isEnabled = uiState.title.isNotBlank() &&
                 uiState.description.isNotBlank() &&
                 !uiState.isSubmitting,

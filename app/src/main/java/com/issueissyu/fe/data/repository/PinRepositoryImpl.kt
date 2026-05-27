@@ -3,6 +3,8 @@ package com.issueissyu.fe.data.repository
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.google.gson.Gson
+import com.issueissyu.fe.data.remote.api.AiIssueApiService
 import com.issueissyu.fe.data.remote.api.PinApi
 import com.issueissyu.fe.data.remote.dto.pin.toPinSolveInfo
 import com.issueissyu.fe.data.remote.dto.pin.toPetitionJoinInfo
@@ -21,12 +23,15 @@ import com.issueissyu.fe.data.remote.dto.pin.toUnsupportedPinTypeMessage
 import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
+import com.issueissyu.fe.data.remote.dto.request.pin.CommunicationPinImportRequest
+import com.issueissyu.fe.data.remote.dto.request.pin.PinImageItemRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.GoNowResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionStatusResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionSubmitResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinImportResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
 import com.issueissyu.fe.core.time.parseFlexibleDateTimeToEpochMilli
@@ -68,7 +73,9 @@ import com.issueissyu.fe.domain.repository.PinRepository
 import java.io.File
 import java.util.UUID
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -76,8 +83,15 @@ import kotlinx.coroutines.withContext
 @Singleton
 class PinRepositoryImpl @Inject constructor(
     private val pinApi: PinApi,
+    private val aiIssueApiService: AiIssueApiService,
+    private val gson: Gson,
     @ApplicationContext private val context: Context,
 ) : PinRepository {
+
+    private companion object {
+        const val MAX_PIN_IMAGE_COUNT = 5
+        const val MAX_TOTAL_PIN_IMAGE_BYTES = 45L * 1024L * 1024L
+    }
 
     // TODO: 실제 백엔드와 연결 시 PinSamples 의존을 제거하고 네트워크 호출 로직으로 대체.
     private val dummyPins: MutableList<Pin> = PinSamples.pins.toMutableList()
@@ -110,30 +124,104 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createPin(request: CreatePinRequest): Pin {
-        val newPinDetail: PinDetail = when (request.category) {
+    override suspend fun createPin(request: CreatePinRequest): Result<Pin> {
+        return try {
+            val photos = request.imageUris.toMultipartParts()
+            val response = when (request.category) {
+                PinCategory.ISSUE -> aiIssueApiService.createIssuePin(
+                    title = request.title.toTextPart(),
+                    content = request.description.toTextPart(),
+                    tone = request.tone.toTextPart(),
+                    latitude = request.coordinate.latitude.toString().toTextPart(),
+                    longitude = request.coordinate.longitude.toString().toTextPart(),
+                    images = photos,
+                )
+                PinCategory.COMMUNICATION -> pinApi.createCommunicationPin(
+                    request = gson.toJson(request.toCommunicationPinImportRequest()).toJsonPart(),
+                    photos = photos,
+                )
+                PinCategory.SHOP,
+                PinCategory.FESTIVAL -> return Result.failure(
+                    IllegalArgumentException("가게와 축제 핀은 일반 사용자가 생성할 수 없습니다."),
+                )
+            }
+
+            if (response.isSuccess) {
+                Result.success(response.toCreatedPin(request))
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "핀 생성에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    private fun CreatePinRequest.toCommunicationPinImportRequest(): CommunicationPinImportRequest {
+        return CommunicationPinImportRequest(
+            lat = coordinate.latitude,
+            lng = coordinate.longitude,
+            pinImageUrls = imageUris.mapIndexed { index, _ ->
+                PinImageItemRequest(
+                    pinImageUrl = "",
+                    isMain = index == 0,
+                )
+            },
+            pinTitle = title,
+            pinContent = description,
+        )
+    }
+
+    private fun BaseResponse<PinImportResponse?>.toCreatedPin(request: CreatePinRequest): Pin {
+        val result = result
+        val detail = when (request.category) {
             PinCategory.ISSUE -> IssuePinDetail(writer = currentUser)
             PinCategory.COMMUNICATION -> CommunicationPinDetail(writer = currentUser)
-            PinCategory.SHOP, PinCategory.FESTIVAL -> throw IllegalArgumentException("Shop and Festival pins cannot be created by users.")
+            PinCategory.SHOP, PinCategory.FESTIVAL -> error("Unsupported created pin category.")
         }
-
-        val newPin = Pin(
-            id = UUID.randomUUID().toString(), // 새 핀은 UUID로 생성
+        return Pin(
+            id = result?.pinId?.takeIf { it > 0 }?.toString() ?: UUID.randomUUID().toString(),
             title = request.title,
             description = request.description,
             coordinate = request.coordinate,
-            address = request.address,
+            address = result?.pinDetailAddress?.takeIf { it.isNotBlank() } ?: request.address,
             locationName = request.locationName,
             neighborhoodId = request.neighborhoodId,
-            neighborhoodName = request.neighborhoodName,
-            imageUrls = request.imageUrls,
-            createdAt = Instant.now().toString(),
-            updatedAt = null,
-            detail = newPinDetail
+            neighborhoodName = result?.region ?: request.neighborhoodName,
+            imageUrls = result?.pinImageUrls.orEmpty().mapNotNull { it.pinImageUrl.takeIf { url -> url.isNotBlank() } },
+            createdAt = result?.createdAt ?: Instant.now().toString(),
+            updatedAt = result?.updatedAt,
+            detail = detail,
         )
-        // TODO: 실제 백엔드 API를 호출하여 핀을 생성하고, 서버로부터 반환된 실제 Pin 객체를 사용해야 합니다.
-        dummyPins.add(newPin)
-        return newPin
+    }
+
+    private fun String.toTextPart(): RequestBody = toRequestBody("text/plain".toMediaType())
+
+    private fun String.toJsonPart(): RequestBody = toRequestBody("application/json".toMediaType())
+
+    private fun List<String>.toMultipartParts(): List<MultipartBody.Part> {
+        if (size > MAX_PIN_IMAGE_COUNT) {
+            throw IllegalArgumentException("사진은 최대 ${MAX_PIN_IMAGE_COUNT}장까지 첨부할 수 있습니다.")
+        }
+
+        var totalBytes = 0L
+        return mapIndexed { index, uriString ->
+            val uri = Uri.parse(uriString)
+            val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: throw IllegalArgumentException("첨부한 사진을 읽을 수 없습니다.")
+            totalBytes += bytes.size
+            if (totalBytes > MAX_TOTAL_PIN_IMAGE_BYTES) {
+                throw IllegalArgumentException("사진 전체 용량은 45MB를 넘을 수 없습니다.")
+            }
+
+            val mediaType = context.contentResolver.getType(uri)?.toMediaTypeOrNull()
+                ?: "image/*".toMediaType()
+            val body = bytes.toRequestBody(mediaType)
+            MultipartBody.Part.createFormData(
+                name = "photos",
+                filename = "pin_image_${index + 1}",
+                body = body,
+            )
+        }
     }
 
     override suspend fun updatePin(pinId: String, request: UpdatePinRequest): Pin {

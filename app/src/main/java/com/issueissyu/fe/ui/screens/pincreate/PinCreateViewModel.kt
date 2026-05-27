@@ -2,10 +2,15 @@ package com.issueissyu.fe.ui.screens.pincreate
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.repository.IssueRepository
+import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -32,10 +37,14 @@ data class PinCreateUiState(
 @HiltViewModel
 class PinCreateViewModel @Inject constructor(
     private val issueRepository: IssueRepository,
+    private val pinRepository: PinRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PinCreateUiState())
     val uiState: StateFlow<PinCreateUiState> = _uiState.asStateFlow()
+
+    private val _createdEvents = MutableSharedFlow<Unit>()
+    val createdEvents = _createdEvents.asSharedFlow()
 
     fun initialize(
         category: PinCategory,
@@ -132,9 +141,60 @@ class PinCreateViewModel @Inject constructor(
         }
     }
 
-    // TODO: PinRepository.createPin 연결 (isSubmitting / errorMessage 흐름 포함)
     fun submitPin() {
-        // no-op
+        val state = _uiState.value
+        if (state.isSubmitting) return
+
+        val category = state.category
+        val pinLat = state.pinLat
+        val pinLng = state.pinLng
+        when {
+            category == null -> {
+                _uiState.update { it.copy(errorMessage = "핀 종류를 확인하지 못했습니다.") }
+                return
+            }
+            state.title.isBlank() -> {
+                _uiState.update { it.copy(errorMessage = "제목을 입력해주세요.") }
+                return
+            }
+            state.description.isBlank() -> {
+                _uiState.update { it.copy(errorMessage = "상세 설명을 입력해주세요.") }
+                return
+            }
+            pinLat == null || pinLng == null -> {
+                _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
+                return
+            }
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+            pinRepository.createPin(
+                CreatePinRequest(
+                    category = category,
+                    title = state.title,
+                    description = state.description,
+                    coordinate = PinCoordinate(
+                        latitude = pinLat,
+                        longitude = pinLng,
+                    ),
+                    address = state.address,
+                    locationName = state.locationName,
+                    imageUris = state.imageUris,
+                    tone = state.selectedTone ?: DEFAULT_AI_TONE,
+                )
+            ).onSuccess {
+                _uiState.update { it.copy(isSubmitting = false, errorMessage = null) }
+                _createdEvents.emit(Unit)
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = e.message?.takeIf { message -> message.isNotBlank() } ?: "핀 생성에 실패했습니다.",
+                    )
+                }
+            }
+        }
     }
 
     companion object {
