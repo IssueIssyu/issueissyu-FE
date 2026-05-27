@@ -140,34 +140,35 @@ fun IssueReliabilityIndicator(
 
     Column(
         modifier = Modifier
-            .width(style.barWidth)
+            .fillMaxWidth()
             .then(modifier)
             .then(
                 if (isModalReasonEnabled) {
                     Modifier.clickable { isReasonDialogVisible = true }
                 } else {
                     Modifier
-                }
+                },
             ),
         horizontalAlignment = Alignment.Start,
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "AI 신뢰도",
-                style = IssueTypo.Bold12.copy(color = Title, fontSize = style.labelFontSize),
-            )
-            Text(
-                text = displayText,
-                style = IssueTypo.Bold12.copy(
-                    color = indicatorColor,
-                    fontSize = style.labelFontSize,
-                ),
-            )
-        }
+        Column(modifier = Modifier.width(style.barWidth)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "AI 신뢰도",
+                    style = IssueTypo.Bold12.copy(color = Title, fontSize = style.labelFontSize),
+                )
+                Text(
+                    text = displayText,
+                    style = IssueTypo.Bold12.copy(
+                        color = indicatorColor,
+                        fontSize = style.labelFontSize,
+                    ),
+                )
+            }
 
             Spacer(modifier = Modifier.height(style.labelBarSpacing))
 
@@ -204,6 +205,7 @@ fun IssueReliabilityIndicator(
                             .background(White.copy(alpha = 0.5f)),
                     )
                     Spacer(modifier = Modifier.weight(0.34f))
+                }
             }
         }
 
@@ -211,6 +213,7 @@ fun IssueReliabilityIndicator(
             Spacer(modifier = Modifier.height(style.reasonTopSpacing))
             Text(
                 text = reason.orEmpty(),
+                modifier = Modifier.fillMaxWidth(),
                 style = IssueTypo.Regular12.copy(
                     color = Gray_6,
                     fontSize = style.reasonFontSize,
