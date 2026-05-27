@@ -141,7 +141,7 @@ fun CommunityDetailScreenContent(
     onCommunityTakedownClick: () -> Unit = {},
     onEmojiAddClick: () -> Unit = {},
     onEmojiPickerDismiss: () -> Unit = {},
-    onEmojiCandidateClick: (Int) -> Unit = {},
+    onEmojiCandidateClick: (Long) -> Unit = {},
     onEmojiApplyClick: () -> Unit = {},
 ) {
     var showDeclarationDialog by remember { mutableStateOf(false) }

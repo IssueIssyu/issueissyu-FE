@@ -25,7 +25,7 @@ data class CommunityDetailUiState(
 data class CommunityEmojiPickerUiState(
     val targetPinId: Long? = null,
     val candidates: List<PinEmojiCandidate> = emptyList(),
-    val selectedEmojiId: Int? = null,
+    val selectedEmojiId: Long? = null,
     val isLoading: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,

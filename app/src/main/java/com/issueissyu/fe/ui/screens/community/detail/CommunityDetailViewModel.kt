@@ -400,7 +400,7 @@ class CommunityDetailViewModel @Inject constructor(
         val selectedEmojiId = _uiState.value.emojiReactions
             .firstOrNull { it.reactedByMe }
             ?.emojiId
-            ?.toIntOrNull()
+            ?.toLongOrNull()
 
         _uiState.update {
             it.copy(
@@ -443,7 +443,7 @@ class CommunityDetailViewModel @Inject constructor(
         _uiState.update { it.copy(emojiPicker = CommunityEmojiPickerUiState()) }
     }
 
-    fun selectEmojiCandidate(emojiId: Int) {
+    fun selectEmojiCandidate(emojiId: Long) {
         val candidate = _uiState.value.emojiPicker.candidates.firstOrNull { it.emojiId == emojiId }
             ?: return
         if (!candidate.canReact) {
@@ -465,7 +465,7 @@ class CommunityDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(emojiPicker = it.emojiPicker.copy(isSubmitting = true)) }
 
-            pinRepository.applyPinEmoji(pinId, selectedEmojiId)
+            pinRepository.applyPinEmojiFromPicker(pinId, selectedEmojiId)
                 .onSuccess {
                     loadPinEmojis(pinId)
                     closeEmojiPicker()
