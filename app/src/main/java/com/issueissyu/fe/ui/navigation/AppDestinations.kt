@@ -23,6 +23,7 @@ object AppDestinations {
     const val COLLECTION_ROUTE = "collection_route"
     const val COMMUNITY_ROUTE = "community_route"
     const val COMMUNITY_DETAIL_ROUTE = "community_detail_route/{communityId}"
+    const val COMMUNITY_REPORT_ROUTE = "community_report_route/{communityId}"
     const val MYPAGE_ROUTE = "mypage_route"
 
     // 지도 관련
@@ -34,6 +35,10 @@ object AppDestinations {
 
     fun communityDetailRoute(communityId: Long): String {
         return "community_detail_route/$communityId"
+    }
+
+    fun communityReportRoute(communityId: Long): String {
+        return "community_report_route/$communityId"
     }
 
     fun pinDetailRoute(pinId: String): String {

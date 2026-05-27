@@ -39,8 +39,10 @@ import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PIN_DETAIL_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
+import com.issueissyu.fe.ui.screens.pindetail.ReportTargetType
 import com.issueissyu.fe.ui.screens.community.CommunityScreen
 import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreen
+import com.issueissyu.fe.ui.screens.community.detail.COMMUNITY_DETAIL_REFRESH_KEY
 
 @Composable
 fun AppNavGraph(
@@ -228,6 +230,7 @@ fun AppNavGraph(
                 removeTopPadding = true
             ) {
                 CommunityDetailScreen(
+                    savedStateHandle = it.savedStateHandle,
                     onBackClick = {
                         navController.navigateUp()
                     },
@@ -237,6 +240,36 @@ fun AppNavGraph(
                                 inclusive = true
                             }
                         }
+                    },
+                    onReportClick = { communityId ->
+                        navController.navigate(AppDestinations.communityReportRoute(communityId))
+                    }
+                )
+            }
+        }
+        composable(
+            route = AppDestinations.COMMUNITY_REPORT_ROUTE,
+            arguments = listOf(
+                navArgument("communityId") {
+                    type = NavType.LongType
+                }
+            )
+        ) { backStackEntry ->
+            val communityId = backStackEntry.arguments?.getLong("communityId") ?: return@composable
+
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true
+            ) {
+                PinReportScreen(
+                    targetId = communityId.toString(),
+                    targetType = ReportTargetType.COMMUNITY,
+                    onBackClick = { navController.popBackStack() },
+                    onSuccess = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set(COMMUNITY_DETAIL_REFRESH_KEY, true)
+                        navController.popBackStack()
                     }
                 )
             }
@@ -296,7 +329,8 @@ fun AppNavGraph(
                 removeTopPadding = true
             ) {
                 PinReportScreen(
-                    pinId = pinId,
+                    targetId = pinId,
+                    targetType = ReportTargetType.PIN,
                     onBackClick = { navController.popBackStack() },
                     onSuccess = {
                         navController.previousBackStackEntry

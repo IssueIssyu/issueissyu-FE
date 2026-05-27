@@ -16,7 +16,6 @@ data class CommunityDetailUiState(
     val isCommentSubmitting: Boolean = false,
     val deletingCommentIds: Set<Long> = emptySet(),
     val isCommunityLikeSubmitting: Boolean = false,
-    val isCommunityDeclarationSubmitting: Boolean = false,
     val isCommunityDeleting: Boolean = false,
     val reliabilityStatus: IssueReliabilityStatus = IssueReliabilityStatus.PENDING,
     val errorMessage: String? = null

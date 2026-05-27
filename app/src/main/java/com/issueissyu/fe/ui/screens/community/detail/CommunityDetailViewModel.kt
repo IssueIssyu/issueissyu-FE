@@ -9,7 +9,6 @@ import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.usecase.community.CreateCommunityCommentUseCase
-import com.issueissyu.fe.domain.usecase.community.DeclareCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.DeleteCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.DeleteCommunityUseCase
 import com.issueissyu.fe.domain.usecase.community.GetCommunityCommentsUseCase
@@ -41,7 +40,6 @@ class CommunityDetailViewModel @Inject constructor(
     private val deleteCommunityUseCase: DeleteCommunityUseCase,
     private val takedownCommunityUseCase: TakedownCommunityUseCase,
     private val likeCommunityUseCase: LikeCommunityUseCase,
-    private val declareCommunityUseCase: DeclareCommunityUseCase,
     private val getIssueReliabilityUseCase: GetIssueReliabilityUseCase,
     private val pinRepository: PinRepository,
     savedStateHandle: SavedStateHandle
@@ -362,32 +360,6 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(isCommunityLikeSubmitting = false) }
                     _toastMessage.emit(
                         throwable.message?.takeIf { it.isNotBlank() } ?: "공감에 실패했습니다.",
-                    )
-                }
-        }
-    }
-
-    fun declareCommunity(reasonIndex: Int) {
-        val detail = _uiState.value.detail ?: return
-        if (detail.isMine || detail.isReported || _uiState.value.isCommunityDeclarationSubmitting) return
-
-        viewModelScope.launch {
-            _uiState.update { it.copy(isCommunityDeclarationSubmitting = true) }
-
-            declareCommunityUseCase(detail.communityId, reasonIndex)
-                .onSuccess {
-                    _uiState.update { state ->
-                        state.copy(
-                            detail = state.detail?.copy(isReported = true),
-                            isCommunityDeclarationSubmitting = false,
-                        )
-                    }
-                    _toastMessage.emit("신고가 접수되었습니다.")
-                }
-                .onFailure { throwable ->
-                    _uiState.update { it.copy(isCommunityDeclarationSubmitting = false) }
-                    _toastMessage.emit(
-                        throwable.message?.takeIf { it.isNotBlank() } ?: "신고에 실패했습니다.",
                     )
                 }
         }

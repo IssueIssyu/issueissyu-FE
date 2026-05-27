@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.community.CommunityComment
@@ -80,16 +81,30 @@ import java.time.format.DateTimeFormatter
 
 private val COMMUNITY_DETAIL_ACTION_TOUCH_SIZE = 48.dp
 private val COMMUNITY_DETAIL_ACTION_BUTTON_SIZE = 30.dp
+const val COMMUNITY_DETAIL_REFRESH_KEY = "community_detail_refresh"
 
 @Composable
 fun CommunityDetailScreen(
     viewModel: CommunityDetailViewModel = hiltViewModel(),
+    savedStateHandle: SavedStateHandle? = null,
     onBackClick: () -> Unit,
     onMapClick: (Long) -> Unit = {},
+    onReportClick: (Long) -> Unit = {},
     onDeleteComplete: () -> Unit = onBackClick,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val shouldRefresh by savedStateHandle
+        ?.getStateFlow(COMMUNITY_DETAIL_REFRESH_KEY, false)
+        ?.collectAsState()
+        ?: remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh) {
+            viewModel.loadDetail()
+            savedStateHandle?.set(COMMUNITY_DETAIL_REFRESH_KEY, false)
+        }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.toastMessage.collect { message ->
@@ -114,7 +129,7 @@ fun CommunityDetailScreen(
         onCommentUpdate = viewModel::updateComment,
         onCommentDelete = viewModel::deleteComment,
         onCommunityLikeClick = viewModel::likeCommunity,
-        onCommunityDeclareClick = viewModel::declareCommunity,
+        onCommunityReportClick = onReportClick,
         onCommunityDeleteClick = viewModel::deleteCommunity,
         onCommunityTakedownClick = viewModel::takedownCommunity,
         onEmojiAddClick = viewModel::openEmojiPicker,
@@ -136,7 +151,7 @@ fun CommunityDetailScreenContent(
     onCommentUpdate: (Long, String) -> Unit = { _, _ -> },
     onCommentDelete: (Long) -> Unit = {},
     onCommunityLikeClick: () -> Unit = {},
-    onCommunityDeclareClick: (Int) -> Unit = {},
+    onCommunityReportClick: (Long) -> Unit = {},
     onCommunityDeleteClick: () -> Unit = {},
     onCommunityTakedownClick: () -> Unit = {},
     onEmojiAddClick: () -> Unit = {},
@@ -144,7 +159,6 @@ fun CommunityDetailScreenContent(
     onEmojiCandidateClick: (Long) -> Unit = {},
     onEmojiApplyClick: () -> Unit = {},
 ) {
-    var showDeclarationDialog by remember { mutableStateOf(false) }
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
     var expandedImageIndex by remember { mutableStateOf<Int?>(null) }
 
@@ -167,17 +181,6 @@ fun CommunityDetailScreenContent(
             onDismiss = onEmojiPickerDismiss,
             onEmojiClick = onEmojiCandidateClick,
             onApplyClick = onEmojiApplyClick,
-        )
-    }
-
-    if (showDeclarationDialog) {
-        CommunityDeclarationDialog(
-            isSubmitting = uiState.isCommunityDeclarationSubmitting,
-            onDismiss = { showDeclarationDialog = false },
-            onReasonClick = { reasonIndex ->
-                showDeclarationDialog = false
-                onCommunityDeclareClick(reasonIndex)
-            },
         )
     }
 
@@ -231,7 +234,7 @@ fun CommunityDetailScreenContent(
                     detail = uiState.detail,
                     reliabilityStatus = uiState.reliabilityStatus.toUiReliabilityStatus(),
                     onMapClick = onMapClick,
-                    onReportClick = { showDeclarationDialog = true },
+                    onReportClick = { onCommunityReportClick(uiState.detail.communityId) },
                     onGoNowClick = onGoNowClick,
                     onPetitionClick = onPetitionClick,
                         comments = uiState.comments,
@@ -544,64 +547,6 @@ private fun CommunityDetailOutlinedIconButton(
             content()
         }
     }
-}
-
-private val CommunityDeclarationReasons = listOf(
-    "거짓 정보를 포함한 글이에요",
-    "욕설 또는 비하 표현이 포함된 글이에요",
-    "스팸 또는 도배성 글이에요",
-    "불쾌감을 주는 글이에요",
-    "종교 포교 목적의 글이에요",
-)
-
-@Composable
-private fun CommunityDeclarationDialog(
-    isSubmitting: Boolean,
-    onDismiss: () -> Unit,
-    onReasonClick: (Int) -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = {
-            if (!isSubmitting) onDismiss()
-        },
-        title = {
-            Text(
-                text = "게시글 신고",
-                style = IssueTypo.Bold18.copy(color = Title)
-            )
-        },
-        text = {
-            Column {
-                CommunityDeclarationReasons.forEachIndexed { index, reason ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !isSubmitting) {
-                                onReasonClick(index + 1)
-                            }
-                            .padding(vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = reason,
-                            style = IssueTypo.Regular15.copy(color = Title),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                enabled = !isSubmitting,
-            ) {
-                Text(text = "취소", style = IssueTypo.Regular15.copy(color = Gray_6))
-            }
-        },
-        containerColor = White,
-    )
 }
 
 @Composable

@@ -43,9 +43,15 @@ private val PinReportReasons = listOf(
     "종교 포교 목적의 글이에요"
 )
 
+enum class ReportTargetType {
+    PIN,
+    COMMUNITY,
+}
+
 @Composable
 fun PinReportScreen(
-    pinId: String,
+    targetId: String,
+    targetType: ReportTargetType,
     onBackClick: () -> Unit,
     onSuccess: () -> Unit,
     modifier: Modifier = Modifier,
@@ -77,7 +83,7 @@ fun PinReportScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "핀 신고",
+                text = if (targetType == ReportTargetType.PIN) "핀 신고" else "게시글 신고",
                 style = IssueTypo.Bold18.copy(color = Title),
                 fontSize = 24.sp
             )
@@ -90,7 +96,7 @@ fun PinReportScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            viewModel.report(pinId, index + 1, onSuccess)
+                            viewModel.report(targetId, targetType, index + 1, onSuccess)
                         }
                         .padding(vertical = 18.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -119,6 +125,11 @@ fun PinReportScreen(
 @Composable
 private fun PinReportScreenPreview() {
     IssueissyuTheme {
-        PinReportScreen(pinId = "1", onBackClick = {}, onSuccess = {})
+        PinReportScreen(
+            targetId = "1",
+            targetType = ReportTargetType.PIN,
+            onBackClick = {},
+            onSuccess = {},
+        )
     }
 }
