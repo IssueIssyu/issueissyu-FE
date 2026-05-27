@@ -1,6 +1,7 @@
 package com.issueissyu.fe.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,8 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +55,12 @@ enum class IssueReliabilityStatus {
 enum class IssueReliabilityType {
     Pin,
     Community,
+}
+
+enum class IssueReliabilityReasonDisplayMode {
+    Inline,
+    Modal,
+    Hidden,
 }
 
 private data class IssueReliabilityStyle(
@@ -93,7 +106,9 @@ fun IssueReliabilityIndicator(
         IssueReliabilityStatus.COMPLETED
     },
     reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD,
+    reasonDisplayMode: IssueReliabilityReasonDisplayMode = IssueReliabilityReasonDisplayMode.Inline,
 ) {
+    var isReasonDialogVisible by remember { mutableStateOf(false) }
     val style = type.toStyle()
     val displayScore = score?.coerceIn(0, 100)
     val displayText = when (status) {
@@ -112,15 +127,25 @@ fun IssueReliabilityIndicator(
         IssueReliabilityStatus.PENDING -> null
     }
     val showReason = when (status) {
-        IssueReliabilityStatus.FAILED -> !reason.isNullOrBlank()
         IssueReliabilityStatus.COMPLETED -> displayScore != null &&
             displayScore < reasonVisibleThreshold &&
             !reason.isNullOrBlank()
+        IssueReliabilityStatus.FAILED,
         IssueReliabilityStatus.PENDING -> false
     }
+    val showInlineReason = showReason && reasonDisplayMode == IssueReliabilityReasonDisplayMode.Inline
+    val isModalReasonEnabled = showReason &&
+        status == IssueReliabilityStatus.COMPLETED &&
+        reasonDisplayMode == IssueReliabilityReasonDisplayMode.Modal
 
     Column(
-        modifier = modifier,
+        modifier = modifier.then(
+            if (isModalReasonEnabled) {
+                Modifier.clickable { isReasonDialogVisible = true }
+            } else {
+                Modifier
+            }
+        ),
         horizontalAlignment = Alignment.Start,
     ) {
         Column(
@@ -184,7 +209,7 @@ fun IssueReliabilityIndicator(
             }
         }
 
-        if (showReason) {
+        if (showInlineReason) {
             Spacer(modifier = Modifier.height(style.reasonTopSpacing))
             Text(
                 text = reason.orEmpty(),
@@ -197,6 +222,38 @@ fun IssueReliabilityIndicator(
                 textAlign = TextAlign.Start,
             )
         }
+    }
+
+    if (isReasonDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { isReasonDialogVisible = false },
+            title = {
+                Text(
+                    text = "AI 신뢰도",
+                    style = IssueTypo.Bold18.copy(color = Title),
+                )
+            },
+            text = {
+                Text(
+                    text = reason.orEmpty(),
+                    style = IssueTypo.Regular12.copy(
+                        color = Gray_6,
+                        fontSize = 14.sp,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { isReasonDialogVisible = false }) {
+                    Text(
+                        text = "확인",
+                        style = IssueTypo.Bold12.copy(
+                            color = BrandColor,
+                            fontSize = 14.sp,
+                        ),
+                    )
+                }
+            },
+        )
     }
 }
 
