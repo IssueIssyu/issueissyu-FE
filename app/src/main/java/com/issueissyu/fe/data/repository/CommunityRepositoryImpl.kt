@@ -34,11 +34,11 @@ class CommunityRepositoryImpl @Inject constructor(
         )
 
         if (!response.isSuccess) {
-            throw IllegalStateException(response.message.ifBlank { "커뮤니티 소식을 불러오지 못했습니다." })
+            throw IllegalStateException(response.message.orEmpty().ifBlank { "커뮤니티 소식을 불러오지 못했습니다." })
         }
 
         val result = response.result
-            ?: throw IllegalStateException(response.message.ifBlank { "커뮤니티 피드 응답이 올바르지 않습니다." })
+            ?: throw IllegalStateException(response.message.orEmpty().ifBlank { "커뮤니티 피드 응답이 올바르지 않습니다." })
 
         val feed = result.toCommunityFeed()
         emit(feed.withHotPreview(tab))
@@ -50,11 +50,11 @@ class CommunityRepositoryImpl @Inject constructor(
         val response = communityApi.getCommunityDetail(communityId)
 
         if (!response.isSuccess) {
-            throw IllegalStateException(response.message.ifBlank { "게시글을 불러오지 못했습니다." })
+            throw IllegalStateException(response.message.orEmpty().ifBlank { "게시글을 불러오지 못했습니다." })
         }
 
         val result = response.result
-            ?: throw IllegalStateException(response.message.ifBlank { "게시글 응답이 올바르지 않습니다." })
+            ?: throw IllegalStateException(response.message.orEmpty().ifBlank { "게시글 응답이 올바르지 않습니다." })
 
         emit(result.toCommunityDetail())
     }
@@ -66,7 +66,7 @@ class CommunityRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 Result.success(Unit)
             } else {
-                Result.failure(IllegalStateException(response.message.ifBlank { "게시글 삭제에 실패했습니다." }))
+                Result.failure(IllegalStateException(response.message.orEmpty().ifBlank { "게시글 삭제에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -80,7 +80,7 @@ class CommunityRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 Result.success(Unit)
             } else {
-                Result.failure(IllegalStateException(response.message.ifBlank { "게시글 내리기에 실패했습니다." }))
+                Result.failure(IllegalStateException(response.message.orEmpty().ifBlank { "게시글 내리기에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -93,7 +93,7 @@ class CommunityRepositoryImpl @Inject constructor(
         val response = communityApi.getCommunityComments(communityId)
 
         if (!response.isSuccess) {
-            throw IllegalStateException(response.message.ifBlank { "댓글을 불러오지 못했습니다." })
+            throw IllegalStateException(response.message.orEmpty().ifBlank { "댓글을 불러오지 못했습니다." })
         }
 
         emit(response.result.orEmpty().mapNotNull { it.toCommunityComment() })
@@ -112,11 +112,11 @@ class CommunityRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 val comment = response.result?.toCommunityComment()
                     ?: return Result.failure(
-                        IllegalStateException(response.message.ifBlank { "댓글 작성 응답이 올바르지 않습니다." })
+                        IllegalStateException(response.message.orEmpty().ifBlank { "댓글 작성 응답이 올바르지 않습니다." })
                     )
                 Result.success(comment)
             } else {
-                Result.failure(IllegalStateException(response.message.ifBlank { "댓글 작성에 실패했습니다." }))
+                Result.failure(IllegalStateException(response.message.orEmpty().ifBlank { "댓글 작성에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -136,11 +136,11 @@ class CommunityRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 val comment = response.result?.toCommunityComment()
                     ?: return Result.failure(
-                        IllegalStateException(response.message.ifBlank { "댓글 수정 응답이 올바르지 않습니다." })
+                        IllegalStateException(response.message.orEmpty().ifBlank { "댓글 수정 응답이 올바르지 않습니다." })
                     )
                 Result.success(comment)
             } else {
-                Result.failure(IllegalStateException(response.message.ifBlank { "댓글 수정에 실패했습니다." }))
+                Result.failure(IllegalStateException(response.message.orEmpty().ifBlank { "댓글 수정에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -154,7 +154,7 @@ class CommunityRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 Result.success(Unit)
             } else {
-                Result.failure(IllegalStateException(response.message.ifBlank { "댓글 삭제에 실패했습니다." }))
+                Result.failure(IllegalStateException(response.message.orEmpty().ifBlank { "댓글 삭제에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -168,7 +168,7 @@ class CommunityRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 val like = response.result
                     ?: return Result.failure(
-                        IllegalStateException(response.message.ifBlank { "커뮤니티 공감 응답이 올바르지 않습니다." })
+                        IllegalStateException(response.message.orEmpty().ifBlank { "커뮤니티 공감 응답이 올바르지 않습니다." })
                     )
 
                 Result.success(
@@ -179,7 +179,7 @@ class CommunityRepositoryImpl @Inject constructor(
                     )
                 )
             } else {
-                Result.failure(IllegalStateException(response.message.ifBlank { "커뮤니티 공감에 실패했습니다." }))
+                Result.failure(IllegalStateException(response.message.orEmpty().ifBlank { "커뮤니티 공감에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -196,7 +196,7 @@ class CommunityRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 Result.success(Unit)
             } else {
-                Result.failure(IllegalStateException(response.message.ifBlank { "커뮤니티 게시물 신고에 실패했습니다." }))
+                Result.failure(IllegalStateException(response.message.orEmpty().ifBlank { "커뮤니티 게시물 신고에 실패했습니다." }))
             }
         } catch (e: Exception) {
             Result.failure(e)
