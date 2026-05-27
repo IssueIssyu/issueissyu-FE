@@ -1,7 +1,6 @@
 package com.issueissyu.fe.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,14 +12,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,8 +24,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.issueissyu.fe.ui.theme.BrandColor
-import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
@@ -53,14 +44,8 @@ enum class IssueReliabilityStatus {
 }
 
 enum class IssueReliabilityType {
-    Pin,
-    Community,
-}
-
-enum class IssueReliabilityReasonDisplayMode {
-    Inline,
-    Modal,
-    Hidden,
+    PIN,
+    COMMUNITY
 }
 
 private data class IssueReliabilityStyle(
@@ -74,7 +59,7 @@ private data class IssueReliabilityStyle(
 )
 
 private fun IssueReliabilityType.toStyle(): IssueReliabilityStyle = when (this) {
-    IssueReliabilityType.Pin -> IssueReliabilityStyle(
+    IssueReliabilityType.PIN -> IssueReliabilityStyle(
         labelFontSize = 15.sp,
         barHeight = 10.dp,
         barWidth = 140.dp,
@@ -83,7 +68,7 @@ private fun IssueReliabilityType.toStyle(): IssueReliabilityStyle = when (this) 
         reasonLineHeight = 16.sp,
         reasonTopSpacing = 6.dp,
     )
-    IssueReliabilityType.Community -> IssueReliabilityStyle(
+    IssueReliabilityType.COMMUNITY -> IssueReliabilityStyle(
         labelFontSize = 10.sp,
         barHeight = 6.dp,
         barWidth = 100.dp,
@@ -105,10 +90,8 @@ fun IssueReliabilityIndicator(
     } else {
         IssueReliabilityStatus.COMPLETED
     },
-    reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD,
-    reasonDisplayMode: IssueReliabilityReasonDisplayMode = IssueReliabilityReasonDisplayMode.Inline,
+    reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD
 ) {
-    var isReasonDialogVisible by remember { mutableStateOf(false) }
     val style = type.toStyle()
     val displayScore = score?.coerceIn(0, 100)
     val displayText = when (status) {
@@ -126,29 +109,13 @@ fun IssueReliabilityIndicator(
         IssueReliabilityStatus.FAILED -> 0f
         IssueReliabilityStatus.PENDING -> null
     }
-    val showReason = when (status) {
-        IssueReliabilityStatus.COMPLETED -> displayScore != null &&
-            displayScore < reasonVisibleThreshold &&
-            !reason.isNullOrBlank()
-        IssueReliabilityStatus.FAILED,
-        IssueReliabilityStatus.PENDING -> false
-    }
-    val showInlineReason = showReason && reasonDisplayMode == IssueReliabilityReasonDisplayMode.Inline
-    val isModalReasonEnabled = showReason &&
-        status == IssueReliabilityStatus.COMPLETED &&
-        reasonDisplayMode == IssueReliabilityReasonDisplayMode.Modal
+    val showReason = status == IssueReliabilityStatus.COMPLETED &&
+        displayScore != null &&
+        displayScore < reasonVisibleThreshold &&
+        reason != null
 
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(modifier)
-            .then(
-                if (isModalReasonEnabled) {
-                    Modifier.clickable { isReasonDialogVisible = true }
-                } else {
-                    Modifier
-                },
-            ),
+        modifier = Modifier.fillMaxWidth().then(modifier),
         horizontalAlignment = Alignment.Start,
     ) {
         Column(modifier = Modifier.width(style.barWidth)) {
@@ -209,10 +176,10 @@ fun IssueReliabilityIndicator(
             }
         }
 
-        if (showInlineReason) {
+        if (showReason) {
             Spacer(modifier = Modifier.height(style.reasonTopSpacing))
             Text(
-                text = reason.orEmpty(),
+                text = reason,
                 modifier = Modifier.fillMaxWidth(),
                 style = IssueTypo.Regular12.copy(
                     color = Gray_6,
@@ -222,38 +189,6 @@ fun IssueReliabilityIndicator(
                 textAlign = TextAlign.Start,
             )
         }
-    }
-
-    if (isReasonDialogVisible) {
-        AlertDialog(
-            onDismissRequest = { isReasonDialogVisible = false },
-            title = {
-                Text(
-                    text = "AI 신뢰도",
-                    style = IssueTypo.Bold18.copy(color = Title),
-                )
-            },
-            text = {
-                Text(
-                    text = reason.orEmpty(),
-                    style = IssueTypo.Regular12.copy(
-                        color = Gray_6,
-                        fontSize = 14.sp,
-                    ),
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { isReasonDialogVisible = false }) {
-                    Text(
-                        text = "확인",
-                        style = IssueTypo.Bold12.copy(
-                            color = BrandColor,
-                            fontSize = 14.sp,
-                        ),
-                    )
-                }
-            },
-        )
     }
 }
 
@@ -272,7 +207,7 @@ private fun IssueReliabilityIndicatorPinHighPreview() {
     IssueReliabilityIndicator(
         score = 90,
         reason = null,
-        type = IssueReliabilityType.Pin,
+        type = IssueReliabilityType.PIN,
     )
 }
 
@@ -282,7 +217,7 @@ private fun IssueReliabilityIndicatorPinLowPreview() {
     IssueReliabilityIndicator(
         score = 20,
         reason = "출처가 불분명하며 허위 정보일 가능성이 있습니다.",
-        type = IssueReliabilityType.Pin,
+        type = IssueReliabilityType.PIN,
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -293,7 +228,7 @@ private fun IssueReliabilityIndicatorCommunityLoadingPreview() {
     IssueReliabilityIndicator(
         score = null,
         reason = null,
-        type = IssueReliabilityType.Community,
+        type = IssueReliabilityType.COMMUNITY,
     )
 }
 
@@ -304,7 +239,7 @@ private fun IssueReliabilityIndicatorPinFailedPreview() {
         score = 0,
         reason = "- 지금은 이 제보에 대한 AI 검토 결과를 불러오지 못했어요.\n- 잠시 후 다시 열어보세요.",
         status = IssueReliabilityStatus.FAILED,
-        type = IssueReliabilityType.Pin,
+        type = IssueReliabilityType.PIN,
         modifier = Modifier.fillMaxWidth(),
     )
 }
