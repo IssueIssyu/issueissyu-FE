@@ -2,6 +2,7 @@ package com.issueissyu.fe.data.repository
 
 import android.util.Log
 import com.issueissyu.fe.BuildConfig
+import com.issueissyu.fe.core.auth.SessionManager
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.dto.request.auth.LoginLinkRequest
@@ -27,6 +28,7 @@ import javax.inject.Singleton
 class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
     private val tokenManager: TokenManager,
+    private val sessionManager: SessionManager,
 ) : AuthRepository {
 
     companion object {
@@ -163,7 +165,10 @@ class AuthRepositoryImpl @Inject constructor(
                         isNewUser = result.isNew,
                         tempUuid = resolvedTempUuid,
                         loginSocialType = result.socialType.takeIf { it.isNotBlank() },
+                        userUuid = resolvedUuid,
+                        userName = resolvedUserName,
                     )
+                    sessionManager.markAuthenticated()
 
                     Result.success(
                         AuthUser(
@@ -257,7 +262,10 @@ class AuthRepositoryImpl @Inject constructor(
                         isNewUser = result.isNew,
                         tempUuid = resolvedTempUuid,
                         loginSocialType = result.socialType.takeIf { it.isNotBlank() },
+                        userUuid = resolvedUuid,
+                        userName = resolvedUserName,
                     )
+                    sessionManager.markAuthenticated()
 
                     val authUser = AuthUser(
                         uuid = resolvedUuid,
@@ -323,6 +331,7 @@ class AuthRepositoryImpl @Inject constructor(
                         accessToken = result.accessToken,
                         refreshToken = result.refreshToken,
                     )
+                    sessionManager.markAuthenticated()
                     Result.success(Unit)
                 }
 
@@ -339,6 +348,7 @@ class AuthRepositoryImpl @Inject constructor(
                             accessToken = response.result.accessToken,
                             refreshToken = response.result.refreshToken,
                         )
+                        sessionManager.markAuthenticated()
                         Result.success(Unit)
                     } else {
                         val msg = response.message.ifBlank { "토큰 재발급에 실패했습니다." }
@@ -357,7 +367,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun logout(): Result<Unit> {
         return try {
             val response = runCatching { authApi.logout() }.getOrNull()
-            tokenManager.clearTokens()
+            sessionManager.clearSession()
             when (response?.code) {
                 "LOGOUT_200",
                 "LOGOUT_401",
@@ -371,7 +381,7 @@ class AuthRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            tokenManager.clearTokens()
+            sessionManager.clearSession()
             Result.success(Unit)
         }
     }
@@ -582,12 +592,14 @@ class AuthRepositoryImpl @Inject constructor(
                             response.message.ifBlank { "로그인 연동 응답이 올바르지 않습니다." },
                         ),
                     )
-                result.uuid?.takeIf { it.isNotBlank() }
+                val resolvedUuid = result.uuid?.takeIf { it.isNotBlank() }
                     ?: return Result.failure(
                         Exception(
                             response.message.ifBlank { "연동 응답(uuid)이 올바르지 않습니다." },
                         ),
                     )
+                tokenManager.saveCurrentUser(userUuid = resolvedUuid)
+                sessionManager.markAuthenticated()
                 // 연동 직후에는 로그아웃·로그인 화면으로만 갈 것 — isNew/토큰 재저장으로 스플래시·다른 화면이 메인으로 튀는 레이스 방지
                 tokenManager.clearTempUuid()
                 return Result.success(Unit)
@@ -640,6 +652,12 @@ class AuthRepositoryImpl @Inject constructor(
                                 response.message.ifBlank { "온보딩 응답이 올바르지 않습니다." },
                             ),
                         )
+                    tokenManager.saveCurrentUser(
+                        userUuid = r.uuid,
+                        userName = nickname,
+                    )
+                    sessionManager.markAuthenticated()
+                    tokenManager.clearTempUuid()
                     Result.success(r.toDomain())
                 }
                 "ONBOAREDING_400" ->
@@ -649,6 +667,12 @@ class AuthRepositoryImpl @Inject constructor(
                 else -> {
                     val result = response.result
                     if (response.isSuccess && result != null) {
+                        tokenManager.saveCurrentUser(
+                            userUuid = result.uuid,
+                            userName = nickname,
+                        )
+                        sessionManager.markAuthenticated()
+                        tokenManager.clearTempUuid()
                         Result.success(result.toDomain())
                     } else {
                         Result.failure(

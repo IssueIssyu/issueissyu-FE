@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.core.text.decodePinContentNewlines
 import com.issueissyu.fe.data.remote.api.MapApi
 import com.issueissyu.fe.data.remote.dto.response.map.MapNoticeItemResponse
 import com.issueissyu.fe.data.remote.dto.response.map.MapPinCardResponse
@@ -139,7 +140,7 @@ class MapRepositoryImpl @Inject constructor(
         return Pin(
             id = pinId?.toString().orEmpty(),
             title = pinTitle.orEmpty(),
-            description = pinContent.orEmpty(),
+            description = pinContent.orEmpty().decodePinContentNewlines(),
             coordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
             address = pinDetailAddress.orEmpty(),
             locationName = pinDetailAddress,

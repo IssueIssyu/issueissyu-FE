@@ -35,6 +35,12 @@ object IssueTypo {
         fontSize = 30.sp
     )
 
+    val ExtraBold18 = TextStyle(
+        fontFamily = suiteFontFamily,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 18.sp,
+    )
+
     val ExtraBold15 = TextStyle(
     fontFamily = suiteFontFamily,
     fontWeight = FontWeight.ExtraBold,
@@ -81,5 +87,11 @@ object IssueTypo {
     fontFamily = suiteFontFamily,
     fontWeight = FontWeight.Normal,
     fontSize = 12.sp
+    )
+
+    val Medium15 = TextStyle(
+        fontFamily = suiteFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 15.sp
     )
 }

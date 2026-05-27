@@ -2,10 +2,12 @@ package com.issueissyu.fe.data.local
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Base64
 
 //암호화 라이브러리 - deprecated 경고
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import org.json.JSONObject
 
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -35,6 +37,8 @@ class TokenManager @Inject constructor(
         isNewUser: Boolean? = null,
         tempUuid: String? = null,
         loginSocialType: String? = null,
+        userUuid: String? = null,
+        userName: String? = null,
     ) {
         sharedPreferences.edit().apply {
             putString(KEY_ACCESS_TOKEN, accessToken)
@@ -47,6 +51,12 @@ class TokenManager @Inject constructor(
             }
             if (!loginSocialType.isNullOrBlank()) {
                 putString(KEY_LOGIN_SOCIAL_TYPE, loginSocialType)
+            }
+            if (!userUuid.isNullOrBlank()) {
+                putString(KEY_USER_UUID, userUuid)
+            }
+            if (!userName.isNullOrBlank()) {
+                putString(KEY_USER_NAME, userName)
             }
             apply()
         }
@@ -72,6 +82,42 @@ class TokenManager @Inject constructor(
     fun getLoginSocialType(): String? =
         sharedPreferences.getString(KEY_LOGIN_SOCIAL_TYPE, null)
 
+    fun saveCurrentUser(
+        userUuid: String,
+        userName: String? = null,
+    ) {
+        sharedPreferences.edit().apply {
+            putString(KEY_USER_UUID, userUuid)
+            if (!userName.isNullOrBlank()) {
+                putString(KEY_USER_NAME, userName)
+            }
+            apply()
+        }
+    }
+
+    fun getCurrentUserUuid(): String? {
+        val savedUuid = sharedPreferences.getString(KEY_USER_UUID, null)
+            ?.takeIf { it.isNotBlank() }
+        if (savedUuid != null) return savedUuid
+
+        val tokenUuid = extractUserUuidFromAccessToken()
+        if (!tokenUuid.isNullOrBlank()) {
+            saveCurrentUser(userUuid = tokenUuid)
+        }
+        return tokenUuid
+    }
+
+    fun getCurrentUserName(): String? =
+        sharedPreferences.getString(KEY_USER_NAME, null)
+
+    fun clearCurrentUser() {
+        sharedPreferences.edit().apply {
+            remove(KEY_USER_UUID)
+            remove(KEY_USER_NAME)
+            apply()
+        }
+    }
+
     fun clearTokens() {
         sharedPreferences.edit().apply {
             remove(KEY_ACCESS_TOKEN)
@@ -79,6 +125,8 @@ class TokenManager @Inject constructor(
             remove(KEY_IS_NEW_USER)
             remove(KEY_TEMP_UUID)
             remove(KEY_LOGIN_SOCIAL_TYPE)
+            remove(KEY_USER_UUID)
+            remove(KEY_USER_NAME)
             apply()
         }
     }
@@ -96,6 +144,23 @@ class TokenManager @Inject constructor(
         return getAccessToken() != null && getRefreshToken() != null
     }
 
+    private fun extractUserUuidFromAccessToken(): String? {
+        val token = getAccessToken()?.takeIf { it.isNotBlank() } ?: return null
+        val payload = token.split(".").getOrNull(1) ?: return null
+        return runCatching {
+            val normalizedPayload = payload.padEnd(((payload.length + 3) / 4) * 4, '=')
+            val decodedBytes = Base64.decode(
+                normalizedPayload,
+                Base64.URL_SAFE or Base64.NO_WRAP
+            )
+            val json = JSONObject(String(decodedBytes, Charsets.UTF_8))
+            listOf("uuid", "userUuid", "sub")
+                .firstNotNullOfOrNull { key ->
+                    json.optString(key).takeIf { it.isNotBlank() }
+                }
+        }.getOrNull()
+    }
+
     companion object {
         private const val PREFS_NAME = "auth_prefs"
         private const val KEY_ACCESS_TOKEN = "access_token"
@@ -103,5 +168,7 @@ class TokenManager @Inject constructor(
         private const val KEY_IS_NEW_USER = "is_new_user"
         private const val KEY_TEMP_UUID = "temp_uuid"
         private const val KEY_LOGIN_SOCIAL_TYPE = "login_social_type"
+        private const val KEY_USER_UUID = "user_uuid"
+        private const val KEY_USER_NAME = "user_name"
     }
 }

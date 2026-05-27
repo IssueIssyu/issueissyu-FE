@@ -32,8 +32,8 @@ android {
         applicationId = "com.issueissyu.fe"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 4
+        versionName = "1.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -58,6 +58,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -131,4 +132,6 @@ dependencies {
     implementation(libs.firebase.messaging)
 
     implementation(libs.androidx.security.crypto)
+
+    implementation(libs.play.billing.ktx)
 }

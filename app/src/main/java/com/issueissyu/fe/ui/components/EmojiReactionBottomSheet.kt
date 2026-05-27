@@ -27,6 +27,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -35,10 +36,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -51,13 +54,15 @@ import com.issueissyu.fe.ui.theme.White
 @Composable
 fun EmojiReactionBottomSheet(
     candidates: List<PinEmojiCandidate>,
-    selectedEmojiId: Int?,
+    selectedEmojiId: Long?,
     isLoading: Boolean,
     isSubmitting: Boolean,
     errorMessage: String?,
     onDismiss: () -> Unit,
-    onEmojiClick: (Int) -> Unit,
+    onEmojiClick: (Long) -> Unit,
     onApplyClick: () -> Unit,
+    allowLockedEmojiSelection: Boolean = false,
+    allowApplyWithoutSelection: Boolean = false,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -82,20 +87,24 @@ fun EmojiReactionBottomSheet(
             onDismiss = onDismiss,
             onEmojiClick = onEmojiClick,
             onApplyClick = onApplyClick,
+            allowLockedEmojiSelection = allowLockedEmojiSelection,
+            allowApplyWithoutSelection = allowApplyWithoutSelection,
         )
     }
 }
 
 @Composable
-private fun EmojiReactionBottomSheetContent(
+fun EmojiReactionBottomSheetContent(
     candidates: List<PinEmojiCandidate>,
-    selectedEmojiId: Int?,
+    selectedEmojiId: Long?,
     isLoading: Boolean,
     isSubmitting: Boolean,
     errorMessage: String?,
     onDismiss: () -> Unit,
-    onEmojiClick: (Int) -> Unit,
+    onEmojiClick: (Long) -> Unit,
     onApplyClick: () -> Unit,
+    allowLockedEmojiSelection: Boolean,
+    allowApplyWithoutSelection: Boolean = false,
 ) {
     Column(
         modifier = Modifier
@@ -155,6 +164,7 @@ private fun EmojiReactionBottomSheetContent(
                         EmojiCandidateButton(
                             candidate = candidate,
                             isSelected = candidate.emojiId == selectedEmojiId,
+                            allowLockedEmojiSelection = allowLockedEmojiSelection,
                             onClick = { onEmojiClick(candidate.emojiId) }
                         )
                     }
@@ -191,7 +201,9 @@ private fun EmojiReactionBottomSheetContent(
                 modifier = Modifier
                     .weight(1f)
                     .height(52.dp),
-                enabled = selectedEmojiId != null && !isLoading && !isSubmitting,
+                enabled = (selectedEmojiId != null || allowApplyWithoutSelection) &&
+                    !isLoading &&
+                    !isSubmitting,
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = BrandColor,
@@ -201,7 +213,11 @@ private fun EmojiReactionBottomSheetContent(
                 )
             ) {
                 Text(
-                    text = if (isSubmitting) "등록 중" else "반응 남기기",
+                    text = when {
+                        isSubmitting -> "등록 중"
+                        selectedEmojiId == null && allowApplyWithoutSelection -> "반응 취소"
+                        else -> "반응 남기기"
+                    },
                     style = IssueTypo.Bold12.copy(color = White)
                 )
             }
@@ -213,24 +229,27 @@ private fun EmojiReactionBottomSheetContent(
 private fun EmojiCandidateButton(
     candidate: PinEmojiCandidate,
     isSelected: Boolean,
+    allowLockedEmojiSelection: Boolean,
     onClick: () -> Unit,
 ) {
+    val canTap = allowLockedEmojiSelection || candidate.canReact
     Box(
-        modifier = Modifier.size(44.dp),
+        modifier = Modifier.size(52.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
-                .size(38.dp)
-                .clip(CircleShape)
-                .background(if (isSelected) BrandColor.copy(alpha = 0.12f) else Color.Transparent)
+                .size(52.dp)
+                .background(
+                    shape = RoundedCornerShape(10.dp),
+                    color = if (isSelected) BrandColor.copy(alpha = 0.12f) else Color.Transparent)
                 .border(
                     width = if (isSelected) 1.dp else 0.dp,
                     color = if (isSelected) BrandColor else Color.Transparent,
-                    shape = CircleShape
+                    shape = RoundedCornerShape(10.dp)
                 )
-                .clickable(enabled = candidate.canReact) { onClick() }
-                .alpha(if (candidate.canReact) 1f else 0.42f)
+                .clickable(enabled = canTap) { onClick() }
+                .alpha(if (canTap) 1f else 0.42f)
                 .padding(5.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -238,7 +257,9 @@ private fun EmojiCandidateButton(
                 model = candidate.emojiImageUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(10.dp))
             )
         }
 
@@ -259,5 +280,106 @@ private fun EmojiCandidateButton(
                 )
             }
         }
+    }
+}
+
+private fun previewEmojiCandidates(): List<PinEmojiCandidate> = listOf(
+    PinEmojiCandidate(1L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f525.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(2L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2764.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(3L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f44f.png", isDefault = true, isOwned = false, productId = "p1"),
+    PinEmojiCandidate(4L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f602.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(5L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f622.png", isDefault = false, isOwned = false, productId = "p2"),
+    PinEmojiCandidate(6L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f389.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(7L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f60e.png", isDefault = true, isOwned = true, productId = null),
+    PinEmojiCandidate(8L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f44d.png", isDefault = false, isOwned = true, productId = null),
+    PinEmojiCandidate(9L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/2728.png", isDefault = true, isOwned = false, productId = "p3"),
+    PinEmojiCandidate(10L, "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f64f.png", isDefault = true, isOwned = true, productId = null),
+)
+
+@Composable
+private fun EmojiReactionBottomSheetPreviewSurface(
+    content: @Composable () -> Unit,
+) {
+    IssueissyuTheme {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = White,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        ) {
+            content()
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "이모지 바텀시트 · 기본", heightDp = 480)
+@Composable
+private fun EmojiReactionBottomSheetPreview_Default() {
+    EmojiReactionBottomSheetPreviewSurface {
+        EmojiReactionBottomSheetContent(
+            candidates = previewEmojiCandidates(),
+            selectedEmojiId = 2L,
+            isLoading = false,
+            isSubmitting = false,
+            errorMessage = null,
+            onDismiss = {},
+            onEmojiClick = {},
+            onApplyClick = {},
+            allowLockedEmojiSelection = false,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "이모지 바텀시트 · 로딩", heightDp = 480)
+@Composable
+private fun EmojiReactionBottomSheetPreview_Loading() {
+    EmojiReactionBottomSheetPreviewSurface {
+        EmojiReactionBottomSheetContent(
+            candidates = emptyList(),
+            selectedEmojiId = null,
+            isLoading = true,
+            isSubmitting = false,
+            errorMessage = null,
+            onDismiss = {},
+            onEmojiClick = {},
+            onApplyClick = {},
+            allowLockedEmojiSelection = false,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "이모지 바텀시트 · 오류", heightDp = 480)
+@Composable
+private fun EmojiReactionBottomSheetPreview_Error() {
+    EmojiReactionBottomSheetPreviewSurface {
+        EmojiReactionBottomSheetContent(
+            candidates = emptyList(),
+            selectedEmojiId = null,
+            isLoading = false,
+            isSubmitting = false,
+            errorMessage = "이모지 목록을 불러오지 못했습니다.",
+            onDismiss = {},
+            onEmojiClick = {},
+            onApplyClick = {},
+            allowLockedEmojiSelection = false,
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "이모지 바텀시트 · 반응 취소", heightDp = 480)
+@Composable
+private fun EmojiReactionBottomSheetPreview_ClearReaction() {
+    EmojiReactionBottomSheetPreviewSurface {
+        EmojiReactionBottomSheetContent(
+            candidates = previewEmojiCandidates(),
+            selectedEmojiId = null,
+            isLoading = false,
+            isSubmitting = false,
+            errorMessage = null,
+            onDismiss = {},
+            onEmojiClick = {},
+            onApplyClick = {},
+            allowLockedEmojiSelection = false,
+            allowApplyWithoutSelection = true,
+        )
     }
 }

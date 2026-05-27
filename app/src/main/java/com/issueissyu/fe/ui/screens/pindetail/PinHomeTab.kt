@@ -38,12 +38,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
-import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
+import com.issueissyu.fe.core.time.formatPinHomeCreatedAt
+import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.detailDisplayProfile
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
+import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.domain.model.pin.canEditBy
-import com.issueissyu.fe.data.sample.PinSamples
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_6
@@ -54,56 +57,50 @@ import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-
 @Composable
 fun PinHomeTab(
     pin: Pin,
-    currentUserId: String,
     onReportClick: (String) -> Unit,
     onEditClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
     onCommunityClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    isDeleting: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
-    val writer = when (val detail = pin.detail) {
-        is IssuePinDetail -> detail.writer
-        is CommunicationPinDetail -> detail.writer
-        else -> null
-    }
-    val isAuthor = writer?.id == currentUserId
-    val canEdit = pin.canEditBy(currentUserId)
+    val displayProfile = pin.detailDisplayProfile()
+    val canEdit = pin.canEditBy()
     val issueDetail = pin.detail as? IssuePinDetail
+    val shopDetail = pin.detail as? ShopPinDetail
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp)) {
             if (issueDetail != null) {
-                ResolutionStatusBadge(resolutionStatus = issueDetail.resolutionStatus)
+                ResolutionStatusBadge(
+                    resolutionStatus = issueDetail.resolutionStatus,
+                )
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = pin.title,
                     style = IssueTypo.Bold18.copy(color = Title),
                     fontSize = 22.sp,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // TODO: 공통 EditButton과 통합 검토 (작성자+수정 불가에서 삭제만 노출하는 케이스 미지원)
                 PinDetailActionButtons(
-                    isAuthor = isAuthor,
+                    isAuthor = pin.isMine == true,
                     canEdit = canEdit,
+                    isReported = pin.isReported,
+                    isDeleting = isDeleting,
                     onReportClick = { onReportClick(pin.id) },
                     onEditClick = { onEditClick(pin.id) },
-                    onDeleteClick = { onDeleteClick(pin.id) }
+                    onDeleteClick = { onDeleteClick(pin.id) },
                 )
             }
 
@@ -113,44 +110,46 @@ fun PinHomeTab(
                 text = pin.locationName?.takeIf { it.isNotBlank() } ?: pin.address,
                 style = IssueTypo.Regular15.copy(color = Gray_7),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
             )
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
                 text = listOf(
-                    formatCreatedAt(pin.createdAt),
+                    formatPinHomeCreatedAt(pin.createdAt),
                     "조회 ${pin.viewCount}",
-                    "공감 ${pin.sympathyCount}"
+                    "공감 ${pin.sympathyCount}",
                 ).joinToString(" · "),
-                style = IssueTypo.Regular12.copy(color = Gray_6)
+                style = IssueTypo.Regular12.copy(color = Gray_6),
             )
 
-            if (writer != null || pin.communityPostId != null) {
+            if (displayProfile != null || pin.communityPostId != null) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (writer != null) {
-                        WriterAvatar(imageUrl = writer.imageUrl)
+                    if (displayProfile != null) {
+                        ProfileImageFrame(
+                            size = 35.dp,
+                            imageUrl = displayProfile.imageUrl,
+                            contentDescription = "핀 프로필"
+                        )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = writer.name,
+                            text = displayProfile.nickname,
                             style = IssueTypo.Bold12.copy(color = Title),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     } else {
                         Spacer(modifier = Modifier.weight(1f))
                     }
 
                     if (pin.communityPostId != null) {
-                        CommunityChip(
-                            onClick = { onCommunityClick(pin.communityPostId) }
-                        )
+                        CommunityChip(onClick = { onCommunityClick(pin.communityPostId) })
                     }
                 }
             }
@@ -162,27 +161,32 @@ fun PinHomeTab(
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 28.dp, vertical = 16.dp)
+                .padding(horizontal = 28.dp, vertical = 16.dp),
         ) {
+            shopDetail?.currentNews?.takeIf { it.isNotBlank() }?.let { discount ->
+                PinHomeDiscountBanner(text = discount)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
             Text(
                 text = pin.description,
                 style = IssueTypo.Regular15.copy(color = TextColor),
-                lineHeight = 22.sp
+                lineHeight = 22.sp,
             )
 
             if (pin.imageUrls.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    pin.imageUrls.forEach { url ->
+                    pin.imageUrls.forEach { imageUrl ->
                         AsyncImage(
-                            model = url,
+                            model = imageUrl,
                             contentDescription = "핀 이미지",
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 200.dp, max = 320.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Gray_3),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
                         )
                     }
                 }
@@ -194,8 +198,45 @@ fun PinHomeTab(
 }
 
 @Composable
+private fun PinHomeDiscountBanner(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(White)
+            .border(width = 1.dp, color = Orange, shape = shape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(CircleShape)
+                .background(Orange),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "%",
+                style = IssueTypo.Bold12.copy(color = White),
+            )
+        }
+        Text(
+            text = text,
+            style = IssueTypo.Bold12.copy(color = Title),
+            modifier = Modifier.weight(1f),
+            maxLines = 2,
+        )
+    }
+}
+
+@Composable
 private fun ResolutionStatusBadge(
-    resolutionStatus: ResolutionStatus
+    resolutionStatus: ResolutionStatus,
 ) {
     val (label, backgroundColor) = when (resolutionStatus) {
         ResolutionStatus.BEFORE_RESOLUTION -> "해결 전" to Title
@@ -208,7 +249,7 @@ private fun ResolutionStatusBadge(
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
             .background(backgroundColor)
-            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .padding(horizontal = 10.dp, vertical = 5.dp),
     )
 }
 
@@ -216,6 +257,8 @@ private fun ResolutionStatusBadge(
 private fun PinDetailActionButtons(
     isAuthor: Boolean,
     canEdit: Boolean,
+    isReported: Boolean,
+    isDeleting: Boolean = false,
     onReportClick: () -> Unit,
     onEditClick: () -> Unit,
     onDeleteClick: () -> Unit,
@@ -223,7 +266,7 @@ private fun PinDetailActionButtons(
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (isAuthor) {
             if (canEdit) {
@@ -234,11 +277,11 @@ private fun PinDetailActionButtons(
                     iconTint = Gray_6
                 )
             }
-            // TODO: 삭제 가능 조건은 서버 정책 확정 후 canDeleteBy 또는 권한 응답값으로 분리
             CircleActionIcon(
                 iconRes = R.drawable.ic_delete,
                 contentDescription = "삭제",
                 onClick = onDeleteClick,
+                enabled = !isDeleting,
                 iconTint = Gray_6
             )
         } else {
@@ -246,7 +289,8 @@ private fun PinDetailActionButtons(
                 iconRes = R.drawable.ic_report,
                 contentDescription = "신고",
                 onClick = onReportClick,
-                iconTint = Orange
+                enabled = !isReported,
+                iconTint = if (isReported) Gray_6 else Orange,
             )
         }
     }
@@ -260,7 +304,8 @@ private fun CircleActionIcon(
     modifier: Modifier = Modifier,
     size: Dp = 36.dp,
     iconTint: Color? = null,
-    containerColor: Color = White
+    containerColor: Color = White,
+    enabled: Boolean = true
 ) {
     Box(
         modifier = modifier
@@ -274,7 +319,7 @@ private fun CircleActionIcon(
             .clip(CircleShape)
             .background(containerColor)
             .border(width = 1.dp, color = Gray_3, shape = CircleShape)
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -282,28 +327,6 @@ private fun CircleActionIcon(
             contentDescription = contentDescription,
             modifier = Modifier.size(size * 0.5f),
             colorFilter = iconTint?.let { ColorFilter.tint(it) }
-        )
-    }
-}
-
-@Composable
-private fun WriterAvatar(
-    imageUrl: String?,
-    modifier: Modifier = Modifier
-) {
-    val avatarModifier = modifier
-        .size(36.dp)
-        .clip(CircleShape)
-        .background(Gray_3)
-
-    if (imageUrl.isNullOrBlank()) {
-        Box(modifier = avatarModifier)
-    } else {
-        AsyncImage(
-            model = imageUrl,
-            contentDescription = "작성자 프로필",
-            modifier = avatarModifier,
-            contentScale = ContentScale.Crop
         )
     }
 }
@@ -328,26 +351,16 @@ private fun CommunityChip(
     }
 }
 
-private fun formatCreatedAt(raw: String): String {
-    val pattern = DateTimeFormatter.ofPattern("MM.dd HH:mm")
-    return runCatching {
-        OffsetDateTime.parse(raw).format(pattern)
-    }.getOrElse {
-        runCatching {
-            Instant.parse(raw)
-                .atZone(ZoneId.systemDefault())
-                .format(pattern)
-        }.getOrDefault(raw)
-    }
-}
-
 @Preview(name = "Issue · 다른 사용자", showBackground = true, heightDp = 800)
 @Composable
 private fun PinHomeTabPreview_IssueOtherUser() {
     IssueissyuTheme {
         PinHomeTab(
-            pin = PinSamples.findById(PinSamples.IssuePinId),
-            currentUserId = PinSamples.user2.id,
+            pin = PinSamples.findById(PinSamples.IssuePinId).copy(
+                author = PinSamples.user1,
+                isMine = false,
+                isReported = false,
+            ),
             onReportClick = {},
             onEditClick = {},
             onDeleteClick = {},
@@ -361,8 +374,10 @@ private fun PinHomeTabPreview_IssueOtherUser() {
 private fun PinHomeTabPreview_IssueAuthor() {
     IssueissyuTheme {
         PinHomeTab(
-            pin = PinSamples.findById(PinSamples.IssuePinId),
-            currentUserId = PinSamples.user1.id,
+            pin = PinSamples.findById(PinSamples.IssuePinId).copy(
+                author = PinSamples.user1,
+                isMine = true,
+            ),
             onReportClick = {},
             onEditClick = {},
             onDeleteClick = {},
@@ -376,8 +391,9 @@ private fun PinHomeTabPreview_IssueAuthor() {
 private fun PinHomeTabPreview_CommunicationWithCommunity() {
     IssueissyuTheme {
         PinHomeTab(
-            pin = PinSamples.findById(PinSamples.CommunicationPinId),
-            currentUserId = PinSamples.user2.id,
+            pin = PinSamples.findById(PinSamples.CommunicationPinId).copy(
+                author = PinSamples.user1,
+            ),
             onReportClick = {},
             onEditClick = {},
             onDeleteClick = {},
@@ -392,7 +408,6 @@ private fun PinHomeTabPreview_Shop() {
     IssueissyuTheme {
         PinHomeTab(
             pin = PinSamples.findById(PinSamples.ShopPinId),
-            currentUserId = PinSamples.user2.id,
             onReportClick = {},
             onEditClick = {},
             onDeleteClick = {},

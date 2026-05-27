@@ -27,14 +27,21 @@ data class PinEmojiReaction(
     val emojiImageUrl: String? = null
 )
 
+// 핀 상세 홈 - 이미지
+data class PinImageRef(
+    val pinImageId: Long,
+    val imageUrl: String,
+    val isMain: Boolean,
+)
+
 // 이모지 조회
 data class PinEmojis(
-    val selectedEmojiId: Int?,
+    val selectedEmojiId: Long?,
     val emojis: List<PinEmoji>,
 )
 
 data class PinEmoji(
-    val emojiId: Int,
+    val emojiId: Long,
     val emojiImageUrl: String,
     val count: Int,
     val isDefault: Boolean,
@@ -43,7 +50,7 @@ data class PinEmoji(
 )
 
 data class PinEmojiCandidate(
-    val emojiId: Int,
+    val emojiId: Long,
     val emojiImageUrl: String,
     val isDefault: Boolean,
     val isOwned: Boolean,
@@ -59,6 +66,119 @@ data class PinLike(
     val isLike: Boolean,
 )
 
+//핀 상세 포스트 - 댓글
+data class PinComment(
+    val commentId: Long,
+    val nickname: String,
+    val profileImageUrl: String?,
+    val content: String,
+    val edited: Boolean,
+    val createdAt: String,
+    val isMine: Boolean,
+)
+
+//핀 상세 포스트
+data class PinDetailDisplayProfile(
+    val imageUrl: String?,
+    val nickname: String,
+)
+
+data class PinPostSympathyContent(
+    val pinId: Long,
+    val pinType: PinCategory,
+    val pinTitle: String,
+    val sympathyCount: Int,
+    val isSympathizedByMe: Boolean,
+    val writer: PinUser?,
+    val discount: String? = null,
+    val storeImageUrl: String? = null,
+    val mainPinImageUrl: String? = null,
+) {
+    fun detailDisplayProfile(): PinDetailDisplayProfile = when (pinType) {
+        PinCategory.ISSUE, PinCategory.COMMUNICATION, PinCategory.FESTIVAL -> PinDetailDisplayProfile(
+            imageUrl = writer?.imageUrl?.takeIf { it.isNotBlank() },
+            nickname = writer?.name?.takeIf { it.isNotBlank() } ?: "알 수 없음",
+        )
+        PinCategory.SHOP -> PinDetailDisplayProfile(
+            imageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
+            nickname = pinTitle,
+        )
+    }
+}
+
+fun Pin.detailDisplayProfile(): PinDetailDisplayProfile? {
+    return when (category) {
+        PinCategory.ISSUE, PinCategory.COMMUNICATION -> {
+            val user = author ?: (detail as? AuthoredPinDetail)?.writer ?: return null
+            if (user.name.isBlank() && user.imageUrl.isNullOrBlank()) return null
+            PinDetailDisplayProfile(
+                imageUrl = user.imageUrl?.takeIf { it.isNotBlank() },
+                nickname = user.name.takeIf { it.isNotBlank() } ?: "알 수 없음",
+            )
+        }
+        PinCategory.FESTIVAL -> {
+            val user = author ?: return null
+            if (user.name.isBlank() && user.imageUrl.isNullOrBlank()) return null
+            PinDetailDisplayProfile(
+                imageUrl = user.imageUrl?.takeIf { it.isNotBlank() },
+                nickname = user.name.takeIf { it.isNotBlank() } ?: "알 수 없음",
+            )
+        }
+        PinCategory.SHOP -> PinDetailDisplayProfile(
+            imageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
+            nickname = title,
+        )
+    }
+}
+
+
+fun Pin.toPostSympathyContent(): PinPostSympathyContent {
+    val numericPinId = id.toLongOrNull() ?: 0L
+    val writer = when (category) {
+        PinCategory.ISSUE, PinCategory.COMMUNICATION -> when (val detail = detail) {
+            is AuthoredPinDetail -> detail.writer
+            else -> author
+        }
+        PinCategory.FESTIVAL -> author
+        PinCategory.SHOP -> null
+    }
+    val storeImage = storeImageUrl?.takeIf { it.isNotBlank() }
+        ?: if (category == PinCategory.SHOP) {
+            imageUrls.lastOrNull()?.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
+    return PinPostSympathyContent(
+        pinId = numericPinId,
+        pinType = category,
+        pinTitle = title,
+        sympathyCount = sympathyCount,
+        isSympathizedByMe = isSympathizedByMe,
+        writer = writer,
+        discount = (detail as? ShopPinDetail)?.currentNews?.takeIf { it.isNotBlank() },
+        storeImageUrl = storeImage,
+        mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() },
+    )
+}
+
+/** POST API 값이 비어 있을 때 홈 데이터로 보완 (레이아웃은 홈 pinType 기준) */
+fun PinPostSympathyContent.withHomeFallback(
+    fallback: PinPostSympathyContent,
+    layoutCategory: PinCategory,
+): PinPostSympathyContent = copy(
+    pinType = layoutCategory,
+    pinTitle = pinTitle.ifBlank { fallback.pinTitle },
+    discount = discount?.takeIf { it.isNotBlank() } ?: fallback.discount,
+    storeImageUrl = storeImageUrl?.takeIf { it.isNotBlank() } ?: fallback.storeImageUrl,
+    mainPinImageUrl = mainPinImageUrl?.takeIf { it.isNotBlank() } ?: fallback.mainPinImageUrl,
+    writer = when (layoutCategory) {
+        PinCategory.ISSUE, PinCategory.COMMUNICATION, PinCategory.FESTIVAL -> writer?.takeIf { w ->
+            !w.imageUrl.isNullOrBlank() || w.name.isNotBlank()
+        } ?: fallback.writer
+        PinCategory.SHOP -> null
+    },
+)
+
 sealed interface PinDetail {
     val category: PinCategory
 }
@@ -71,6 +191,7 @@ sealed interface AuthoredPinDetail : PinDetail {
 // 시민해결사 한 명의 참여 단위.
 // TODO: 서버 명세 확정 후 필드 타입(시간 포맷 등) 정합성 재검토 필요.
 data class IssueResolverParticipation(
+    val problemSolverId: Long? = null,
     val user: PinUser,
     val joinedAt: String,
     val proofImageUrls: List<String> = emptyList(),
@@ -79,9 +200,66 @@ data class IssueResolverParticipation(
     val confirmedAt: String? = null
 )
 
+//해결하기
+data class PinSolveInfo(
+    val isPetitioned: Boolean,
+    val userProblemSolverId: Long? = null,
+    val userProblemSolveState: String? = null,
+) {
+    val isProblemSolver: Boolean
+        get() = userProblemSolverId != null
+}
+
+data class ProblemSolverInfo(
+    val isGoNow: Boolean,
+    val problemSolvers: List<ProblemSolverParticipantInfo> = emptyList(),
+)
+
+data class ProblemSolverParticipantInfo(
+    val problemSolverId: Long,
+    val problemSolveState: String,
+    val problemSolverImageUrl: String?,
+    val nickname: String,
+    val createdAt: String,
+    val profileUrl: String?,
+    val checkAction: String?,
+)
+
+data class ProblemSolverJoinInfo(
+    val pinId: Long,
+    val problemSolverId: Long,
+    val problemSolveState: String,
+)
+
+data class ProblemSolverPhotoInfo(
+    val photoId: Long,
+    val photoUrl: String,
+    val problemSolveState: String,
+)
+
+data class ProblemSolverVerificationInfo(
+    val problemSolveState: String,
+)
+
+data class PetitionStatusInfo(
+    val pinId: Long,
+    val petitionCount: Int,
+    val isPetitioned: Boolean,
+    val targetPetitionCount: Int,
+)
+
+data class PetitionJoinInfo(
+    val pinId: Long,
+    val petitionCount: Int,
+    val isPetitioned: Boolean,
+)
+
 data class IssuePinDetail(
     override val writer: PinUser,
     val resolutionStatus: ResolutionStatus = ResolutionStatus.BEFORE_RESOLUTION,
+    val isProblemSolverByMe: Boolean = false,
+    val myProblemSolverId: Long? = null,
+    val myProblemSolveState: String? = null,
     // 지금가요를 누른 시민해결사 전체 목록.
     // TODO: 서버 응답 구조 확정 시 필요한 필드(예: 페이지네이션 등) 보강.
     val resolverParticipations: List<IssueResolverParticipation> = emptyList(),
@@ -130,12 +308,18 @@ data class Pin(
     val neighborhoodId: String? = null,
     val neighborhoodName: String? = null,
     val imageUrls: List<String> = emptyList(),
+    val imageAttachments: List<PinImageRef> = emptyList(),
     val viewCount: Int = 0,
     val sympathyCount: Int = 0,
     val isSympathizedByMe: Boolean = false,
     val isMine: Boolean? = null,
     val emojiReactions: List<PinEmojiReaction> = emptyList(),
     val communityPostId: String? = null,
+    val author: PinUser? = null,
+    val storeImageUrl: String? = null,
+    val mainPinImageUrl: String? = null,
+    val isReported: Boolean = false,
+    val isUpdated: Boolean = false,
     val createdAt: String,
     val updatedAt: String? = null,
     val detail: PinDetail
@@ -167,9 +351,7 @@ data class UpdatePinRequest(
     val imageUrls: List<String> = emptyList()
 )
 
-fun Pin.canEditBy(userId: String): Boolean {
+fun Pin.canEditBy(userId: String? = null): Boolean {
     if (communityPostId != null) return false
-    isMine?.let { return it }
-
-    return (detail as? AuthoredPinDetail)?.writer?.id == userId
+    return isMine==true
 }

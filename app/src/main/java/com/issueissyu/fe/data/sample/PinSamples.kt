@@ -100,11 +100,13 @@ internal object PinSamples {
                 resolutionStatus = ResolutionStatus.IN_PROGRESS,
                 resolverParticipations = listOf(
                     IssueResolverParticipation(
+                        problemSolverId = 31L,
                         user = user1,
                         joinedAt = "2023-04-14T17:00:00Z",
                         proofImageUrls = emptyList()
                     ),
                     IssueResolverParticipation(
+                        problemSolverId = 32L,
                         user = resolverHelper,
                         joinedAt = "2023-04-14T15:30:00Z",
                         proofImageUrls = listOf("https://example.com/proof_inprogress.jpg"),
@@ -139,6 +141,7 @@ internal object PinSamples {
                 resolutionStatus = ResolutionStatus.RESOLVED,
                 resolverParticipations = listOf(
                     IssueResolverParticipation(
+                        problemSolverId = 41L,
                         user = resolverHelper,
                         joinedAt = "2023-04-16T15:00:00Z",
                         proofImageUrls = listOf("https://example.com/proof_resolved.jpg"),

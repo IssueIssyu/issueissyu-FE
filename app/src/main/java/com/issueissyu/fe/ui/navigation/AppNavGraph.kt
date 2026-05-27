@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.navigation
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,6 +37,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.ui.screens.patchnote.PatchNotesRoute
 import com.issueissyu.fe.ui.screens.pincreate.PinCreateScreen
 import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
+import com.issueissyu.fe.ui.screens.pindetail.PIN_DETAIL_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 import com.issueissyu.fe.ui.screens.community.CommunityScreen
 import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreen
@@ -43,6 +47,18 @@ fun AppNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues
 ) {
+    val sessionViewModel: AppSessionViewModel = hiltViewModel()
+    val context = LocalContext.current
+
+    LaunchedEffect(sessionViewModel, navController, context) {
+        sessionViewModel.sessionExpiredMessages.collect { message ->
+            if (navController.currentDestination?.route != LOGIN_ROUTE) {
+                navController.navigateToLoginClearingBackStack()
+            }
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = AppDestinations.Onboarding.SPLASH_ROUTE
@@ -217,7 +233,7 @@ fun AppNavGraph(
                         navController.popBackStack()
                     },
                     onPatchNoteClick = { pinId ->
-                        navController.navigate(AppDestinations.pinDetailRoute(pinId))
+                        navController.navigateToPinDetail(pinId)
                     }
                 )
             }
@@ -238,10 +254,11 @@ fun AppNavGraph(
             ) {
                 PinDetailScreen(
                     pinId = pinId,
+                    savedStateHandle = backStackEntry.savedStateHandle,
                     onBackClick = { navController.popBackStack() },
                     onReportClick = { reportPinId ->
                         navController.navigate(AppDestinations.pinReportRoute(reportPinId))
-                    }
+                    },
                 )
             }
         }
@@ -262,9 +279,10 @@ fun AppNavGraph(
                 PinReportScreen(
                     pinId = pinId,
                     onBackClick = { navController.popBackStack() },
-                    onSubmitClick = { _ ->
-                        // TODO: 신고 API 연결 (PinReportRepository.reportPin 등)
-                        // TODO: 성공 시 신고 완료 Dialog 노출 후 popBackStack
+                    onSuccess = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set(PIN_DETAIL_REFRESH_KEY, true)
                         navController.popBackStack()
                     }
                 )
@@ -373,4 +391,10 @@ private fun NavHostController.navigateToLoginClearingBackStack() {
     navigate(LOGIN_ROUTE) {
         popUpTo(0) { inclusive = true }
     }
+}
+
+/** 지도 핀 카드·패치노트 등에서 핀 상세 화면으로 이동 */
+fun NavHostController.navigateToPinDetail(pinId: String) {
+    if (pinId.isBlank()) return
+    navigate(AppDestinations.pinDetailRoute(pinId))
 }
