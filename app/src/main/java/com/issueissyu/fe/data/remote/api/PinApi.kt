@@ -149,10 +149,10 @@ interface PinApi {
     @GET("api/pins/{pinId}/petitions/status")
     suspend fun getIssuePetition(
         @Path("pinId") pinId: Long
-    ): BaseResponse<PetitionsGetResponse>
+    ): BaseResponse<PetitionsGetResponse?>
 
     @POST("api/pins/{pinId}/petitions")
     suspend fun joinIssuePetition(
         @Path("pinId") pinId: Long
-    ): BaseResponse<PetitionsJoinResponse>
+    ): BaseResponse<PetitionsJoinResponse?>
 }

@@ -157,18 +157,18 @@ fun PetitionsJoinResponse.toPetitionJoinInfo(): PetitionJoinInfo {
 
 fun ProblemSolverListResponse.toProblemSolverInfo(): ProblemSolverInfo {
     return ProblemSolverInfo(
-        isGoNow = isGoNow,
-        problemSolvers = problemSolvers.map { it.toProblemSolverParticipantInfo() },
+        isGoNow = isGoNow ?: false,
+        problemSolvers = problemSolvers.orEmpty().map { it.toProblemSolverParticipantInfo() },
     )
 }
 
 fun ProblemSolverItemResponse.toProblemSolverParticipantInfo(): ProblemSolverParticipantInfo {
     return ProblemSolverParticipantInfo(
         problemSolverId = problemSolverId,
-        problemSolveState = problemSolveState,
+        problemSolveState = problemSolveState.orEmpty(),
         problemSolverImageUrl = problemSolverImageUrl?.takeIf { it.isNotBlank() },
-        nickname = nickname,
-        createdAt = createdAt,
+        nickname = nickname.orEmpty(),
+        createdAt = createdAt.orEmpty(),
         profileUrl = profileUrl?.takeIf { it.isNotBlank() },
         checkAction = checkAction?.takeIf { it.isNotBlank() },
     )

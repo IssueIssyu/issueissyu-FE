@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -62,6 +63,7 @@ import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus as DomainIssueReliabilityStatus
 import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
 import com.issueissyu.fe.ui.components.IssueReliabilityStatus
+import com.issueissyu.fe.ui.components.IssueReliabilityType
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.components.SignButton
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -141,7 +143,6 @@ fun PinResolutionTab(
                 resolvedAt = issueDetail.resolvedAt,
                 isWriterSelectionMode = isWriter && !isResolved,
                 onConfirmResolverClick = onConfirmResolverClick,
-                modifier = Modifier.height(ResolverParticipationCardHeight)
             )
 
             HorizontalDivider( thickness = 1.dp, color = Gray_3 )
@@ -149,6 +150,7 @@ fun PinResolutionTab(
             IssueReliabilityIndicator(
                 score = reliabilityScore,
                 reason = reliabilityReason,
+                type = IssueReliabilityType.PIN,
                 status = reliabilityStatus?.toIndicatorStatus()
                     ?: if (reliabilityScore == null) {
                         IssueReliabilityStatus.PENDING
@@ -314,35 +316,36 @@ private fun ResolverParticipationCard(
                 }
             }
         )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = true)
-        ) {
-            when {
-                resolverItems.isEmpty() -> {
-                    EmptyResolverPlaceholder(modifier = Modifier.fillMaxSize())
-                }
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(items = displayItems, key = { it.userId }) { item ->
-                            ResolverParticipationItem(
-                                item = item,
-                                isWriterSelectionMode = isWriterSelectionMode,
-                                isSelected = item.userId == selectedResolverId,
-                                onClick = {
-                                    if (isWriterSelectionMode) {
-                                        selectedResolverId = item.userId
-                                    }
-                                },
-                                onConfirmClick = {
-                                    item.problemSolverId?.let(onConfirmResolverClick)
-                                },
-                            )
-                        }
+        when {
+            resolverItems.isEmpty() -> {
+                EmptyResolverPlaceholder(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(ResolverParticipationEmptyHeight)
+                )
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = ResolverParticipationCardHeight),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(items = displayItems, key = { it.userId }) { item ->
+                        ResolverParticipationItem(
+                            item = item,
+                            isWriterSelectionMode = isWriterSelectionMode,
+                            isSelected = item.userId == selectedResolverId,
+                            onClick = {
+                                if (isWriterSelectionMode) {
+                                    selectedResolverId = item.userId
+                                }
+                            },
+                            onConfirmClick = {
+                                item.problemSolverId?.let(onConfirmResolverClick)
+                            },
+                        )
                     }
                 }
             }
@@ -416,7 +419,8 @@ private fun ResolutionPhotoProofCard(
     }
 }
 
-private val ResolverParticipationCardHeight = 340.dp
+private val ResolverParticipationCardHeight = 300.dp
+private val ResolverParticipationEmptyHeight = 140.dp
 
 private data class ResolverParticipationItemUiModel(
     val problemSolverId: Long?,
