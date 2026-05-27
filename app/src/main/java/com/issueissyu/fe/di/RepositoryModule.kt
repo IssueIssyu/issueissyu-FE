@@ -1,7 +1,7 @@
 package com.issueissyu.fe.di
 
 import com.issueissyu.fe.data.repository.AuthRepositoryImpl
-import com.issueissyu.fe.domain.repository.DefaultIssueRepository
+import com.issueissyu.fe.data.repository.IssueRepositoryImpl
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.UserRepository
 import com.issueissyu.fe.data.repository.UserRepositoryImpl
@@ -29,7 +29,7 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindIssueRepository(
-        defaultIssueRepository: DefaultIssueRepository
+        impl: IssueRepositoryImpl
     ): IssueRepository
 
     @Binds

@@ -6,6 +6,7 @@ import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
+import com.issueissyu.fe.data.remote.api.AiIssueApiService
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.data.remote.api.MapApi
@@ -18,6 +19,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -76,8 +78,28 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("ai")
+    fun provideAiRetrofit(
+        okHttpClient: OkHttpClient,
+        gson: Gson,
+    ): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl(NetworkConstants.AI_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create(gson))
+            .build()
+    }
+
+    @Provides
+    @Singleton
     fun provideIssueApiService(retrofit: Retrofit): IssueApiService {
         return retrofit.create(IssueApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAiIssueApiService(@Named("ai") retrofit: Retrofit): AiIssueApiService {
+        return retrofit.create(AiIssueApiService::class.java)
     }
 
     @Provides
