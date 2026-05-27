@@ -86,6 +86,30 @@ class PinCreateViewModel @Inject constructor(
         _uiState.update { it.copy(selectedTone = value) }
     }
 
+    fun addImageUris(uris: List<String>) {
+        if (uris.isEmpty()) return
+
+        _uiState.update { state ->
+            val merged = (state.imageUris + uris)
+                .distinct()
+                .take(MAX_IMAGE_COUNT)
+            state.copy(
+                imageUris = merged,
+                errorMessage = if (state.imageUris.size + uris.size > MAX_IMAGE_COUNT) {
+                    "사진은 최대 ${MAX_IMAGE_COUNT}장까지 첨부할 수 있습니다."
+                } else {
+                    state.errorMessage
+                },
+            )
+        }
+    }
+
+    fun removeImageUri(uri: String) {
+        _uiState.update { state ->
+            state.copy(imageUris = state.imageUris.filterNot { it == uri })
+        }
+    }
+
     fun createAiDraft() {
         val state = _uiState.value
         if (state.category != PinCategory.ISSUE || state.isGeneratingAiContent) return
@@ -199,5 +223,6 @@ class PinCreateViewModel @Inject constructor(
 
     companion object {
         private const val DEFAULT_AI_TONE = "없음"
+        private const val MAX_IMAGE_COUNT = 5
     }
 }

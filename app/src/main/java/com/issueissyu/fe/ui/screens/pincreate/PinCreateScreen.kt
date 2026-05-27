@@ -1,5 +1,8 @@
 package com.issueissyu.fe.ui.screens.pincreate
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,10 +23,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,8 +59,8 @@ import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 import androidx.compose.ui.tooling.preview.Preview
+import coil.compose.AsyncImage
 
-// TODO: AI 초안 응답을 title/description 상태에 반영
 @Composable
 fun PinCreateScreen(
     category: PinCategory,
@@ -67,6 +73,11 @@ fun PinCreateScreen(
     viewModel: PinCreateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_IMAGE_COUNT),
+    ) { uris ->
+        viewModel.addImageUris(uris.map { it.toString() })
+    }
 
     LaunchedEffect(category, pinLat, pinLng, userLat, userLng) {
         viewModel.initialize(category, pinLat, pinLng, userLat, userLng)
@@ -85,6 +96,12 @@ fun PinCreateScreen(
         onTitleChange = viewModel::onTitleChange,
         onDescriptionChange = viewModel::onDescriptionChange,
         onToneChange = viewModel::onToneChange,
+        onPhotoAddClick = {
+            imagePickerLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+            )
+        },
+        onPhotoRemoveClick = viewModel::removeImageUri,
         onAiDraftClick = viewModel::createAiDraft,
         onSubmit = viewModel::submitPin,
         modifier = modifier
@@ -99,6 +116,8 @@ private fun PinCreateContent(
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onToneChange: (String) -> Unit,
+    onPhotoAddClick: () -> Unit,
+    onPhotoRemoveClick: (String) -> Unit,
     onAiDraftClick: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
@@ -126,7 +145,11 @@ private fun PinCreateContent(
                 .padding(horizontal = 28.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            PhotoUploadSection(imageCount = uiState.imageUris.size)
+            PhotoUploadSection(
+                imageUris = uiState.imageUris,
+                onPhotoAddClick = onPhotoAddClick,
+                onPhotoRemoveClick = onPhotoRemoveClick,
+            )
 
             LocationSection(
                 address = uiState.address,
@@ -212,25 +235,37 @@ private fun SectionLabel(
     }
 }
 
-// TODO: 이미지 선택/업로드 기능 연결 (최대 5장)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PhotoUploadSection(imageCount: Int) {
+private fun PhotoUploadSection(
+    imageUris: List<String>,
+    onPhotoAddClick: () -> Unit,
+    onPhotoRemoveClick: (String) -> Unit,
+) {
     Column {
         SectionLabel(
             text = "사진",
             trailing = {
                 Text(
-                    text = "$imageCount/5",
+                    text = "${imageUris.size}/$MAX_IMAGE_COUNT",
                     style = IssueTypo.Regular12.copy(color = Gray_6)
                 )
             }
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PhotoAddBox(
-                onClick = {
-                    // TODO: 사진 선택 launcher 호출 후 viewModel에 반영
-                }
-            )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (imageUris.size < MAX_IMAGE_COUNT) {
+                PhotoAddBox(onClick = onPhotoAddClick)
+            }
+            imageUris.forEach { uri ->
+                SelectedPhotoBox(
+                    uri = uri,
+                    onRemoveClick = { onPhotoRemoveClick(uri) },
+                )
+            }
         }
     }
 }
@@ -258,6 +293,40 @@ private fun PhotoAddBox(onClick: () -> Unit) {
             text = "사진 추가",
             style = IssueTypo.Regular12.copy(color = Gray_5)
         )
+    }
+}
+
+@Composable
+private fun SelectedPhotoBox(
+    uri: String,
+    onRemoveClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(80.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Gray_1)
+    ) {
+        AsyncImage(
+            model = uri,
+            contentDescription = "첨부 사진",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        IconButton(
+            onClick = onRemoveClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(28.dp)
+                .background(Title.copy(alpha = 0.6f), RoundedCornerShape(bottomStart = 12.dp)),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "사진 삭제",
+                tint = White,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -399,12 +468,14 @@ private fun PinCreateScreenPreview_IssueFilled() {
                 description = "퇴근 시간대 사람이 너무 많은데 신호가 30초밖에 안 돼서 못 건너요.",
                 address = "서울 광진구 능동로 120",
                 locationName = "건국대학교 입구",
-                selectedTone = "#공손하게"
+                selectedTone = "개선요청형"
             ),
             onBackClick = {},
             onTitleChange = {},
             onDescriptionChange = {},
             onToneChange = {},
+            onPhotoAddClick = {},
+            onPhotoRemoveClick = {},
             onAiDraftClick = {},
             onSubmit = {}
         )
@@ -423,14 +494,18 @@ private fun PinCreateScreenPreview_Communication() {
                 description = "어린이대공원 근처 살아요. 가볍게 한 바퀴 도실 분 모집합니다.",
                 address = "서울 광진구 화양동",
                 locationName = "화양동 주민센터 앞",
-                selectedTone = "#친근하게"
+                selectedTone = "상황설명형"
             ),
             onBackClick = {},
             onTitleChange = {},
             onDescriptionChange = {},
             onToneChange = {},
+            onPhotoAddClick = {},
+            onPhotoRemoveClick = {},
             onAiDraftClick = {},
             onSubmit = {}
         )
     }
 }
+
+private const val MAX_IMAGE_COUNT = 5
