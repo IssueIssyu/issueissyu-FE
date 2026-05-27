@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.domain.model.pin.PinCategory
@@ -78,6 +79,7 @@ fun PinCreateScreen(
         onTitleChange = viewModel::onTitleChange,
         onDescriptionChange = viewModel::onDescriptionChange,
         onToneChange = viewModel::onToneChange,
+        onAiDraftClick = viewModel::createAiDraft,
         onSubmit = viewModel::submitPin,
         modifier = modifier
     )
@@ -91,6 +93,7 @@ private fun PinCreateContent(
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onToneChange: (String) -> Unit,
+    onAiDraftClick: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -146,6 +149,24 @@ private fun PinCreateContent(
                 selectedTone = uiState.selectedTone,
                 onToneChange = onToneChange
             )
+
+            if (category == PinCategory.ISSUE) {
+                AiDraftButton(
+                    isLoading = uiState.isGeneratingAiContent,
+                    isEnabled = uiState.title.isNotBlank() &&
+                        uiState.description.isNotBlank() &&
+                        !uiState.isGeneratingAiContent,
+                    onClick = onAiDraftClick,
+                )
+            }
+
+            uiState.errorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                Text(
+                    text = message,
+                    style = IssueTypo.Regular12.copy(color = Orange),
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(4.dp))
         }
@@ -288,15 +309,14 @@ private fun LocationSection(
 
 // TODO: 서버/기획 확정 후 enum 또는 서버 응답 기반으로 교체
 private val PinToneOptions = listOf(
-    "#가볍게",
-    "#공손하게",
-    "#친근하게",
-    "#부드럽게",
-    "#진중하게",
-    "#공식적으로"
+    "없음",
+    "한줄요약형",
+    "상황설명형",
+    "개선요청형",
+    "긴급요청형",
+    "불편호소형"
 )
 
-// TODO: 선택된 말투를 AI 초안 요청 파라미터에 포함
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ToneSelectionSection(
@@ -319,6 +339,21 @@ private fun ToneSelectionSection(
             }
         }
     }
+}
+
+@Composable
+private fun AiDraftButton(
+    isLoading: Boolean,
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+) {
+    CommonButton(
+        onClick = onClick,
+        text = if (isLoading) "AI 글 작성 중" else "AI 글쓰기",
+        isEnabled = isEnabled,
+        textStyle = IssueTypo.Bold18.copy(fontSize = 16.sp),
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
@@ -365,6 +400,7 @@ private fun PinCreateScreenPreview_IssueFilled() {
             onTitleChange = {},
             onDescriptionChange = {},
             onToneChange = {},
+            onAiDraftClick = {},
             onSubmit = {}
         )
     }
@@ -388,6 +424,7 @@ private fun PinCreateScreenPreview_Communication() {
             onTitleChange = {},
             onDescriptionChange = {},
             onToneChange = {},
+            onAiDraftClick = {},
             onSubmit = {}
         )
     }

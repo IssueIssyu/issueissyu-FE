@@ -1,12 +1,15 @@
 package com.issueissyu.fe.ui.screens.pincreate
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.repository.IssueRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class PinCreateUiState(
@@ -27,7 +30,9 @@ data class PinCreateUiState(
 )
 
 @HiltViewModel
-class PinCreateViewModel @Inject constructor() : ViewModel() {
+class PinCreateViewModel @Inject constructor(
+    private val issueRepository: IssueRepository,
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PinCreateUiState())
     val uiState: StateFlow<PinCreateUiState> = _uiState.asStateFlow()
@@ -72,8 +77,67 @@ class PinCreateViewModel @Inject constructor() : ViewModel() {
         _uiState.update { it.copy(selectedTone = value) }
     }
 
+    fun createAiDraft() {
+        val state = _uiState.value
+        if (state.category != PinCategory.ISSUE || state.isGeneratingAiContent) return
+
+        val pinLat = state.pinLat
+        val pinLng = state.pinLng
+        when {
+            state.title.isBlank() -> {
+                _uiState.update { it.copy(errorMessage = "제목을 먼저 입력해주세요.") }
+                return
+            }
+            state.description.isBlank() -> {
+                _uiState.update { it.copy(errorMessage = "상세 설명을 먼저 입력해주세요.") }
+                return
+            }
+            pinLat == null || pinLng == null -> {
+                _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
+                return
+            }
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isGeneratingAiContent = true,
+                    errorMessage = null,
+                )
+            }
+
+            issueRepository.createIssueAiDraft(
+                title = state.title,
+                content = state.description,
+                tone = state.selectedTone ?: DEFAULT_AI_TONE,
+                latitude = pinLat,
+                longitude = pinLng,
+            ).onSuccess { draft ->
+                _uiState.update {
+                    it.copy(
+                        title = draft.title?.takeIf { title -> title.isNotBlank() } ?: it.title,
+                        description = draft.content.orEmpty(),
+                        isGeneratingAiContent = false,
+                        errorMessage = null,
+                    )
+                }
+            }.onFailure { e ->
+                _uiState.update {
+                    it.copy(
+                        isGeneratingAiContent = false,
+                        errorMessage = e.message?.takeIf { message -> message.isNotBlank() } ?: "AI 글쓰기에 실패했습니다.",
+                    )
+                }
+            }
+        }
+    }
+
     // TODO: PinRepository.createPin 연결 (isSubmitting / errorMessage 흐름 포함)
     fun submitPin() {
         // no-op
+    }
+
+    companion object {
+        private const val DEFAULT_AI_TONE = "없음"
     }
 }
