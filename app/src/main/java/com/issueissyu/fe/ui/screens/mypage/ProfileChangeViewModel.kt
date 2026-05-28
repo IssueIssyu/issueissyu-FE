@@ -86,7 +86,7 @@ class ProfileChangeViewModel @Inject constructor(
                 _currentNickname.value = _inputNickname.value
                 onSuccess()
             } catch (e: Exception) {
-                _showToast.emit("프로필 변경에 실패했습니다")
+                _showToast.emit(e.message ?: "프로필 변경에 실패했습니다")
             }
         }
     }

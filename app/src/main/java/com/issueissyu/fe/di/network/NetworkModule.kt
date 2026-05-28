@@ -11,6 +11,7 @@ import com.issueissyu.fe.data.remote.api.CommunityApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.data.remote.api.MapApi
+import com.issueissyu.fe.data.remote.api.MyPageApi
 import com.issueissyu.fe.data.remote.api.PinApi
 import dagger.Module
 import dagger.Provides
@@ -125,5 +126,11 @@ object NetworkModule {
     @Singleton
     fun provideCommunityApi(retrofit: Retrofit): CommunityApi {
         return retrofit.create(CommunityApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMyPageApi(retrofit: Retrofit): MyPageApi {
+        return retrofit.create(MyPageApi::class.java)
     }
 }
