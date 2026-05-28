@@ -27,7 +27,8 @@ import javax.inject.Inject
 data class PinCreationNavigationEvent(
     val category: PinCategory,
     val pinCoordinate: PinCoordinate,
-    val userCoordinate: PinCoordinate
+    val userCoordinate: PinCoordinate,
+    val address: String,
 )
 
 @HiltViewModel
@@ -253,12 +254,13 @@ class MapViewModel @Inject constructor(
             locationRepository.checkPinCreationAvailable(
                 userCoordinate = currentCoordinate,
                 pinCoordinate = selectedCoordinate,
-            ).onSuccess {
+            ).onSuccess { address ->
                 _navigateToPinCreation.emit(
                     PinCreationNavigationEvent(
                         category = selectedCategory,
                         pinCoordinate = selectedCoordinate,
-                        userCoordinate = currentCoordinate
+                        userCoordinate = currentCoordinate,
+                        address = address,
                     )
                 )
                 exitLocationSelectionMode()

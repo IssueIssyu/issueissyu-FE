@@ -68,6 +68,7 @@ fun PinCreateScreen(
     pinLng: Double,
     userLat: Double,
     userLng: Double,
+    address: String,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinCreateViewModel = hiltViewModel()
@@ -79,8 +80,8 @@ fun PinCreateScreen(
         viewModel.addImageUris(uris.map { it.toString() })
     }
 
-    LaunchedEffect(category, pinLat, pinLng, userLat, userLng) {
-        viewModel.initialize(category, pinLat, pinLng, userLat, userLng)
+    LaunchedEffect(category, pinLat, pinLng, userLat, userLng, address) {
+        viewModel.initialize(category, pinLat, pinLng, userLat, userLng, address)
     }
 
     LaunchedEffect(Unit) {

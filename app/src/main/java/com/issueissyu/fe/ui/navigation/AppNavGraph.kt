@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.navigation
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
@@ -342,7 +343,7 @@ fun AppNavGraph(
             }
         }
         composable(
-            route = "${AppDestinations.PIN_CREATION_ROUTE}?type={type}&pinLat={pinLat}&pinLng={pinLng}&userLat={userLat}&userLng={userLng}",
+            route = "${AppDestinations.PIN_CREATION_ROUTE}?type={type}&pinLat={pinLat}&pinLng={pinLng}&userLat={userLat}&userLng={userLng}&address={address}",
             arguments = listOf(
                 navArgument("type") {
                     type = NavType.StringType
@@ -363,6 +364,10 @@ fun AppNavGraph(
                 navArgument("userLng") {
                     type = NavType.FloatType
                     defaultValue = 0f
+                },
+                navArgument("address") {
+                    type = NavType.StringType
+                    defaultValue = ""
                 }
             )
         ) { backStackEntry ->
@@ -373,6 +378,7 @@ fun AppNavGraph(
             val pinLng = (backStackEntry.arguments?.getFloat("pinLng") ?: 0f).toDouble()
             val userLat = (backStackEntry.arguments?.getFloat("userLat") ?: 0f).toDouble()
             val userLng = (backStackEntry.arguments?.getFloat("userLng") ?: 0f).toDouble()
+            val address = Uri.decode(backStackEntry.arguments?.getString("address").orEmpty())
 
             // 일반 유저 생성 대상은 ISSUE / COMMUNICATION 두 가지. 그 외는 화면 진입을 차단한다.
             val category = when (pinType?.lowercase()) {
@@ -399,6 +405,7 @@ fun AppNavGraph(
                         pinLng = pinLng,
                         userLat = userLat,
                         userLng = userLng,
+                        address = address,
                         onBackClick = { navController.popBackStack() }
                     )
                 }

@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -230,7 +231,8 @@ fun MapScreen(
                     "&pinLat=${event.pinCoordinate.latitude}" +
                     "&pinLng=${event.pinCoordinate.longitude}" +
                     "&userLat=${event.userCoordinate.latitude}" +
-                    "&userLng=${event.userCoordinate.longitude}"
+                    "&userLng=${event.userCoordinate.longitude}" +
+                    "&address=${Uri.encode(event.address)}"
             )
         }
     }

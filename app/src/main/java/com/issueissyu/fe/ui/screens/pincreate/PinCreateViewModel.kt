@@ -51,25 +51,27 @@ class PinCreateViewModel @Inject constructor(
         pinLat: Double,
         pinLng: Double,
         userLat: Double,
-        userLng: Double
+        userLng: Double,
+        address: String,
     ) {
         val current = _uiState.value
         if (current.category == category &&
             current.pinLat == pinLat &&
             current.pinLng == pinLng &&
             current.userLat == userLat &&
-            current.userLng == userLng
+            current.userLng == userLng &&
+            current.address == address
         ) {
             return
         }
-        // TODO: 좌표 기반 주소 변환 결과를 address/locationName으로 표시
         _uiState.update {
             it.copy(
                 category = category,
                 pinLat = pinLat,
                 pinLng = pinLng,
                 userLat = userLat,
-                userLng = userLng
+                userLng = userLng,
+                address = address,
             )
         }
     }
