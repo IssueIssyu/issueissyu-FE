@@ -414,27 +414,29 @@ fun MapScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            AutoScrollingNotice(
-                notices = notices.map { notice ->
-                    NoticeUiModel(
-                        id = notice.id,
-                        title = notice.content,
-                        pinId = notice.pinId
-                    )
-                },
-                iconResId = R.drawable.ic_megaphone,
-                onClick = { clickedNotice ->
-                    val communityId = clickedNotice.pinId?.toLongOrNull()
-                    if (communityId != null) {
-                        navController.navigate(
-                            AppDestinations.communityDetailRoute(communityId)
+            if (!isLocationSelectionMode) {
+                AutoScrollingNotice(
+                    notices = notices.map { notice ->
+                        NoticeUiModel(
+                            id = notice.id,
+                            title = notice.content,
+                            pinId = notice.pinId
                         )
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+                    },
+                    iconResId = R.drawable.ic_megaphone,
+                    onClick = { clickedNotice ->
+                        val communityId = clickedNotice.pinId?.toLongOrNull()
+                        if (communityId != null) {
+                            navController.navigate(
+                                AppDestinations.communityDetailRoute(communityId)
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
         }
 
         if (showResearchButton) {
