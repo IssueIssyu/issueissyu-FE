@@ -24,6 +24,7 @@ import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.CommunicationPinImportRequest
+import com.issueissyu.fe.data.remote.dto.request.pin.IssuePinImportRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinImageItemRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.GoNowResponse
@@ -123,16 +124,15 @@ class PinRepositoryImpl @Inject constructor(
 
     override suspend fun createPin(request: CreatePinRequest): Result<Pin> {
         return try {
+            if (request.category == PinCategory.ISSUE && request.imageUris.isEmpty()) {
+                return Result.failure(IllegalArgumentException("이슈 핀은 사진을 최소 1장 첨부해야 합니다."))
+            }
             PinImageUploadValidator.validate(context, request.imageUris).getOrThrow()
             val photos = request.imageUris.toMultipartParts()
             val response = when (request.category) {
                 PinCategory.ISSUE -> aiIssueApiService.createIssuePin(
-                    title = request.title.toTextPart(),
-                    content = request.description.toTextPart(),
-                    tone = request.tone.toTextPart(),
-                    latitude = request.coordinate.latitude.toString().toTextPart(),
-                    longitude = request.coordinate.longitude.toString().toTextPart(),
-                    images = photos,
+                    request = gson.toJson(request.toIssuePinImportRequest()).toJsonPart(),
+                    photos = photos,
                 )
                 PinCategory.COMMUNICATION -> pinApi.createCommunicationPin(
                     request = gson.toJson(request.toCommunicationPinImportRequest()).toJsonPart(),
@@ -169,6 +169,21 @@ class PinRepositoryImpl @Inject constructor(
         )
     }
 
+    private fun CreatePinRequest.toIssuePinImportRequest(): IssuePinImportRequest {
+        val mainUri = mainImageUri?.takeIf { imageUris.contains(it) } ?: imageUris.firstOrNull()
+        val pinImages = imageUris.takeIf { it.isNotEmpty() }?.map { uri ->
+            PinImageItemRequest(isMain = uri == mainUri)
+        }
+
+        return IssuePinImportRequest(
+            lat = coordinate.latitude,
+            lng = coordinate.longitude,
+            pinTitle = title,
+            pinContent = description,
+            pinImages = pinImages,
+        )
+    }
+
     private fun BaseResponse<PinImportResponse?>.toCreatedPin(request: CreatePinRequest): Pin {
         val result = result
         val detail = when (request.category) {
@@ -191,8 +206,6 @@ class PinRepositoryImpl @Inject constructor(
             detail = detail,
         )
     }
-
-    private fun String.toTextPart(): RequestBody = toRequestBody("text/plain".toMediaType())
 
     private fun String.toJsonPart(): RequestBody = toRequestBody("application/json".toMediaType())
 

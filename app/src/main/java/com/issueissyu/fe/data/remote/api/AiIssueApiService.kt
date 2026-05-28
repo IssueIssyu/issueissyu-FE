@@ -28,12 +28,8 @@ interface AiIssueApiService {
     @Multipart
     @POST("issues/pin")
     suspend fun createIssuePin(
-        @Part("title") title: RequestBody,
-        @Part("content") content: RequestBody,
-        @Part("tone") tone: RequestBody,
-        @Part("latitude") latitude: RequestBody,
-        @Part("longitude") longitude: RequestBody,
-        @Part images: List<MultipartBody.Part>,
+        @Part("request") request: RequestBody,
+        @Part photos: List<MultipartBody.Part>,
     ): BaseResponse<PinImportResponse?>
 
     @GET("issues/pin/{pin_id}/reliability")

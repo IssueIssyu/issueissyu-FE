@@ -8,6 +8,14 @@ data class CommunicationPinImportRequest(
     val pinContent: String,
 )
 
+data class IssuePinImportRequest(
+    val lat: Double,
+    val lng: Double,
+    val pinTitle: String,
+    val pinContent: String,
+    val pinImages: List<PinImageItemRequest>? = null,
+)
+
 data class PinImageItemRequest(
     val isMain: Boolean,
 )
