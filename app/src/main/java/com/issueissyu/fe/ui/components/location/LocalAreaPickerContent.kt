@@ -79,6 +79,7 @@ fun LocalAreaPickerContent(
     val context = LocalContext.current
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
     var isLocationReported by remember { mutableStateOf(false) }
+    var locationCts by remember { mutableStateOf<CancellationTokenSource?>(null) }
 
     fun reportLocation(lat: Double, lng: Double) {
         if (isLocationReported) return
@@ -99,7 +100,9 @@ fun LocalAreaPickerContent(
 
     fun moveToCurrentLocation() {
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+        locationCts?.cancel()
         val cts = CancellationTokenSource()
+        locationCts = cts
 
         try {
             fusedLocationClient
@@ -206,6 +209,13 @@ fun LocalAreaPickerContent(
             )
         }
     }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            locationCts?.cancel()
+            locationCts = null
+        }
+    }
 }
 
 @Composable
@@ -304,9 +314,9 @@ private fun LocalAreaPickerNaverMap(
 
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val mapView = remember { MapView(context) }
+    val mapView = remember(context) { MapView(context) }
 
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, mapView) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_CREATE -> mapView.onCreate(Bundle())
@@ -322,6 +332,7 @@ private fun LocalAreaPickerNaverMap(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            mapView.onDestroy()
         }
     }
 
