@@ -22,11 +22,16 @@ import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.GoNowResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionStatusResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionSubmitResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
 import com.issueissyu.fe.core.time.parseFlexibleDateTimeToEpochMilli
 import com.issueissyu.fe.domain.model.pin.PinComment
+import com.issueissyu.fe.domain.model.pin.PetitionStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
@@ -48,9 +53,12 @@ import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.pin.GoNow
+import com.issueissyu.fe.domain.model.pin.PetitionSubmit
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinDetail
+import com.issueissyu.fe.domain.model.pin.PinSolveStatus
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import java.time.Instant
@@ -345,6 +353,82 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getPetitionStatus(pinId: Long): Result<PetitionStatus> {
+        return try {
+            val response = pinApi.getPetitionStatus(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "청원 현황 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPetitionStatus())
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "청원 현황 조회에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getPinSolveStatus(pinId: Long): Result<PinSolveStatus> {
+        return try {
+            val response = pinApi.getPinSolveStatus(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "이슈 해결 상태 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinSolveStatus())
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "이슈 해결 상태 조회에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun submitPetition(pinId: Long): Result<PetitionSubmit> {
+        return try {
+            val response = pinApi.submitPetition(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "청원하기 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPetitionSubmit())
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "청원하기에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun goNow(pinId: Long): Result<GoNow> {
+        return try {
+            val response = pinApi.goNow(pinId)
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "지금가요 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toGoNow())
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "지금가요 참여에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun getEmojiCandidates(): Result<List<PinEmojiCandidate>> {
         return try {
             val response = pinApi.getEmojiCandidates()
@@ -418,6 +502,39 @@ class PinRepositoryImpl @Inject constructor(
             pinId = pinId,
             pinLikeCount = pinLikeCount,
             isLike = isLike,
+        )
+    }
+
+    private fun PinSolveResponse.toPinSolveStatus(): PinSolveStatus {
+        return PinSolveStatus(
+            isPetitioned = isPetitioned ?: false,
+            isProblemSolver = isProblemSolver,
+            reliability = reliability,
+        )
+    }
+
+    private fun PetitionSubmitResponse.toPetitionSubmit(): PetitionSubmit {
+        return PetitionSubmit(
+            pinId = pinId,
+            petitionCount = petitionCount,
+            isPetitioned = isPetitioned,
+        )
+    }
+
+    private fun GoNowResponse.toGoNow(): GoNow {
+        return GoNow(
+            pinId = pinId,
+            problemSolverId = problemSolverId,
+            problemSolveState = problemSolveState,
+        )
+    }
+
+    private fun PetitionStatusResponse.toPetitionStatus(): PetitionStatus {
+        return PetitionStatus(
+            pinId = pinId,
+            petitionCount = petitionCount,
+            isPetitioned = isPetitioned,
+            targetPetition = targetPetition,
         )
     }
 

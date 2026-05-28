@@ -13,7 +13,9 @@ private fun shouldShowBottomBar(route: String?): Boolean {
     if (route == null) return false
     return route == AppDestinations.COLLECTION_ROUTE ||
         route == AppDestinations.TOWN_ROUTE ||
+        route == AppDestinations.TOWN_ROUTE_WITH_FOCUS_PIN ||
         route == AppDestinations.COMMUNITY_ROUTE ||
+        route == AppDestinations.COMMUNITY_DETAIL_ROUTE ||
         route == AppDestinations.MYPAGE_ROUTE ||
         route == AppDestinations.PATCH_NOTE_ROUTE ||
         route.startsWith("${AppDestinations.PIN_CREATION_ROUTE}?") ||

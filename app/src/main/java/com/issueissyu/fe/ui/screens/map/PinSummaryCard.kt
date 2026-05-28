@@ -8,7 +8,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,6 +37,7 @@ import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.domain.model.pin.canEditBy
+import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.theme.*
 
 @Composable
@@ -159,7 +159,11 @@ fun PinSummaryCard(
                                     Spacer(modifier = Modifier.width(3.dp))
                                 }
 
-                                CompactSympathyButton(pin.id, pin.sympathyCount, pin.isSympathizedByMe, onSympathyClick)
+                                CompactSympathyButton(
+                                    sympathyCount = pin.sympathyCount,
+                                    isSympathizedByMe = pin.isSympathizedByMe,
+                                    onClick = { onSympathyClick(pin.id) },
+                                )
                             }
                             is CommunicationPinDetail -> {
                                 Box(
@@ -197,11 +201,19 @@ fun PinSummaryCard(
                                     Spacer(modifier = Modifier.width(3.dp))
                                 }
 
-                                CompactSympathyButton(pin.id, pin.sympathyCount, pin.isSympathizedByMe, onSympathyClick)
+                                CompactSympathyButton(
+                                    sympathyCount = pin.sympathyCount,
+                                    isSympathizedByMe = pin.isSympathizedByMe,
+                                    onClick = { onSympathyClick(pin.id) },
+                                )
                             }
                             is ShopPinDetail, is FestivalPinDetail -> {
                                 // 상점/축제는 작성자 정보 없음, 공감 버튼만 자연스럽게 배치
-                                CompactSympathyButton(pin.id, pin.sympathyCount, pin.isSympathizedByMe, onSympathyClick)
+                                CompactSympathyButton(
+                                    sympathyCount = pin.sympathyCount,
+                                    isSympathizedByMe = pin.isSympathizedByMe,
+                                    onClick = { onSympathyClick(pin.id) },
+                                )
                             }
                         }
                     }
@@ -325,42 +337,6 @@ private fun CommunityLinkButton(
             contentDescription = null,
             tint = White,
             modifier = Modifier.size(18.dp)
-        )
-    }
-}
-
-@Composable
-private fun CompactSympathyButton(
-    pinId: String,
-    sympathyCount: Int,
-    isSympathizedByMe: Boolean,
-    onSympathyClick: (String) -> Unit
-) {
-    val backgroundColor = if (isSympathizedByMe) BrandColor else White
-    val contentColor = if (isSympathizedByMe) White else BrandColor
-
-    Row(
-        modifier = Modifier
-            .height(24.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
-            .clickable { onSympathyClick(pinId) }
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.ThumbUp,
-            contentDescription = "공감",
-            tint = contentColor,
-            modifier = Modifier.size(13.dp)
-        )
-
-        Spacer(modifier = Modifier.width(3.dp))
-
-        Text(
-            text = "$sympathyCount",
-            style = IssueTypo.Regular12.copy(color = contentColor),
-            maxLines = 1
         )
     }
 }

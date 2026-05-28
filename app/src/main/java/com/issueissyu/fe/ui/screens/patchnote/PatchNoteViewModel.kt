@@ -24,7 +24,7 @@ data class PatchNotesUiState(
 
 @HiltViewModel
 class PatchNotesViewModel @Inject constructor(
-    private val mapRepository: MapRepository
+    private val mapRepository: MapRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PatchNotesUiState(isLoading = true))

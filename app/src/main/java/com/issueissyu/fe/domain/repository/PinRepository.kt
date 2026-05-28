@@ -4,13 +4,17 @@ import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PetitionStatus
+import com.issueissyu.fe.domain.model.pin.PetitionSubmit
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import com.issueissyu.fe.domain.model.MapPinMarker
+import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.PinSolveInfo
+import com.issueissyu.fe.domain.model.pin.PinSolveStatus
 import com.issueissyu.fe.domain.model.pin.PetitionJoinInfo
 import com.issueissyu.fe.domain.model.pin.PetitionStatusInfo
 import com.issueissyu.fe.domain.model.pin.ProblemSolverInfo
@@ -44,6 +48,14 @@ interface PinRepository {
 
     //핀 공감
     suspend fun likePin(pinId: Long): Result<PinLike>
+
+    suspend fun getPetitionStatus(pinId: Long): Result<PetitionStatus>
+
+    suspend fun getPinSolveStatus(pinId: Long): Result<PinSolveStatus>
+
+    suspend fun submitPetition(pinId: Long): Result<PetitionSubmit>
+
+    suspend fun goNow(pinId: Long): Result<GoNow>
 
     //핀 삭제
     suspend fun deletePin(pinId: Long): Result<Unit>

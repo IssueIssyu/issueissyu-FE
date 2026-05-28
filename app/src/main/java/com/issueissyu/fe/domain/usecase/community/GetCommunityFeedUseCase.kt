@@ -11,10 +11,10 @@ class GetCommunityFeedUseCase @Inject constructor(
 ) {
     operator fun invoke(
         tab: CommunityTab,
-        region: String,
+        locationId: Long?,
         cursor: String? = null,
         size: Int = 20
     ): Flow<CommunityFeed> {
-        return repository.getCommunityFeed(tab, region, cursor, size)
+        return repository.getCommunityFeed(tab, locationId, cursor, size)
     }
 }

@@ -8,12 +8,15 @@ import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ApplyPinEmojiResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsJoinResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsGetResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionStatusResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinCommentDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.GoNowResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PetitionSubmitResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverJoinResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverListResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverPhotoResponse
@@ -54,6 +57,30 @@ interface PinApi {
     suspend fun pinLike(
         @Path("pinId") pinId: Long,
     ): BaseResponse<PinLikeResponse?>
+
+    //청원하기
+    @POST("api/pins/{pinId}/petitions")
+    suspend fun submitPetition(
+        @Path("pinId") pinId: Long,
+    ): BaseResponse<PetitionSubmitResponse?>
+
+    //시민해결사 참여
+    @POST("api/pins/{pinId}/go-now")
+    suspend fun goNow(
+        @Path("pinId") pinId: Long,
+    ): BaseResponse<GoNowResponse?>
+
+    //청원 현황 조회
+    @GET("api/pins/{pinId}/petitions/status")
+    suspend fun getPetitionStatus(
+        @Path("pinId") pinId: Long,
+    ): BaseResponse<PetitionStatusResponse?>
+
+    //이슈 핀 해결 상태 조회
+    @GET("api/pins/{pinId}/solve")
+    suspend fun getPinSolveStatus(
+        @Path("pinId") pinId: Long,
+    ): BaseResponse<PinSolveResponse?>
 
     //이모지 조회
     @GET("api/pins/{pinId}/emojis")

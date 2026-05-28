@@ -7,6 +7,7 @@ import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
 import com.issueissyu.fe.data.remote.api.AiIssueApiService
+import com.issueissyu.fe.data.remote.api.CommunityApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.data.remote.api.MapApi
@@ -118,5 +119,11 @@ object NetworkModule {
     @Singleton
     fun provideMapApi(retrofit: Retrofit): MapApi {
         return retrofit.create(MapApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCommunityApi(retrofit: Retrofit): CommunityApi {
+        return retrofit.create(CommunityApi::class.java)
     }
 }

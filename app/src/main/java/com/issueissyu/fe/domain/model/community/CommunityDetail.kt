@@ -26,5 +26,6 @@ data class CommunityDetail(
     val eventEndTime: String? = null,
     val petitionCount: Int = 0,
     val petitionTargetCount: Int? = null,
-    val isPetitionedByMe: Boolean = false
+    val isPetitionedByMe: Boolean = false,
+    val isLikedByMe: Boolean = false,
 )

@@ -1,6 +1,7 @@
 package com.issueissyu.fe.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,8 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +53,12 @@ enum class IssueReliabilityStatus {
 enum class IssueReliabilityType {
     PIN,
     COMMUNITY
+}
+
+enum class IssueReliabilityReasonDisplayMode {
+    INLINE,
+    MODAL,
+    HIDDEN,
 }
 
 private data class IssueReliabilityStyle(
@@ -90,9 +103,11 @@ fun IssueReliabilityIndicator(
     } else {
         IssueReliabilityStatus.COMPLETED
     },
-    reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD
+    reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD,
+    reasonDisplayMode: IssueReliabilityReasonDisplayMode = IssueReliabilityReasonDisplayMode.INLINE,
 ) {
     val style = type.toStyle()
+    var isReasonDialogVisible by remember { mutableStateOf(false) }
     val displayScore = score?.coerceIn(0, 100)
     val displayText = when (status) {
         IssueReliabilityStatus.PENDING -> "검사중"
@@ -109,16 +124,30 @@ fun IssueReliabilityIndicator(
         IssueReliabilityStatus.FAILED -> 0f
         IssueReliabilityStatus.PENDING -> null
     }
-    val showReason = status == IssueReliabilityStatus.COMPLETED &&
+    val hasCompletedReason = status == IssueReliabilityStatus.COMPLETED &&
         displayScore != null &&
+        !reason.isNullOrBlank()
+    val showInlineReason = hasCompletedReason &&
         displayScore < reasonVisibleThreshold &&
-        reason != null
+        reasonDisplayMode == IssueReliabilityReasonDisplayMode.INLINE
+    val isModalReasonEnabled = hasCompletedReason &&
+        reasonDisplayMode == IssueReliabilityReasonDisplayMode.MODAL
 
     Column(
         modifier = Modifier.fillMaxWidth().then(modifier),
         horizontalAlignment = Alignment.Start,
     ) {
-        Column(modifier = Modifier.width(style.barWidth)) {
+        Column(
+            modifier = Modifier
+                .width(style.barWidth)
+                .then(
+                    if (isModalReasonEnabled) {
+                        Modifier.clickable { isReasonDialogVisible = true }
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -176,10 +205,10 @@ fun IssueReliabilityIndicator(
             }
         }
 
-        if (showReason) {
+        if (showInlineReason) {
             Spacer(modifier = Modifier.height(style.reasonTopSpacing))
             Text(
-                text = reason,
+                text = reason.orEmpty(),
                 modifier = Modifier.fillMaxWidth(),
                 style = IssueTypo.Regular12.copy(
                     color = Gray_6,
@@ -189,6 +218,37 @@ fun IssueReliabilityIndicator(
                 textAlign = TextAlign.Start,
             )
         }
+    }
+
+    if (isReasonDialogVisible) {
+        AlertDialog(
+            onDismissRequest = { isReasonDialogVisible = false },
+            title = {
+                Text(
+                    text = "AI 신뢰도 평가",
+                    style = IssueTypo.Bold12.copy(color = Title, fontSize = 16.sp),
+                )
+            },
+            text = {
+                Text(
+                    text = reason.orEmpty(),
+                    style = IssueTypo.Regular12.copy(
+                        color = Gray_6,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { isReasonDialogVisible = false }) {
+                    Text(
+                        text = "확인",
+                        style = IssueTypo.Bold12.copy(color = Success, fontSize = 14.sp),
+                    )
+                }
+            },
+            containerColor = White,
+        )
     }
 }
 

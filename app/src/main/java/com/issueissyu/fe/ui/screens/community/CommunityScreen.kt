@@ -55,6 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.R
+import com.issueissyu.fe.domain.model.LocationRegionGroup
+import com.issueissyu.fe.domain.model.LocationRegionItem
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.community.CommunityTab
@@ -86,7 +88,7 @@ fun CommunityScreen(
         uiState = uiState,
         onBackClick = onBackClick,
         onCommunityClick = onCommunityClick,
-        onTabSelected = viewModel::onTabSelected,
+        onCategorySelected = viewModel::onCategorySelected,
         onRefresh = viewModel::onRefresh,
         onRegionSelected = viewModel::onRegionSelected
     )
@@ -98,16 +100,17 @@ fun CommunityScreenContent(
     uiState: CommunityUiState,
     onBackClick: (() -> Unit)? = null,
     onCommunityClick: (Long) -> Unit = {},
-    onTabSelected: (CommunityTab) -> Unit = {},
+    onCategorySelected: (CommunityTab) -> Unit = {},
     onRefresh: () -> Unit = {},
-    onRegionSelected: (String) -> Unit = {}
+    onRegionSelected: (LocationRegionItem) -> Unit = {}
 ) {
     var showRegionSelector by remember { mutableStateOf(false) }
+    val dismissRegionSelector = { showRegionSelector = false }
 
     val colorScheme = MaterialTheme.colorScheme
 
     val categories = remember(colorScheme) {
-        CommunityTab.visibleTabs.filter { it != CommunityTab.ALL }.map { tab ->
+        CommunityTab.visibleTabs.map { tab ->
             when (tab) {
                 CommunityTab.HOT -> CategoryItem(
                     tab.displayName,
@@ -162,7 +165,8 @@ fun CommunityScreenContent(
                     tab.displayName,
                     R.drawable.ic_all,
                     Title,
-                    colorScheme.surfaceVariant
+                    colorScheme.surfaceVariant,
+                    selectedIconColor = Color.White
                 )
 
                 else -> CategoryItem(
@@ -184,11 +188,9 @@ fun CommunityScreenContent(
             ) {
                 CategoryButtons(
                     categories = categories,
-                    selectedCategory = uiState.selectedTab
-                        .takeIf { it != CommunityTab.ALL }
-                        ?.displayName,
+                    selectedCategory = uiState.selectedCategory.displayName,
                     onCategorySelected = { name ->
-                        onTabSelected(name.toCommunityTab())
+                        onCategorySelected(name.toCommunityTab())
                     }
                 )
 
@@ -211,7 +213,7 @@ fun CommunityScreenContent(
                     Spacer(modifier = Modifier.weight(1f))
 
                     RegionDropdownPill(
-                        region = uiState.region,
+                        region = uiState.region.toRegionDisplayName(),
                         onClick = { showRegionSelector = true }
                     )
                 }
@@ -268,7 +270,7 @@ fun CommunityScreenContent(
                     }
                 }
 
-                uiState.feedItems.isEmpty() -> {
+                uiState.isCurrentCategoryEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -288,29 +290,29 @@ fun CommunityScreenContent(
                 }
 
                 else -> {
-                    val hotItems = uiState.feedItems.filter { it.isHot }
-
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
-                        if (uiState.selectedTab == CommunityTab.ALL) {
+                        if (uiState.selectedCategory == CommunityTab.ALL) {
                             // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
-                            item {
-                                RepresentativeFeedCard(
-                                    item = uiState.feedItems.first(),
-                                    onClick = { onCommunityClick(uiState.feedItems.first().communityId) },
-                                    modifier = Modifier.padding(16.dp)
-                                )
+                            uiState.storePromotions.firstOrNull()?.let { storePromotion ->
+                                item {
+                                    RepresentativeFeedCard(
+                                        item = storePromotion,
+                                        onClick = { onCommunityClick(storePromotion.communityId) },
+                                        modifier = Modifier.padding(16.dp)
+                                    )
+                                }
                             }
 
                             // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
-                            if (hotItems.isNotEmpty()) {
+                            if (uiState.hotPreviews.isNotEmpty()) {
                                 item {
                                     SectionHeaderWithAction(
                                         title = "우리 동네 인기 소식 🔥",
                                         actionText = "더보기",
-                                        onActionClick = { onTabSelected(CommunityTab.HOT) }
+                                        onActionClick = { onCategorySelected(CommunityTab.HOT) }
                                     )
                                     Column(
                                         modifier = Modifier
@@ -318,7 +320,7 @@ fun CommunityScreenContent(
                                             .clip(RoundedCornerShape(16.dp))
                                             .background(Color.White)
                                     ) {
-                                        hotItems.take(3).forEachIndexed { index, item ->
+                                        uiState.hotPreviews.take(3).forEachIndexed { index, item ->
                                             CommunityFeedCard(
                                                 item = item,
                                                 onClick = {
@@ -326,7 +328,7 @@ fun CommunityScreenContent(
                                                 }
                                             )
 
-                                            if (index < hotItems.take(3).lastIndex) {
+                                            if (index < uiState.hotPreviews.take(3).lastIndex) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = 16.dp),
                                                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -347,7 +349,7 @@ fun CommunityScreenContent(
                                         .clip(RoundedCornerShape(16.dp))
                                         .background(Color.White)
                                 ) {
-                                    uiState.feedItems.forEachIndexed { index, item ->
+                                    uiState.recentNews.forEachIndexed { index, item ->
                                         CommunityFeedCard(
                                             item = item,
                                             onClick = {
@@ -355,35 +357,13 @@ fun CommunityScreenContent(
                                             }
                                         )
 
-                                        if (index < uiState.feedItems.lastIndex) {
+                                        if (index < uiState.recentNews.lastIndex) {
                                             HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
                                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                                 thickness = 1.dp
                                             )
                                         }
-                                    }
-                                }
-                            }
-                        } else if (uiState.selectedTab == CommunityTab.HOT) {
-                            val hotListItems = hotItems.ifEmpty { uiState.feedItems }
-
-                            itemsIndexed(hotListItems) { index, item ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Color.White)
-                                ) {
-                                    CommunityFeedCard(
-                                        item = item,
-                                        onClick = { onCommunityClick(item.communityId) }
-                                    )
-                                    if (index < hotListItems.size - 1) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                            color = MaterialTheme.colorScheme.surfaceVariant,
-                                            thickness = 1.dp
-                                        )
                                     }
                                 }
                             }
@@ -396,11 +376,8 @@ fun CommunityScreenContent(
                                 ) {
                                     CommunityFeedCard(
                                         item = item,
-                                        onClick = {
-                                            onCommunityClick(item.communityId)
-                                        }
+                                        onClick = { onCommunityClick(item.communityId) }
                                     )
-
                                     if (index < uiState.feedItems.lastIndex) {
                                         HorizontalDivider(
                                             modifier = Modifier.padding(horizontal = 16.dp),
@@ -420,14 +397,24 @@ fun CommunityScreenContent(
     if (showRegionSelector) {
         RegionSelectorSheet(
             currentRegion = uiState.region,
-            onDismissRequest = {
-                showRegionSelector = false
-            },
+            currentLocationId = uiState.locationId,
+            regionGroups = uiState.regionGroups,
+            isRegionLoading = uiState.isRegionLoading,
+            regionError = uiState.regionError,
+            onDismissRequest = dismissRegionSelector,
             onRegionSelected = { region ->
                 onRegionSelected(region)
-                showRegionSelector = false
+                dismissRegionSelector()
             }
         )
+    }
+}
+
+private fun CommunityUiState.isCurrentCategoryEmpty(): Boolean {
+    return if (selectedCategory == CommunityTab.ALL) {
+        storePromotions.isEmpty() && hotPreviews.isEmpty() && recentNews.isEmpty()
+    } else {
+        feedItems.isEmpty()
     }
 }
 
@@ -451,7 +438,7 @@ fun RegionDropdownPill(
             modifier = Modifier.padding(horizontal = 12.dp)
         ) {
             Text(
-                text = region,
+                text = region.ifBlank { "지역 선택" },
                 style = TextStyle(
                     fontFamily = suiteFontFamily,
                     fontWeight = FontWeight.Bold,
@@ -472,16 +459,26 @@ fun RegionDropdownPill(
 @Composable
 fun RegionSelectorSheet(
     currentRegion: String,
+    currentLocationId: Long?,
+    regionGroups: List<LocationRegionGroup>,
+    isRegionLoading: Boolean,
+    regionError: String?,
     onDismissRequest: () -> Unit,
-    onRegionSelected: (String) -> Unit
+    onRegionSelected: (LocationRegionItem) -> Unit
 ) {
-    val initialProvince =
-        dummyDistrictsMap.entries.find { (_, districts) ->
-            districts.contains(currentRegion)
-        }?.key ?: "서울"
+    val initialProvince = regionGroups.find { group ->
+        group.subLocations.any { it.locationId == currentLocationId || it.location == currentRegion }
+    }?.superLocation ?: regionGroups.firstOrNull()?.superLocation.orEmpty()
 
-    var selectedProvince by remember { mutableStateOf(initialProvince) }
-    var draftRegion by remember { mutableStateOf(currentRegion) }
+    var selectedProvince by remember(currentRegion, regionGroups) { mutableStateOf(initialProvince) }
+    val selectedGroup = regionGroups.find { it.superLocation == selectedProvince }
+    var draftRegion by remember(currentLocationId, currentRegion, regionGroups) {
+        mutableStateOf(
+            selectedGroup?.subLocations?.firstOrNull {
+                it.locationId == currentLocationId || it.location == currentRegion
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -519,31 +516,76 @@ fun RegionSelectorSheet(
                 }
             }
 
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                RegionProvinceList(
-                    provinces = dummyProvinces,
-                    selectedProvince = selectedProvince,
-                    onProvinceSelected = { selectedProvince = it },
-                    modifier = Modifier.width(120.dp)
-                )
+            when {
+                isRegionLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 3.dp
+                        )
+                    }
+                }
 
-                RegionDistrictList(
-                    districts = dummyDistrictsMap[selectedProvince].orEmpty(),
-                    selectedDistrict = draftRegion,
-                    onDistrictSelected = { draftRegion = it },
-                    modifier = Modifier.weight(1f)
-                )
+                regionGroups.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = regionError ?: "선택 가능한 지역이 없습니다.",
+                            style = TextStyle(
+                                fontFamily = suiteFontFamily,
+                                fontWeight = FontWeight.Normal,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            ),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                else -> {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    ) {
+                        RegionProvinceList(
+                            provinces = regionGroups.map { it.superLocation },
+                            selectedProvince = selectedProvince,
+                            onProvinceSelected = { province ->
+                                selectedProvince = province
+                                draftRegion = regionGroups
+                                    .find { it.superLocation == province }
+                                    ?.subLocations
+                                    ?.firstOrNull()
+                            },
+                            modifier = Modifier.width(120.dp)
+                        )
+
+                        RegionDistrictList(
+                            districts = selectedGroup?.subLocations.orEmpty(),
+                            selectedLocationId = draftRegion?.locationId,
+                            onDistrictSelected = { draftRegion = it },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
             }
 
             SelectedRegionFooter(
-                selectedRegion = draftRegion,
+                selectedRegion = draftRegion?.location.orEmpty(),
                 onApply = {
-                    if (draftRegion.isNotBlank()) {
-                        onRegionSelected(draftRegion)
+                    draftRegion?.let {
+                        onRegionSelected(it)
                     }
                 }
             )
@@ -590,9 +632,9 @@ fun RegionProvinceList(
 
 @Composable
 fun RegionDistrictList(
-    districts: List<String>,
-    selectedDistrict: String,
-    onDistrictSelected: (String) -> Unit,
+    districts: List<LocationRegionItem>,
+    selectedLocationId: Long?,
+    onDistrictSelected: (LocationRegionItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -604,7 +646,7 @@ fun RegionDistrictList(
         item { Spacer(modifier = Modifier.height(8.dp)) }
 
         items(districts) { district ->
-            val isSelected = district == selectedDistrict
+            val isSelected = district.locationId == selectedLocationId
 
             Row(
                 modifier = Modifier
@@ -623,7 +665,7 @@ fun RegionDistrictList(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = district,
+                    text = district.location.toRegionDisplayName(),
                     style = TextStyle(
                         fontFamily = suiteFontFamily,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
@@ -683,147 +725,22 @@ fun SelectedRegionFooter(
     }
 }
 
-private val dummyProvinces = listOf(
-    "서울",
-    "경기",
-    "인천",
-    "강원",
-    "대전",
-    "세종",
-    "충남",
-    "충북",
-    "부산",
-    "울산",
-    "경남",
-    "경북"
-)
-
-private val dummyDistrictsMap = mapOf(
-    "서울" to listOf(
-        "전체",
-        "강남구",
-        "강동구",
-        "강북구",
-        "강서구",
-        "관악구",
-        "광진구",
-        "구로구",
-        "금천구",
-        "노원구",
-        "도봉구",
-        "동대문구",
-        "동작구",
-        "마포구",
-        "서대문구",
-        "서초구",
-        "성동구",
-        "성북구",
-        "송파구",
-        "양천구",
-        "영등포구",
-        "용산구",
-        "은평구",
-        "종로구",
-        "중구",
-        "중랑구"
+private val previewRegionGroups = listOf(
+    LocationRegionGroup(
+        superLocation = "서울특별시",
+        subLocations = listOf(
+            LocationRegionItem(locationId = 1L, location = "서울특별시 강남구"),
+            LocationRegionItem(locationId = 2L, location = "서울특별시 마포구"),
+            LocationRegionItem(locationId = 3L, location = "서울특별시 서대문구"),
+            LocationRegionItem(locationId = 4L, location = "서울특별시 종로구")
+        )
     ),
-    "경기" to listOf(
-        "전체",
-        "수원시",
-        "고양시",
-        "용인시",
-        "성남시",
-        "부천시",
-        "화성시",
-        "안산시",
-        "남양주시",
-        "안양시",
-        "평택시"
-    ),
-    "인천" to listOf(
-        "전체",
-        "중구",
-        "동구",
-        "미추홀구",
-        "연수구",
-        "남동구",
-        "부평구",
-        "계양구",
-        "서구"
-    ),
-    "강원" to listOf(
-        "전체",
-        "춘천시",
-        "원주시",
-        "강릉시",
-        "동해시",
-        "태백시",
-        "속초시",
-        "삼척시"
-    ),
-    "대전" to listOf(
-        "전체",
-        "동구",
-        "중구",
-        "서구",
-        "유성구",
-        "대덕구"
-    ),
-    "세종" to listOf(
-        "전체",
-        "세종시"
-    ),
-    "충남" to listOf(
-        "전체",
-        "천안시",
-        "공주시",
-        "보령시",
-        "아산시",
-        "서산시",
-        "논산시"
-    ),
-    "충북" to listOf(
-        "전체",
-        "청주시",
-        "충주시",
-        "제천시"
-    ),
-    "부산" to listOf(
-        "전체",
-        "중구",
-        "서구",
-        "동구",
-        "영도구",
-        "부산진구",
-        "동래구",
-        "남구",
-        "해운대구"
-    ),
-    "울산" to listOf(
-        "전체",
-        "중구",
-        "남구",
-        "동구",
-        "북구",
-        "울주군"
-    ),
-    "경남" to listOf(
-        "전체",
-        "창원시",
-        "진주시",
-        "통영시",
-        "사천시",
-        "김해시",
-        "양산시"
-    ),
-    "경북" to listOf(
-        "전체",
-        "포항시",
-        "경주시",
-        "김천시",
-        "안동시",
-        "구미시",
-        "경산시"
+    LocationRegionGroup(
+        superLocation = "경기도",
+        subLocations = listOf(
+            LocationRegionItem(locationId = 5L, location = "경기도 고양시"),
+            LocationRegionItem(locationId = 6L, location = "경기도 성남시")
+        )
     )
 )
 
@@ -949,8 +866,10 @@ private fun previewCommunityItems(): List<CommunityFeedItem> {
 fun PreviewCommunityScreenHome() {
     CommunityScreenContent(
         uiState = CommunityUiState(
-            feedItems = previewCommunityItems(),
-            selectedTab = CommunityTab.ALL,
+            storePromotions = previewCommunityItems().filter { it.kind == CommunityItemKind.STORE },
+            hotPreviews = previewCommunityItems().filter { it.isHot },
+            recentNews = previewCommunityItems(),
+            selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
         onBackClick = {},
@@ -964,7 +883,7 @@ fun PreviewCommunityScreenHot() {
     CommunityScreenContent(
         uiState = CommunityUiState(
             feedItems = previewCommunityItems(),
-            selectedTab = CommunityTab.HOT,
+            selectedCategory = CommunityTab.HOT,
             region = "마포구"
         ),
         onBackClick = {},
@@ -978,7 +897,7 @@ fun PreviewCommunityScreenIssue() {
     CommunityScreenContent(
         uiState = CommunityUiState(
             feedItems = previewCommunityItems().filter { it.kind == CommunityItemKind.ISSUE },
-            selectedTab = CommunityTab.ISSUE,
+            selectedCategory = CommunityTab.ISSUE,
             region = "마포구"
         ),
         onBackClick = {},
@@ -992,7 +911,7 @@ fun PreviewCommunityScreenEmpty() {
     CommunityScreenContent(
         uiState = CommunityUiState(
             feedItems = emptyList(),
-            selectedTab = CommunityTab.ALL,
+            selectedCategory = CommunityTab.ALL,
             region = "서대문구"
         ),
         onBackClick = {},
@@ -1007,7 +926,7 @@ fun PreviewCommunityScreenLoading() {
         uiState = CommunityUiState(
             isLoading = true,
             feedItems = emptyList(),
-            selectedTab = CommunityTab.ALL,
+            selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
         onBackClick = {},
@@ -1022,7 +941,7 @@ fun PreviewCommunityScreenError() {
         uiState = CommunityUiState(
             error = "서버 연결에 실패했습니다. 네트워크 상태를 확인해주세요.",
             feedItems = emptyList(),
-            selectedTab = CommunityTab.ALL,
+            selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
         onBackClick = {},
@@ -1080,22 +999,22 @@ fun PreviewRegionSelectorSheet() {
                         .fillMaxWidth()
                 ) {
                     RegionProvinceList(
-                        provinces = dummyProvinces,
-                        selectedProvince = "서울",
+                        provinces = previewRegionGroups.map { it.superLocation },
+                        selectedProvince = "서울특별시",
                         onProvinceSelected = {},
                         modifier = Modifier.width(120.dp)
                     )
 
                     RegionDistrictList(
-                        districts = dummyDistrictsMap["서울"].orEmpty(),
-                        selectedDistrict = "마포구",
+                        districts = previewRegionGroups.first().subLocations,
+                        selectedLocationId = 2L,
                         onDistrictSelected = {},
                         modifier = Modifier.weight(1f)
                     )
                 }
 
                 SelectedRegionFooter(
-                    selectedRegion = "마포구",
+                    selectedRegion = "서울특별시 마포구",
                     onApply = {}
                 )
             }

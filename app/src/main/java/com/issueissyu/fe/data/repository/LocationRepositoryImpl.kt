@@ -187,6 +187,40 @@ class LocationRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun getRegionName(locationId: Long): Result<String> {
+        return try {
+            val response = locationApi.getRegionName(locationId)
+            if (response.isSuccess) {
+                val region = response.result?.region?.takeIf { it.isNotBlank() }
+                    ?: return Result.failure(
+                        Exception(response.message.ifBlank { "지역구 이름을 찾을 수 없습니다." }),
+                    )
+                Result.success(region)
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "지역구 이름을 조회하지 못했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getUserLocation(): Result<String> {
+        return try {
+            val response = locationApi.getUserLocation()
+            if (response.isSuccess) {
+                val address = response.result?.address?.takeIf { it.isNotBlank() }
+                    ?: return Result.failure(
+                        Exception(response.message.ifBlank { "인증된 동네를 찾을 수 없습니다." }),
+                    )
+                Result.success(address)
+            } else {
+                Result.failure(Exception(response.message.ifBlank { "인증된 동네를 조회하지 못했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun LocationResolveResponse.toResolvedLocation(): Result<ResolvedLocation> {
         val resolvedLocationId = locationId
             ?: return Result.failure(Exception("지역 ID를 찾을 수 없습니다."))
@@ -242,7 +276,7 @@ class LocationRepositoryImpl @Inject constructor(
                     suspendCancellableCoroutine { continuation ->
                         geocoder.getFromLocation(lat, lng, 1) { list ->
                             if (continuation.isActive) {
-                                continuation.resume(list ?: emptyList())
+                                continuation.resume(list)
                             }
                         }
                     }

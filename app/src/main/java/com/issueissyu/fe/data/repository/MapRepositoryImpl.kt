@@ -73,12 +73,12 @@ class MapRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getPatchNotes(
-        region: String?,
+        locationId: Long?,
         size: Int?,
         cursor: String?,
     ): Result<PatchNotePage> {
         return try {
-            val response = mapApi.getPatchNotes(region = region, size = size, cursor = cursor)
+            val response = mapApi.getPatchNotes(locationId = locationId, size = size, cursor = cursor)
             if (response.isSuccess) {
                 val result = response.result
                     ?: return Result.failure(Exception(response.message.ifBlank { "패치노트 응답이 올바르지 않습니다." }))
@@ -141,7 +141,10 @@ class MapRepositoryImpl @Inject constructor(
             id = pinId?.toString().orEmpty(),
             title = pinTitle.orEmpty(),
             description = pinContent.orEmpty().decodePinContentNewlines(),
-            coordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
+            coordinate = PinCoordinate(
+                latitude = latitude ?: 0.0,
+                longitude = longitude ?: 0.0,
+            ),
             address = pinDetailAddress.orEmpty(),
             locationName = pinDetailAddress,
             imageUrls = listOfNotNull(pinImageUrl, storeImageUrl).filter { it.isNotBlank() },

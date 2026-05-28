@@ -26,6 +26,12 @@ interface LocationRepository {
     // 지역구 목록 조회
     suspend fun getRegionList(): Result<LocationRegions>
 
+    // locationId 기준 도-시-군구 지역명 조회
+    suspend fun getRegionName(locationId: Long): Result<String>
+
+    // 인증된 사용자 동네 조회
+    suspend fun getUserLocation(): Result<String>
+
     //도로명 주소 조회
     suspend fun certifyUserLocation(
         lat: Double,

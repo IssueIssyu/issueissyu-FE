@@ -45,7 +45,8 @@ data class CategoryItem(
     val name: String,
     val icon: Int,
     val iconColor: Color,
-    val backgroundColor: Color
+    val backgroundColor: Color,
+    val selectedIconColor: Color = iconColor,
 )
 
 @Composable
@@ -90,7 +91,7 @@ fun CategoryButtons(
                         Icon(
                             painter = painterResource(id = category.icon),
                             contentDescription = category.name,
-                            tint = category.iconColor,
+                            tint = if (isSelected) category.selectedIconColor else category.iconColor,
                             modifier = Modifier.size(FilterChipDefaults.IconSize)
                         )
                     },
@@ -101,7 +102,7 @@ fun CategoryButtons(
                         iconColor = category.iconColor,
                         selectedContainerColor = Gray_8,
                         selectedLabelColor = White,
-                        selectedLeadingIconColor = category.iconColor
+                        selectedLeadingIconColor = category.selectedIconColor
                     ),
                     modifier = Modifier
                         .height(36.dp)
