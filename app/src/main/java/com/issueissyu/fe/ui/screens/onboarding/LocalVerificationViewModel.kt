@@ -90,6 +90,8 @@ class LocalVerificationViewModel @Inject constructor(
     }
 
     fun registerLocation() {
+        if (_uiState.value.isLoading) return
+
         val latitude = _uiState.value.latitude
         val longitude = _uiState.value.longitude
 

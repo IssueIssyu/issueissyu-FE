@@ -84,6 +84,8 @@ class ChangeLocalViewModel @Inject constructor(
     }
 
     fun updateLocation() {
+        if (_uiState.value.isLoading) return
+
         val latitude = _uiState.value.latitude
         val longitude = _uiState.value.longitude
 
