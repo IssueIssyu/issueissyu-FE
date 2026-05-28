@@ -3,6 +3,7 @@ package com.issueissyu.fe.data.repository
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
 import com.google.gson.Gson
 import com.issueissyu.fe.data.remote.api.AiIssueApiService
 import com.issueissyu.fe.data.remote.api.PinApi
@@ -215,12 +216,15 @@ class PinRepositoryImpl @Inject constructor(
             val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 ?: throw IllegalArgumentException("첨부한 사진을 읽을 수 없습니다.")
 
-            val mediaType = context.contentResolver.getType(uri)?.toMediaTypeOrNull()
-                ?: "image/*".toMediaType()
+            val fileName = resolveUploadFileName(context, uri)
+            val mimeType = resolveImageMimeType(context, uri, fileName, bytes)
+            val mediaType = mimeType.toMediaTypeOrNull()
+                ?: "image/jpeg".toMediaType()
             val body = bytes.toRequestBody(mediaType)
             MultipartBody.Part.createFormData(
                 name = "photos",
-                filename = "pin_image_${index + 1}",
+                filename = fileName.ensureImageExtensionFromMime(mimeType)
+                    .ifBlank { "pin_image_${index + 1}.jpg" },
                 body = body,
             )
         }
@@ -1085,6 +1089,107 @@ private fun resolveUploadFileName(context: Context, uri: Uri): String {
         ?.substringAfterLast('/')
         ?.takeIf { it.isNotBlank() }
         ?: "problem-solver-photo.jpg"
+}
+
+private fun resolveImageMimeType(
+    context: Context,
+    uri: Uri,
+    fileName: String,
+    bytes: ByteArray,
+): String {
+    val resolverMime = context.contentResolver.getType(uri)
+    if (!resolverMime.isNullOrBlank() && resolverMime != "image/*") {
+        return resolverMime
+    }
+
+    val extension = fileName.substringAfterLast('.', "").lowercase()
+    if (extension.isNotBlank()) {
+        val extensionMime = when (extension) {
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "heic" -> "image/heic"
+            "heif" -> "image/heif"
+            else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+        }
+        if (!extensionMime.isNullOrBlank()) {
+            return extensionMime
+        }
+    }
+
+    val signatureMime = sniffImageMimeType(bytes)
+    if (signatureMime != null) {
+        return signatureMime
+    }
+
+    return "image/jpeg"
+}
+
+private fun sniffImageMimeType(bytes: ByteArray): String? {
+    if (bytes.size >= 3 &&
+        bytes[0] == 0xFF.toByte() &&
+        bytes[1] == 0xD8.toByte() &&
+        bytes[2] == 0xFF.toByte()
+    ) {
+        return "image/jpeg"
+    }
+
+    if (bytes.size >= 8 &&
+        bytes[0] == 0x89.toByte() &&
+        bytes[1] == 0x50.toByte() &&
+        bytes[2] == 0x4E.toByte() &&
+        bytes[3] == 0x47.toByte() &&
+        bytes[4] == 0x0D.toByte() &&
+        bytes[5] == 0x0A.toByte() &&
+        bytes[6] == 0x1A.toByte() &&
+        bytes[7] == 0x0A.toByte()
+    ) {
+        return "image/png"
+    }
+
+    if (bytes.size >= 6) {
+        val header = bytes.copyOfRange(0, 6).decodeToString()
+        if (header == "GIF87a" || header == "GIF89a") {
+            return "image/gif"
+        }
+    }
+
+    if (bytes.size >= 12) {
+        val riff = bytes.copyOfRange(0, 4).decodeToString()
+        val webp = bytes.copyOfRange(8, 12).decodeToString()
+        if (riff == "RIFF" && webp == "WEBP") {
+            return "image/webp"
+        }
+    }
+
+    if (bytes.size >= 12) {
+        val boxType = bytes.copyOfRange(4, 8).decodeToString()
+        if (boxType == "ftyp") {
+            val majorBrand = bytes.copyOfRange(8, 12).decodeToString().lowercase()
+            if (majorBrand.startsWith("hei") || majorBrand.startsWith("hev")) {
+                return "image/heic"
+            }
+            if (majorBrand.startsWith("mif")) {
+                return "image/heif"
+            }
+        }
+    }
+
+    return null
+}
+
+private fun String.ensureImageExtensionFromMime(mimeType: String): String {
+    if (contains('.')) return this
+    val extension = when (mimeType.lowercase()) {
+        "image/png" -> "png"
+        "image/webp" -> "webp"
+        "image/gif" -> "gif"
+        "image/heic" -> "heic"
+        "image/heif" -> "heif"
+        else -> "jpg"
+    }
+    return "$this.$extension"
 }
 
 private fun problemSolverJoinException(code: String, message: String): Exception {
