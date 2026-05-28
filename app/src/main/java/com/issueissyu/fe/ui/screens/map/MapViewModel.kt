@@ -266,6 +266,8 @@ class MapViewModel @Inject constructor(
                 exitLocationSelectionMode()
             }.onFailure { e ->
                 _messageEvents.emit(e.message?.takeIf { it.isNotBlank() } ?: "이 위치에는 핀을 생성할 수 없습니다.")
+                // 생성 불가 위치를 선택한 경우 위치 선택 모드를 종료해 핀 종류 선택부터 다시 진행하도록 한다.
+                exitLocationSelectionMode()
             }
         }
     }
