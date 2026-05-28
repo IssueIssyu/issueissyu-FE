@@ -38,6 +38,7 @@ fun LocalVerificationScreen(
         isConfirmEnabled = uiState.isLocationReady,
         onConfirmClick = viewModel::registerLocation,
         onCurrentLocationReady = viewModel::onCurrentLocationReady,
+        onLocationUnavailable = viewModel::onLocationUnavailable,
     )
 }
 

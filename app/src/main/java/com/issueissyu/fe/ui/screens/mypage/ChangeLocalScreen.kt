@@ -40,5 +40,6 @@ fun ChangeLocalScreen(
         isConfirmEnabled = uiState.isLocationReady,
         onConfirmClick = viewModel::updateLocation,
         onCurrentLocationReady = viewModel::onCurrentLocationReady,
+        onLocationUnavailable = viewModel::onLocationUnavailable,
     )
 }

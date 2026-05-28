@@ -37,6 +37,17 @@ class ChangeLocalViewModel @Inject constructor(
         data class ShowError(val message: String) : UiEvent
     }
 
+    fun onLocationUnavailable() {
+        _uiState.update {
+            it.copy(
+                latitude = null,
+                longitude = null,
+                isLocationReady = false,
+                addressText = "",
+            )
+        }
+    }
+
     fun onCurrentLocationReady(lat: Double, lng: Double) {
         _uiState.update {
             it.copy(
@@ -87,14 +98,8 @@ class ChangeLocalViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
 
             locationRepository.certifyUserLocation(latitude, longitude).fold(
-                onSuccess = { address ->
-                    val displayAddress = address.ifBlank { "동네 변경이 완료되었습니다." }
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            addressText = displayAddress,
-                        )
-                    }
+                onSuccess = {
+                    _uiState.update { it.copy(isLoading = false) }
                     _event.emit(UiEvent.Completed)
                 },
                 onFailure = { e ->

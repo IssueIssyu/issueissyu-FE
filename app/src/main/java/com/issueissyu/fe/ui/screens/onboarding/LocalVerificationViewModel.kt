@@ -31,7 +31,7 @@ class LocalVerificationViewModel @Inject constructor(
     val event = _event.asSharedFlow()
 
     data class UiState(
-        val addressText: String = "현재 위치를 불러오는 중...",
+        val addressText: String = "",
         val latitude: Double? = null,
         val longitude: Double? = null,
         val isLoading: Boolean = false,
@@ -41,6 +41,17 @@ class LocalVerificationViewModel @Inject constructor(
     sealed interface UiEvent {
         data object NavigateNext : UiEvent
         data class ShowError(val message: String) : UiEvent
+    }
+
+    fun onLocationUnavailable() {
+        _uiState.update {
+            it.copy(
+                latitude = null,
+                longitude = null,
+                isLocationReady = false,
+                addressText = "",
+            )
+        }
     }
 
     fun onCurrentLocationReady(lat: Double, lng: Double) {
@@ -93,10 +104,7 @@ class LocalVerificationViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
 
             locationRepository.certifyUserLocation(latitude, longitude).fold(
-                onSuccess = { address ->
-                    val displayAddress = address.ifBlank { "동네 인증이 완료되었습니다." }
-                    _uiState.update { it.copy(addressText = displayAddress) }
-
+                onSuccess = {
                     val pending = onboardingSessionStore.getPendingProfile()
                     if (pending == null) {
                         _uiState.update { it.copy(isLoading = false) }

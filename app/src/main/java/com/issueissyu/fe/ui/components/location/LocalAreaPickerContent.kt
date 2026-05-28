@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.components.location
 
 import android.Manifest
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -56,8 +57,12 @@ import com.naver.maps.map.CameraUpdate
 import com.naver.maps.map.MapView
 import com.naver.maps.map.NaverMap
 
+private val locationPermissions = arrayOf(
+    Manifest.permission.ACCESS_FINE_LOCATION,
+    Manifest.permission.ACCESS_COARSE_LOCATION,
+)
+
 private object LocalAreaPickerDefaults {
-    val SEOUL_CITY_HALL = LatLng(37.5665, 126.9780)
     const val PIN_SIZE = 48
     const val CARD_RADIUS = 30
     const val BUTTON_RADIUS = 12
@@ -73,10 +78,12 @@ fun LocalAreaPickerContent(
     isConfirmEnabled: Boolean,
     onConfirmClick: () -> Unit,
     onCurrentLocationReady: (latitude: Double, longitude: Double) -> Unit,
+    onLocationUnavailable: () -> Unit,
     modifier: Modifier = Modifier,
     onBackClick: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
     var isLocationReported by remember { mutableStateOf(false) }
     var locationCts by remember { mutableStateOf<CancellationTokenSource?>(null) }
@@ -87,15 +94,17 @@ fun LocalAreaPickerContent(
         onCurrentLocationReady(lat, lng)
     }
 
+    fun notifyLocationUnavailable(message: String) {
+        isLocationReported = false
+        onLocationUnavailable()
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    }
+
     fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        return locationPermissions.any { permission ->
+            ContextCompat.checkSelfPermission(context, permission) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
     }
 
     fun moveToCurrentLocation() {
@@ -108,35 +117,27 @@ fun LocalAreaPickerContent(
             fusedLocationClient
                 .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
                 .addOnSuccessListener { location ->
-                    val targetLocation = if (location != null) {
-                        LatLng(location.latitude, location.longitude)
-                    } else {
-                        null
+                    if (location != null) {
+                        val target = LatLng(location.latitude, location.longitude)
+                        naverMapInstance?.moveCamera(CameraUpdate.scrollTo(target))
+                        reportLocation(target.latitude, target.longitude)
+                        return@addOnSuccessListener
                     }
 
-                    if (targetLocation != null) {
-                        naverMapInstance?.moveCamera(CameraUpdate.scrollTo(targetLocation))
-                        reportLocation(targetLocation.latitude, targetLocation.longitude)
-                    } else {
-                        fusedLocationClient.lastLocation.addOnSuccessListener { lastKnown ->
-                            val fallback = if (lastKnown != null) {
-                                LatLng(lastKnown.latitude, lastKnown.longitude)
-                            } else {
-                                LocalAreaPickerDefaults.SEOUL_CITY_HALL
-                            }
-                            naverMapInstance?.moveCamera(CameraUpdate.scrollTo(fallback))
-                            reportLocation(fallback.latitude, fallback.longitude)
+                    fusedLocationClient.lastLocation.addOnSuccessListener { lastKnown ->
+                        if (lastKnown != null) {
+                            val target = LatLng(lastKnown.latitude, lastKnown.longitude)
+                            naverMapInstance?.moveCamera(CameraUpdate.scrollTo(target))
+                            reportLocation(target.latitude, target.longitude)
+                        } else {
+                            notifyLocationUnavailable(
+                                "현재 위치를 가져오지 못했습니다. GPS를 켠 뒤 다시 시도해 주세요.",
+                            )
                         }
                     }
                 }
         } catch (_: SecurityException) {
-            naverMapInstance?.moveCamera(
-                CameraUpdate.scrollTo(LocalAreaPickerDefaults.SEOUL_CITY_HALL),
-            )
-            reportLocation(
-                LocalAreaPickerDefaults.SEOUL_CITY_HALL.latitude,
-                LocalAreaPickerDefaults.SEOUL_CITY_HALL.longitude,
-            )
+            notifyLocationUnavailable("현재 위치 접근에 실패했습니다. 위치 권한을 확인해 주세요.")
         }
     }
 
@@ -144,15 +145,10 @@ fun LocalAreaPickerContent(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { permissions ->
         if (permissions.values.any { it }) {
+            isLocationReported = false
             moveToCurrentLocation()
         } else {
-            naverMapInstance?.moveCamera(
-                CameraUpdate.scrollTo(LocalAreaPickerDefaults.SEOUL_CITY_HALL),
-            )
-            reportLocation(
-                LocalAreaPickerDefaults.SEOUL_CITY_HALL.latitude,
-                LocalAreaPickerDefaults.SEOUL_CITY_HALL.longitude,
-            )
+            notifyLocationUnavailable("위치 권한이 필요합니다. 권한 허용 후 다시 시도해 주세요.")
         }
     }
 
@@ -167,12 +163,7 @@ fun LocalAreaPickerContent(
         if (hasLocationPermission()) {
             moveToCurrentLocation()
         } else {
-            permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                ),
-            )
+            permissionLauncher.launch(locationPermissions)
         }
     }
 
@@ -210,8 +201,15 @@ fun LocalAreaPickerContent(
         }
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && hasLocationPermission() && !isLocationReported) {
+                moveToCurrentLocation()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
             locationCts?.cancel()
             locationCts = null
         }
