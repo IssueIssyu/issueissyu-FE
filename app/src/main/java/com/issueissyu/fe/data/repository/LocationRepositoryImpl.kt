@@ -20,6 +20,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -168,6 +169,12 @@ class LocationRepositoryImpl @Inject constructor(
                 Result.success(response.result?.address?.takeIf { it.isNotBlank() }.orEmpty())
             } else {
                 Result.failure(Exception(response.message.ifBlank { "이 위치에는 핀을 생성할 수 없습니다." }))
+            }
+        } catch (e: HttpException) {
+            if (e.code() == 403) {
+                Result.failure(Exception("이 위치에는 핀을 생성할 수 없습니다. 다른 위치를 선택해주세요."))
+            } else {
+                Result.failure(e)
             }
         } catch (e: Exception) {
             Result.failure(e)
