@@ -314,7 +314,7 @@ private fun LocalAreaPickerNaverMap(
     val lifecycleOwner = LocalLifecycleOwner.current
     val mapView = remember(context) { MapView(context) }
 
-    DisposableEffect(lifecycleOwner, mapView) {
+    DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_CREATE -> mapView.onCreate(Bundle())
@@ -322,14 +322,35 @@ private fun LocalAreaPickerNaverMap(
                 Lifecycle.Event.ON_RESUME -> mapView.onResume()
                 Lifecycle.Event.ON_PAUSE -> mapView.onPause()
                 Lifecycle.Event.ON_STOP -> mapView.onStop()
-                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
                 else -> Unit
             }
         }
 
-        lifecycleOwner.lifecycle.addObserver(observer)
+        val lifecycle = lifecycleOwner.lifecycle
+        lifecycle.addObserver(observer)
+
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) {
+            mapView.onCreate(Bundle())
+        }
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            mapView.onStart()
+        }
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            mapView.onResume()
+        }
+
         onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
+            lifecycle.removeObserver(observer)
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) {
+                mapView.onPause()
+                mapView.onStop()
+            }
+        }
+    }
+
+    // Composable이 composition에서 제거될 때만 MapView를 destroy한다.
+    DisposableEffect(mapView) {
+        onDispose {
             mapView.onDestroy()
         }
     }
