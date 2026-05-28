@@ -66,23 +66,23 @@ fun AutoScrollingNotice(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(64.dp)
+            .height(48.dp)
             .clickable { onClick(currentNotice) },
         contentAlignment = Alignment.CenterStart
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .height(36.dp)
                 .padding(start = 28.dp)
                 .shadow(
                     elevation = 6.dp,
-                    shape = RoundedCornerShape(25.dp),
+                    shape = RoundedCornerShape(18.dp),
                     clip = false
                 )
                 .background(
                     color = Color.White.copy(alpha = 0.7f),
-                    shape = RoundedCornerShape(25.dp)
+                    shape = RoundedCornerShape(18.dp)
                 )
                 .padding(start = 68.dp, end = 20.dp),
             verticalAlignment = Alignment.CenterVertically
