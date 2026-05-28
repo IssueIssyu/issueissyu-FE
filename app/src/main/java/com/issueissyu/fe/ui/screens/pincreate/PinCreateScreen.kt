@@ -71,6 +71,7 @@ fun PinCreateScreen(
     userLng: Double,
     address: String,
     onBackClick: () -> Unit,
+    onCreated: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinCreateViewModel = hiltViewModel()
 ) {
@@ -88,8 +89,8 @@ fun PinCreateScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.createdEvents.collect {
-            onBackClick()
+        viewModel.createdEvents.collect { createdPinId ->
+            onCreated(createdPinId)
         }
     }
 

@@ -44,6 +44,8 @@ import com.issueissyu.fe.ui.screens.pindetail.ReportTargetType
 import com.issueissyu.fe.ui.screens.community.CommunityScreen
 import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreen
 import com.issueissyu.fe.ui.screens.community.detail.COMMUNITY_DETAIL_REFRESH_KEY
+import com.issueissyu.fe.ui.screens.map.PIN_CREATE_FOCUS_PIN_ID_KEY
+import com.issueissyu.fe.ui.screens.map.PIN_CREATE_MAP_REFRESH_KEY
 
 @Composable
 fun AppNavGraph(
@@ -200,6 +202,7 @@ fun AppNavGraph(
                 MapScreen(
                     navController = navController,
                     focusPinId = backStackEntry.arguments?.getString("focusPinId"),
+                    savedStateHandle = backStackEntry.savedStateHandle,
                 )
             }
         }
@@ -406,7 +409,16 @@ fun AppNavGraph(
                         userLat = userLat,
                         userLng = userLng,
                         address = address,
-                        onBackClick = { navController.popBackStack() }
+                        onBackClick = { navController.popBackStack() },
+                        onCreated = { pinId ->
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set(PIN_CREATE_MAP_REFRESH_KEY, true)
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set(PIN_CREATE_FOCUS_PIN_ID_KEY, pinId)
+                            navController.popBackStack()
+                        },
                     )
                 }
             }

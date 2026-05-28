@@ -51,6 +51,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.collectLatest
@@ -82,6 +83,8 @@ import com.issueissyu.fe.ui.theme.White
 
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
+const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
+const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
 
 // Context에서 Activity를 찾는 헬퍼 함수
 private fun Context.findActivity(): Activity? {
@@ -103,6 +106,7 @@ private fun Context.findActivity(): Activity? {
 fun MapScreen(
     navController: NavHostController,
     focusPinId: String? = null,
+    savedStateHandle: SavedStateHandle,
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val showResearchButton by viewModel.showResearchButton.collectAsStateWithLifecycle()
@@ -240,6 +244,19 @@ fun MapScreen(
     LaunchedEffect(Unit) {
         viewModel.messageEvents.collectLatest { message ->
             snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    LaunchedEffect(savedStateHandle) {
+        savedStateHandle.getStateFlow(PIN_CREATE_MAP_REFRESH_KEY, false).collectLatest { shouldRefresh ->
+            if (!shouldRefresh) return@collectLatest
+            viewModel.fetchPinsInBounds()
+            val createdPinId = savedStateHandle.get<String>(PIN_CREATE_FOCUS_PIN_ID_KEY).orEmpty()
+            if (createdPinId.isNotBlank()) {
+                viewModel.selectPinById(createdPinId)
+            }
+            savedStateHandle[PIN_CREATE_MAP_REFRESH_KEY] = false
+            savedStateHandle[PIN_CREATE_FOCUS_PIN_ID_KEY] = ""
         }
     }
 

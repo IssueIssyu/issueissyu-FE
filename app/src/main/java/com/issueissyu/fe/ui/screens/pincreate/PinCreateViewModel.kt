@@ -49,7 +49,7 @@ class PinCreateViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(PinCreateUiState())
     val uiState: StateFlow<PinCreateUiState> = _uiState.asStateFlow()
 
-    private val _createdEvents = MutableSharedFlow<Unit>()
+    private val _createdEvents = MutableSharedFlow<String>()
     val createdEvents = _createdEvents.asSharedFlow()
 
     fun initialize(
@@ -224,6 +224,10 @@ class PinCreateViewModel @Inject constructor(
                 _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
                 return
             }
+            category == PinCategory.ISSUE && state.imageUris.isEmpty() -> {
+                _uiState.update { it.copy(errorMessage = "이슈 핀은 사진을 최소 1장 첨부해야 합니다.") }
+                return
+            }
         }
 
         PinImageUploadValidator.validate(context, state.imageUris).onFailure { error ->
@@ -253,9 +257,9 @@ class PinCreateViewModel @Inject constructor(
                     mainImageUri = state.mainImageUri,
                     tone = state.selectedTone ?: DEFAULT_AI_TONE,
                 )
-            ).onSuccess {
+            ).onSuccess { createdPin ->
                 _uiState.update { it.copy(isSubmitting = false, errorMessage = null) }
-                _createdEvents.emit(Unit)
+                _createdEvents.emit(createdPin.id)
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
