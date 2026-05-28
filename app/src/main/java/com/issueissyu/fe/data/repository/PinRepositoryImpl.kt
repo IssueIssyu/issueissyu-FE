@@ -69,6 +69,8 @@ import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import com.issueissyu.fe.core.constants.PinImageUploadConstraints
+import com.issueissyu.fe.core.media.PinImageUploadValidator
 import com.issueissyu.fe.domain.repository.PinRepository
 import java.io.File
 import java.util.UUID
@@ -87,11 +89,6 @@ class PinRepositoryImpl @Inject constructor(
     private val gson: Gson,
     @ApplicationContext private val context: Context,
 ) : PinRepository {
-
-    private companion object {
-        const val MAX_PIN_IMAGE_COUNT = 5
-        const val MAX_TOTAL_PIN_IMAGE_BYTES = 45L * 1024L * 1024L
-    }
 
     // TODO: 실제 백엔드와 연결 시 PinSamples 의존을 제거하고 네트워크 호출 로직으로 대체.
     private val dummyPins: MutableList<Pin> = PinSamples.pins.toMutableList()
@@ -126,6 +123,7 @@ class PinRepositoryImpl @Inject constructor(
 
     override suspend fun createPin(request: CreatePinRequest): Result<Pin> {
         return try {
+            PinImageUploadValidator.validate(context, request.imageUris).getOrThrow()
             val photos = request.imageUris.toMultipartParts()
             val response = when (request.category) {
                 PinCategory.ISSUE -> aiIssueApiService.createIssuePin(
@@ -157,15 +155,15 @@ class PinRepositoryImpl @Inject constructor(
     }
 
     private fun CreatePinRequest.toCommunicationPinImportRequest(): CommunicationPinImportRequest {
+        val mainUri = mainImageUri?.takeIf { imageUris.contains(it) } ?: imageUris.firstOrNull()
+        val pinImages = imageUris.takeIf { it.isNotEmpty() }?.map { uri ->
+            PinImageItemRequest(isMain = uri == mainUri)
+        }
+
         return CommunicationPinImportRequest(
             lat = coordinate.latitude,
             lng = coordinate.longitude,
-            pinImageUrls = imageUris.mapIndexed { index, _ ->
-                PinImageItemRequest(
-                    pinImageUrl = "",
-                    isMain = index == 0,
-                )
-            },
+            pinImages = pinImages,
             pinTitle = title,
             pinContent = description,
         )
@@ -199,19 +197,10 @@ class PinRepositoryImpl @Inject constructor(
     private fun String.toJsonPart(): RequestBody = toRequestBody("application/json".toMediaType())
 
     private fun List<String>.toMultipartParts(): List<MultipartBody.Part> {
-        if (size > MAX_PIN_IMAGE_COUNT) {
-            throw IllegalArgumentException("사진은 최대 ${MAX_PIN_IMAGE_COUNT}장까지 첨부할 수 있습니다.")
-        }
-
-        var totalBytes = 0L
         return mapIndexed { index, uriString ->
             val uri = Uri.parse(uriString)
             val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 ?: throw IllegalArgumentException("첨부한 사진을 읽을 수 없습니다.")
-            totalBytes += bytes.size
-            if (totalBytes > MAX_TOTAL_PIN_IMAGE_BYTES) {
-                throw IllegalArgumentException("사진 전체 용량은 45MB를 넘을 수 없습니다.")
-            }
 
             val mediaType = context.contentResolver.getType(uri)?.toMediaTypeOrNull()
                 ?: "image/*".toMediaType()

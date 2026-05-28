@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
@@ -75,7 +76,9 @@ fun PinCreateScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_IMAGE_COUNT),
+        contract = ActivityResultContracts.PickMultipleVisualMedia(
+            maxItems = PinImageUploadConstraints.MAX_COUNT,
+        ),
     ) { uris ->
         viewModel.addImageUris(uris.map { it.toString() })
     }
@@ -103,6 +106,7 @@ fun PinCreateScreen(
             )
         },
         onPhotoRemoveClick = viewModel::removeImageUri,
+        onSetMainImageClick = viewModel::setMainImageUri,
         onAiDraftClick = viewModel::createAiDraft,
         onSubmit = viewModel::submitPin,
         modifier = modifier
@@ -119,6 +123,7 @@ private fun PinCreateContent(
     onToneChange: (String) -> Unit,
     onPhotoAddClick: () -> Unit,
     onPhotoRemoveClick: (String) -> Unit,
+    onSetMainImageClick: (String) -> Unit,
     onAiDraftClick: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
@@ -148,8 +153,10 @@ private fun PinCreateContent(
         ) {
             PhotoUploadSection(
                 imageUris = uiState.imageUris,
+                mainImageUri = uiState.mainImageUri,
                 onPhotoAddClick = onPhotoAddClick,
                 onPhotoRemoveClick = onPhotoRemoveClick,
+                onSetMainImageClick = onSetMainImageClick,
             )
 
             LocationSection(
@@ -240,15 +247,17 @@ private fun SectionLabel(
 @Composable
 private fun PhotoUploadSection(
     imageUris: List<String>,
+    mainImageUri: String?,
     onPhotoAddClick: () -> Unit,
     onPhotoRemoveClick: (String) -> Unit,
+    onSetMainImageClick: (String) -> Unit,
 ) {
     Column {
         SectionLabel(
             text = "사진",
             trailing = {
                 Text(
-                    text = "${imageUris.size}/$MAX_IMAGE_COUNT",
+                    text = "${imageUris.size}/${PinImageUploadConstraints.MAX_COUNT}",
                     style = IssueTypo.Regular12.copy(color = Gray_6)
                 )
             }
@@ -258,12 +267,14 @@ private fun PhotoUploadSection(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            if (imageUris.size < MAX_IMAGE_COUNT) {
+            if (imageUris.size < PinImageUploadConstraints.MAX_COUNT) {
                 PhotoAddBox(onClick = onPhotoAddClick)
             }
             imageUris.forEach { uri ->
                 SelectedPhotoBox(
                     uri = uri,
+                    isMain = uri == mainImageUri,
+                    onSetMainClick = { onSetMainImageClick(uri) },
                     onRemoveClick = { onPhotoRemoveClick(uri) },
                 )
             }
@@ -300,6 +311,8 @@ private fun PhotoAddBox(onClick: () -> Unit) {
 @Composable
 private fun SelectedPhotoBox(
     uri: String,
+    isMain: Boolean,
+    onSetMainClick: () -> Unit,
     onRemoveClick: () -> Unit,
 ) {
     Box(
@@ -307,6 +320,14 @@ private fun SelectedPhotoBox(
             .size(80.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Gray_1)
+            .then(
+                if (isMain) {
+                    Modifier.border(2.dp, Orange, RoundedCornerShape(12.dp))
+                } else {
+                    Modifier
+                },
+            )
+            .clickable(onClick = onSetMainClick),
     ) {
         AsyncImage(
             model = uri,
@@ -314,6 +335,20 @@ private fun SelectedPhotoBox(
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
+        if (isMain) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .background(Orange, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = "대표",
+                    style = IssueTypo.Regular12.copy(color = White),
+                )
+            }
+        }
         IconButton(
             onClick = onRemoveClick,
             modifier = Modifier
@@ -477,6 +512,7 @@ private fun PinCreateScreenPreview_IssueFilled() {
             onToneChange = {},
             onPhotoAddClick = {},
             onPhotoRemoveClick = {},
+            onSetMainImageClick = {},
             onAiDraftClick = {},
             onSubmit = {}
         )
@@ -503,10 +539,9 @@ private fun PinCreateScreenPreview_Communication() {
             onToneChange = {},
             onPhotoAddClick = {},
             onPhotoRemoveClick = {},
+            onSetMainImageClick = {},
             onAiDraftClick = {},
             onSubmit = {}
         )
     }
 }
-
-private const val MAX_IMAGE_COUNT = 5

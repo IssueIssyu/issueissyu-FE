@@ -1,13 +1,17 @@
 package com.issueissyu.fe.ui.screens.pincreate
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.core.constants.PinImageUploadConstraints
+import com.issueissyu.fe.core.media.PinImageUploadValidator
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -28,6 +32,7 @@ data class PinCreateUiState(
     val address: String = "",
     val locationName: String? = null,
     val imageUris: List<String> = emptyList(),
+    val mainImageUri: String? = null,
     val selectedTone: String? = null,
     val isSubmitting: Boolean = false,
     val isGeneratingAiContent: Boolean = false,
@@ -38,6 +43,7 @@ data class PinCreateUiState(
 class PinCreateViewModel @Inject constructor(
     private val issueRepository: IssueRepository,
     private val pinRepository: PinRepository,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PinCreateUiState())
@@ -91,25 +97,52 @@ class PinCreateViewModel @Inject constructor(
     fun addImageUris(uris: List<String>) {
         if (uris.isEmpty()) return
 
-        _uiState.update { state ->
-            val merged = (state.imageUris + uris)
-                .distinct()
-                .take(MAX_IMAGE_COUNT)
-            state.copy(
+        val state = _uiState.value
+        if (state.imageUris.size + uris.size > PinImageUploadConstraints.MAX_COUNT) {
+            _uiState.update {
+                it.copy(errorMessage = "사진은 최대 ${PinImageUploadConstraints.MAX_COUNT}장까지 첨부할 수 있습니다.")
+            }
+            return
+        }
+
+        val merged = (state.imageUris + uris)
+            .distinct()
+            .take(PinImageUploadConstraints.MAX_COUNT)
+
+        PinImageUploadValidator.validate(context, merged).onFailure { error ->
+            _uiState.update {
+                it.copy(
+                    errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
+                        ?: "첨부한 사진을 확인할 수 없습니다.",
+                )
+            }
+            return
+        }
+
+        _uiState.update {
+            it.copy(
                 imageUris = merged,
-                errorMessage = if (state.imageUris.size + uris.size > MAX_IMAGE_COUNT) {
-                    "사진은 최대 ${MAX_IMAGE_COUNT}장까지 첨부할 수 있습니다."
-                } else {
-                    state.errorMessage
-                },
+                mainImageUri = it.mainImageUri?.takeIf { mainUri -> mainUri in merged } ?: merged.firstOrNull(),
+                errorMessage = null,
             )
         }
     }
 
     fun removeImageUri(uri: String) {
         _uiState.update { state ->
-            state.copy(imageUris = state.imageUris.filterNot { it == uri })
+            val remaining = state.imageUris.filterNot { it == uri }
+            state.copy(
+                imageUris = remaining,
+                mainImageUri = state.mainImageUri
+                    ?.takeIf { mainUri -> mainUri in remaining }
+                    ?: remaining.firstOrNull(),
+            )
         }
+    }
+
+    fun setMainImageUri(uri: String) {
+        if (uri !in _uiState.value.imageUris) return
+        _uiState.update { it.copy(mainImageUri = uri) }
     }
 
     fun createAiDraft() {
@@ -193,6 +226,16 @@ class PinCreateViewModel @Inject constructor(
             }
         }
 
+        PinImageUploadValidator.validate(context, state.imageUris).onFailure { error ->
+            _uiState.update {
+                it.copy(
+                    errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
+                        ?: "첨부한 사진을 확인할 수 없습니다.",
+                )
+            }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             pinRepository.createPin(
@@ -207,6 +250,7 @@ class PinCreateViewModel @Inject constructor(
                     address = state.address,
                     locationName = state.locationName,
                     imageUris = state.imageUris,
+                    mainImageUri = state.mainImageUri,
                     tone = state.selectedTone ?: DEFAULT_AI_TONE,
                 )
             ).onSuccess {
@@ -225,6 +269,5 @@ class PinCreateViewModel @Inject constructor(
 
     companion object {
         private const val DEFAULT_AI_TONE = "없음"
-        private const val MAX_IMAGE_COUNT = 5
     }
 }
