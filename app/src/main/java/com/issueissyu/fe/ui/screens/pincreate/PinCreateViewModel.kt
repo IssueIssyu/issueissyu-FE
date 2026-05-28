@@ -7,6 +7,7 @@ import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.core.media.PinImageUploadValidator
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinCreateException
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.PinRepository
@@ -51,6 +52,8 @@ class PinCreateViewModel @Inject constructor(
 
     private val _createdEvents = MutableSharedFlow<String>()
     val createdEvents = _createdEvents.asSharedFlow()
+
+    private var lastFailedImageFingerprint: String? = null
 
     fun initialize(
         category: PinCategory,
@@ -126,6 +129,7 @@ class PinCreateViewModel @Inject constructor(
                 errorMessage = null,
             )
         }
+        clearImageUploadFailureTracking()
     }
 
     fun removeImageUri(uri: String) {
@@ -138,6 +142,7 @@ class PinCreateViewModel @Inject constructor(
                     ?: remaining.firstOrNull(),
             )
         }
+        clearImageUploadFailureTracking()
     }
 
     fun setMainImageUri(uri: String) {
@@ -258,17 +263,42 @@ class PinCreateViewModel @Inject constructor(
                     tone = state.selectedTone ?: DEFAULT_AI_TONE,
                 )
             ).onSuccess { createdPin ->
+                clearImageUploadFailureTracking()
                 _uiState.update { it.copy(isSubmitting = false, errorMessage = null) }
                 _createdEvents.emit(createdPin.id)
             }.onFailure { e ->
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
-                        errorMessage = e.message?.takeIf { message -> message.isNotBlank() } ?: "핀 생성에 실패했습니다.",
+                        errorMessage = resolveSubmitErrorMessage(e, state.imageUris),
                     )
                 }
             }
         }
+    }
+
+    private fun resolveSubmitErrorMessage(error: Throwable, imageUris: List<String>): String {
+        val pinCreateError = error as? PinCreateException
+        val fingerprint = imageUris.sorted().joinToString("|")
+        val isImageRelated = pinCreateError?.isImageRelated == true
+        val isRepeatImageFailure = isImageRelated &&
+            fingerprint.isNotEmpty() &&
+            fingerprint == lastFailedImageFingerprint
+
+        if (isImageRelated && fingerprint.isNotEmpty()) {
+            lastFailedImageFingerprint = fingerprint
+        }
+
+        return when {
+            isRepeatImageFailure ->
+                "선택한 사진으로 등록에 실패했습니다. 다른 사진으로 다시 시도해주세요."
+            else ->
+                error.message?.takeIf { message -> message.isNotBlank() } ?: "핀 생성에 실패했습니다."
+        }
+    }
+
+    private fun clearImageUploadFailureTracking() {
+        lastFailedImageFingerprint = null
     }
 
     companion object {

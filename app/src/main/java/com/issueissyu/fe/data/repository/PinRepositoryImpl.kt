@@ -3,7 +3,6 @@ package com.issueissyu.fe.data.repository
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import android.webkit.MimeTypeMap
 import com.google.gson.Gson
 import com.issueissyu.fe.data.remote.api.AiIssueApiService
 import com.issueissyu.fe.data.remote.api.PinApi
@@ -72,7 +71,11 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import com.issueissyu.fe.core.constants.PinImageUploadConstraints
+import com.issueissyu.fe.core.media.PinImageMimeResolver
+import com.issueissyu.fe.core.media.PinImageUploadDiagnostics
+import com.issueissyu.fe.core.media.PinImageUploadMeta
 import com.issueissyu.fe.core.media.PinImageUploadValidator
+import com.issueissyu.fe.domain.model.pin.PinCreateException
 import com.issueissyu.fe.domain.repository.PinRepository
 import java.io.File
 import java.util.UUID
@@ -83,6 +86,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 
 @Singleton
 class PinRepositoryImpl @Inject constructor(
@@ -124,20 +128,22 @@ class PinRepositoryImpl @Inject constructor(
     }
 
     override suspend fun createPin(request: CreatePinRequest): Result<Pin> {
+        var uploadMetas = emptyList<PinImageUploadMeta>()
         return try {
             if (request.category == PinCategory.ISSUE && request.imageUris.isEmpty()) {
                 return Result.failure(IllegalArgumentException("이슈 핀은 사진을 최소 1장 첨부해야 합니다."))
             }
             PinImageUploadValidator.validate(context, request.imageUris).getOrThrow()
-            val photos = request.imageUris.toMultipartParts()
+            val multipart = request.imageUris.toMultipartParts()
+            uploadMetas = multipart.uploadMetas
             val response = when (request.category) {
                 PinCategory.ISSUE -> aiIssueApiService.createIssuePin(
                     request = gson.toJson(request.toIssuePinImportRequest()).toJsonPart(),
-                    photos = photos,
+                    photos = multipart.parts,
                 )
                 PinCategory.COMMUNICATION -> pinApi.createCommunicationPin(
                     request = gson.toJson(request.toCommunicationPinImportRequest()).toJsonPart(),
-                    photos = photos,
+                    photos = multipart.parts,
                 )
                 PinCategory.SHOP,
                 PinCategory.FESTIVAL -> return Result.failure(
@@ -148,11 +154,79 @@ class PinRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 Result.success(response.toCreatedPin(request))
             } else {
-                Result.failure(Exception(response.message.ifBlank { "핀 생성에 실패했습니다." }))
+                if (request.imageUris.isNotEmpty()) {
+                    PinImageUploadDiagnostics.logUploadFailure(
+                        httpStatus = null,
+                        serverCode = response.code,
+                        metas = uploadMetas,
+                    )
+                }
+                Result.failure(
+                    toPinCreateException(
+                        code = response.code,
+                        message = response.message,
+                    ),
+                )
             }
+        } catch (e: HttpException) {
+            val errorEnvelope = e.response()?.errorBody()?.string()
+                ?.let { body -> runCatching { gson.fromJson(body, PinCreateErrorEnvelope::class.java) }.getOrNull() }
+            if (request.imageUris.isNotEmpty()) {
+                PinImageUploadDiagnostics.logUploadFailure(
+                    httpStatus = e.code(),
+                    serverCode = errorEnvelope?.code,
+                    metas = uploadMetas,
+                )
+            }
+            Result.failure(
+                toPinCreateException(
+                    code = errorEnvelope?.code,
+                    message = errorEnvelope?.message ?: e.message(),
+                    fallbackMessage = "핀 생성에 실패했습니다.",
+                ),
+            )
         } catch (e: Exception) {
+            if (request.imageUris.isNotEmpty() && uploadMetas.isNotEmpty()) {
+                PinImageUploadDiagnostics.logUploadFailure(
+                    httpStatus = null,
+                    serverCode = e.javaClass.simpleName,
+                    metas = uploadMetas,
+                )
+            }
             Result.failure(e)
         }
+    }
+
+    private data class PinCreateErrorEnvelope(
+        val code: String = "",
+        val message: String = "",
+    )
+
+    private data class PinMultipartUpload(
+        val parts: List<MultipartBody.Part>,
+        val uploadMetas: List<PinImageUploadMeta>,
+    )
+
+    private fun toPinCreateException(
+        code: String?,
+        message: String?,
+        fallbackMessage: String = "핀 생성에 실패했습니다.",
+    ): PinCreateException {
+        val normalizedCode = code?.takeIf { it.isNotBlank() }
+        val normalizedMessage = message?.takeIf { it.isNotBlank() }
+        val isImageRelated = normalizedCode?.startsWith("PIN_IMAGE") == true
+        val userMessage = when (normalizedCode) {
+            "PIN_IMAGE_400_2" ->
+                normalizedMessage?.ifBlank { null }
+                    ?: "사진 첨부에 실패했습니다. 다른 사진으로 다시 시도해주세요."
+            else ->
+                normalizedMessage ?: fallbackMessage
+        }
+        return PinCreateException(
+            message = userMessage,
+            isImageRelated = isImageRelated,
+            serverCode = normalizedCode,
+        )
     }
 
     private fun CreatePinRequest.toCommunicationPinImportRequest(): CommunicationPinImportRequest {
@@ -210,24 +284,41 @@ class PinRepositoryImpl @Inject constructor(
 
     private fun String.toJsonPart(): RequestBody = toRequestBody("application/json".toMediaType())
 
-    private fun List<String>.toMultipartParts(): List<MultipartBody.Part> {
-        return mapIndexed { index, uriString ->
+    private fun List<String>.toMultipartParts(): PinMultipartUpload {
+        val parts = mutableListOf<MultipartBody.Part>()
+        val uploadMetas = mutableListOf<PinImageUploadMeta>()
+        forEachIndexed { index, uriString ->
             val uri = Uri.parse(uriString)
             val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
                 ?: throw IllegalArgumentException("첨부한 사진을 읽을 수 없습니다.")
 
             val fileName = resolveUploadFileName(context, uri)
-            val mimeType = resolveImageMimeType(context, uri, fileName, bytes)
-            val mediaType = mimeType.toMediaTypeOrNull()
+            val mimeResolution = PinImageMimeResolver.resolve(context, uri, fileName, bytes)
+            PinImageUploadDiagnostics.logMimeFallback(
+                resolution = mimeResolution,
+                fileName = fileName,
+                uriScheme = uri.scheme.orEmpty(),
+                bytes = bytes,
+            )
+            uploadMetas += PinImageUploadMeta(
+                uriScheme = uri.scheme.orEmpty(),
+                fileName = fileName,
+                resolvedMime = mimeResolution.mimeType,
+                mimeSource = mimeResolution.source,
+                contentResolverMime = mimeResolution.contentResolverMime,
+                header = PinImageUploadDiagnostics.formatHeaderHex(bytes),
+            )
+            val mediaType = mimeResolution.mimeType.toMediaTypeOrNull()
                 ?: "image/jpeg".toMediaType()
             val body = bytes.toRequestBody(mediaType)
-            MultipartBody.Part.createFormData(
+            parts += MultipartBody.Part.createFormData(
                 name = "photos",
-                filename = fileName.ensureImageExtensionFromMime(mimeType)
+                filename = PinImageMimeResolver.ensureExtension(fileName, mimeResolution.mimeType)
                     .ifBlank { "pin_image_${index + 1}.jpg" },
                 body = body,
             )
         }
+        return PinMultipartUpload(parts = parts, uploadMetas = uploadMetas)
     }
 
     override suspend fun updatePin(pinId: String, request: UpdatePinRequest): Pin {
@@ -1089,107 +1180,6 @@ private fun resolveUploadFileName(context: Context, uri: Uri): String {
         ?.substringAfterLast('/')
         ?.takeIf { it.isNotBlank() }
         ?: "problem-solver-photo.jpg"
-}
-
-private fun resolveImageMimeType(
-    context: Context,
-    uri: Uri,
-    fileName: String,
-    bytes: ByteArray,
-): String {
-    val resolverMime = context.contentResolver.getType(uri)
-    if (!resolverMime.isNullOrBlank() && resolverMime != "image/*") {
-        return resolverMime
-    }
-
-    val extension = fileName.substringAfterLast('.', "").lowercase()
-    if (extension.isNotBlank()) {
-        val extensionMime = when (extension) {
-            "jpg", "jpeg" -> "image/jpeg"
-            "png" -> "image/png"
-            "gif" -> "image/gif"
-            "webp" -> "image/webp"
-            "heic" -> "image/heic"
-            "heif" -> "image/heif"
-            else -> MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
-        }
-        if (!extensionMime.isNullOrBlank()) {
-            return extensionMime
-        }
-    }
-
-    val signatureMime = sniffImageMimeType(bytes)
-    if (signatureMime != null) {
-        return signatureMime
-    }
-
-    return "image/jpeg"
-}
-
-private fun sniffImageMimeType(bytes: ByteArray): String? {
-    if (bytes.size >= 3 &&
-        bytes[0] == 0xFF.toByte() &&
-        bytes[1] == 0xD8.toByte() &&
-        bytes[2] == 0xFF.toByte()
-    ) {
-        return "image/jpeg"
-    }
-
-    if (bytes.size >= 8 &&
-        bytes[0] == 0x89.toByte() &&
-        bytes[1] == 0x50.toByte() &&
-        bytes[2] == 0x4E.toByte() &&
-        bytes[3] == 0x47.toByte() &&
-        bytes[4] == 0x0D.toByte() &&
-        bytes[5] == 0x0A.toByte() &&
-        bytes[6] == 0x1A.toByte() &&
-        bytes[7] == 0x0A.toByte()
-    ) {
-        return "image/png"
-    }
-
-    if (bytes.size >= 6) {
-        val header = bytes.copyOfRange(0, 6).decodeToString()
-        if (header == "GIF87a" || header == "GIF89a") {
-            return "image/gif"
-        }
-    }
-
-    if (bytes.size >= 12) {
-        val riff = bytes.copyOfRange(0, 4).decodeToString()
-        val webp = bytes.copyOfRange(8, 12).decodeToString()
-        if (riff == "RIFF" && webp == "WEBP") {
-            return "image/webp"
-        }
-    }
-
-    if (bytes.size >= 12) {
-        val boxType = bytes.copyOfRange(4, 8).decodeToString()
-        if (boxType == "ftyp") {
-            val majorBrand = bytes.copyOfRange(8, 12).decodeToString().lowercase()
-            if (majorBrand.startsWith("hei") || majorBrand.startsWith("hev")) {
-                return "image/heic"
-            }
-            if (majorBrand.startsWith("mif")) {
-                return "image/heif"
-            }
-        }
-    }
-
-    return null
-}
-
-private fun String.ensureImageExtensionFromMime(mimeType: String): String {
-    if (contains('.')) return this
-    val extension = when (mimeType.lowercase()) {
-        "image/png" -> "png"
-        "image/webp" -> "webp"
-        "image/gif" -> "gif"
-        "image/heic" -> "heic"
-        "image/heif" -> "heif"
-        else -> "jpg"
-    }
-    return "$this.$extension"
 }
 
 private fun problemSolverJoinException(code: String, message: String): Exception {
