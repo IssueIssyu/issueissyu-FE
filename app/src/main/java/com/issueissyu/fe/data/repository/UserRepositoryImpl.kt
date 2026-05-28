@@ -38,6 +38,78 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
+    //동네 변경
+    override suspend fun updateUserAddress(lat: Double, lng: Double): Result<String> {
+        return try {
+            val response = myPageApi.changeAddress(lat = lat, lng = lng)
+            when (response.code) {
+                "LOCATION_200_4" -> {
+                    Result.success(response.result?.address?.takeIf { it.isNotBlank() }.orEmpty())
+                }
+
+                "LOCATION_400_1" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "잘못된 위치 요청입니다." },
+                        ),
+                    )
+
+                "LOCATION_404_1" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "주소 결과를 찾을 수 없습니다." },
+                        ),
+                    )
+
+                "LOCATION_404_3" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "법정동 코드 결과를 찾을 수 없습니다." },
+                        ),
+                    )
+
+                "LOCATION_502_2" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "주소 API 호출에 실패했습니다." },
+                        ),
+                    )
+
+                "USER_404_1" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "존재하지 않는 회원입니다." },
+                        ),
+                    )
+
+                "COMMON_500" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "서버 에러" },
+                        ),
+                    )
+
+                "LOCATION_400_2" ->
+                    Result.failure(
+                        Exception(
+                            response.message.ifBlank { "동네 변경은 한 달에 1회 가능합니다." },
+                        ),
+                    )
+
+                else ->
+                    if (response.isSuccess) {
+                        Result.success(response.result?.address?.takeIf { it.isNotBlank() }.orEmpty())
+                    } else {
+                        Result.failure(
+                            Exception(response.message.ifBlank { "동네 변경에 실패했습니다." }),
+                        )
+                    }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override suspend fun updateProfileImage(imageUrl: String) {
         _user.value = _user.value.copy(profileImageUrl = imageUrl)
     }

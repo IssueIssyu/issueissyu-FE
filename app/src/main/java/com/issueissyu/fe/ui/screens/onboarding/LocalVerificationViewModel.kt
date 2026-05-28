@@ -7,6 +7,7 @@ import com.issueissyu.fe.data.local.OnboardingSessionStore
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.LocationRepository
+import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LocalVerificationViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
+    private val userRepository: UserRepository,
     private val authRepository: AuthRepository,
     private val onboardingSessionStore: OnboardingSessionStore,
     private val tokenManager: TokenManager,
@@ -139,20 +141,29 @@ class LocalVerificationViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
+            val pending = onboardingSessionStore.getPendingProfile()
+
+            if (pending == null) {
+                userRepository.updateUserAddress(latitude, longitude).fold(
+                    onSuccess = { address ->
+                        if (address.isNotBlank()) {
+                            _uiState.update { it.copy(currentAddress = address) }
+                        }
+                        _uiState.update { it.copy(isLoading = false) }
+                        _event.emit(UiEvent.NavigateNext)
+                    },
+                    onFailure = { e ->
+                        _uiState.update { it.copy(isLoading = false) }
+                        _event.emit(UiEvent.ShowError(e.message ?: "동네 변경에 실패했습니다"))
+                    },
+                )
+                return@launch
+            }
 
             locationRepository.certifyUserLocation(latitude, longitude).fold(
                 onSuccess = { address ->
                     if (address.isNotBlank()) {
                         _uiState.update { it.copy(currentAddress = address) }
-                    }
-
-                    val pending = onboardingSessionStore.getPendingProfile()
-                    if (pending == null) {
-                        _uiState.update { it.copy(isLoading = false) }
-                        _event.emit(
-                            UiEvent.ShowError("프로필 정보가 없습니다. 본인인증 단계부터 다시 진행해주세요."),
-                        )
-                        return@fold
                     }
 
                     authRepository.onboarding(
