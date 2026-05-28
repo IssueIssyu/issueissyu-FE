@@ -481,7 +481,7 @@ fun MapScreen(
                 painter = painterResource(id = R.drawable.patchnotebutton),
                 contentDescription = "패치노트",
                 modifier = Modifier
-                    .size(60.dp)
+                    .size(70.dp)
                     .clickable {
                         navController.navigate(AppDestinations.PATCH_NOTE_ROUTE)
                     },
@@ -494,7 +494,7 @@ fun MapScreen(
                 painter = painterResource(id = R.drawable.findspot),
                 contentDescription = "내 위치 찾기",
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(60.dp)
                     .clickable {
                         moveToCurrentLocation()
                     },

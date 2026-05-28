@@ -66,7 +66,7 @@ fun AutoScrollingNotice(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(48.dp)
+            .height(42.dp)
             .clickable { onClick(currentNotice) },
         contentAlignment = Alignment.CenterStart
     ) {
@@ -74,9 +74,9 @@ fun AutoScrollingNotice(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(36.dp)
-                .padding(start = 28.dp)
+                .padding(start = 24.dp)
                 .shadow(
-                    elevation = 6.dp,
+                    elevation = 4.dp,
                     shape = RoundedCornerShape(18.dp),
                     clip = false
                 )
@@ -84,7 +84,7 @@ fun AutoScrollingNotice(
                     color = Color.White.copy(alpha = 0.7f),
                     shape = RoundedCornerShape(18.dp)
                 )
-                .padding(start = 68.dp, end = 20.dp),
+                .padding(start = 58.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AnimatedContent(
@@ -119,9 +119,9 @@ fun AutoScrollingNotice(
 
         Box(
             modifier = Modifier
-                .size(58.dp)
+                .size(46.dp)
                 .shadow(
-                    elevation = 8.dp,
+                    elevation = 5.dp,
                     shape = CircleShape,
                     clip = false
                 )
@@ -135,7 +135,7 @@ fun AutoScrollingNotice(
                 painter = painterResource(id = iconResId),
                 contentDescription = "공지",
                 tint = Color.Unspecified,
-                modifier = Modifier.size(42.dp)
+                modifier = Modifier.size(32.dp)
             )
         }
     }
