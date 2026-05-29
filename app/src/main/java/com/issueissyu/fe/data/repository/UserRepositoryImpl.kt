@@ -2,8 +2,10 @@ package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.api.MyPageApi
+import com.issueissyu.fe.data.remote.dto.mypage.toMyIssuePage
 import com.issueissyu.fe.data.remote.dto.request.mypage.ChangeNickNameRequest
 import com.issueissyu.fe.domain.model.User
+import com.issueissyu.fe.domain.model.mypage.MyIssuePage
 import com.issueissyu.fe.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -129,6 +131,33 @@ class UserRepositoryImpl @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    override suspend fun getMyIssues(size: Int, cursor: String?): Result<MyIssuePage> {
+        return try {
+            val response = myPageApi.getMyIssue(size = size, cursor = cursor)
+            if (response.isSuccess) {
+                val body = response.result
+                    ?: return Result.failure(
+                        Exception(response.message.ifBlank { "내 이슈 응답이 올바르지 않습니다." }),
+                    )
+                Result.success(body.toMyIssuePage())
+            } else {
+                when (response.code) {
+                    "USER_PIN_400_1" -> Result.failure(
+                        Exception(response.message.ifBlank { "조회 불가능한 사이즈 입니다." }),
+                    )
+                    "USER_PIN_400_2" -> Result.failure(
+                        Exception(response.message.ifBlank { "조회 불가능한 cursor 입니다." }),
+                    )
+                    else -> Result.failure(
+                        Exception(response.message.ifBlank { "내 이슈 조회에 실패했습니다." }),
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

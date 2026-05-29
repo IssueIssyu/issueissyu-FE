@@ -145,15 +145,17 @@ fun MyPageScreen(
             Spacer(modifier = Modifier.size(30.dp))
             //닉네임
             Row(
-                modifier = Modifier,
-                verticalAlignment = Alignment.CenterVertically
-            ){
+                modifier = Modifier.clickable(
+                    onClick = { onEvent(MyPageEvent.NavigateToProfile) },
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = nickname,
                     fontFamily = suiteFontFamily,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 20.sp,
-                    color = Title
+                    color = Title,
                 )
 
                 Spacer(modifier = Modifier.size(10.dp))
@@ -162,9 +164,7 @@ fun MyPageScreen(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = "프로필 수정",
                     tint = Title,
-                    modifier = Modifier
-                        .size(25.dp)
-                        .clickable(onClick = { onEvent(MyPageEvent.NavigateToProfile) })
+                    modifier = Modifier.size(25.dp),
                 )
             }
 
@@ -346,41 +346,37 @@ private fun NavBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable(onClick = onNavClick)
                 .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ){
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically
-            ){
-                //아이콘
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
                     tint = Gray_5,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
 
                 Spacer(modifier = Modifier.size(10.dp))
 
-                //텍스트
                 Text(
                     text = title,
                     fontFamily = suiteFontFamily,
                     fontWeight = FontWeight.Medium,
                     fontSize = 16.sp,
-                    color = Text
+                    color = Text,
                 )
             }
 
-            // 이동 버튼
             Icon(
                 imageVector = Icons.Default.ChevronRight,
-                contentDescription = "네비게이트",
+                contentDescription = null,
                 tint = Gray_5,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable(onClick = onNavClick)
+                modifier = Modifier.size(20.dp),
             )
         }
     }

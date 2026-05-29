@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
@@ -51,6 +52,7 @@ import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
+import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 @Composable
 fun MyIssueScreen(
@@ -223,25 +225,37 @@ fun MyIssueCard(
             .background(cardBackgroundColor, cardShape)
             .padding(20.dp)
     ) {
-        // pinTitle 추가 시 왼쪽에 제목 배치
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Bottom,
         ) {
+            Text(
+                text = issue.title,
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 20.sp,
+                color = Title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.wrapContentWidth()
+                modifier = Modifier.wrapContentWidth(),
             ) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = pinTypeLabel,
                     tint = pinTypeColor,
-                    modifier = Modifier.size(25.dp)
+                    modifier = Modifier.size(25.dp),
                 )
                 Text(
                     text = pinTypeLabel,
-                    style = IssueTypo.ExtraBold15.copy(color = Text)
+                    style = IssueTypo.ExtraBold15.copy(color = Text),
                 )
             }
         }

@@ -368,7 +368,7 @@ fun AppNavGraph(
             ) {
                 MyIssueScreen(
                     onBackClick = { navController.navigateUp() },
-                    onPinClick = { pinId, _, _ ->
+                    onPinClick = { pinId ->
                         pinId.toLongOrNull()?.let { id ->
                             navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
                                 popUpTo(AppDestinations.TOWN_ROUTE) {
