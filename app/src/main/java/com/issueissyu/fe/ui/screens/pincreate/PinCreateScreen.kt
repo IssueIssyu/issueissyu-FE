@@ -183,10 +183,14 @@ private fun PinCreateContent(
                 textStyle = IssueTypo.Regular16
             )
 
-            ToneSelectionSection(
-                selectedTone = uiState.selectedTone,
-                onToneChange = onToneChange
-            )
+            if (category == PinCategory.ISSUE) {
+                ToneSelectionSection(
+                    toneOptions = uiState.toneOptions,
+                    isLoading = uiState.isLoadingToneOptions,
+                    selectedTone = uiState.selectedTone,
+                    onToneChange = onToneChange,
+                )
+            }
 
             if (category == PinCategory.ISSUE) {
                 AiDraftButton(
@@ -418,30 +422,29 @@ private fun LocationSection(
     }
 }
 
-// TODO: 서버/기획 확정 후 enum 또는 서버 응답 기반으로 교체
-private val PinToneOptions = listOf(
-    "없음",
-    "한줄요약형",
-    "상황설명형",
-    "개선요청형",
-    "긴급요청형",
-    "불편호소형"
-)
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ToneSelectionSection(
+    toneOptions: List<String>,
+    isLoading: Boolean,
     selectedTone: String?,
-    onToneChange: (String) -> Unit
+    onToneChange: (String) -> Unit,
 ) {
     Column {
         SectionLabel(text = "말투 설정")
+        if (isLoading && toneOptions.isEmpty()) {
+            Text(
+                text = "말투 목록 불러오는 중…",
+                style = IssueTypo.Regular12.copy(color = Gray_4),
+            )
+            return@Column
+        }
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PinToneOptions.forEach { tone ->
+            toneOptions.forEach { tone ->
                 ToneChip(
                     label = tone,
                     selected = selectedTone == tone,
@@ -505,7 +508,8 @@ private fun PinCreateScreenPreview_IssueFilled() {
                 description = "퇴근 시간대 사람이 너무 많은데 신호가 30초밖에 안 돼서 못 건너요.",
                 address = "서울 광진구 능동로 120",
                 locationName = "건국대학교 입구",
-                selectedTone = "개선요청형"
+                toneOptions = listOf("없음", "한줄요약형", "상황설명형", "개선요청형", "긴급요청형", "불편호소형"),
+                selectedTone = "개선요청형",
             ),
             onBackClick = {},
             onTitleChange = {},
@@ -532,7 +536,6 @@ private fun PinCreateScreenPreview_Communication() {
                 description = "어린이대공원 근처 살아요. 가볍게 한 바퀴 도실 분 모집합니다.",
                 address = "서울 광진구 화양동",
                 locationName = "화양동 주민센터 앞",
-                selectedTone = "상황설명형"
             ),
             onBackClick = {},
             onTitleChange = {},

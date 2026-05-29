@@ -3,6 +3,7 @@ package com.issueissyu.fe.data.remote.api
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.issue.IssueAiDraftResponse
 import com.issueissyu.fe.data.remote.dto.response.issue.IssueReliabilityResponse
+import com.issueissyu.fe.data.remote.dto.response.issue.IssueToneTypeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinImportResponse
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
@@ -15,6 +16,9 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 
 interface AiIssueApiService {
+    @GET("issues/tone-types")
+    suspend fun getIssueToneTypes(): BaseResponse<List<IssueToneTypeResponse>?>
+
     @FormUrlEncoded
     @POST("issues/pin/ai")
     suspend fun createIssuePinAiDraft(

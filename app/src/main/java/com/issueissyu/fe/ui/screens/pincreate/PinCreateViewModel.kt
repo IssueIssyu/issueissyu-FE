@@ -34,7 +34,9 @@ data class PinCreateUiState(
     val locationName: String? = null,
     val imageUris: List<String> = emptyList(),
     val mainImageUri: String? = null,
+    val toneOptions: List<String> = emptyList(),
     val selectedTone: String? = null,
+    val isLoadingToneOptions: Boolean = false,
     val isSubmitting: Boolean = false,
     val isGeneratingAiContent: Boolean = false,
     val errorMessage: String? = null
@@ -82,6 +84,37 @@ class PinCreateViewModel @Inject constructor(
                 userLng = userLng,
                 address = address,
             )
+        }
+        if (category == PinCategory.ISSUE) {
+            loadIssueToneTypes()
+        }
+    }
+
+    private fun loadIssueToneTypes() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingToneOptions = true) }
+            issueRepository.getIssueToneTypes()
+                .onSuccess { tones ->
+                    val labels = tones.map { it.label }
+                    _uiState.update { state ->
+                        state.copy(
+                            toneOptions = labels,
+                            selectedTone = state.selectedTone?.takeIf { it in labels }
+                                ?: labels.firstOrNull(),
+                            isLoadingToneOptions = false,
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { state ->
+                        state.copy(
+                            toneOptions = FALLBACK_TONE_OPTIONS,
+                            selectedTone = state.selectedTone?.takeIf { it in FALLBACK_TONE_OPTIONS }
+                                ?: DEFAULT_AI_TONE,
+                            isLoadingToneOptions = false,
+                        )
+                    }
+                }
         }
     }
 
@@ -303,5 +336,13 @@ class PinCreateViewModel @Inject constructor(
 
     companion object {
         private const val DEFAULT_AI_TONE = "없음"
+        private val FALLBACK_TONE_OPTIONS = listOf(
+            "없음",
+            "한줄요약형",
+            "상황설명형",
+            "개선요청형",
+            "긴급요청형",
+            "불편호소형",
+        )
     }
 }
