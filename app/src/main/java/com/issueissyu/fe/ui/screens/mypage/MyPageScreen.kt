@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -74,8 +75,6 @@ sealed class MyPageEvent {
     data object NavigateToSettingAlarm: MyPageEvent()
     data object NavigateToLanding: MyPageEvent()
     data object NavigateToTerm: MyPageEvent()
-    data object Logout: MyPageEvent()
-    data object Withdraw: MyPageEvent()
 }
 
 @Composable
@@ -86,32 +85,43 @@ fun MyPageScreen(
 ){
     val nickname by viewModel.userNickname.collectAsStateWithLifecycle()
     val myPins by viewModel.myPins.collectAsStateWithLifecycle()
-    val logoutState by viewModel.logoutState.collectAsStateWithLifecycle()
+    val authActionState by viewModel.authActionState.collectAsStateWithLifecycle()
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }
+    var actionErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(logoutState) {
-        when (logoutState) {
-            is MyPageViewModel.LogoutState.Success -> {
+    LaunchedEffect(authActionState) {
+        when (val state = authActionState) {
+            MyPageViewModel.AuthActionState.Success -> {
+                showLogoutDialog = false
+                showWithdrawDialog = false
                 onEvent(MyPageEvent.NavigateToLanding)
-                viewModel.resetLogoutState()
+                viewModel.resetAuthActionState()
             }
-            is MyPageViewModel.LogoutState.Error -> {
-                viewModel.resetLogoutState()
+            is MyPageViewModel.AuthActionState.Error -> {
+                showLogoutDialog = false
+                showWithdrawDialog = false
+                actionErrorMessage = state.message
+                viewModel.resetAuthActionState()
             }
-            else -> {}
+            else -> Unit
         }
     }
 
+    val isAuthActionLoading = authActionState is MyPageViewModel.AuthActionState.Loading
 
-    Column(
+    Box(
         modifier = modifier
-            .background(White)
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.SpaceBetween
-    ){
+            .background(White),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
         //상단 바
         IssueissyuTopAppBar(
             titleText = "마이페이지",
@@ -221,36 +231,62 @@ fun MyPageScreen(
 
             )
         }
-    }
+        }
 
-    // 로그아웃 모달
-    if (showLogoutDialog) {
+        if (showLogoutDialog) {
         Dialog(
             title = "로그아웃",
             message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
             confirmText = "로그아웃",
-            onDismiss = { showLogoutDialog = false },
+            onDismiss = {
+                if (!isAuthActionLoading) {
+                    showLogoutDialog = false
+                }
+            },
             onConfirm = {
-                showLogoutDialog = false
-                viewModel.logout() // 로그아웃
-            }
+                viewModel.logout()
+            },
         )
-    }
+        }
 
-    // 회원탈퇴 모달
-    if (showWithdrawDialog) {
+        if (showWithdrawDialog) {
         Dialog(
             title = "회원탈퇴",
             message = "정말 탈퇴하시겠어요?\n그동안 모은 핀과 활동 기록이\n모두 삭제돼요",
             confirmText = "탈퇴하기",
             isWarning = true,
-            onDismiss = { showWithdrawDialog = false },
+            onDismiss = {
+                if (!isAuthActionLoading) {
+                    showWithdrawDialog = false
+                }
+            },
             onConfirm = {
-                showWithdrawDialog = false
-                viewModel.withdraw()    //회원 탈퇴
-                onEvent(MyPageEvent.Withdraw)
-            }
+                viewModel.withdraw()
+            },
         )
+        }
+
+        actionErrorMessage?.let { message ->
+            Dialog(
+                title = "안내",
+                message = message,
+                confirmText = "확인",
+                dismissText = "확인",
+                onDismiss = { actionErrorMessage = null },
+                onConfirm = { actionErrorMessage = null },
+            )
+        }
+
+        if (isAuthActionLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(White.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        }
     }
 }
 

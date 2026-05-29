@@ -27,8 +27,9 @@ interface AuthRepository {
     //토큰 재발급
     suspend fun refreshToken(): Result<Unit>
 
-    /** 서버 세션 종료 후 로컬 토큰 삭제(실패해도 로컬은 비움). */
     suspend fun logout(): Result<Unit>
+
+    suspend fun withdraw(): Result<Unit>
 
     //아이디 중복 확인
     suspend fun checkLocalUsernameAvailable(userName: String): Result<Boolean>

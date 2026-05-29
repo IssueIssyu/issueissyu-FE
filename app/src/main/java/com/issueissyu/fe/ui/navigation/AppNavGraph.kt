@@ -319,8 +319,6 @@ fun AppNavGraph(
                             MyPageEvent.NavigateToTerm -> {
                                 navController.navigate(AppDestinations.MyPage.TERMS_ROUTE)
                             }
-                            MyPageEvent.Logout -> Unit
-                            MyPageEvent.Withdraw -> Unit
                         }
                     },
                 )

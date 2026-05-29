@@ -3,9 +3,9 @@ package com.issueissyu.fe.ui.screens.mypage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.R
+import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
 
 data class Pin(
     val id: String,
@@ -23,7 +22,8 @@ data class Pin(
 
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    private val authRepository: AuthRepository
 ) : ViewModel() {
     val userNickname = userRepository.getProfile()
         .map { it.nickname }
@@ -33,7 +33,7 @@ class MyPageViewModel @Inject constructor(
             initialValue = ""
         )
 
-    private val _myPins = MutableStateFlow<List<Pin>>(
+    private val _myPins = MutableStateFlow(
         listOf(
             Pin("1", "바게트씨", R.drawable.ic_report),
             Pin("2", "돌이곰", R.drawable.ic_fire),
@@ -43,39 +43,48 @@ class MyPageViewModel @Inject constructor(
     )
     val myPins = _myPins.asStateFlow()
 
-    //로그아웃 상태
-    private val _logoutState = MutableStateFlow<LogoutState>(LogoutState.Idle)
-    val logoutState = _logoutState.asStateFlow()
+    private val _authActionState = MutableStateFlow<AuthActionState>(AuthActionState.Idle)
+    val authActionState = _authActionState.asStateFlow()
 
     fun logout() {
         viewModelScope.launch {
-            try {
-                _logoutState.value = LogoutState.Loading
-
-                // API 호출
-                delay(500)
-                _logoutState.value = LogoutState.Success
-            } catch (e:Exception) {
-                _logoutState.value = LogoutState.Error(e.message ?: "Unknown Error")
-            }
+            _authActionState.value = AuthActionState.Loading
+            authRepository.logout()
+                .onSuccess { _authActionState.value = AuthActionState.Success }
+                .onFailure { error ->
+                    _authActionState.value = AuthActionState.Error(
+                        error.message ?: LOGOUT_ERROR_MESSAGE,
+                    )
+                }
         }
     }
 
     fun withdraw() {
         viewModelScope.launch {
-            //TODO: API 호출
+            _authActionState.value = AuthActionState.Loading
+            authRepository.withdraw()
+                .onSuccess { _authActionState.value = AuthActionState.Success }
+                .onFailure { error ->
+                    _authActionState.value = AuthActionState.Error(
+                        error.message ?: WITHDRAW_ERROR_MESSAGE,
+                    )
+                }
         }
     }
 
-    fun resetLogoutState(){
-        _logoutState.value = LogoutState.Idle
+    fun resetAuthActionState() {
+        _authActionState.value = AuthActionState.Idle
     }
 
+    sealed class AuthActionState {
+        data object Idle : AuthActionState()
+        data object Loading : AuthActionState()
+        data object Success : AuthActionState()
+        data class Error(val message: String) : AuthActionState()
+    }
 
-    sealed class LogoutState {
-        object Idle : LogoutState()
-        object Loading : LogoutState()
-        object Success : LogoutState()
-        data class Error(val message: String) : LogoutState()
+    companion object {
+        private const val LOGOUT_ERROR_MESSAGE = "로그아웃에 실패했습니다."
+        private const val WITHDRAW_ERROR_MESSAGE = "회원탈퇴에 실패했습니다."
     }
 }

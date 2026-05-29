@@ -386,6 +386,30 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun withdraw(): Result<Unit> {
+        return try {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "withdraw: DELETE api/auth/signout")
+            }
+            val response = authApi.deleteSignOut()
+            if (response.isSuccess) {
+                sessionManager.clearSession()
+                Result.success(Unit)
+            } else {
+                Result.failure(
+                    Exception(safeMessage(response.message, "회원탈퇴에 실패했습니다.")),
+                )
+            }
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "withdraw failed", e)
+            }
+            Result.failure(
+                Exception(safeMessage(e.message, "회원탈퇴에 실패했습니다.")),
+            )
+        }
+    }
+
     // 로컬 가입 아이디(이메일) 중복 확인
     override suspend fun checkLocalUsernameAvailable(userName: String): Result<Boolean> {
         return try {

@@ -19,6 +19,7 @@ import com.issueissyu.fe.data.remote.dto.response.auth.TermResponse
 import com.issueissyu.fe.data.remote.dto.response.auth.TokenResponse
 import com.issueissyu.fe.data.remote.dto.response.auth.UsernameAvailabilityDto
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
@@ -26,6 +27,8 @@ import retrofit2.http.Path
 interface AuthApi {
 
     //회원 탈퇴
+    @DELETE("api/auth/signout")
+    suspend fun deleteSignOut(): BaseResponse<PhoneAuthEmptyResult?>
 
     //닉네임 중복 확인
     @GET("api/auth/check/nickname/{nickname}")
