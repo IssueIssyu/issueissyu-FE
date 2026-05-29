@@ -3,7 +3,9 @@ package com.issueissyu.fe.ui.screens.community.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.core.issue.IssueReliabilityPolling
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
+import com.issueissyu.fe.domain.model.issue.IssueReliability
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -48,6 +51,8 @@ class CommunityDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val communityId: Long = savedStateHandle.get<Long>("communityId") ?: 0L
+    private var issueReliabilityJob: Job? = null
+    private var observedReliabilityPinId: Long? = null
 
     private val _uiState = MutableStateFlow(CommunityDetailUiState())
     val uiState: StateFlow<CommunityDetailUiState> = _uiState.asStateFlow()
@@ -133,7 +138,7 @@ class CommunityDetailViewModel @Inject constructor(
                         _uiState.update { it.copy(emojiReactions = emptyList(), emojiPicker = CommunityEmojiPickerUiState()) }
                     }
                     if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
-                        loadIssueReliability(pinId)
+                        startIssueReliabilityObservation(pinId)
                     }
                 }
         }
@@ -464,19 +469,40 @@ class CommunityDetailViewModel @Inject constructor(
             }
     }
 
-    private suspend fun loadIssueReliability(pinId: Long) {
-        getIssueReliabilityUseCase(pinId)
-            .onSuccess { reliability ->
-                _uiState.update { state ->
-                    state.copy(
-                        detail = state.detail?.copy(
-                            reliabilityScore = reliability.score,
-                            reliabilityReason = reliability.reason,
+    private fun startIssueReliabilityObservation(pinId: Long) {
+        val isNewPin = observedReliabilityPinId != pinId
+        observedReliabilityPinId = pinId
+        issueReliabilityJob?.cancel()
+        issueReliabilityJob = viewModelScope.launch {
+            if (isNewPin) {
+                _uiState.update {
+                    it.copy(
+                        reliabilityStatus = IssueReliabilityStatus.PENDING,
+                        detail = it.detail?.copy(
+                            reliabilityScore = null,
+                            reliabilityReason = null,
                         ),
-                        reliabilityStatus = reliability.status,
                     )
                 }
             }
+            IssueReliabilityPolling.fetchWithPolling(
+                fetch = { getIssueReliabilityUseCase(pinId) },
+                onUpdate = { reliability -> applyIssueReliability(reliability) },
+            )
+        }
+    }
+
+    private fun applyIssueReliability(reliability: IssueReliability) {
+        if (observedReliabilityPinId != reliability.pinId) return
+        _uiState.update { state ->
+            state.copy(
+                detail = state.detail?.copy(
+                    reliabilityScore = reliability.score,
+                    reliabilityReason = reliability.reason,
+                ),
+                reliabilityStatus = reliability.status,
+            )
+        }
     }
 
     private fun PinEmojis.toEmojiReactions(): List<PinEmojiReaction> {

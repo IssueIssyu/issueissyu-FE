@@ -21,8 +21,10 @@ import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.withHomeFallback
 import com.issueissyu.fe.domain.repository.PinRepository
+import com.issueissyu.fe.core.issue.IssueReliabilityPolling
 import com.issueissyu.fe.domain.usecase.issue.GetIssueReliabilityUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -92,6 +94,8 @@ class PinDetailViewModel @Inject constructor(
 
     private var routePinId: Long? = null
     private var emojiImageById: Map<Long, String> = emptyMap()
+    private var issueReliabilityJob: Job? = null
+    private var observedReliabilityPinId: Long? = null
 
     val currentUserId: String?
         get() = tokenManager.getCurrentUserUuid()
@@ -103,6 +107,9 @@ class PinDetailViewModel @Inject constructor(
             return
         }
         routePinId = id
+        issueReliabilityJob?.cancel()
+        issueReliabilityJob = null
+        observedReliabilityPinId = null
 
         viewModelScope.launch {
             _uiState.update {
@@ -133,6 +140,7 @@ class PinDetailViewModel @Inject constructor(
                     }
                     loadPostTab(id)
                     if (pin.detail is IssuePinDetail) {
+                        startIssueReliabilityObservation(id)
                         viewModelScope.launch {
                             refreshResolutionTab(id, currentUserId)
                         }
@@ -202,6 +210,9 @@ class PinDetailViewModel @Inject constructor(
             }
         } else if (tab == PinDetailTab.RESOLUTION) {
             resolvePinId()?.let { pinId ->
+                if (_uiState.value.pin?.detail is IssuePinDetail) {
+                    resumeIssueReliabilityObservationIfNeeded(pinId)
+                }
                 viewModelScope.launch {
                     refreshResolutionTab(pinId, currentUserId)
                 }
@@ -209,12 +220,53 @@ class PinDetailViewModel @Inject constructor(
         }
     }
 
+    private fun resumeIssueReliabilityObservationIfNeeded(pinId: Long) {
+        when (_uiState.value.reliabilityStatus) {
+            null,
+            IssueReliabilityStatus.PENDING,
+            -> startIssueReliabilityObservation(pinId, resetUi = false)
+            IssueReliabilityStatus.COMPLETED,
+            IssueReliabilityStatus.FAILED,
+            -> Unit
+        }
+    }
+
+    private fun startIssueReliabilityObservation(pinId: Long, resetUi: Boolean = true) {
+        val isNewPin = observedReliabilityPinId != pinId
+        observedReliabilityPinId = pinId
+        issueReliabilityJob?.cancel()
+        issueReliabilityJob = viewModelScope.launch {
+            if (resetUi || isNewPin) {
+                _uiState.update {
+                    it.copy(
+                        reliabilityScore = null,
+                        reliabilityReason = null,
+                        reliabilityStatus = IssueReliabilityStatus.PENDING,
+                    )
+                }
+            }
+            IssueReliabilityPolling.fetchWithPolling(
+                fetch = { getIssueReliabilityUseCase(pinId) },
+                onUpdate = { reliability -> applyIssueReliability(reliability) },
+            )
+        }
+    }
+
+    private fun applyIssueReliability(reliability: IssueReliability) {
+        if (observedReliabilityPinId != reliability.pinId) return
+        _uiState.update {
+            it.copy(
+                reliabilityScore = reliability.score,
+                reliabilityReason = reliability.reason,
+                reliabilityStatus = reliability.status,
+            )
+        }
+    }
+
     private suspend fun refreshResolutionTab(pinId: Long, currentUserId: String?) {
         var solveInfo: PinSolveInfo? = null
         var problemSolverInfo: ProblemSolverInfo? = null
         var petitionStatusInfo: PetitionStatusInfo? = null
-        var issueReliability: IssueReliability? = null
-        var issueReliabilityFailed = false
 
         pinRepository.getPinSolve(pinId)
             .onSuccess { solveInfo = it }
@@ -236,35 +288,22 @@ class PinDetailViewModel @Inject constructor(
                 }
         }
 
-        getIssueReliabilityUseCase(pinId)
-            .onSuccess { issueReliability = it }
-            .onFailure { issueReliabilityFailed = true }
-
         val hasResolutionData = solveInfo != null ||
             problemSolverInfo != null ||
             petitionStatusInfo != null
-        if (!hasResolutionData && issueReliability == null && !issueReliabilityFailed) return
+        if (!hasResolutionData) return
 
         _uiState.update { state ->
-            val updatedPin = if (hasResolutionData) {
-                val currentPin = state.pin ?: return@update state
-                val currentUser = buildResolutionCurrentUser(currentPin)
-                val resolutionUpdatedPin = currentPin.withResolutionApiState(
-                    currentUserId = currentUserId,
-                    currentUser = currentUser,
-                    solveInfo = solveInfo,
-                    problemSolverInfo = problemSolverInfo,
-                )
-                resolutionUpdatedPin.withPetitionApiState(petitionStatusInfo)
-            } else {
-                state.pin
-            }
+            val currentPin = state.pin ?: return@update state
+            val currentUser = buildResolutionCurrentUser(currentPin)
+            val resolutionUpdatedPin = currentPin.withResolutionApiState(
+                currentUserId = currentUserId,
+                currentUser = currentUser,
+                solveInfo = solveInfo,
+                problemSolverInfo = problemSolverInfo,
+            )
             state.copy(
-                pin = updatedPin,
-                reliabilityScore = issueReliability?.score,
-                reliabilityReason = issueReliability?.reason,
-                reliabilityStatus = issueReliability?.status
-                    ?: if (issueReliabilityFailed) IssueReliabilityStatus.FAILED else null,
+                pin = resolutionUpdatedPin.withPetitionApiState(petitionStatusInfo),
             )
         }
     }
