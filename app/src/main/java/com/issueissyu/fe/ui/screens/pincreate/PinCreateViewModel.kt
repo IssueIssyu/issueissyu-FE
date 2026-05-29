@@ -19,7 +19,9 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 data class PinCreateUiState(
@@ -133,36 +135,55 @@ class PinCreateViewModel @Inject constructor(
     fun addImageUris(uris: List<String>) {
         if (uris.isEmpty()) return
 
-        val state = _uiState.value
-        if (state.imageUris.size + uris.size > PinImageUploadConstraints.MAX_COUNT) {
+        val snapshot = _uiState.value
+        val remaining = PinImageUploadConstraints.MAX_COUNT - snapshot.imageUris.size
+        if (remaining <= 0) {
             _uiState.update {
                 it.copy(errorMessage = "사진은 최대 ${PinImageUploadConstraints.MAX_COUNT}장까지 첨부할 수 있습니다.")
             }
             return
         }
 
-        val merged = (state.imageUris + uris)
-            .distinct()
-            .take(PinImageUploadConstraints.MAX_COUNT)
+        val newUris = uris
+            .filter { uri -> uri !in snapshot.imageUris }
+            .take(remaining)
+        if (newUris.isEmpty()) return
 
-        PinImageUploadValidator.validate(context, merged).onFailure { error ->
-            _uiState.update {
-                it.copy(
-                    errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
-                        ?: "첨부한 사진을 확인할 수 없습니다.",
+        val merged = snapshot.imageUris + newUris
+
+        viewModelScope.launch {
+            val validation = runCatching {
+                withContext(Dispatchers.IO) {
+                    PinImageUploadValidator.validate(context, merged)
+                }
+            }.getOrElse { error ->
+                Result.failure(
+                    IllegalArgumentException(
+                        error.message?.takeIf { message -> message.isNotBlank() }
+                            ?: "첨부한 사진을 확인할 수 없습니다.",
+                    ),
                 )
             }
-            return
-        }
 
-        _uiState.update {
-            it.copy(
-                imageUris = merged,
-                mainImageUri = it.mainImageUri?.takeIf { mainUri -> mainUri in merged } ?: merged.firstOrNull(),
-                errorMessage = null,
-            )
+            validation.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
+                            ?: "첨부한 사진을 확인할 수 없습니다.",
+                    )
+                }
+                return@launch
+            }
+
+            _uiState.update {
+                it.copy(
+                    imageUris = merged,
+                    mainImageUri = it.mainImageUri?.takeIf { mainUri -> mainUri in merged } ?: merged.firstOrNull(),
+                    errorMessage = null,
+                )
+            }
+            clearImageUploadFailureTracking()
         }
-        clearImageUploadFailureTracking()
     }
 
     fun removeImageUri(uri: String) {
@@ -268,17 +289,30 @@ class PinCreateViewModel @Inject constructor(
             }
         }
 
-        PinImageUploadValidator.validate(context, state.imageUris).onFailure { error ->
-            _uiState.update {
-                it.copy(
-                    errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
-                        ?: "첨부한 사진을 확인할 수 없습니다.",
+        viewModelScope.launch {
+            val validation = runCatching {
+                withContext(Dispatchers.IO) {
+                    PinImageUploadValidator.validate(context, state.imageUris)
+                }
+            }.getOrElse { error ->
+                Result.failure(
+                    IllegalArgumentException(
+                        error.message?.takeIf { message -> message.isNotBlank() }
+                            ?: "첨부한 사진을 확인할 수 없습니다.",
+                    ),
                 )
             }
-            return
-        }
 
-        viewModelScope.launch {
+            validation.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
+                            ?: "첨부한 사진을 확인할 수 없습니다.",
+                    )
+                }
+                return@launch
+            }
+
             _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             pinRepository.createPin(
                 CreatePinRequest(
