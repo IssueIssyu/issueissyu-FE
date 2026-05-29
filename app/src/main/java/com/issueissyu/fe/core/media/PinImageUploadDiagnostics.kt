@@ -5,6 +5,8 @@ import android.util.Log
 data class PinImageUploadMeta(
     val uriScheme: String,
     val fileName: String,
+    val uploadFilename: String,
+    val byteSize: Int,
     val resolvedMime: String,
     val mimeSource: PinImageMimeSource,
     /** getType(uri) 원본 (null이면 시스템이 MIME을 주지 않은 경우) */
@@ -18,6 +20,20 @@ object PinImageUploadDiagnostics {
 
     fun formatHeaderHex(bytes: ByteArray, length: Int = 16): String =
         bytes.take(length).joinToString("") { "%02X".format(it) }
+
+    fun logUploadPrepare(category: String, metas: List<PinImageUploadMeta>) {
+        Log.i(TAG, "upload_prepare category=$category imageCount=${metas.size}")
+        metas.forEachIndexed { index, meta ->
+            Log.i(
+                TAG,
+                "upload_prepare index=$index category=$category bytes=${meta.byteSize} " +
+                    "mime=${meta.resolvedMime} mimeSource=${meta.mimeSource} " +
+                    "resolverMime=${meta.contentResolverMime ?: "null"} " +
+                    "fileName=${meta.fileName} uploadFilename=${meta.uploadFilename} " +
+                    "scheme=${meta.uriScheme} header=${meta.header}",
+            )
+        }
+    }
 
     fun logMimeFallback(
         resolution: PinImageMimeResolution,
@@ -51,8 +67,10 @@ object PinImageUploadDiagnostics {
             Log.w(
                 TAG,
                 "upload_failed status=$httpStatus code=$serverCode index=$index " +
-                    "mime=${meta.resolvedMime} resolverMime=${meta.contentResolverMime ?: "null"} " +
-                    "file=${meta.fileName} scheme=${meta.uriScheme} mimeSource=${meta.mimeSource} " +
+                    "bytes=${meta.byteSize} mime=${meta.resolvedMime} " +
+                    "resolverMime=${meta.contentResolverMime ?: "null"} " +
+                    "file=${meta.fileName} uploadFilename=${meta.uploadFilename} " +
+                    "scheme=${meta.uriScheme} mimeSource=${meta.mimeSource} " +
                     "header=${meta.header}",
             )
         }

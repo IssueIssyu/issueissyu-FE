@@ -136,6 +136,12 @@ class PinRepositoryImpl @Inject constructor(
             PinImageUploadValidator.validate(context, request.imageUris).getOrThrow()
             val multipart = request.imageUris.toMultipartParts()
             uploadMetas = multipart.uploadMetas
+            if (uploadMetas.isNotEmpty()) {
+                PinImageUploadDiagnostics.logUploadPrepare(
+                    category = request.category.name,
+                    metas = uploadMetas,
+                )
+            }
             val response = when (request.category) {
                 PinCategory.ISSUE -> aiIssueApiService.createIssuePin(
                     request = gson.toJson(request.toIssuePinImportRequest()).toJsonPart(),
@@ -303,9 +309,13 @@ class PinRepositoryImpl @Inject constructor(
                 uriScheme = uri.scheme.orEmpty(),
                 bytes = bytes,
             )
+            val uploadFilename = PinImageMimeResolver.ensureExtension(fileName, mimeResolution.mimeType)
+                .ifBlank { "pin_image_${index + 1}.jpg" }
             uploadMetas += PinImageUploadMeta(
                 uriScheme = uri.scheme.orEmpty(),
                 fileName = fileName,
+                uploadFilename = uploadFilename,
+                byteSize = bytes.size,
                 resolvedMime = mimeResolution.mimeType,
                 mimeSource = mimeResolution.source,
                 contentResolverMime = mimeResolution.contentResolverMime,
@@ -313,12 +323,10 @@ class PinRepositoryImpl @Inject constructor(
             )
             val mediaType = mimeResolution.mimeType.toMediaTypeOrNull()
                 ?: "image/jpeg".toMediaType()
-            val body = bytes.toRequestBody(mediaType)
             parts += MultipartBody.Part.createFormData(
                 name = "photos",
-                filename = PinImageMimeResolver.ensureExtension(fileName, mimeResolution.mimeType)
-                    .ifBlank { "pin_image_${index + 1}.jpg" },
-                body = body,
+                filename = uploadFilename,
+                body = bytes.toRequestBody(mediaType),
             )
         }
         return PinMultipartUpload(parts = parts, uploadMetas = uploadMetas)
