@@ -159,6 +159,7 @@ class PinRepositoryImpl @Inject constructor(
                         httpStatus = null,
                         serverCode = response.code,
                         metas = uploadMetas,
+                        responseBody = gson.toJson(response),
                     )
                 }
                 Result.failure(
@@ -169,13 +170,15 @@ class PinRepositoryImpl @Inject constructor(
                 )
             }
         } catch (e: HttpException) {
-            val errorEnvelope = e.response()?.errorBody()?.string()
+            val rawBody = e.response()?.errorBody()?.string().orEmpty()
+            val errorEnvelope = rawBody.takeIf { it.isNotBlank() }
                 ?.let { body -> runCatching { gson.fromJson(body, PinCreateErrorEnvelope::class.java) }.getOrNull() }
             if (request.imageUris.isNotEmpty()) {
                 PinImageUploadDiagnostics.logUploadFailure(
                     httpStatus = e.code(),
                     serverCode = errorEnvelope?.code,
                     metas = uploadMetas,
+                    responseBody = rawBody.takeIf { it.isNotBlank() },
                 )
             }
             Result.failure(

@@ -14,7 +14,7 @@ enum class PinImageMimeSource {
 data class PinImageMimeResolution(
     val mimeType: String,
     val source: PinImageMimeSource,
-    /** ContentResolver.getType(uri) 원본. null·빈값·image/*면 2·3단계로 넘어간 경우. */
+    // ContentResolver.getType(uri) 원본. null·빈값·image/*면 2·3단계로 넘어간 경우.
     val contentResolverMime: String?,
 )
 

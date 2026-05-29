@@ -39,7 +39,14 @@ object PinImageUploadDiagnostics {
         httpStatus: Int?,
         serverCode: String?,
         metas: List<PinImageUploadMeta>,
+        responseBody: String? = null,
     ) {
+        if (!responseBody.isNullOrBlank()) {
+            Log.w(
+                TAG,
+                "upload_failed_response status=$httpStatus code=${serverCode ?: "null"} body=$responseBody",
+            )
+        }
         metas.forEachIndexed { index, meta ->
             Log.w(
                 TAG,
