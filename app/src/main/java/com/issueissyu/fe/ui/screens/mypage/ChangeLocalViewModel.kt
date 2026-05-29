@@ -1,12 +1,8 @@
-package com.issueissyu.fe.ui.screens.onboarding
+package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.data.local.OnboardingSessionStore
-import com.issueissyu.fe.data.local.TokenManager
-import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.LocationRepository
-import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,12 +14,8 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class LocalVerificationViewModel @Inject constructor(
+class ChangeLocalViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
-    private val userRepository: UserRepository,
-    private val authRepository: AuthRepository,
-    private val onboardingSessionStore: OnboardingSessionStore,
-    private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
@@ -33,7 +25,7 @@ class LocalVerificationViewModel @Inject constructor(
     val event = _event.asSharedFlow()
 
     data class UiState(
-        val addressText: String = "",
+        val addressText: String = "현재 위치를 불러오는 중...",
         val latitude: Double? = null,
         val longitude: Double? = null,
         val isLoading: Boolean = false,
@@ -41,7 +33,7 @@ class LocalVerificationViewModel @Inject constructor(
     )
 
     sealed interface UiEvent {
-        data object NavigateNext : UiEvent
+        data object Completed : UiEvent
         data class ShowError(val message: String) : UiEvent
     }
 
@@ -75,7 +67,7 @@ class LocalVerificationViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             addressText = address.ifBlank {
-                                "현재 위치 주소를 확인할 수 없어도 인증은 가능합니다."
+                                "현재 위치 주소를 확인할 수 없어도 변경은 가능합니다."
                             },
                         )
                     }
@@ -83,7 +75,7 @@ class LocalVerificationViewModel @Inject constructor(
                 onFailure = {
                     _uiState.update {
                         it.copy(
-                            addressText = "현재 위치 주소를 확인할 수 없어도 인증은 가능합니다.",
+                            addressText = "현재 위치 주소를 확인할 수 없어도 변경은 가능합니다.",
                         )
                     }
                 },
@@ -91,7 +83,7 @@ class LocalVerificationViewModel @Inject constructor(
         }
     }
 
-    fun registerLocation() {
+    fun updateLocation() {
         if (_uiState.value.isLoading) return
 
         val latitude = _uiState.value.latitude
@@ -109,37 +101,12 @@ class LocalVerificationViewModel @Inject constructor(
 
             locationRepository.certifyUserLocation(latitude, longitude).fold(
                 onSuccess = {
-                    val pending = onboardingSessionStore.getPendingProfile()
-                    if (pending == null) {
-                        _uiState.update { it.copy(isLoading = false) }
-                        _event.emit(
-                            UiEvent.ShowError("프로필 정보가 없습니다. 본인인증 단계부터 다시 진행해주세요."),
-                        )
-                        return@fold
-                    }
-
-                    authRepository.onboarding(
-                        nickname = pending.first,
-                        email = pending.second,
-                        phone = pending.third,
-                    ).fold(
-                        onSuccess = {
-                            onboardingSessionStore.clearPendingProfile()
-                            tokenManager.clearNewUserFlag()
-                            _uiState.update { it.copy(isLoading = false) }
-                            _event.emit(UiEvent.NavigateNext)
-                        },
-                        onFailure = { e ->
-                            _uiState.update { it.copy(isLoading = false) }
-                            _event.emit(
-                                UiEvent.ShowError(e.message ?: "온보딩 완료 처리에 실패했습니다"),
-                            )
-                        },
-                    )
+                    _uiState.update { it.copy(isLoading = false) }
+                    _event.emit(UiEvent.Completed)
                 },
                 onFailure = { e ->
                     _uiState.update { it.copy(isLoading = false) }
-                    _event.emit(UiEvent.ShowError(e.message ?: "동네 등록에 실패했습니다"))
+                    _event.emit(UiEvent.ShowError(e.message ?: "동네 변경에 실패했습니다"))
                 },
             )
         }
