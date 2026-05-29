@@ -277,7 +277,12 @@ private fun PinCreateContent(
                 value = uiState.description,
                 onValueChange = onDescriptionChange,
                 label = "상세 설명",
-                placeholder = "상세 설명을 작성해 주세요.\n해시태그를 눌러 이슈있슈 AI로 빠르게 원하는 말투로 글을 작성할 수 있어요!",
+                placeholder = when (category) {
+                    PinCategory.ISSUE ->
+                        "상세 설명을 작성해 주세요.\n해시태그를 눌러 이슈있슈 AI로 빠르게 원하는 말투로 글을 작성할 수 있어요!"
+                    PinCategory.COMMUNICATION -> "상세 설명을 작성해 주세요."
+                    PinCategory.SHOP, PinCategory.FESTIVAL -> "상세 설명을 작성해 주세요."
+                },
                 maxLines = 8,
                 maxLength = 500,
                 textStyle = IssueTypo.Regular16
