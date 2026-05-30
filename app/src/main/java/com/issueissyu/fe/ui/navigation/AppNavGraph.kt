@@ -41,11 +41,21 @@ import com.issueissyu.fe.ui.screens.pindetail.PinDetailScreen
 import com.issueissyu.fe.ui.screens.pindetail.PIN_DETAIL_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.pindetail.PinReportScreen
 import com.issueissyu.fe.ui.screens.pindetail.ReportTargetType
+import com.issueissyu.fe.ui.screens.collection.CollectionScreen
 import com.issueissyu.fe.ui.screens.community.CommunityScreen
 import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreen
 import com.issueissyu.fe.ui.screens.community.detail.COMMUNITY_DETAIL_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.map.PIN_CREATE_FOCUS_PIN_ID_KEY
 import com.issueissyu.fe.ui.screens.map.PIN_CREATE_MAP_REFRESH_KEY
+import com.issueissyu.fe.ui.screens.mypage.AlarmSettingScreen
+import com.issueissyu.fe.ui.screens.mypage.ChangeLocalScreen
+import com.issueissyu.fe.ui.screens.mypage.MyIssueScreen
+import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
+import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
+import com.issueissyu.fe.ui.screens.mypage.MyPageTermScreen
+import com.issueissyu.fe.ui.screens.mypage.ProfileChangeScreen
+import com.issueissyu.fe.ui.screens.mypage.TermsType as MyPageTermsType
+import com.issueissyu.fe.ui.screens.onboarding.TermsType as OnboardingTermsType
 
 @Composable
 fun AppNavGraph(
@@ -184,7 +194,17 @@ fun AppNavGraph(
                 onNavigateToLanding = {}
             )
         }
-        composable(AppDestinations.COLLECTION_ROUTE) { /* TODO: CollectionScreen */ }
+        composable(AppDestinations.COLLECTION_ROUTE) {
+            NavScreenWrapper(paddingValues = paddingValues) {
+                CollectionScreen(
+                    onNavigateToNoticeDetail = { notice ->
+                        notice.toLongOrNull()?.let { communityId ->
+                            navController.navigate(AppDestinations.communityDetailRoute(communityId))
+                        }
+                    },
+                )
+            }
+        }
         composable(
             route = AppDestinations.TOWN_ROUTE_WITH_FOCUS_PIN,
             arguments = listOf(
@@ -278,7 +298,115 @@ fun AppNavGraph(
                 )
             }
         }
-        composable(AppDestinations.MYPAGE_ROUTE) { /* TODO: MypageScreen */ }
+        composable(AppDestinations.MyPage.MYPAGE_ROUTE) {
+            NavScreenWrapper(paddingValues = paddingValues) {
+                MyPageScreen(
+                    modifier = Modifier,
+                    onEvent = { event ->
+                        when (event) {
+                            MyPageEvent.NavigateBack -> navController.navigateUp()
+                            MyPageEvent.NavigateToProfile -> {
+                                navController.navigate(AppDestinations.MyPage.PROFILE_CHANGE_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLocal -> {
+                                navController.navigate(AppDestinations.MyPage.LOCAL_CHANGE_ROUTE)
+                            }
+                            MyPageEvent.NavigateToIssue -> {
+                                navController.navigate(AppDestinations.MyPage.MY_ISSUES_ROUTE)
+                            }
+                            MyPageEvent.NavigateToSettingAlarm -> {
+                                navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLanding -> {
+                                navController.navigateToLoginClearingBackStack()
+                            }
+                            MyPageEvent.NavigateToTerm -> {
+                                navController.navigate(AppDestinations.MyPage.TERMS_ROUTE)
+                            }
+                            MyPageEvent.Logout -> Unit
+                            MyPageEvent.Withdraw -> Unit
+                        }
+                    },
+                )
+            }
+        }
+
+        composable(AppDestinations.MyPage.PROFILE_CHANGE_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                ProfileChangeScreen(
+                    onBackClick = { navController.navigateUp() },
+                    onCollectionClick = { navController.navigate(AppDestinations.COLLECTION_ROUTE) },
+                    onCompleteClick = { navController.navigateUp() },
+                )
+            }
+        }
+
+        composable(AppDestinations.MyPage.TERMS_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                MyPageTermScreen(
+                    onBackClick = { navController.navigateUp() },
+                    onTermsDetailClick = { termsType ->
+                        val onboardingTermsType = when (termsType) {
+                            MyPageTermsType.SERVICE -> OnboardingTermsType.SERVICE
+                            MyPageTermsType.PRIVACY -> OnboardingTermsType.PRIVACY
+                            MyPageTermsType.LOCATION -> OnboardingTermsType.LOCATION
+                        }
+                        navController.navigate(
+                            AppDestinations.Onboarding.termDetailRoute(onboardingTermsType.name),
+                        )
+                    },
+                )
+            }
+        }
+
+        composable(AppDestinations.MyPage.MY_ISSUES_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                MyIssueScreen(
+                    onBackClick = { navController.navigateUp() },
+                    onPinClick = { pinId, _, _ ->
+                        pinId.toLongOrNull()?.let { id ->
+                            navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
+                                popUpTo(AppDestinations.TOWN_ROUTE) {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+        }
+
+        composable(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                AlarmSettingScreen(
+                    onBackClick = { navController.navigateUp() },
+                )
+            }
+        }
+
+        composable(AppDestinations.MyPage.LOCAL_CHANGE_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                ChangeLocalScreen(
+                    onBackClick = { navController.navigateUp() },
+                    onComplete = { navController.navigateUp() },
+                )
+            }
+        }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
             NavScreenWrapper(
                 paddingValues = paddingValues,

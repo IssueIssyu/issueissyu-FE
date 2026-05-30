@@ -18,13 +18,23 @@ object AppDestinations {
         }
     }
 
+    //마이페이지
+    object MyPage{
+        const val MYPAGE_ROUTE = "mypage_route"
+        const val PROFILE_CHANGE_ROUTE = "mypage/profile_change"
+        const val LOCAL_CHANGE_ROUTE = "mypage/local_change"
+        const val TERMS_ROUTE = "mypage/terms"
+        const val MY_ISSUES_ROUTE = "mypage/my_issues"
+        const val ALARM_SETTINGS_ROUTE = "mypage/alarm_settings"
+    }
+
     // 메인 탭 / 일반 화면
+    const val MYPAGE_ROUTE = MyPage.MYPAGE_ROUTE
     const val TOWN_ROUTE = "town_route"
     const val COLLECTION_ROUTE = "collection_route"
     const val COMMUNITY_ROUTE = "community_route"
     const val COMMUNITY_DETAIL_ROUTE = "community_detail_route/{communityId}"
     const val COMMUNITY_REPORT_ROUTE = "community_report_route/{communityId}"
-    const val MYPAGE_ROUTE = "mypage_route"
 
     // 지도 관련
     const val PATCH_NOTE_ROUTE = "patch_note_route"
@@ -32,7 +42,6 @@ object AppDestinations {
     const val PIN_DETAIL_ROUTE = "pin_detail_route/{pinId}"
     const val PIN_REPORT_ROUTE = "pin_report_route/{pinId}"
     const val TOWN_ROUTE_WITH_FOCUS_PIN = "town_route?focusPinId={focusPinId}"
-
     fun communityDetailRoute(communityId: Long): String {
         return "community_detail_route/$communityId"
     }
