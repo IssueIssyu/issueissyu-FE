@@ -130,19 +130,24 @@ class ProfileChangeViewModel @Inject constructor(
     }
 
     fun checkNicknameDuplicate() {
+        val requestedNickname = _inputNickname.value
         if (_inputNickname.value.isBlank()) return
 
         viewModelScope.launch {
             _isCheckingNickname.value = true
 
             try {
-                val isAvailable = userRepository.checkNicknameDuplicate(_inputNickname.value)
-                _isNicknameAvailable.value = isAvailable
+                val isAvailable = userRepository.checkNicknameDuplicate(requestedNickname)
+                if (_inputNickname.value == requestedNickname) {
+                    _isNicknameAvailable.value = isAvailable
+                }
             } catch (e: Exception) {
-                _isNicknameAvailable.value = null
-                _showToast.emit(
-                    e.message ?: "닉네임 중복 확인에 실패했습니다",
-                )
+                if (_inputNickname.value == requestedNickname) {
+                    _isNicknameAvailable.value = null
+                    _showToast.emit(
+                        e.message ?: "닉네임 중복 확인에 실패했습니다",
+                    )
+                }
             } finally {
                 _isCheckingNickname.value = false
                 updateCompleteButtonState()
