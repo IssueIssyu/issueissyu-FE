@@ -19,7 +19,7 @@ interface CollectionApi {
     //컬렉션 프로필 설정
     @PATCH("api/users/me/collections/{collectionId}/profile")
     suspend fun setProfile(
-        @Path("collectionId") collectionId: Int
+        @Path("collectionId") collectionId: Long
     ): BaseResponse<SetProfileResponse?>
 
     //컬렉션 북마크 설정

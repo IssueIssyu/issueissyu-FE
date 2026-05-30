@@ -7,12 +7,12 @@ data class MyPageCollectionSummary(
 )
 
 data class MyPageCollectionItem(
-    val collectionId: Int,
+    val collectionId: Long,
     val name: String,
     val imageUrl: String,
 )
 
 data class ProfileCollectionUpdate(
-    val profileCollectionId: Int,
+    val profileCollectionId: Long,
     val profileImageUrl: String,
 )

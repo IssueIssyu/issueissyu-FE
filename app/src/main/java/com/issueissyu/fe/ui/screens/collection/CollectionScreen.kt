@@ -24,21 +24,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -47,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.screens.map.AutoScrollingNotice
@@ -57,13 +61,10 @@ import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
-import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.White
-import kotlinx.coroutines.flow.collectLatest
 
-/// 컬렉션 화면
 @Composable
 fun CollectionScreen(
     viewModel: CollectionViewModel = hiltViewModel(),
@@ -88,6 +89,13 @@ fun CollectionScreen(
         }
     }
 
+    if (uiState.newUnlockNotice.isNotEmpty()) {
+        NewUnlockDialog(
+            unlockNames = uiState.newUnlockNotice,
+            onDismiss = { viewModel.onEvent(CollectionEvent.DismissNewUnlockNotice) },
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -99,12 +107,89 @@ fun CollectionScreen(
             modifier = Modifier.background(color = White)
         )
 
-        // 나머지 내용
-        CollectionContent(
-            uiState = uiState,
-            onEvent = viewModel::onEvent,
-            modifier = Modifier.weight(1f)
+        when {
+            uiState.isLoading && uiState.pins.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            uiState.errorMessage != null && uiState.pins.isEmpty() -> {
+                CollectionErrorState(
+                    message = uiState.errorMessage.orEmpty(),
+                    onRetry = { viewModel.onEvent(CollectionEvent.RetryLoad) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            else -> {
+                CollectionContent(
+                    uiState = uiState,
+                    onEvent = viewModel::onEvent,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewUnlockDialog(
+    unlockNames: List<String>,
+    onDismiss: () -> Unit,
+) {
+    val namesText = unlockNames.joinToString(", ")
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(text = "새 캐릭터 해금!", style = IssueTypo.Bold18)
+        },
+        text = {
+            Text(
+                text = "${namesText}을(를) 만날 수 있게 되었어요!",
+                style = IssueTypo.Regular15,
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = "확인", style = IssueTypo.Bold12.copy(color = BrandColor))
+            }
+        },
+    )
+}
+
+@Composable
+private fun CollectionErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(CommunicationContainer)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = message,
+            style = IssueTypo.Regular15,
+            textAlign = TextAlign.Center,
+            color = Gray_5,
         )
+        Button(
+            onClick = onRetry,
+            modifier = Modifier.padding(top = 16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = BrandColor),
+        ) {
+            Text(text = "다시 시도", style = IssueTypo.Bold12, color = White)
+        }
     }
 }
 
@@ -160,9 +245,7 @@ private fun CollectionContent(
                     )
                 },
                 iconResId = R.drawable.ic_megaphone,
-                onClick = { _ ->
-                    // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
-                },
+                onClick = { _ -> },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -193,16 +276,12 @@ private fun CollectionContent(
                     )
                 }
 
-                // 캐릭터
-                Image(
-                    painter = painterResource(
-                        id = uiState.selectedPin?.imageResId ?: R.drawable.ic_character_default
-                    ),
-                    contentDescription = "선택된 핀 캐릭터",
+                CollectionCharacterImage(
+                    imageUrl = uiState.selectedPin?.imageUrl,
+                    contentDescription = uiState.selectedPin?.name ?: "선택된 캐릭터",
                     modifier = Modifier
                         .size(180.dp)
                         .padding(bottom = 20.dp),
-                    alignment = Alignment.BottomCenter
                 )
             }
 
@@ -262,8 +341,7 @@ private fun CollectionContent(
                         PinCard(
                             pin = pin,
                             isSelected = pin.id == uiState.selectedPin?.id,
-                            isCurrentProfile = pin.id == uiState.currentProfilePin?.id,
-                            isBookmarked = pin.id in uiState.bookmarkedPinIds,
+                            isCurrentProfile = pin.collectionId == uiState.currentProfilePin?.collectionId,
                             onPinClick = { onEvent(CollectionEvent.SelectPin(pin.id)) },
                             onBookmarkClick = { onEvent(CollectionEvent.ToggleBookmark(pin.id)) }
                         )
@@ -271,20 +349,62 @@ private fun CollectionContent(
                 }
             }
         }
+
+        if (uiState.isLoading && uiState.pins.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(White.copy(alpha = 0.4f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        }
     }
 }
 
-//핀 카드
+@Composable
+private fun CollectionCharacterImage(
+    imageUrl: String?,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    val defaultPainter = painterResource(R.drawable.ic_character_default)
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        if (imageUrl.isNullOrBlank()) {
+            Image(
+                painter = defaultPainter,
+                contentDescription = contentDescription,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+            )
+        } else {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = contentDescription,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+                placeholder = defaultPainter,
+                error = defaultPainter,
+            )
+        }
+    }
+}
+
 @Composable
 private fun PinCard(
     pin: PinItem,
     isSelected: Boolean,
     isCurrentProfile: Boolean,
-    isBookmarked: Boolean,
     onPinClick: () -> Unit,
     onBookmarkClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val defaultPainter = painterResource(R.drawable.ic_character_default)
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -322,11 +442,15 @@ private fun PinCard(
                         modifier = Modifier.size(80.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Image(
-                            painter = painterResource(id = pin.imageResId),
+                        AsyncImage(
+                            model = pin.imageUrl,
                             contentDescription = pin.name,
-                            modifier = Modifier.size(80.dp),
-                            alpha = 0.3f
+                            modifier = Modifier
+                                .size(80.dp)
+                                .alpha(0.3f),
+                            contentScale = ContentScale.Fit,
+                            placeholder = defaultPainter,
+                            error = defaultPainter,
                         )
                         Icon(
                             imageVector = Icons.Default.Lock,
@@ -336,21 +460,31 @@ private fun PinCard(
                         )
                     }
                 } else {
-                    Image(
-                        painter = painterResource(id = pin.imageResId),
+                    AsyncImage(
+                        model = pin.imageUrl,
                         contentDescription = pin.name,
-                        modifier = Modifier.size(100.dp)
+                        modifier = Modifier.size(100.dp),
+                        contentScale = ContentScale.Fit,
+                        placeholder = defaultPainter,
+                        error = defaultPainter,
                     )
                 }
 
                 Text(
                     text = pin.name,
-                    style = IssueTypo.Bold18.copy(color = if (pin.isLocked) Gray_5 else Text, fontSize = 16.sp),
+                    style = IssueTypo.Bold18.copy(
+                        color = if (pin.isLocked) Gray_5 else Text,
+                        fontSize = 16.sp,
+                    ),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 8.dp)
                 )
 
-                if (pin.isLocked && pin.unlockCondition != null) {
+                if (
+                    pin.isLocked &&
+                    pin.unlockCondition.isNotBlank() &&
+                    pin.unlockCondition != "없음"
+                ) {
                     Text(
                         text = pin.unlockCondition,
                         style = IssueTypo.Regular12,
@@ -371,9 +505,13 @@ private fun PinCard(
                         .padding(4.dp)
                 ) {
                     Icon(
-                        imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                        contentDescription = if (isBookmarked) "북마크 해제" else "북마크",
-                        tint = if (isBookmarked) BrandColor else Gray_5
+                        imageVector = if (pin.isBookmarked) {
+                            Icons.Filled.Bookmark
+                        } else {
+                            Icons.Outlined.BookmarkBorder
+                        },
+                        contentDescription = if (pin.isBookmarked) "북마크 해제" else "북마크",
+                        tint = if (pin.isBookmarked) BrandColor else Gray_5
                     )
                 }
             }

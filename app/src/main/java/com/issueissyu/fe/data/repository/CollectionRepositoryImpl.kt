@@ -1,8 +1,10 @@
 package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.CollectionApi
+import com.issueissyu.fe.data.remote.dto.collection.toCollectionPageSummary
 import com.issueissyu.fe.data.remote.dto.collection.toMyPageCollectionSummary
 import com.issueissyu.fe.data.remote.dto.collection.toProfileCollectionUpdate
+import com.issueissyu.fe.domain.model.collection.CollectionPageSummary
 import com.issueissyu.fe.domain.model.mypage.MyPageCollectionSummary
 import com.issueissyu.fe.domain.model.mypage.ProfileCollectionUpdate
 import com.issueissyu.fe.domain.repository.CollectionRepository
@@ -33,7 +35,26 @@ class CollectionRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun setProfile(collectionId: Int): Result<ProfileCollectionUpdate> {
+    override suspend fun getCollectionPage(): Result<CollectionPageSummary> {
+        return try {
+            val response = collectionApi.getCollections(checkUnlock = true)
+            if (response.isSuccess) {
+                val body = response.result
+                    ?: return Result.failure(
+                        Exception(response.message.ifBlank { "컬렉션 응답이 올바르지 않습니다." }),
+                    )
+                Result.success(body.toCollectionPageSummary())
+            } else {
+                Result.failure(
+                    Exception(response.message.ifBlank { "컬렉션 조회에 실패했습니다." }),
+                )
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun setProfile(collectionId: Long): Result<ProfileCollectionUpdate> {
         return try {
             val response = collectionApi.setProfile(collectionId = collectionId)
             when (response.code) {
