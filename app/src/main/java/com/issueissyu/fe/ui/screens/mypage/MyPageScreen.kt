@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -88,9 +89,7 @@ fun MyPageScreen(
     savedStateHandle: SavedStateHandle? = null,
     viewModel: MyPageViewModel = hiltViewModel(),
 ) {
-    val nickname by viewModel.userNickname.collectAsStateWithLifecycle()
-    val profileImageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
-    val myPins by viewModel.myPins.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val authActionState by viewModel.authActionState.collectAsStateWithLifecycle()
 
     val shouldRefresh by savedStateHandle
@@ -134,111 +133,31 @@ fun MyPageScreen(
             .fillMaxSize()
             .background(White),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-        //상단 바
-        IssueissyuTopAppBar(
-            titleText = "마이페이지",
-            onBackClick = { onEvent(MyPageEvent.NavigateBack)}
-        )
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
 
-        //프로필 + 닉네임
-        Column(
-            modifier = Modifier
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ){
-            //프로필 사진
-            ProfileImageFrame(
-                size = 100.dp,
-                imageUrl = profileImageUrl,
-                borderWidth = 0.dp
-                )
-
-            Spacer(modifier = Modifier.size(30.dp))
-            //닉네임
-            Row(
-                modifier = Modifier.clickable(
-                    onClick = { onEvent(MyPageEvent.NavigateToProfile) },
-                ),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = nickname,
-                    fontFamily = suiteFontFamily,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 20.sp,
-                    color = Title,
-                )
-
-                Spacer(modifier = Modifier.size(10.dp))
-
-                Icon(
-                    imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "프로필 수정",
-                    tint = Title,
-                    modifier = Modifier.size(25.dp),
+            uiState.errorMessage != null && uiState.nickname.isBlank() -> {
+                MyPageErrorState(
+                    message = uiState.errorMessage.orEmpty(),
+                    onRetry = viewModel::loadCollections,
                 )
             }
 
-        }
-
-        //핀 북마크
-        MyPinsSection(pins = myPins)
-
-
-        //선택 바 부분 + 탈퇴
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-        ){
-            NavBar(
-                icon = Icons.Outlined.LocationOn,
-                title = "동네 변경",
-                onNavClick = { onEvent(MyPageEvent.NavigateToLocal)}
-            )
-            NavBar(
-                icon = Icons.Default.LocationOn,
-                title = "내 이슈",
-                onNavClick = { onEvent(MyPageEvent.NavigateToIssue) }
-            )
-            NavBar(
-                icon = Icons.Outlined.Notifications,
-                title = "알림 설정",
-                onNavClick = { onEvent(MyPageEvent.NavigateToSettingAlarm)}
-            )
-            NavBar(
-                icon = Icons.Outlined.MenuBook,
-                title = "도움말",
-                onNavClick = {onEvent(MyPageEvent.NavigateToLanding)}
-            )
-            NavBar(
-                icon = Icons.Outlined.Assignment,
-                title = "이용 약관",
-                onNavClick = {onEvent(MyPageEvent.NavigateToTerm)}
-            )
-            NavBar(
-                icon = Icons.Outlined.Logout,
-                title = "로그아웃",
-                onNavClick = { showLogoutDialog = true }
-            )
-
-            Text(
-                text = "회원탈퇴",
-                style = IssueTypo.Regular16.copy(color = Issue),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
-                    .clickable(onClick = { showWithdrawDialog = true }),
-                textAlign = TextAlign.Center
-
-            )
-        }
+            else -> {
+                MyPageContent(
+                    uiState = uiState,
+                    onEvent = onEvent,
+                    onLogoutClick = { showLogoutDialog = true },
+                    onWithdrawClick = { showWithdrawDialog = true },
+                )
+            }
         }
 
         if (showLogoutDialog) {
@@ -294,6 +213,135 @@ fun MyPageScreen(
             ) {
                 CircularProgressIndicator()
             }
+        }
+    }
+}
+
+@Composable
+private fun MyPageContent(
+    uiState: MyPageUiState,
+    onEvent: (MyPageEvent) -> Unit,
+    onLogoutClick: () -> Unit,
+    onWithdrawClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
+        IssueissyuTopAppBar(
+            titleText = "마이페이지",
+            onBackClick = { onEvent(MyPageEvent.NavigateBack) },
+        )
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            ProfileImageFrame(
+                size = 100.dp,
+                imageUrl = uiState.profileImageUrl,
+                borderWidth = 0.dp,
+            )
+
+            Spacer(modifier = Modifier.size(30.dp))
+
+            Row(
+                modifier = Modifier.clickable(
+                    onClick = { onEvent(MyPageEvent.NavigateToProfile) },
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = uiState.nickname,
+                    fontFamily = suiteFontFamily,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 20.sp,
+                    color = Title,
+                )
+
+                Spacer(modifier = Modifier.size(10.dp))
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "프로필 수정",
+                    tint = Title,
+                    modifier = Modifier.size(25.dp),
+                )
+            }
+        }
+
+        MyPinsSection(pins = uiState.bookmarkedPins)
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            NavBar(
+                icon = Icons.Outlined.LocationOn,
+                title = "동네 변경",
+                onNavClick = { onEvent(MyPageEvent.NavigateToLocal) },
+            )
+            NavBar(
+                icon = Icons.Default.LocationOn,
+                title = "내 이슈",
+                onNavClick = { onEvent(MyPageEvent.NavigateToIssue) },
+            )
+            NavBar(
+                icon = Icons.Outlined.Notifications,
+                title = "알림 설정",
+                onNavClick = { onEvent(MyPageEvent.NavigateToSettingAlarm) },
+            )
+            NavBar(
+                icon = Icons.Outlined.MenuBook,
+                title = "도움말",
+                onNavClick = { onEvent(MyPageEvent.NavigateToLanding) },
+            )
+            NavBar(
+                icon = Icons.Outlined.Assignment,
+                title = "이용 약관",
+                onNavClick = { onEvent(MyPageEvent.NavigateToTerm) },
+            )
+            NavBar(
+                icon = Icons.Outlined.Logout,
+                title = "로그아웃",
+                onNavClick = onLogoutClick,
+            )
+
+            Text(
+                text = "회원탈퇴",
+                style = IssueTypo.Regular16.copy(color = Issue),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+                    .clickable(onClick = onWithdrawClick),
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun MyPageErrorState(
+    message: String,
+    onRetry: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = message,
+            style = IssueTypo.Regular16.copy(color = Text),
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onRetry) {
+            Text(text = "다시 시도")
         }
     }
 }

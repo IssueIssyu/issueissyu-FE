@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.CollectionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -16,38 +19,65 @@ data class Pin(
     val imageUrl: String,
 )
 
+data class MyPageUiState(
+    val isLoading: Boolean = true,
+    val errorMessage: String? = null,
+    val nickname: String = "",
+    val profileImageUrl: String? = null,
+    val bookmarkedPins: List<Pin> = emptyList(),
+)
+
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
     private val collectionRepository: CollectionRepository,
     private val authRepository: AuthRepository,
 ) : ViewModel() {
-    private val _userNickname = MutableStateFlow("")
-    val userNickname = _userNickname.asStateFlow()
-
-    private val _profileImageUrl = MutableStateFlow<String?>(null)
-    val profileImageUrl = _profileImageUrl.asStateFlow()
-
-    private val _myPins = MutableStateFlow<List<Pin>>(emptyList())
-    val myPins = _myPins.asStateFlow()
+    private val _uiState = MutableStateFlow(MyPageUiState())
+    val uiState: StateFlow<MyPageUiState> = _uiState.asStateFlow()
 
     private val _authActionState = MutableStateFlow<AuthActionState>(AuthActionState.Idle)
     val authActionState = _authActionState.asStateFlow()
+
+    private var loadCollectionsJob: Job? = null
 
     init {
         loadCollections()
     }
 
     fun loadCollections() {
-        viewModelScope.launch {
+        loadCollectionsJob?.cancel()
+        loadCollectionsJob = viewModelScope.launch {
+            val hasCachedData = _uiState.value.nickname.isNotBlank()
+            _uiState.update {
+                it.copy(
+                    isLoading = !hasCachedData,
+                    errorMessage = null,
+                )
+            }
+
             collectionRepository.getCollections(checkUnlock = false)
                 .onSuccess { summary ->
-                    _userNickname.value = summary.nickname
-                    _profileImageUrl.value = summary.profileImageUrl
-                    _myPins.value = summary.bookmarkedCollections.map { item ->
-                        Pin(
-                            id = item.collectionId.toString(),
-                            name = item.name,
-                            imageUrl = item.imageUrl,
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = null,
+                            nickname = summary.nickname,
+                            profileImageUrl = summary.profileImageUrl,
+                            bookmarkedPins = summary.bookmarkedCollections.map { item ->
+                                Pin(
+                                    id = item.collectionId.toString(),
+                                    name = item.name,
+                                    imageUrl = item.imageUrl,
+                                )
+                            },
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = error.message ?: LOAD_COLLECTIONS_ERROR_MESSAGE,
                         )
                     }
                 }
@@ -92,6 +122,7 @@ class MyPageViewModel @Inject constructor(
     }
 
     companion object {
+        private const val LOAD_COLLECTIONS_ERROR_MESSAGE = "마이페이지 정보를 불러오지 못했습니다."
         private const val LOGOUT_ERROR_MESSAGE = "로그아웃에 실패했습니다."
         private const val WITHDRAW_ERROR_MESSAGE = "회원탈퇴에 실패했습니다."
     }

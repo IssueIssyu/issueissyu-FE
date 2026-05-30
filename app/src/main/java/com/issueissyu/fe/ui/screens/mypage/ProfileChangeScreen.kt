@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -54,12 +56,14 @@ fun ProfileChangeScreen(
     onCompleteClick: () -> Unit,
     viewModel: ProfileChangeViewModel = hiltViewModel(),
 ) {
-    val currentNickname by viewModel.currentNickname.collectAsStateWithLifecycle()
     val inputNickname by viewModel.inputNickname.collectAsStateWithLifecycle()
     val isNicknameAvailable by viewModel.isNicknameAvailable.collectAsStateWithLifecycle()
     val isCheckingNickname by viewModel.isCheckingNickname.collectAsStateWithLifecycle()
     val isCompleteEnabled by viewModel.isCompleteEnabled.collectAsStateWithLifecycle()
     val isCheckButtonEnabled by viewModel.isCheckButtonEnabled.collectAsStateWithLifecycle()
+    val isUpdating by viewModel.isUpdating.collectAsStateWithLifecycle()
+    val isLoadingProfile by viewModel.isLoadingProfile.collectAsStateWithLifecycle()
+    val profileLoadErrorMessage by viewModel.profileLoadErrorMessage.collectAsStateWithLifecycle()
     val profileImageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
@@ -83,18 +87,84 @@ fun ProfileChangeScreen(
     Column(
         modifier = Modifier
             .background(White)
-    ){
-
-        //상단 바
+    ) {
         IssueissyuTopAppBar(
             titleText = "프로필 편집",
             onBackClick = { onBackClick(viewModel.consumeMyPageRefreshPending()) },
         )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(31.dp, 50.dp)
-        ){
+
+        when {
+            isLoadingProfile -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            profileLoadErrorMessage != null -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = profileLoadErrorMessage.orEmpty(),
+                        style = IssueTypo.Regular16.copy(color = Text),
+                    )
+
+                    Spacer(modifier = Modifier.size(16.dp))
+
+                    Button(onClick = viewModel::loadProfile) {
+                        Text(text = "다시 시도")
+                    }
+                }
+            }
+
+            else -> {
+                ProfileChangeContent(
+                    inputNickname = inputNickname,
+                    isNicknameAvailable = isNicknameAvailable,
+                    isCheckingNickname = isCheckingNickname,
+                    isCompleteEnabled = isCompleteEnabled,
+                    isCheckButtonEnabled = isCheckButtonEnabled,
+                    isUpdating = isUpdating,
+                    profileImageUrl = profileImageUrl,
+                    onCollectionClick = {
+                        viewModel.openCollection()
+                        onCollectionClick()
+                    },
+                    onCompleteClick = { viewModel.updateProfile(onSuccess = onCompleteClick) },
+                    onNicknameChange = viewModel::onNicknameChange,
+                    onCheckNicknameDuplicate = viewModel::checkNicknameDuplicate,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileChangeContent(
+    inputNickname: String,
+    isNicknameAvailable: Boolean?,
+    isCheckingNickname: Boolean,
+    isCompleteEnabled: Boolean,
+    isCheckButtonEnabled: Boolean,
+    isUpdating: Boolean,
+    profileImageUrl: String?,
+    onCollectionClick: () -> Unit,
+    onCompleteClick: () -> Unit,
+    onNicknameChange: (String) -> Unit,
+    onCheckNicknameDuplicate: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(31.dp, 50.dp),
+    ) {
             //프로필 편집
             Column(
                 modifier = Modifier
@@ -112,10 +182,7 @@ fun ProfileChangeScreen(
 
                 //버튼
                 Button(
-                    onClick = {
-                        viewModel.openCollection()
-                        onCollectionClick()
-                    },
+                    onClick = onCollectionClick,
                     shape = RoundedCornerShape(15.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = White
@@ -155,7 +222,7 @@ fun ProfileChangeScreen(
                 CommonTextField(
                     label = "닉네임 재설정",
                     value = inputNickname,
-                    onValueChange = viewModel::onNicknameChange,
+                    onValueChange = onNicknameChange,
                 )
 
                 Spacer(modifier = Modifier.size(10.dp))
@@ -164,12 +231,13 @@ fun ProfileChangeScreen(
                     // 중복 확인 상태 메시지
                     if (isNicknameAvailable != null) {
                         Text(
-                            text = if (isNicknameAvailable == true)
+                            text = if (isNicknameAvailable) {
                                 "사용 가능한 닉네임입니다"
-                            else
-                                "이미 사용 중인 닉네임입니다",
+                            } else {
+                                "이미 사용 중인 닉네임입니다"
+                            },
                             style = IssueTypo.Regular16.copy(
-                                color = if (isNicknameAvailable == true) BrandColor else Issue
+                                color = if (isNicknameAvailable) BrandColor else Issue,
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -179,7 +247,7 @@ fun ProfileChangeScreen(
 
                     //중복 확인 버튼
                     Button(
-                        onClick = viewModel::checkNicknameDuplicate,
+                        onClick = onCheckNicknameDuplicate,
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if(isCheckButtonEnabled && !isCheckingNickname) BrandColor else Gray_2
@@ -197,13 +265,11 @@ fun ProfileChangeScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             CommonButton(
-                onClick = { viewModel.updateProfile(onSuccess = onCompleteClick) },
-                text = "완료",
-                modifier = Modifier
-                    .fillMaxWidth(),
-                isEnabled = isCompleteEnabled,
+                onClick = onCompleteClick,
+                text = if (isUpdating) "변경 중..." else "완료",
+                modifier = Modifier.fillMaxWidth(),
+                isEnabled = isCompleteEnabled && !isUpdating,
             )
-        }
     }
 }
 
