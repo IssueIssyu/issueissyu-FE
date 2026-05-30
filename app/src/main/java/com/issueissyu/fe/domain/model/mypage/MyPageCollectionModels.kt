@@ -11,3 +11,8 @@ data class MyPageCollectionItem(
     val name: String,
     val imageUrl: String,
 )
+
+data class ProfileCollectionUpdate(
+    val profileCollectionId: Int,
+    val profileImageUrl: String,
+)

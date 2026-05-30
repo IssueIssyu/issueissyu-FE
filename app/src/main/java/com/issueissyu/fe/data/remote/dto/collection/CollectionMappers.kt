@@ -2,8 +2,10 @@ package com.issueissyu.fe.data.remote.dto.collection
 
 import com.issueissyu.fe.data.remote.dto.response.collection.Collections
 import com.issueissyu.fe.data.remote.dto.response.collection.GetCollectionResponse
+import com.issueissyu.fe.data.remote.dto.response.collection.SetProfileResponse
 import com.issueissyu.fe.domain.model.mypage.MyPageCollectionItem
 import com.issueissyu.fe.domain.model.mypage.MyPageCollectionSummary
+import com.issueissyu.fe.domain.model.mypage.ProfileCollectionUpdate
 
 fun GetCollectionResponse.toMyPageCollectionSummary(): MyPageCollectionSummary {
     return MyPageCollectionSummary(
@@ -20,5 +22,12 @@ private fun Collections.toMyPageCollectionItem(): MyPageCollectionItem {
         collectionId = collectionId,
         name = name,
         imageUrl = imageUrl,
+    )
+}
+
+fun SetProfileResponse.toProfileCollectionUpdate(): ProfileCollectionUpdate {
+    return ProfileCollectionUpdate(
+        profileCollectionId = profileCollectionId,
+        profileImageUrl = profileImageUrl,
     )
 }
