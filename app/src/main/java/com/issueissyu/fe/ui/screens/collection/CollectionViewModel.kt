@@ -37,7 +37,12 @@ data class CollectionUiState(
     val characterMessage: String = "새로운 친구가 생겼어!\n기대돼!",
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
-    val newUnlockNotice: List<String> = emptyList(),
+    val newlyUnlocked: List<NewUnlockItem> = emptyList(),
+)
+
+data class NewUnlockItem(
+    val name: String,
+    val imageUrl: String,
 )
 
 // 이벤트
@@ -116,7 +121,10 @@ class CollectionViewModel @Inject constructor(
         val profilePin = pins.find { it.collectionId == profileId }
             ?: summary.profileCollection.toPinItem()
 
-        val unlockNames = summary.newlyUnlocked.map { it.name }
+        val newlyUnlocked = summary.newlyUnlocked.map {
+            NewUnlockItem(name = it.name, imageUrl = it.imageUrl)
+        }
+        val unlockNames = newlyUnlocked.map { it.name }
         val characterMessage = if (unlockNames.isNotEmpty()) {
             buildNewUnlockCharacterMessage(unlockNames)
         } else {
@@ -132,7 +140,7 @@ class CollectionViewModel @Inject constructor(
                 selectedPin = profilePin,
                 canUpdateProfile = false,
                 characterMessage = characterMessage,
-                newUnlockNotice = unlockNames,
+                newlyUnlocked = newlyUnlocked,
             )
         }
     }
@@ -187,7 +195,7 @@ class CollectionViewModel @Inject constructor(
     }
 
     private fun dismissNewUnlockNotice() {
-        _uiState.update { it.copy(newUnlockNotice = emptyList()) }
+        _uiState.update { it.copy(newlyUnlocked = emptyList()) }
     }
 
     private fun handleNoticeClick(notice: String) {
