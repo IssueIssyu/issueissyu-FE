@@ -21,8 +21,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -39,6 +43,7 @@ import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_3
@@ -63,7 +68,19 @@ fun ProfileChangeScreen(
     val isCheckingNickname by viewModel.isCheckingNickname.collectAsStateWithLifecycle()
     val isCompleteEnabled by viewModel.isCompleteEnabled.collectAsStateWithLifecycle()
     val isCheckButtonEnabled by viewModel.isCheckButtonEnabled.collectAsStateWithLifecycle()
+    val profileImageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onScreenResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.showToast.collect { message ->
@@ -93,26 +110,20 @@ fun ProfileChangeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ){
                 //프로필 사진
-                Image(
-                    painter = painterResource(R.drawable.ic_fire),
-                    contentDescription = "프로필 사진",
-                    modifier = Modifier
-                        .size(130.dp)
-                        .background(White, CircleShape)
-                        .clip(CircleShape)
-                        .scale(1.5f),
-                    contentScale = ContentScale.Crop,
-                    alignment = BiasAlignment(
-                        horizontalBias = 0f,     // 가로는 중앙
-                        verticalBias = -0.3f     // 세로는 top과 center 중간
-                    )
+                ProfileImageFrame(
+                    size = 130.dp,
+                    imageUrl = profileImageUrl,
+                    borderWidth = 0.dp,
                 )
 
                 Spacer(modifier = Modifier.size(15.dp))
 
                 //버튼
                 Button(
-                    onClick = onCollectionClick,
+                    onClick = {
+                        viewModel.openCollection()
+                        onCollectionClick()
+                    },
                     shape = RoundedCornerShape(15.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = White

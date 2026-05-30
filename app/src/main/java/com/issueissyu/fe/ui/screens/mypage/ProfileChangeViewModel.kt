@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.domain.repository.CollectionRepository
 import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -13,49 +14,62 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileChangeViewModel @Inject constructor(
-    private val userRepository: UserRepository
+    private val collectionRepository: CollectionRepository,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
-    // 현재 닉네임 (MyPageViewModel과 동일)
     private val _currentNickname = MutableStateFlow("")
     val currentNickname = _currentNickname.asStateFlow()
 
-    // 입력 중인 닉네임
+    private val _profileImageUrl = MutableStateFlow<String?>(null)
+    val profileImageUrl = _profileImageUrl.asStateFlow()
+
     private val _inputNickname = MutableStateFlow("")
     val inputNickname = _inputNickname.asStateFlow()
 
-    // 중복 확인 상태
     private val _isNicknameAvailable = MutableStateFlow<Boolean?>(null)
     val isNicknameAvailable = _isNicknameAvailable.asStateFlow()
 
     private val _isCheckingNickname = MutableStateFlow(false)
     val isCheckingNickname = _isCheckingNickname.asStateFlow()
 
-    // 완료 버튼 활성화 여부
     private val _isCompleteEnabled = MutableStateFlow(false)
     val isCompleteEnabled = _isCompleteEnabled.asStateFlow()
 
-    // 중복 확인 버튼 활성화 여부
     private val _isCheckButtonEnabled = MutableStateFlow(false)
     val isCheckButtonEnabled = _isCheckButtonEnabled.asStateFlow()
 
     private val _showToast = MutableSharedFlow<String>()
     val showToast = _showToast.asSharedFlow()
 
+    private var shouldRefreshFromCollection = false
+
     init {
         loadProfile()
     }
 
-    //데이터 로드
-    private fun loadProfile(){
+    fun loadProfile() {
         viewModelScope.launch {
-            userRepository.getProfile().collect { profile ->
-                _currentNickname.value = profile.nickname
-            }
+            collectionRepository.getCollections(checkUnlock = false)
+                .onSuccess { summary ->
+                    _currentNickname.value = summary.nickname
+                    _profileImageUrl.value = summary.profileImageUrl
+                    updateCompleteButtonState()
+                }
         }
     }
 
-    //이벤트
+    fun openCollection() {
+        shouldRefreshFromCollection = true
+    }
+
+    fun onScreenResume() {
+        if (shouldRefreshFromCollection) {
+            shouldRefreshFromCollection = false
+            loadProfile()
+        }
+    }
+
     fun onNicknameChange(nickname: String) {
         _inputNickname.value = nickname
         _isNicknameAvailable.value = null // 입력 변경되면 중복 확인 초기화
@@ -96,12 +110,12 @@ class ProfileChangeViewModel @Inject constructor(
         // 중복 확인 버튼: 입력값이 있고, 기존 닉네임과 다를 때
         _isCheckButtonEnabled.value =
             _inputNickname.value.isNotBlank() &&
-                    _inputNickname.value != _currentNickname.value
+                _inputNickname.value != _currentNickname.value
 
         // 완료 버튼: 입력값이 있고, 중복확인 완료, 기존과 다를 때
         _isCompleteEnabled.value =
             _inputNickname.value.isNotBlank() &&
-                    _isNicknameAvailable.value == true &&
-                    _inputNickname.value != _currentNickname.value
+                _isNicknameAvailable.value == true &&
+                _inputNickname.value != _currentNickname.value
     }
 }
