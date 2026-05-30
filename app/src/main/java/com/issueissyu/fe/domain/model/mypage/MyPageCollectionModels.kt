@@ -7,7 +7,7 @@ data class MyPageCollectionSummary(
 )
 
 data class MyPageCollectionItem(
-    val collectionId: Long,
+    val collectionId: Int,
     val name: String,
     val imageUrl: String,
 )

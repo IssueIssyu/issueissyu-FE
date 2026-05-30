@@ -11,13 +11,13 @@ data class GetCollectionResponse (
 
 
 data class MyCollection(
-    val collectionId: Long,
+    val collectionId: Int,
     val name: String,
     val imageUrl: String
 )
 
 data class Collections(
-    val collectionId: Long,
+    val collectionId: Int,
     val name: String,
     val imageUrl: String,
     @SerializedName("isLocked")
@@ -28,7 +28,7 @@ data class Collections(
 )
 
 data class NewlyUnlocked(
-    val collectionId: Long,
+    val collectionId: Int,
     val name: String,
     val imageUrl: String,
     val unlockCondition: String
