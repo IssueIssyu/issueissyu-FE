@@ -638,7 +638,7 @@ private fun CollectionContent(
 
                     Button(
                         onClick = { onEvent(CollectionEvent.UpdateProfile) },
-                        enabled = uiState.canUpdateProfile,
+                        enabled = uiState.canUpdateProfile && !uiState.isUpdatingProfile,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = BrandColor,
                             disabledContainerColor = Gray_4
@@ -646,7 +646,7 @@ private fun CollectionContent(
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Text(
-                            text = "프로필 업데이트",
+                            text = if (uiState.isUpdatingProfile) "업데이트 중..." else "프로필 업데이트",
                             style = IssueTypo.Bold12,
                             color = White
                         )

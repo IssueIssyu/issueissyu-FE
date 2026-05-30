@@ -34,6 +34,7 @@ data class CollectionUiState(
     val selectedPin: PinItem? = null,
     val currentProfilePin: PinItem? = null,
     val canUpdateProfile: Boolean = false,
+    val isUpdatingProfile: Boolean = false,
     val characterMessage: String = "새로운 친구가 생겼어!\n기대돼!",
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
@@ -178,19 +179,42 @@ class CollectionViewModel @Inject constructor(
     }
 
     private fun updateProfile() {
-        val selected = _uiState.value.selectedPin ?: return
-
-        // TODO: selected.imageUrl 전송
-        _uiState.update { state ->
-            state.copy(
-                currentProfilePin = selected,
-                canUpdateProfile = false
-            )
-        }
+        val state = _uiState.value
+        val selected = state.selectedPin ?: return
+        if (!state.canUpdateProfile || state.isUpdatingProfile) return
 
         viewModelScope.launch {
-            _effects.emit(CollectionEffect.ProfileUpdatedSuccess)
-            _effects.emit(CollectionEffect.ShowToast("프로필이 업데이트되었습니다"))
+            _uiState.update { it.copy(isUpdatingProfile = true) }
+
+            collectionRepository.setProfile(selected.collectionId)
+                .onSuccess { update ->
+                    val updatedProfilePin = state.pins
+                        .find { it.collectionId == update.profileCollectionId }
+                        ?.let { pin ->
+                            pin.copy(
+                                imageUrl = update.profileImageUrl.ifBlank { pin.imageUrl },
+                            )
+                        }
+                        ?: selected.copy(
+                            collectionId = update.profileCollectionId,
+                            imageUrl = update.profileImageUrl.ifBlank { selected.imageUrl },
+                        )
+
+                    _uiState.update {
+                        it.copy(
+                            currentProfilePin = updatedProfilePin,
+                            selectedPin = updatedProfilePin,
+                            canUpdateProfile = false,
+                            isUpdatingProfile = false,
+                        )
+                    }
+                    _effects.emit(CollectionEffect.ProfileUpdatedSuccess)
+                    _effects.emit(CollectionEffect.ShowToast("프로필이 업데이트되었습니다"))
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isUpdatingProfile = false) }
+                    emitToast(error.message ?: UPDATE_PROFILE_ERROR_MESSAGE)
+                }
         }
     }
 
@@ -224,6 +248,7 @@ class CollectionViewModel @Inject constructor(
         private const val MAX_BOOKMARKED_COUNT = 20
         private const val DEFAULT_CHARACTER_MESSAGE = "새로운 친구가 생겼어!\n기대돼!"
         private const val LOAD_COLLECTION_PAGE_ERROR_MESSAGE = "컬렉션을 불러오지 못했습니다."
+        private const val UPDATE_PROFILE_ERROR_MESSAGE = "프로필 업데이트에 실패했습니다."
     }
 }
 
