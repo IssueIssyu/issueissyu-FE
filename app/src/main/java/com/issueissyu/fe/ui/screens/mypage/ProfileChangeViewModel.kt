@@ -43,6 +43,7 @@ class ProfileChangeViewModel @Inject constructor(
     val showToast = _showToast.asSharedFlow()
 
     private var shouldRefreshFromCollection = false
+    private var myPageRefreshPending = false
 
     init {
         loadProfile()
@@ -67,7 +68,14 @@ class ProfileChangeViewModel @Inject constructor(
         if (shouldRefreshFromCollection) {
             shouldRefreshFromCollection = false
             loadProfile()
+            myPageRefreshPending = true
         }
+    }
+
+    fun consumeMyPageRefreshPending(): Boolean {
+        val pending = myPageRefreshPending
+        myPageRefreshPending = false
+        return pending
     }
 
     fun onNicknameChange(nickname: String) {

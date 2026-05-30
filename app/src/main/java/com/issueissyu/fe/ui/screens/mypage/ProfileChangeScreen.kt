@@ -2,7 +2,6 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -28,18 +26,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
@@ -57,11 +49,11 @@ import com.issueissyu.fe.ui.theme.White
 
 @Composable
 fun ProfileChangeScreen(
-    onBackClick: () -> Unit,
+    onBackClick: (refreshMyPage: Boolean) -> Unit,
     onCollectionClick: () -> Unit,
     onCompleteClick: () -> Unit,
-    viewModel: ProfileChangeViewModel = hiltViewModel()
-){
+    viewModel: ProfileChangeViewModel = hiltViewModel(),
+) {
     val currentNickname by viewModel.currentNickname.collectAsStateWithLifecycle()
     val inputNickname by viewModel.inputNickname.collectAsStateWithLifecycle()
     val isNicknameAvailable by viewModel.isNicknameAvailable.collectAsStateWithLifecycle()
@@ -96,7 +88,7 @@ fun ProfileChangeScreen(
         //상단 바
         IssueissyuTopAppBar(
             titleText = "프로필 편집",
-            onBackClick = onBackClick
+            onBackClick = { onBackClick(viewModel.consumeMyPageRefreshPending()) },
         )
         Column(
             modifier = Modifier
@@ -224,9 +216,9 @@ fun ProfileChangeScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewProfileChangeScreen(){
+fun PreviewProfileChangeScreen() {
     ProfileChangeScreen(
-        onBackClick = {},
+        onBackClick = { _ -> },
         onCollectionClick = {},
         onCompleteClick = {}
     )

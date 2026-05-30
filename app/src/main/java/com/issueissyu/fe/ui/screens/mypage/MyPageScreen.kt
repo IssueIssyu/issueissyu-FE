@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.SavedStateHandle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.Dialog
@@ -68,6 +69,8 @@ import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.suiteFontFamily
 
+const val MYPAGE_REFRESH_KEY = "mypage_refresh"
+
 sealed class MyPageEvent {
     data object NavigateBack: MyPageEvent()
     data object NavigateToProfile: MyPageEvent()
@@ -82,12 +85,25 @@ sealed class MyPageEvent {
 fun MyPageScreen(
     onEvent: (MyPageEvent) -> Unit,
     modifier: Modifier,
-    viewModel: MyPageViewModel = hiltViewModel()
-){
+    savedStateHandle: SavedStateHandle? = null,
+    viewModel: MyPageViewModel = hiltViewModel(),
+) {
     val nickname by viewModel.userNickname.collectAsStateWithLifecycle()
     val profileImageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
     val myPins by viewModel.myPins.collectAsStateWithLifecycle()
     val authActionState by viewModel.authActionState.collectAsStateWithLifecycle()
+
+    val shouldRefresh by savedStateHandle
+        ?.getStateFlow(MYPAGE_REFRESH_KEY, false)
+        ?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(false) }
+
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh) {
+            viewModel.loadCollections()
+            savedStateHandle?.set(MYPAGE_REFRESH_KEY, false)
+        }
+    }
 
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }

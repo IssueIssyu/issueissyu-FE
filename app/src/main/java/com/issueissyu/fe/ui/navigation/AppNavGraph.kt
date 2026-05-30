@@ -47,6 +47,7 @@ import com.issueissyu.fe.ui.screens.community.detail.COMMUNITY_DETAIL_REFRESH_KE
 import com.issueissyu.fe.ui.screens.mypage.AlarmSettingScreen
 import com.issueissyu.fe.ui.screens.mypage.ChangeLocalScreen
 import com.issueissyu.fe.ui.screens.mypage.MyIssueScreen
+import com.issueissyu.fe.ui.screens.mypage.MYPAGE_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
 import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
 import com.issueissyu.fe.ui.screens.mypage.MyPageTermScreen
@@ -294,10 +295,11 @@ fun AppNavGraph(
                 )
             }
         }
-        composable(AppDestinations.MyPage.MYPAGE_ROUTE) {
+        composable(AppDestinations.MyPage.MYPAGE_ROUTE) { backStackEntry ->
             NavScreenWrapper(paddingValues = paddingValues) {
                 MyPageScreen(
                     modifier = Modifier,
+                    savedStateHandle = backStackEntry.savedStateHandle,
                     onEvent = { event ->
                         when (event) {
                             MyPageEvent.NavigateBack -> navController.navigateUp()
@@ -331,9 +333,21 @@ fun AppNavGraph(
                 removeTopPadding = true,
             ) {
                 ProfileChangeScreen(
-                    onBackClick = { navController.navigateUp() },
+                    onBackClick = { refreshMyPage ->
+                        if (refreshMyPage) {
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set(MYPAGE_REFRESH_KEY, true)
+                        }
+                        navController.navigateUp()
+                    },
                     onCollectionClick = { navController.navigate(AppDestinations.COLLECTION_ROUTE) },
-                    onCompleteClick = { navController.navigateUp() },
+                    onCompleteClick = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set(MYPAGE_REFRESH_KEY, true)
+                        navController.navigateUp()
+                    },
                 )
             }
         }
