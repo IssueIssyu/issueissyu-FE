@@ -57,6 +57,7 @@ import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.Dialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -136,24 +137,12 @@ fun MyPageScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ){
-            //프로필 이미지
             //프로필 사진
-            AsyncImage(
-                model = profileImageUrl,
-                contentDescription = "프로필 사진",
-                modifier = Modifier
-                    .size(100.dp)
-                    .background(White, CircleShape)
-                    .clip(CircleShape)
-                    .scale(1.5f),
-                contentScale = ContentScale.Crop,
-                alignment = BiasAlignment(
-                    horizontalBias = 0f,
-                    verticalBias = -0.3f,
-                ),
-                placeholder = painterResource(R.drawable.ic_character_default),
-                error = painterResource(R.drawable.ic_character_default),
-            )
+            ProfileImageFrame(
+                size = 100.dp,
+                imageUrl = profileImageUrl,
+                borderWidth = 0.dp
+                )
 
             Spacer(modifier = Modifier.size(30.dp))
             //닉네임
