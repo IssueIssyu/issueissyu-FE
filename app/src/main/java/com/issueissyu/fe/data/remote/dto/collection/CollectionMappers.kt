@@ -13,6 +13,15 @@ import com.issueissyu.fe.domain.model.mypage.MyPageCollectionSummary
 import com.issueissyu.fe.domain.model.mypage.BookmarkCollectionUpdate
 import com.issueissyu.fe.domain.model.mypage.ProfileCollectionUpdate
 
+private const val DEFAULT_COLLECTION_CHARACTER_NAME = "기본"
+private const val DEFAULT_COLLECTION_CHARACTER_API_NAME = "default"
+
+private fun mapCollectionCharacterName(name: String): String {
+    return if (name.equals(DEFAULT_COLLECTION_CHARACTER_API_NAME, ignoreCase = true)) {
+        DEFAULT_COLLECTION_CHARACTER_NAME
+    } else name
+}
+
 fun GetCollectionResponse.toMyPageCollectionSummary(): MyPageCollectionSummary {
     return MyPageCollectionSummary(
         nickname = nickname,
@@ -26,7 +35,7 @@ fun GetCollectionResponse.toMyPageCollectionSummary(): MyPageCollectionSummary {
 private fun Collections.toMyPageCollectionItem(): MyPageCollectionItem {
     return MyPageCollectionItem(
         collectionId = collectionId,
-        name = name,
+        name = mapCollectionCharacterName(name),
         imageUrl = imageUrl,
     )
 }
@@ -42,7 +51,7 @@ fun GetCollectionResponse.toCollectionPageSummary(): CollectionPageSummary {
 private fun MyCollection.toCollectionCharacter(): CollectionCharacter {
     return CollectionCharacter(
         collectionId = collectionId,
-        name = name,
+        name = mapCollectionCharacterName(name),
         imageUrl = imageUrl,
     )
 }
@@ -50,7 +59,7 @@ private fun MyCollection.toCollectionCharacter(): CollectionCharacter {
 private fun Collections.toCollectionCharacter(): CollectionCharacter {
     return CollectionCharacter(
         collectionId = collectionId,
-        name = name,
+        name = mapCollectionCharacterName(name),
         imageUrl = imageUrl,
         isLocked = isLocked,
         isBookmarked = isBookmarked,
@@ -61,7 +70,7 @@ private fun Collections.toCollectionCharacter(): CollectionCharacter {
 private fun NewlyUnlocked.toCollectionCharacter(): CollectionCharacter {
     return CollectionCharacter(
         collectionId = collectionId,
-        name = name,
+        name = mapCollectionCharacterName(name),
         imageUrl = imageUrl,
         isLocked = false,
         unlockCondition = unlockCondition,
