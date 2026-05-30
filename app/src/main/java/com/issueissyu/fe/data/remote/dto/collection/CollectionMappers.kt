@@ -4,11 +4,13 @@ import com.issueissyu.fe.data.remote.dto.response.collection.Collections
 import com.issueissyu.fe.data.remote.dto.response.collection.GetCollectionResponse
 import com.issueissyu.fe.data.remote.dto.response.collection.MyCollection
 import com.issueissyu.fe.data.remote.dto.response.collection.NewlyUnlocked
+import com.issueissyu.fe.data.remote.dto.response.collection.SetBookmarkResponse
 import com.issueissyu.fe.data.remote.dto.response.collection.SetProfileResponse
 import com.issueissyu.fe.domain.model.collection.CollectionCharacter
 import com.issueissyu.fe.domain.model.collection.CollectionPageSummary
 import com.issueissyu.fe.domain.model.mypage.MyPageCollectionItem
 import com.issueissyu.fe.domain.model.mypage.MyPageCollectionSummary
+import com.issueissyu.fe.domain.model.mypage.BookmarkCollectionUpdate
 import com.issueissyu.fe.domain.model.mypage.ProfileCollectionUpdate
 
 fun GetCollectionResponse.toMyPageCollectionSummary(): MyPageCollectionSummary {
@@ -70,5 +72,12 @@ fun SetProfileResponse.toProfileCollectionUpdate(): ProfileCollectionUpdate {
     return ProfileCollectionUpdate(
         profileCollectionId = profileCollectionId,
         profileImageUrl = profileImageUrl,
+    )
+}
+
+fun SetBookmarkResponse.toBookmarkCollectionUpdate(): BookmarkCollectionUpdate {
+    return BookmarkCollectionUpdate(
+        collectionId = customCollectionId,
+        isBookmarked = isBookmarked,
     )
 }
