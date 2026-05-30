@@ -7,6 +7,7 @@ import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
 import com.issueissyu.fe.data.remote.api.AiIssueApiService
+import com.issueissyu.fe.data.remote.api.CollectionApi
 import com.issueissyu.fe.data.remote.api.CommunityApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import com.issueissyu.fe.data.remote.api.LocationApi
@@ -133,4 +134,11 @@ object NetworkModule {
     fun provideMyPageApi(retrofit: Retrofit): MyPageApi {
         return retrofit.create(MyPageApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideCollectionApi(retrofit: Retrofit): CollectionApi {
+        return retrofit.create(CollectionApi::class.java)
+    }
+
 }

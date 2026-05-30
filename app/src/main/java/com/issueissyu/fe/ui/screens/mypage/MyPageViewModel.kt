@@ -2,49 +2,57 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.repository.AuthRepository
-import com.issueissyu.fe.domain.repository.UserRepository
+import com.issueissyu.fe.domain.repository.CollectionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class Pin(
     val id: String,
     val name: String,
-    val imageRes: Int,
+    val imageUrl: String,
 )
 
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
-    private val userRepository: UserRepository,
-    private val authRepository: AuthRepository
+    private val collectionRepository: CollectionRepository,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
-    val userNickname = userRepository.getProfile()
-        .map { it.nickname }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ""
-        )
+    private val _userNickname = MutableStateFlow("")
+    val userNickname = _userNickname.asStateFlow()
 
-    private val _myPins = MutableStateFlow(
-        listOf(
-            Pin("1", "바게트씨", R.drawable.ic_report),
-            Pin("2", "돌이곰", R.drawable.ic_fire),
-            Pin("3", "버터떡", R.drawable.ic_edit),
-            Pin("4", "감자빵", R.drawable.ic_megaphone)
-        )
-    )
+    private val _profileImageUrl = MutableStateFlow<String?>(null)
+    val profileImageUrl = _profileImageUrl.asStateFlow()
+
+    private val _myPins = MutableStateFlow<List<Pin>>(emptyList())
     val myPins = _myPins.asStateFlow()
 
     private val _authActionState = MutableStateFlow<AuthActionState>(AuthActionState.Idle)
     val authActionState = _authActionState.asStateFlow()
+
+    init {
+        loadCollections()
+    }
+
+    fun loadCollections() {
+        viewModelScope.launch {
+            collectionRepository.getCollections(checkUnlock = false)
+                .onSuccess { summary ->
+                    _userNickname.value = summary.nickname
+                    _profileImageUrl.value = summary.profileImageUrl
+                    _myPins.value = summary.bookmarkedCollections.map { item ->
+                        Pin(
+                            id = item.collectionId.toString(),
+                            name = item.name,
+                            imageUrl = item.imageUrl,
+                        )
+                    }
+                }
+        }
+    }
 
     fun logout() {
         viewModelScope.launch {

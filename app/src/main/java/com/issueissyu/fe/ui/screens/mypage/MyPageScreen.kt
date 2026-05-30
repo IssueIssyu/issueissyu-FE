@@ -1,6 +1,5 @@
 package com.issueissyu.fe.ui.screens.mypage
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.Dialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
@@ -84,6 +84,7 @@ fun MyPageScreen(
     viewModel: MyPageViewModel = hiltViewModel()
 ){
     val nickname by viewModel.userNickname.collectAsStateWithLifecycle()
+    val profileImageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
     val myPins by viewModel.myPins.collectAsStateWithLifecycle()
     val authActionState by viewModel.authActionState.collectAsStateWithLifecycle()
 
@@ -137,8 +138,8 @@ fun MyPageScreen(
         ){
             //프로필 이미지
             //프로필 사진
-            Image(
-                painter = painterResource(R.drawable.ic_fire),
+            AsyncImage(
+                model = profileImageUrl,
                 contentDescription = "프로필 사진",
                 modifier = Modifier
                     .size(100.dp)
@@ -147,9 +148,11 @@ fun MyPageScreen(
                     .scale(1.5f),
                 contentScale = ContentScale.Crop,
                 alignment = BiasAlignment(
-                    horizontalBias = 0f,     // 가로는 중앙
-                    verticalBias = -0.3f     // 세로는 top과 center 중간
-                )
+                    horizontalBias = 0f,
+                    verticalBias = -0.3f,
+                ),
+                placeholder = painterResource(R.drawable.ic_character_default),
+                error = painterResource(R.drawable.ic_character_default),
             )
 
             Spacer(modifier = Modifier.size(30.dp))
@@ -349,10 +352,13 @@ private fun PinCard(pin: Pin) {
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
         // 핀 이미지
-        Image(
-            painter = painterResource(pin.imageRes),
+        AsyncImage(
+            model = pin.imageUrl,
             contentDescription = pin.name,
-            modifier = Modifier.size(100.dp)
+            modifier = Modifier.size(100.dp),
+            contentScale = ContentScale.Fit,
+            placeholder = painterResource(R.drawable.ic_character_default),
+            error = painterResource(R.drawable.ic_character_default),
         )
 
         Spacer(modifier = Modifier.height(8.dp))
