@@ -671,6 +671,7 @@ private fun CollectionContent(
                             pin = pin,
                             isSelected = pin.id == uiState.selectedPin?.id,
                             isCurrentProfile = pin.collectionId == uiState.currentProfilePin?.collectionId,
+                            isBookmarkLoading = pin.collectionId == uiState.bookmarkingCollectionId,
                             onPinClick = { onEvent(CollectionEvent.SelectPin(pin.id)) },
                             onBookmarkClick = { onEvent(CollectionEvent.ToggleBookmark(pin.id)) }
                         )
@@ -728,6 +729,7 @@ private fun PinCard(
     pin: PinItem,
     isSelected: Boolean,
     isCurrentProfile: Boolean,
+    isBookmarkLoading: Boolean = false,
     onPinClick: () -> Unit,
     onBookmarkClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -829,6 +831,7 @@ private fun PinCard(
             if (!pin.isLocked) {
                 IconButton(
                     onClick = onBookmarkClick,
+                    enabled = !isBookmarkLoading,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(4.dp)

@@ -35,6 +35,7 @@ data class CollectionUiState(
     val currentProfilePin: PinItem? = null,
     val canUpdateProfile: Boolean = false,
     val isUpdatingProfile: Boolean = false,
+    val bookmarkingCollectionId: Long? = null,
     val characterMessage: String = "새로운 친구가 생겼어!\n기대돼!",
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
@@ -162,19 +163,47 @@ class CollectionViewModel @Inject constructor(
     private fun toggleBookmark(pinId: String) {
         val state = _uiState.value
         val pin = state.pins.find { it.id == pinId } ?: return
-        if (pin.isLocked) return
+        if (pin.isLocked || state.bookmarkingCollectionId != null) return
 
-        if (!pin.isBookmarked && state.pins.count { it.isBookmarked } >= MAX_BOOKMARKED_COUNT) {
+        val targetBookmarked = !pin.isBookmarked
+        if (targetBookmarked && state.pins.count { it.isBookmarked } >= MAX_BOOKMARKED_COUNT) {
             emitToast("최대 ${MAX_BOOKMARKED_COUNT}개까지 북마크 가능합니다")
             return
         }
 
-        _uiState.update { current ->
-            current.copy(
-                pins = current.pins.map { item ->
-                    if (item.id == pinId) item.copy(isBookmarked = !item.isBookmarked) else item
-                },
-            )
+        viewModelScope.launch {
+            _uiState.update { it.copy(bookmarkingCollectionId = pin.collectionId) }
+            try {
+                collectionRepository.setBookmark(
+                    collectionId = pin.collectionId,
+                    isBookmarked = targetBookmarked,
+                )
+                    .onSuccess { update ->
+                        _uiState.update { current ->
+                            current.copy(
+                                pins = current.pins.map { item ->
+                                    if (item.collectionId == update.collectionId) {
+                                        item.copy(isBookmarked = update.isBookmarked)
+                                    } else {
+                                        item
+                                    }
+                                },
+                            )
+                        }
+                        emitToast("북마크가 변경되었습니다")
+                    }
+                    .onFailure { error ->
+                        emitToast(error.message ?: UPDATE_BOOKMARK_ERROR_MESSAGE)
+                    }
+            } finally {
+                _uiState.update { current ->
+                    if (current.bookmarkingCollectionId == pin.collectionId) {
+                        current.copy(bookmarkingCollectionId = null)
+                    } else {
+                        current
+                    }
+                }
+            }
         }
     }
 
@@ -249,6 +278,7 @@ class CollectionViewModel @Inject constructor(
         private const val DEFAULT_CHARACTER_MESSAGE = "새로운 친구가 생겼어!\n기대돼!"
         private const val LOAD_COLLECTION_PAGE_ERROR_MESSAGE = "컬렉션을 불러오지 못했습니다."
         private const val UPDATE_PROFILE_ERROR_MESSAGE = "프로필 업데이트에 실패했습니다."
+        private const val UPDATE_BOOKMARK_ERROR_MESSAGE = "북마크 변경에 실패했습니다."
     }
 }
 
