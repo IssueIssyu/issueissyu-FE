@@ -6,6 +6,7 @@ import com.issueissyu.fe.data.remote.dto.collection.toCollectionPageSummary
 import com.issueissyu.fe.data.remote.dto.collection.toMyPageCollectionSummary
 import com.issueissyu.fe.data.remote.dto.collection.toProfileCollectionUpdate
 import com.issueissyu.fe.data.remote.dto.request.collection.SetBookmarkRequest
+import com.issueissyu.fe.data.remote.dto.response.collection.GetCollectionResponse
 import com.issueissyu.fe.domain.model.collection.CollectionPageSummary
 import com.issueissyu.fe.domain.model.mypage.BookmarkCollectionUpdate
 import com.issueissyu.fe.domain.model.mypage.MyPageCollectionSummary
@@ -25,9 +26,9 @@ class CollectionRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 val body = response.result
                     ?: return Result.failure(
-                        Exception(response.message.ifBlank { "컬렉션 응답이 올바르지 않습니다." }),
+                        Exception(response.message.ifBlank { INVALID_COLLECTION_RESPONSE_MESSAGE }),
                     )
-                Result.success(body.toMyPageCollectionSummary())
+                validateCollections(body).map { it.toMyPageCollectionSummary() }
             } else {
                 Result.failure(
                     Exception(response.message.ifBlank { "컬렉션 조회에 실패했습니다." }),
@@ -44,9 +45,9 @@ class CollectionRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 val body = response.result
                     ?: return Result.failure(
-                        Exception(response.message.ifBlank { "컬렉션 응답이 올바르지 않습니다." }),
+                        Exception(response.message.ifBlank { INVALID_COLLECTION_RESPONSE_MESSAGE }),
                     )
-                Result.success(body.toCollectionPageSummary())
+                validateCollections(body).map { it.toCollectionPageSummary() }
             } else {
                 Result.failure(
                     Exception(response.message.ifBlank { "컬렉션 조회에 실패했습니다." }),
@@ -161,5 +162,17 @@ class CollectionRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun validateCollections(body: GetCollectionResponse): Result<GetCollectionResponse> {
+        return if (body.collections.isEmpty()) {
+            Result.failure(Exception(INVALID_COLLECTION_RESPONSE_MESSAGE))
+        } else {
+            Result.success(body)
+        }
+    }
+
+    companion object {
+        private const val INVALID_COLLECTION_RESPONSE_MESSAGE = "컬렉션 응답이 올바르지 않습니다."
     }
 }

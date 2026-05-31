@@ -6,7 +6,7 @@ data class GetCollectionResponse (
     val nickname: String,
     val myCollection: MyCollection,
     val collections: List<Collections>,
-    val newlyUnlocked: List<NewlyUnlocked>
+    val newlyUnlocked: List<NewlyUnlocked> = emptyList(),
 )
 
 
