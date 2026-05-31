@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -36,6 +37,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -50,6 +52,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.collectLatest
@@ -81,6 +84,8 @@ import com.issueissyu.fe.ui.theme.White
 
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
+const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
+const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
 
 // Context에서 Activity를 찾는 헬퍼 함수
 private fun Context.findActivity(): Activity? {
@@ -102,6 +107,8 @@ private fun Context.findActivity(): Activity? {
 fun MapScreen(
     navController: NavHostController,
     focusPinId: String? = null,
+    savedStateHandle: SavedStateHandle,
+    onLocationSelectionModeChanged: (Boolean) -> Unit = {},
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val showResearchButton by viewModel.showResearchButton.collectAsStateWithLifecycle()
@@ -114,12 +121,22 @@ fun MapScreen(
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId
 
+    LaunchedEffect(isLocationSelectionMode) {
+        onLocationSelectionModeChanged(isLocationSelectionMode)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            onLocationSelectionModeChanged(false)
+        }
+    }
+
     // TODO: ViewModel에서 combine(_mapPins, _selectedCategory)로 visibleMapPins StateFlow를 노출하고, UI는 collect만 하도록 정리
 
-    val visibleMapPins = if (selectedCategory == null) {
-        mapPins
-    } else {
-        mapPins.filter { it.category == selectedCategory }
+    val visibleMapPins = when {
+        isLocationSelectionMode -> emptyList()
+        selectedCategory == null -> mapPins
+        else -> mapPins.filter { it.category == selectedCategory }
     }
 
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
@@ -230,7 +247,8 @@ fun MapScreen(
                     "&pinLat=${event.pinCoordinate.latitude}" +
                     "&pinLng=${event.pinCoordinate.longitude}" +
                     "&userLat=${event.userCoordinate.latitude}" +
-                    "&userLng=${event.userCoordinate.longitude}"
+                    "&userLng=${event.userCoordinate.longitude}" +
+                    "&address=${Uri.encode(event.address)}"
             )
         }
     }
@@ -238,6 +256,19 @@ fun MapScreen(
     LaunchedEffect(Unit) {
         viewModel.messageEvents.collectLatest { message ->
             snackbarHostState.showSnackbar(message)
+        }
+    }
+
+    LaunchedEffect(savedStateHandle) {
+        savedStateHandle.getStateFlow(PIN_CREATE_MAP_REFRESH_KEY, false).collectLatest { shouldRefresh ->
+            if (!shouldRefresh) return@collectLatest
+            viewModel.fetchPinsInBounds()
+            val createdPinId = savedStateHandle.get<String>(PIN_CREATE_FOCUS_PIN_ID_KEY).orEmpty()
+            if (createdPinId.isNotBlank()) {
+                viewModel.selectPinById(createdPinId)
+            }
+            savedStateHandle[PIN_CREATE_MAP_REFRESH_KEY] = false
+            savedStateHandle[PIN_CREATE_FOCUS_PIN_ID_KEY] = ""
         }
     }
 
@@ -349,76 +380,78 @@ fun MapScreen(
             }
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 16.dp)
-        ) {
-            val errorContainer = MaterialTheme.colorScheme.errorContainer
-            val secondaryContainer = MaterialTheme.colorScheme.secondaryContainer
-            val primaryContainer = MaterialTheme.colorScheme.primaryContainer
-            val tertiaryContainer = MaterialTheme.colorScheme.tertiaryContainer
-
-            val sampleCategories = remember(
-                errorContainer,
-                secondaryContainer,
-                primaryContainer,
-                tertiaryContainer
-            ) {
-                listOf(
-                    CategoryItem("이슈", R.drawable.issue, Issue, errorContainer),
-                    CategoryItem("소통", R.drawable.communicate, Communication, secondaryContainer),
-                    CategoryItem("가게", R.drawable.shop, Shop, primaryContainer),
-                    CategoryItem("축제", R.drawable.festival, Festival, tertiaryContainer)
-                )
-            }
-
-            val selectedCategoryLabel = when (selectedCategory) {
-                PinCategory.ISSUE -> "이슈"
-                PinCategory.COMMUNICATION -> "소통"
-                PinCategory.SHOP -> "가게"
-                PinCategory.FESTIVAL -> "축제"
-                null -> null
-            }
-
-            CategoryButtons(
-                categories = sampleCategories,
-                selectedCategory = selectedCategoryLabel,
-                onCategorySelected = { category ->
-                    viewModel.onCategorySelected(category)
-                },
-                onNotificationClick = {
-                    // TODO: 알림 목록 UI 또는 알림 화면 연결
-                },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            AutoScrollingNotice(
-                notices = notices.map { notice ->
-                    NoticeUiModel(
-                        id = notice.id,
-                        title = notice.content,
-                        pinId = notice.pinId
-                    )
-                },
-                iconResId = R.drawable.ic_megaphone,
-                onClick = { clickedNotice ->
-                    val communityId = clickedNotice.pinId?.toLongOrNull()
-                    if (communityId != null) {
-                        navController.navigate(
-                            AppDestinations.communityDetailRoute(communityId)
-                        )
-                    }
-                },
+        if (!isLocationSelectionMode) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
+            ) {
+                val errorContainer = MaterialTheme.colorScheme.errorContainer
+                val secondaryContainer = MaterialTheme.colorScheme.secondaryContainer
+                val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+                val tertiaryContainer = MaterialTheme.colorScheme.tertiaryContainer
+
+                val sampleCategories = remember(
+                    errorContainer,
+                    secondaryContainer,
+                    primaryContainer,
+                    tertiaryContainer
+                ) {
+                    listOf(
+                        CategoryItem("이슈", R.drawable.issue, Issue, errorContainer),
+                        CategoryItem("소통", R.drawable.communicate, Communication, secondaryContainer),
+                        CategoryItem("가게", R.drawable.shop, Shop, primaryContainer),
+                        CategoryItem("축제", R.drawable.festival, Festival, tertiaryContainer)
+                    )
+                }
+
+                val selectedCategoryLabel = when (selectedCategory) {
+                    PinCategory.ISSUE -> "이슈"
+                    PinCategory.COMMUNICATION -> "소통"
+                    PinCategory.SHOP -> "가게"
+                    PinCategory.FESTIVAL -> "축제"
+                    null -> null
+                }
+
+                CategoryButtons(
+                    categories = sampleCategories,
+                    selectedCategory = selectedCategoryLabel,
+                    onCategorySelected = { category ->
+                        viewModel.onCategorySelected(category)
+                    },
+                    onNotificationClick = {
+                        // TODO: 알림 목록 UI 또는 알림 화면 연결
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                AutoScrollingNotice(
+                    notices = notices.map { notice ->
+                        NoticeUiModel(
+                            id = notice.id,
+                            title = notice.content,
+                            pinId = notice.pinId
+                        )
+                    },
+                    iconResId = R.drawable.ic_megaphone,
+                    onClick = { clickedNotice ->
+                        val communityId = clickedNotice.pinId?.toLongOrNull()
+                        if (communityId != null) {
+                            navController.navigate(
+                                AppDestinations.communityDetailRoute(communityId)
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
         }
 
-        if (showResearchButton) {
+        if (showResearchButton && !isLocationSelectionMode) {
             Button(
                 onClick = {
                     viewModel.fetchPinsInBounds()
@@ -450,53 +483,55 @@ fun MapScreen(
             }
         }
 
-        Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 16.dp, bottom = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.patchnotebutton),
-                contentDescription = "패치노트",
+        if (!isLocationSelectionMode) {
+            Column(
                 modifier = Modifier
-                    .size(56.dp)
-                    .clickable {
-                        navController.navigate(AppDestinations.PATCH_NOTE_ROUTE)
-                    },
-                tint = Color.Unspecified
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Icon(
-                painter = painterResource(id = R.drawable.findspot),
-                contentDescription = "내 위치 찾기",
-                modifier = Modifier
-                    .size(48.dp)
-                    .clickable {
-                        moveToCurrentLocation()
-                    },
-                tint = Color.Unspecified
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            FloatingActionButton(
-                onClick = { viewModel.openPinTypeSelector() },
-                modifier = Modifier.size(56.dp),
-                shape = CircleShape,
-                containerColor = BrandColor
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 16.dp, bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Icon(
-                    imageVector = Icons.Default.AddLocation,
-                    contentDescription = "핀 생성",
-                    tint = White
+                    painter = painterResource(id = R.drawable.patchnotebutton),
+                    contentDescription = "패치노트",
+                    modifier = Modifier
+                        .size(70.dp)
+                        .clickable {
+                            navController.navigate(AppDestinations.PATCH_NOTE_ROUTE)
+                        },
+                    tint = Color.Unspecified
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Icon(
+                    painter = painterResource(id = R.drawable.findspot),
+                    contentDescription = "내 위치 찾기",
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clickable {
+                            moveToCurrentLocation()
+                        },
+                    tint = Color.Unspecified
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                FloatingActionButton(
+                    onClick = { viewModel.openPinTypeSelector() },
+                    modifier = Modifier.size(56.dp),
+                    shape = CircleShape,
+                    containerColor = BrandColor
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddLocation,
+                        contentDescription = "핀 생성",
+                        tint = White
+                    )
+                }
             }
         }
 
-        if (selectedPin != null) {
+        if (selectedPin != null && !isLocationSelectionMode) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -504,7 +539,7 @@ fun MapScreen(
             )
         }
 
-        selectedPin?.let { pin ->
+        selectedPin?.takeUnless { isLocationSelectionMode }?.let { pin ->
             PinSummaryCard(
                 pin = pin,
                 currentUserId = currentUserId,

@@ -1,9 +1,7 @@
 package com.issueissyu.fe.ui.screens.pindetail
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,6 +53,7 @@ import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
+import com.issueissyu.fe.core.media.CapturedImageSaver
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -66,8 +64,6 @@ import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-import java.io.File
-import java.io.FileOutputStream
 
 internal const val PIN_DETAIL_REFRESH_KEY = "pin_detail_refresh"
 
@@ -89,7 +85,7 @@ fun PinDetailScreen(
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicturePreview()
     ) { bitmap ->
-        val proofUri = bitmap?.let { saveResolutionProofBitmap(context, it) }
+        val proofUri = bitmap?.let { CapturedImageSaver.saveJpegToCache(context, it, "resolution-proof") }
         if (proofUri == null) {
             Toast.makeText(context, "사진 촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
         } else {
@@ -517,22 +513,6 @@ private fun PinDetailTab.label(): String = when (this) {
     PinDetailTab.HOME -> "홈"
     PinDetailTab.POST -> "포스트"
     PinDetailTab.RESOLUTION -> "해결하기"
-}
-
-private fun saveResolutionProofBitmap(
-    context: Context,
-    bitmap: Bitmap,
-): String? {
-    return runCatching {
-        val file = File(
-            context.cacheDir,
-            "resolution-proof-${System.currentTimeMillis()}.jpg"
-        )
-        FileOutputStream(file).use { output ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)
-        }
-        file.toUri().toString()
-    }.getOrNull()
 }
 
 @Preview(showBackground = true, heightDp = 900)

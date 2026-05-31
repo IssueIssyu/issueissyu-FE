@@ -21,7 +21,9 @@ import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverJoinResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverListResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverPhotoResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverVerificationResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinImportResponse
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -182,4 +184,12 @@ interface PinApi {
     suspend fun joinIssuePetition(
         @Path("pinId") pinId: Long
     ): BaseResponse<PetitionsJoinResponse?>
+
+    // 소통 핀 통합 등록
+    @Multipart
+    @POST("api/pins/import/communication")
+    suspend fun createCommunicationPin(
+        @Part("request") request: RequestBody,
+        @Part photos: List<MultipartBody.Part>,
+    ): BaseResponse<PinImportResponse?>
 }

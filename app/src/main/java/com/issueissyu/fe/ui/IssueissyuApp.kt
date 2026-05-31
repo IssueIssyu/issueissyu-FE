@@ -3,6 +3,9 @@ package com.issueissyu.fe.ui
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.issueissyu.fe.ui.components.BottomNavigationBar
@@ -27,10 +30,11 @@ fun App() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    var isMapLocationSelectionMode by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = {
-            if (shouldShowBottomBar(currentRoute)) {
+            if (shouldShowBottomBar(currentRoute) && !isMapLocationSelectionMode) {
                 BottomNavigationBar(
                     navController = navController,
                     currentRoute = currentRoute
@@ -40,7 +44,8 @@ fun App() {
     ) { paddingValues ->
         AppNavGraph(
             navController = navController,
-            paddingValues = paddingValues
+            paddingValues = paddingValues,
+            onMapLocationSelectionModeChanged = { isMapLocationSelectionMode = it },
         )
     }
 }
