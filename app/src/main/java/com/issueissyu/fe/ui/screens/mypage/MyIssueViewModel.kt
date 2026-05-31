@@ -8,6 +8,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,6 +41,8 @@ class MyIssueViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MyIssueUiState())
     val uiState: StateFlow<MyIssueUiState> = _uiState.asStateFlow()
 
+    private var loadIssuesJob: Job? = null
+
     init {
         loadIssues()
     }
@@ -50,7 +53,8 @@ class MyIssueViewModel @Inject constructor(
             if (currentState.isLoadingMore || !currentState.hasNext) return
         }
 
-        viewModelScope.launch {
+        loadIssuesJob?.cancel()
+        loadIssuesJob = viewModelScope.launch {
             _uiState.update {
                 if (append) {
                     it.copy(isLoadingMore = true, errorMessage = null)

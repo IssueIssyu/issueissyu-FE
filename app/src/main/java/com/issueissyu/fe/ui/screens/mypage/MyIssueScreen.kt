@@ -62,12 +62,7 @@ fun MyIssueScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
-    val shouldLoadMore by remember(
-        listState,
-        uiState.hasNext,
-        uiState.isLoadingMore,
-        uiState.issues.size,
-    ) {
+    val shouldLoadMore by remember {
         derivedStateOf {
             val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
                 ?: return@derivedStateOf false
