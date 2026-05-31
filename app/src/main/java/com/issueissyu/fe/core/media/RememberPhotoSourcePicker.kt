@@ -8,9 +8,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,38 +44,18 @@ fun rememberPhotoSourcePicker(
         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
     }
 
-    var launchAlbumPicker by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val singleImagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri ->
+        uri?.let { picked -> onImagesPicked(listOf(picked.toString())) }
+    }
 
-    if (remainingSlots > 1) {
-        key(remainingSlots) {
-            val imagePickerLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = remainingSlots),
-            ) { uris ->
-                onImagesPicked(uris.map { it.toString() })
-            }
-            SideEffect {
-                launchAlbumPicker = {
-                    imagePickerLauncher.launch(albumPickRequest)
-                }
-            }
-        }
-    } else if (remainingSlots == 1) {
-        key("single-album") {
-            val imagePickerLauncher = rememberLauncherForActivityResult(
-                contract = ActivityResultContracts.PickVisualMedia(),
-            ) { uri ->
-                uri?.let { picked -> onImagesPicked(listOf(picked.toString())) }
-            }
-            SideEffect {
-                launchAlbumPicker = {
-                    imagePickerLauncher.launch(albumPickRequest)
-                }
-            }
-        }
-    } else {
-        SideEffect {
-            launchAlbumPicker = null
-        }
+    val multipleImagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(
+            maxItems = remainingSlots.coerceAtLeast(2),
+        ),
+    ) { uris ->
+        onImagesPicked(uris.map { it.toString() })
     }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -121,10 +99,18 @@ fun rememberPhotoSourcePicker(
         }
     }
 
-    val launchAlbum: () -> Unit = remember {
+    val launchAlbum: () -> Unit = remember(
+        remainingSlots,
+        singleImagePickerLauncher,
+        multipleImagePickerLauncher,
+        albumPickRequest,
+    ) {
         {
             showPhotoSourceSheet = false
-            launchAlbumPicker?.invoke()
+            when {
+                remainingSlots > 1 -> multipleImagePickerLauncher.launch(albumPickRequest)
+                remainingSlots == 1 -> singleImagePickerLauncher.launch("image/*")
+            }
         }
     }
 

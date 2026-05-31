@@ -127,11 +127,11 @@ class PinRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createPin(request: CreatePinRequest): Result<Pin> {
+    override suspend fun createPin(request: CreatePinRequest): Result<Pin> = withContext(Dispatchers.IO) {
         var uploadMetas = emptyList<PinImageUploadMeta>()
-        return try {
+        try {
             if (request.category == PinCategory.ISSUE && request.imageUris.isEmpty()) {
-                return Result.failure(IllegalArgumentException("이슈 핀은 사진을 최소 1장 첨부해야 합니다."))
+                return@withContext Result.failure(IllegalArgumentException("이슈 핀은 사진을 최소 1장 첨부해야 합니다."))
             }
             PinImageUploadValidator.validate(context, request.imageUris).getOrThrow()
             val multipart = request.imageUris.toMultipartParts()
@@ -152,7 +152,7 @@ class PinRepositoryImpl @Inject constructor(
                     photos = multipart.parts,
                 )
                 PinCategory.SHOP,
-                PinCategory.FESTIVAL -> return Result.failure(
+                PinCategory.FESTIVAL -> return@withContext Result.failure(
                     IllegalArgumentException("가게와 축제 핀은 일반 사용자가 생성할 수 없습니다."),
                 )
             }
