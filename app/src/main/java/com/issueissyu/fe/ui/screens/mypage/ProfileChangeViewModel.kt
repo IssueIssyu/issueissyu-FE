@@ -70,9 +70,11 @@ class ProfileChangeViewModel @Inject constructor(
             collectionRepository.getCollections(checkUnlock = false)
                 .onSuccess { summary ->
                     _currentNickname.value = summary.nickname
+                    _inputNickname.value = summary.nickname
                     _profileImageUrl.value = summary.profileImageUrl
                     _isLoadingProfile.value = false
                     _profileLoadErrorMessage.value = null
+                    _isNicknameAvailable.value = null
                     updateCompleteButtonState()
                 }
                 .onFailure { error ->
@@ -95,12 +97,16 @@ class ProfileChangeViewModel @Inject constructor(
 
     private fun refreshProfileAfterCollection() {
         val previousProfileImageUrl = _profileImageUrl.value
+        val previousNickname = _currentNickname.value
 
         loadProfileJob?.cancel()
         loadProfileJob = viewModelScope.launch {
             collectionRepository.getCollections(checkUnlock = false)
                 .onSuccess { summary ->
                     _currentNickname.value = summary.nickname
+                    if (_inputNickname.value == previousNickname) {
+                        _inputNickname.value = summary.nickname
+                    }
                     _profileImageUrl.value = summary.profileImageUrl
                     _isLoadingProfile.value = false
                     _profileLoadErrorMessage.value = null
