@@ -60,6 +60,7 @@ sealed class CollectionEvent {
 // 효과
 sealed class CollectionEffect {
     data class ShowToast(val message: String) : CollectionEffect()
+    data class ShowSnackbar(val message: String) : CollectionEffect()
     data class NavigateToNoticeDetail(val notice: String) : CollectionEffect()
     object ProfileUpdatedSuccess : CollectionEffect()
 }
@@ -107,11 +108,15 @@ class CollectionViewModel @Inject constructor(
             collectionRepository.getCollectionPage()
                 .onSuccess { summary -> applyCollectionPage(summary) }
                 .onFailure { error ->
+                    val message = error.message ?: LOAD_COLLECTION_PAGE_ERROR_MESSAGE
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = error.message ?: LOAD_COLLECTION_PAGE_ERROR_MESSAGE,
+                            errorMessage = if (hasCachedData) null else message,
                         )
+                    }
+                    if (hasCachedData) {
+                        emitSnackbar(message)
                     }
                 }
         }
@@ -256,6 +261,12 @@ class CollectionViewModel @Inject constructor(
     private fun emitToast(message: String) {
         viewModelScope.launch {
             _effects.emit(CollectionEffect.ShowToast(message))
+        }
+    }
+
+    private fun emitSnackbar(message: String) {
+        viewModelScope.launch {
+            _effects.emit(CollectionEffect.ShowSnackbar(message))
         }
     }
 
