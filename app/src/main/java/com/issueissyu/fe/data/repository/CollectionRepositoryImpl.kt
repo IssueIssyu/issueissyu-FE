@@ -3,13 +3,11 @@ package com.issueissyu.fe.data.repository
 import com.issueissyu.fe.data.remote.api.CollectionApi
 import com.issueissyu.fe.data.remote.dto.collection.toBookmarkCollectionUpdate
 import com.issueissyu.fe.data.remote.dto.collection.toCollectionPageSummary
-import com.issueissyu.fe.data.remote.dto.collection.toMyPageCollectionSummary
 import com.issueissyu.fe.data.remote.dto.collection.toProfileCollectionUpdate
 import com.issueissyu.fe.data.remote.dto.request.collection.SetBookmarkRequest
 import com.issueissyu.fe.data.remote.dto.response.collection.GetCollectionResponse
 import com.issueissyu.fe.domain.model.collection.CollectionPageSummary
 import com.issueissyu.fe.domain.model.mypage.BookmarkCollectionUpdate
-import com.issueissyu.fe.domain.model.mypage.MyPageCollectionSummary
 import com.issueissyu.fe.domain.model.mypage.ProfileCollectionUpdate
 import com.issueissyu.fe.domain.repository.CollectionRepository
 import javax.inject.Inject
@@ -20,28 +18,9 @@ class CollectionRepositoryImpl @Inject constructor(
     private val collectionApi: CollectionApi,
 ) : CollectionRepository {
 
-    override suspend fun getCollections(checkUnlock: Boolean): Result<MyPageCollectionSummary> {
+    override suspend fun getCollections(checkUnlock: Boolean): Result<CollectionPageSummary> {
         return try {
             val response = collectionApi.getCollections(checkUnlock = checkUnlock)
-            if (response.isSuccess) {
-                val body = response.result
-                    ?: return Result.failure(
-                        Exception(response.message.ifBlank { INVALID_COLLECTION_RESPONSE_MESSAGE }),
-                    )
-                validateCollections(body).map { it.toMyPageCollectionSummary() }
-            } else {
-                Result.failure(
-                    Exception(response.message.ifBlank { "컬렉션 조회에 실패했습니다." }),
-                )
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    override suspend fun getCollectionPage(): Result<CollectionPageSummary> {
-        return try {
-            val response = collectionApi.getCollections(checkUnlock = true)
             if (response.isSuccess) {
                 val body = response.result
                     ?: return Result.failure(
@@ -50,7 +29,7 @@ class CollectionRepositoryImpl @Inject constructor(
                 validateCollections(body).map { it.toCollectionPageSummary() }
             } else {
                 Result.failure(
-                    Exception(response.message.ifBlank { "컬렉션 조회에 실패했습니다." }),
+                    Exception(response.message.ifBlank { LOAD_COLLECTIONS_FAILED_MESSAGE }),
                 )
             }
         } catch (e: Exception) {
@@ -174,5 +153,6 @@ class CollectionRepositoryImpl @Inject constructor(
 
     companion object {
         private const val INVALID_COLLECTION_RESPONSE_MESSAGE = "컬렉션 응답이 올바르지 않습니다."
+        private const val LOAD_COLLECTIONS_FAILED_MESSAGE = "컬렉션 조회에 실패했습니다."
     }
 }

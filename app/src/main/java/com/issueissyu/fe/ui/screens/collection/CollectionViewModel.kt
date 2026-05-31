@@ -105,7 +105,7 @@ class CollectionViewModel @Inject constructor(
                 )
             }
 
-            collectionRepository.getCollectionPage()
+            collectionRepository.getCollections(checkUnlock = true)
                 .onSuccess { summary -> applyCollectionPage(summary) }
                 .onFailure { error ->
                     val message = error.message ?: LOAD_COLLECTION_PAGE_ERROR_MESSAGE
