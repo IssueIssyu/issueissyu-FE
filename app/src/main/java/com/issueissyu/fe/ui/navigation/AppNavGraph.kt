@@ -60,7 +60,8 @@ import com.issueissyu.fe.ui.screens.onboarding.TermsType as OnboardingTermsType
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
-    paddingValues: PaddingValues
+    paddingValues: PaddingValues,
+    onMapLocationSelectionModeChanged: (Boolean) -> Unit = {},
 ) {
     val sessionViewModel: AppSessionViewModel = hiltViewModel()
     val context = LocalContext.current
@@ -223,6 +224,7 @@ fun AppNavGraph(
                     navController = navController,
                     focusPinId = backStackEntry.arguments?.getString("focusPinId"),
                     savedStateHandle = backStackEntry.savedStateHandle,
+                    onLocationSelectionModeChanged = onMapLocationSelectionModeChanged,
                 )
             }
         }

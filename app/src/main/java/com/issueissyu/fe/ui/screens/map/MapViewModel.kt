@@ -233,6 +233,7 @@ class MapViewModel @Inject constructor(
         _isLocationSelectionMode.value = true
         _selectedPinCategory.value = category
         _selectedPinCoordinate.value = null
+        _selectedPin.value = null
     }
 
     fun exitLocationSelectionMode() {
