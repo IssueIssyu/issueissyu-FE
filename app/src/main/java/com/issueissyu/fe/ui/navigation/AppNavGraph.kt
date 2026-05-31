@@ -195,10 +195,8 @@ fun AppNavGraph(
         composable(AppDestinations.COLLECTION_ROUTE) {
             NavScreenWrapper(paddingValues = paddingValues) {
                 CollectionScreen(
-                    onNavigateToNoticeDetail = { notice ->
-                        notice.toLongOrNull()?.let { communityId ->
-                            navController.navigate(AppDestinations.communityDetailRoute(communityId))
-                        }
+                    onNavigateToPinDetail = { pinId ->
+                        navController.navigateToPinDetail(pinId)
                     },
                 )
             }

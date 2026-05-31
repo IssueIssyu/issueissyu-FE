@@ -89,7 +89,7 @@ import com.issueissyu.fe.ui.theme.White
 fun CollectionScreen(
     viewModel: CollectionViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
-    onNavigateToNoticeDetail: (String) -> Unit = {}
+    onNavigateToPinDetail: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -105,8 +105,8 @@ fun CollectionScreen(
                 is CollectionEffect.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(effect.message)
                 }
-                is CollectionEffect.NavigateToNoticeDetail -> {
-                    onNavigateToNoticeDetail(effect.notice)
+                is CollectionEffect.NavigateToPinDetail -> {
+                    onNavigateToPinDetail(effect.pinId)
                 }
                 is CollectionEffect.ProfileUpdatedSuccess -> {}
             }
@@ -570,24 +570,19 @@ private fun CollectionContent(
 
             // 공지사항
             AutoScrollingNotice(
-                notices = remember {
-                    listOf(
-                        NoticeUiModel(
-                            id = "notice_1",
-                            title = "오늘의 공지: 새로운 업데이트가 있습니다!"
-                        ),
-                        NoticeUiModel(
-                            id = "notice_2",
-                            title = "두 번째 공지: 버그 수정 및 성능 개선"
-                        ),
-                        NoticeUiModel(
-                            id = "notice_3",
-                            title = "세 번째 공지: 새로운 이벤트가 시작됩니다!"
-                        )
+                notices = uiState.notices.map { notice ->
+                    NoticeUiModel(
+                        id = notice.id,
+                        title = notice.content,
+                        pinId = notice.pinId,
                     )
                 },
                 iconResId = R.drawable.ic_megaphone,
-                onClick = { _ -> },
+                onClick = { clickedNotice ->
+                    clickedNotice.pinId
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { pinId -> onEvent(CollectionEvent.NoticeClicked(pinId)) }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)

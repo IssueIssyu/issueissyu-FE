@@ -2,9 +2,11 @@ package com.issueissyu.fe.ui.screens.collection
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.domain.model.MapNotice
 import com.issueissyu.fe.domain.model.collection.CollectionCharacter
 import com.issueissyu.fe.domain.model.collection.CollectionPageSummary
 import com.issueissyu.fe.domain.repository.CollectionRepository
+import com.issueissyu.fe.domain.repository.MapRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -40,6 +42,7 @@ data class CollectionUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     val newlyUnlocked: List<NewUnlockItem> = emptyList(),
+    val notices: List<MapNotice> = emptyList(),
 )
 
 data class NewUnlockItem(
@@ -54,20 +57,21 @@ sealed class CollectionEvent {
     object UpdateProfile : CollectionEvent()
     object DismissNewUnlockNotice : CollectionEvent()
     object RetryLoad : CollectionEvent()
-    data class NoticeClicked(val notice: String) : CollectionEvent()
+    data class NoticeClicked(val pinId: String) : CollectionEvent()
 }
 
 // 효과
 sealed class CollectionEffect {
     data class ShowToast(val message: String) : CollectionEffect()
     data class ShowSnackbar(val message: String) : CollectionEffect()
-    data class NavigateToNoticeDetail(val notice: String) : CollectionEffect()
+    data class NavigateToPinDetail(val pinId: String) : CollectionEffect()
     object ProfileUpdatedSuccess : CollectionEffect()
 }
 
 @HiltViewModel
 class CollectionViewModel @Inject constructor(
     private val collectionRepository: CollectionRepository,
+    private val mapRepository: MapRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CollectionUiState())
@@ -80,6 +84,7 @@ class CollectionViewModel @Inject constructor(
 
     init {
         loadCollectionPage()
+        loadNotices()
     }
 
     //이벤트 처리
@@ -90,7 +95,7 @@ class CollectionViewModel @Inject constructor(
             is CollectionEvent.UpdateProfile -> updateProfile()
             is CollectionEvent.DismissNewUnlockNotice -> dismissNewUnlockNotice()
             is CollectionEvent.RetryLoad -> loadCollectionPage()
-            is CollectionEvent.NoticeClicked -> handleNoticeClick(event.notice)
+            is CollectionEvent.NoticeClicked -> handleNoticeClick(event.pinId)
         }
     }
 
@@ -248,13 +253,23 @@ class CollectionViewModel @Inject constructor(
         }
     }
 
+    private fun loadNotices() {
+        viewModelScope.launch {
+            mapRepository.getMapNotices()
+                .onSuccess { notices ->
+                    _uiState.update { it.copy(notices = notices) }
+                }
+        }
+    }
+
     private fun dismissNewUnlockNotice() {
         _uiState.update { it.copy(newlyUnlocked = emptyList()) }
     }
 
-    private fun handleNoticeClick(notice: String) {
+    private fun handleNoticeClick(pinId: String) {
+        if (pinId.isBlank()) return
         viewModelScope.launch {
-            _effects.emit(CollectionEffect.NavigateToNoticeDetail(notice))
+            _effects.emit(CollectionEffect.NavigateToPinDetail(pinId))
         }
     }
 
