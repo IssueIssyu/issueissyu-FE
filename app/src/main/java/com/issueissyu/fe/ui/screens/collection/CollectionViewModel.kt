@@ -166,10 +166,6 @@ class CollectionViewModel @Inject constructor(
         if (pin.isLocked || state.bookmarkingCollectionId != null) return
 
         val targetBookmarked = !pin.isBookmarked
-        if (targetBookmarked && state.pins.count { it.isBookmarked } >= MAX_BOOKMARKED_COUNT) {
-            emitToast("최대 ${MAX_BOOKMARKED_COUNT}개까지 북마크 가능합니다")
-            return
-        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(bookmarkingCollectionId = pin.collectionId) }
@@ -274,7 +270,6 @@ class CollectionViewModel @Inject constructor(
         )
     }
     companion object {
-        private const val MAX_BOOKMARKED_COUNT = 20
         private const val DEFAULT_CHARACTER_MESSAGE = "새로운 친구가 생겼어!\n기대돼!"
         private const val LOAD_COLLECTION_PAGE_ERROR_MESSAGE = "컬렉션을 불러오지 못했습니다."
         private const val UPDATE_PROFILE_ERROR_MESSAGE = "프로필 업데이트에 실패했습니다."
