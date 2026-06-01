@@ -50,6 +50,7 @@ import com.issueissyu.fe.ui.screens.map.PIN_CREATE_MAP_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.AlarmSettingScreen
 import com.issueissyu.fe.ui.screens.mypage.ChangeLocalScreen
 import com.issueissyu.fe.ui.screens.mypage.MyIssueScreen
+import com.issueissyu.fe.ui.screens.mypage.MYPAGE_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
 import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
 import com.issueissyu.fe.ui.screens.mypage.MyPageTermScreen
@@ -300,10 +301,11 @@ fun AppNavGraph(
                 )
             }
         }
-        composable(AppDestinations.MyPage.MYPAGE_ROUTE) {
+        composable(AppDestinations.MyPage.MYPAGE_ROUTE) { backStackEntry ->
             NavScreenWrapper(paddingValues = paddingValues) {
                 MyPageScreen(
                     modifier = Modifier,
+                    savedStateHandle = backStackEntry.savedStateHandle,
                     onEvent = { event ->
                         when (event) {
                             MyPageEvent.NavigateBack -> navController.navigateUp()
@@ -325,8 +327,6 @@ fun AppNavGraph(
                             MyPageEvent.NavigateToTerm -> {
                                 navController.navigate(AppDestinations.MyPage.TERMS_ROUTE)
                             }
-                            MyPageEvent.Logout -> Unit
-                            MyPageEvent.Withdraw -> Unit
                         }
                     },
                 )
@@ -339,9 +339,21 @@ fun AppNavGraph(
                 removeTopPadding = true,
             ) {
                 ProfileChangeScreen(
-                    onBackClick = { navController.navigateUp() },
+                    onBackClick = { refreshMyPage ->
+                        if (refreshMyPage) {
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set(MYPAGE_REFRESH_KEY, true)
+                        }
+                        navController.navigateUp()
+                    },
                     onCollectionClick = { navController.navigate(AppDestinations.COLLECTION_ROUTE) },
-                    onCompleteClick = { navController.navigateUp() },
+                    onCompleteClick = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set(MYPAGE_REFRESH_KEY, true)
+                        navController.navigateUp()
+                    },
                 )
             }
         }
@@ -374,7 +386,7 @@ fun AppNavGraph(
             ) {
                 MyIssueScreen(
                     onBackClick = { navController.navigateUp() },
-                    onPinClick = { pinId, _, _ ->
+                    onPinClick = { pinId ->
                         pinId.toLongOrNull()?.let { id ->
                             navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
                                 popUpTo(AppDestinations.TOWN_ROUTE) {

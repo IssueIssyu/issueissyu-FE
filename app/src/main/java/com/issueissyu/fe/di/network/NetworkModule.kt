@@ -7,10 +7,12 @@ import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
 import com.issueissyu.fe.data.remote.api.AiIssueApiService
+import com.issueissyu.fe.data.remote.api.CollectionApi
 import com.issueissyu.fe.data.remote.api.CommunityApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.data.remote.api.MapApi
+import com.issueissyu.fe.data.remote.api.MyPageApi
 import com.issueissyu.fe.data.remote.api.PinApi
 import dagger.Module
 import dagger.Provides
@@ -151,4 +153,17 @@ object NetworkModule {
     fun provideCommunityApi(retrofit: Retrofit): CommunityApi {
         return retrofit.create(CommunityApi::class.java)
     }
+
+    @Provides
+    @Singleton
+    fun provideMyPageApi(retrofit: Retrofit): MyPageApi {
+        return retrofit.create(MyPageApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCollectionApi(retrofit: Retrofit): CollectionApi {
+        return retrofit.create(CollectionApi::class.java)
+    }
+
 }

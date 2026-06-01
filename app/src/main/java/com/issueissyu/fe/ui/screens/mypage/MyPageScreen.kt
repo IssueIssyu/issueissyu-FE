@@ -1,6 +1,5 @@
 package com.issueissyu.fe.ui.screens.mypage
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -27,21 +25,19 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -53,9 +49,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.SavedStateHandle
+import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.Dialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -66,6 +65,8 @@ import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.suiteFontFamily
 
+const val MYPAGE_REFRESH_KEY = "mypage_refresh"
+
 sealed class MyPageEvent {
     data object NavigateBack: MyPageEvent()
     data object NavigateToProfile: MyPageEvent()
@@ -74,86 +75,186 @@ sealed class MyPageEvent {
     data object NavigateToSettingAlarm: MyPageEvent()
     data object NavigateToLanding: MyPageEvent()
     data object NavigateToTerm: MyPageEvent()
-    data object Logout: MyPageEvent()
-    data object Withdraw: MyPageEvent()
 }
 
 @Composable
 fun MyPageScreen(
     onEvent: (MyPageEvent) -> Unit,
     modifier: Modifier,
-    viewModel: MyPageViewModel = hiltViewModel()
-){
-    val nickname by viewModel.userNickname.collectAsStateWithLifecycle()
-    val myPins by viewModel.myPins.collectAsStateWithLifecycle()
-    val logoutState by viewModel.logoutState.collectAsStateWithLifecycle()
+    savedStateHandle: SavedStateHandle? = null,
+    viewModel: MyPageViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val authActionState by viewModel.authActionState.collectAsStateWithLifecycle()
 
-    var showLogoutDialog by remember { mutableStateOf(false) }
-    var showWithdrawDialog by remember { mutableStateOf(false) }
+    val shouldRefresh by savedStateHandle
+        ?.getStateFlow(MYPAGE_REFRESH_KEY, false)
+        ?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(false) }
 
-    LaunchedEffect(logoutState) {
-        when (logoutState) {
-            is MyPageViewModel.LogoutState.Success -> {
-                onEvent(MyPageEvent.NavigateToLanding)
-                viewModel.resetLogoutState()
-            }
-            is MyPageViewModel.LogoutState.Error -> {
-                viewModel.resetLogoutState()
-            }
-            else -> {}
+    LaunchedEffect(shouldRefresh) {
+        if (shouldRefresh) {
+            viewModel.loadCollections()
+            savedStateHandle?.set(MYPAGE_REFRESH_KEY, false)
         }
     }
 
+    var showLogoutDialog by remember { mutableStateOf(false) }
+    var showWithdrawDialog by remember { mutableStateOf(false) }
+    var actionErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    Column(
+    LaunchedEffect(authActionState) {
+        when (val state = authActionState) {
+            MyPageViewModel.AuthActionState.Success -> {
+                showLogoutDialog = false
+                showWithdrawDialog = false
+                onEvent(MyPageEvent.NavigateToLanding)
+                viewModel.resetAuthActionState()
+            }
+            is MyPageViewModel.AuthActionState.Error -> {
+                showLogoutDialog = false
+                showWithdrawDialog = false
+                actionErrorMessage = state.message
+                viewModel.resetAuthActionState()
+            }
+            else -> Unit
+        }
+    }
+
+    val isAuthActionLoading = authActionState is MyPageViewModel.AuthActionState.Loading
+
+    Box(
         modifier = modifier
-            .background(White)
+            .fillMaxSize()
+            .background(White),
+    ) {
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            uiState.errorMessage != null && uiState.nickname.isBlank() -> {
+                MyPageErrorState(
+                    message = uiState.errorMessage.orEmpty(),
+                    onRetry = viewModel::loadCollections,
+                )
+            }
+
+            else -> {
+                MyPageContent(
+                    uiState = uiState,
+                    onEvent = onEvent,
+                    onLogoutClick = { showLogoutDialog = true },
+                    onWithdrawClick = { showWithdrawDialog = true },
+                )
+            }
+        }
+
+        if (showLogoutDialog) {
+        Dialog(
+            title = "로그아웃",
+            message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
+            confirmText = "로그아웃",
+            onDismiss = {
+                if (!isAuthActionLoading) {
+                    showLogoutDialog = false
+                }
+            },
+            onConfirm = {
+                viewModel.logout()
+            },
+        )
+        }
+
+        if (showWithdrawDialog) {
+        Dialog(
+            title = "회원탈퇴",
+            message = "정말 탈퇴하시겠어요?\n그동안 모은 핀과 활동 기록이\n모두 삭제돼요",
+            confirmText = "탈퇴하기",
+            isWarning = true,
+            onDismiss = {
+                if (!isAuthActionLoading) {
+                    showWithdrawDialog = false
+                }
+            },
+            onConfirm = {
+                viewModel.withdraw()
+            },
+        )
+        }
+
+        actionErrorMessage?.let { message ->
+            Dialog(
+                title = "안내",
+                message = message,
+                confirmText = "확인",
+                dismissText = "확인",
+                onDismiss = { actionErrorMessage = null },
+                onConfirm = { actionErrorMessage = null },
+            )
+        }
+
+        if (isAuthActionLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(White.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        }
+    }
+}
+
+@Composable
+private fun MyPageContent(
+    uiState: MyPageUiState,
+    onEvent: (MyPageEvent) -> Unit,
+    onLogoutClick: () -> Unit,
+    onWithdrawClick: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.SpaceBetween
-    ){
-        //상단 바
+        verticalArrangement = Arrangement.SpaceBetween,
+    ) {
         IssueissyuTopAppBar(
             titleText = "마이페이지",
-            onBackClick = { onEvent(MyPageEvent.NavigateBack)}
+            onBackClick = { onEvent(MyPageEvent.NavigateBack) },
         )
 
-        //프로필 + 닉네임
         Column(
-            modifier = Modifier
-                .fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
-        ){
-            //프로필 이미지
-            //프로필 사진
-            Image(
-                painter = painterResource(R.drawable.ic_fire),
-                contentDescription = "프로필 사진",
-                modifier = Modifier
-                    .size(100.dp)
-                    .background(White, CircleShape)
-                    .clip(CircleShape)
-                    .scale(1.5f),
-                contentScale = ContentScale.Crop,
-                alignment = BiasAlignment(
-                    horizontalBias = 0f,     // 가로는 중앙
-                    verticalBias = -0.3f     // 세로는 top과 center 중간
-                )
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            ProfileImageFrame(
+                size = 100.dp,
+                imageUrl = uiState.profileImageUrl,
+                borderWidth = 0.dp,
             )
 
             Spacer(modifier = Modifier.size(30.dp))
-            //닉네임
+
             Row(
-                modifier = Modifier,
-                verticalAlignment = Alignment.CenterVertically
-            ){
+                modifier = Modifier.clickable(
+                    onClick = { onEvent(MyPageEvent.NavigateToProfile) },
+                ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = nickname,
+                    text = uiState.nickname,
                     fontFamily = suiteFontFamily,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 20.sp,
-                    color = Title
+                    color = Title,
                 )
 
                 Spacer(modifier = Modifier.size(10.dp))
@@ -162,52 +263,43 @@ fun MyPageScreen(
                     imageVector = Icons.Default.ChevronRight,
                     contentDescription = "프로필 수정",
                     tint = Title,
-                    modifier = Modifier
-                        .size(25.dp)
-                        .clickable(onClick = { onEvent(MyPageEvent.NavigateToProfile) })
+                    modifier = Modifier.size(25.dp),
                 )
             }
-
         }
 
-        //핀 북마크
-        MyPinsSection(pins = myPins)
+        MyPinsSection(pins = uiState.bookmarkedPins)
 
-
-        //선택 바 부분 + 탈퇴
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-        ){
+        Column(modifier = Modifier.fillMaxWidth()) {
             NavBar(
                 icon = Icons.Outlined.LocationOn,
                 title = "동네 변경",
-                onNavClick = { onEvent(MyPageEvent.NavigateToLocal)}
+                onNavClick = { onEvent(MyPageEvent.NavigateToLocal) },
             )
             NavBar(
                 icon = Icons.Default.LocationOn,
                 title = "내 이슈",
-                onNavClick = { onEvent(MyPageEvent.NavigateToIssue) }
+                onNavClick = { onEvent(MyPageEvent.NavigateToIssue) },
             )
             NavBar(
                 icon = Icons.Outlined.Notifications,
                 title = "알림 설정",
-                onNavClick = { onEvent(MyPageEvent.NavigateToSettingAlarm)}
+                onNavClick = { onEvent(MyPageEvent.NavigateToSettingAlarm) },
             )
             NavBar(
                 icon = Icons.Outlined.MenuBook,
                 title = "도움말",
-                onNavClick = {onEvent(MyPageEvent.NavigateToLanding)}
+                onNavClick = {},    //TODO: 랜딩페이지 연결
             )
             NavBar(
                 icon = Icons.Outlined.Assignment,
                 title = "이용 약관",
-                onNavClick = {onEvent(MyPageEvent.NavigateToTerm)}
+                onNavClick = { onEvent(MyPageEvent.NavigateToTerm) },
             )
             NavBar(
                 icon = Icons.Outlined.Logout,
                 title = "로그아웃",
-                onNavClick = { showLogoutDialog = true }
+                onNavClick = onLogoutClick,
             )
 
             Text(
@@ -216,41 +308,36 @@ fun MyPageScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
-                    .clickable(onClick = { showWithdrawDialog = true }),
-                textAlign = TextAlign.Center
-
+                    .clickable(onClick = onWithdrawClick),
+                textAlign = TextAlign.Center,
             )
         }
     }
+}
 
-    // 로그아웃 모달
-    if (showLogoutDialog) {
-        Dialog(
-            title = "로그아웃",
-            message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
-            confirmText = "로그아웃",
-            onDismiss = { showLogoutDialog = false },
-            onConfirm = {
-                showLogoutDialog = false
-                viewModel.logout() // 로그아웃
-            }
+@Composable
+private fun MyPageErrorState(
+    message: String,
+    onRetry: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = message,
+            style = IssueTypo.Regular16.copy(color = Text),
+            textAlign = TextAlign.Center,
         )
-    }
 
-    // 회원탈퇴 모달
-    if (showWithdrawDialog) {
-        Dialog(
-            title = "회원탈퇴",
-            message = "정말 탈퇴하시겠어요?\n그동안 모은 핀과 활동 기록이\n모두 삭제돼요",
-            confirmText = "탈퇴하기",
-            isWarning = true,
-            onDismiss = { showWithdrawDialog = false },
-            onConfirm = {
-                showWithdrawDialog = false
-                viewModel.withdraw()    //회원 탈퇴
-                onEvent(MyPageEvent.Withdraw)
-            }
-        )
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(onClick = onRetry) {
+            Text(text = "다시 시도")
+        }
     }
 }
 
@@ -313,10 +400,13 @@ private fun PinCard(pin: Pin) {
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
         // 핀 이미지
-        Image(
-            painter = painterResource(pin.imageRes),
+        AsyncImage(
+            model = pin.imageUrl,
             contentDescription = pin.name,
-            modifier = Modifier.size(100.dp)
+            modifier = Modifier.size(100.dp),
+            contentScale = ContentScale.Fit,
+            placeholder = painterResource(R.drawable.ic_character_default),
+            error = painterResource(R.drawable.ic_character_default),
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -346,41 +436,37 @@ private fun NavBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable(onClick = onNavClick)
                 .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ){
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically
-            ){
-                //아이콘
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = title,
                     tint = Gray_5,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp),
                 )
 
                 Spacer(modifier = Modifier.size(10.dp))
 
-                //텍스트
                 Text(
                     text = title,
                     fontFamily = suiteFontFamily,
                     fontWeight = FontWeight.Medium,
                     fontSize = 16.sp,
-                    color = Text
+                    color = Text,
                 )
             }
 
-            // 이동 버튼
             Icon(
                 imageVector = Icons.Default.ChevronRight,
-                contentDescription = "네비게이트",
+                contentDescription = null,
                 tint = Gray_5,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable(onClick = onNavClick)
+                modifier = Modifier.size(20.dp),
             )
         }
     }
