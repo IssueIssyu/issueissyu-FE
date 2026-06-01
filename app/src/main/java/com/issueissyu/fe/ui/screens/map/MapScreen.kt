@@ -1,9 +1,6 @@
 package com.issueissyu.fe.ui.screens.map
 
 import android.Manifest
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -57,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.collectLatest
 import com.issueissyu.fe.R
+import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
@@ -88,16 +86,6 @@ private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
 
-// Context에서 Activity를 찾는 헬퍼 함수
-private fun Context.findActivity(): Activity? {
-    var context = this
-    while (context is ContextWrapper) {
-        if (context is Activity) return context
-        context = context.baseContext
-    }
-    return null
-}
-
 // ==============================================================================================
 // 3. MapScreen Composable 함수
 //    - 지도 화면 전체의 UI 구성을 담당하는 메인 Composable
@@ -122,6 +110,8 @@ fun MapScreen(
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId
+    val context = LocalContext.current
+    val activity = context.findActivity()
 
     LaunchedEffect(isLocationSelectionMode) {
         onLocationSelectionModeChanged(isLocationSelectionMode)
@@ -146,6 +136,7 @@ fun MapScreen(
                 }
             },
             onEmojiClick = viewModel::selectEmojiCandidate,
+            onLockedEmojiClick = { emojiId -> viewModel.purchaseEmoji(activity, emojiId) },
             onApplyClick = viewModel::applySelectedEmoji,
             allowApplyWithoutSelection = true,
         )
@@ -163,8 +154,6 @@ fun MapScreen(
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
 
-    val context = LocalContext.current
-    val activity = context.findActivity()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val locationSource = remember(activity) {

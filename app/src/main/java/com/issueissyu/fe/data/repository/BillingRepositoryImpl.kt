@@ -1,14 +1,26 @@
 package com.issueissyu.fe.data.repository
 
+import android.app.Activity
 import android.content.Context
 import com.android.billingclient.api.*
 import com.google.gson.Gson
 import com.issueissyu.fe.data.remote.api.BillingApi
 import com.issueissyu.fe.data.remote.dto.request.billing.VerifyPurchaseRequest
+import com.issueissyu.fe.domain.model.billing.BillingPurchaseEvent
 import com.issueissyu.fe.domain.model.billing.BillingVerificationException
 import com.issueissyu.fe.domain.repository.BillingRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+import kotlin.coroutines.resume
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,9 +30,14 @@ class BillingRepositoryImpl @Inject constructor(
     private val billingApi: BillingApi,
     private val gson: Gson,
 ) : BillingRepository {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val _purchaseEvents = MutableSharedFlow<BillingPurchaseEvent>(extraBufferCapacity = 8)
+    override val purchaseEvents: SharedFlow<BillingPurchaseEvent> = _purchaseEvents.asSharedFlow()
+    private var activeProductId: String? = null
+
     private val billingClient = BillingClient.newBuilder(context)
-        .setListener { billingResult, purchase ->
-            //구매 업데이트 처리
+        .setListener { billingResult, purchases ->
+            handlePurchaseUpdate(billingResult, purchases.orEmpty())
         }
         .enablePendingPurchases(
             PendingPurchasesParams.newBuilder()
@@ -31,10 +48,14 @@ class BillingRepositoryImpl @Inject constructor(
         .build()
 
     override fun connect() {
+        if (billingClient.isReady) return
         billingClient.startConnection(object: BillingClientStateListener {
             override fun onBillingSetupFinished(billingResult: BillingResult) {
-                //연결 완료
-                //if (billingResult.responseCode ==  BillingResponseCode.OK) {}
+                if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
+                    activeProductId?.let { productId ->
+                        emitFailed(productId, billingResult.safeErrorMessage("결제 서비스 연결에 실패했습니다."))
+                    }
+                }
             }
 
             override fun onBillingServiceDisconnected() {
@@ -43,13 +64,34 @@ class BillingRepositoryImpl @Inject constructor(
         })
     }
 
-    //기타 등등
-    override fun queryProducts() {
-        //TODO: 추후 구현
-    }
+    override suspend fun purchaseProduct(activity: Activity, productId: String): Result<Unit> {
+        return runCatching {
+            check(activeProductId == null) { "진행 중인 결제가 있습니다." }
+            activeProductId = productId
 
-    override fun purchaseProduct(productId: String) {
-        //TODO: 추후 구현
+            awaitConnection().getOrThrow()
+            val productDetails = queryProductDetails(productId).getOrThrow()
+            val offerToken = productDetails.oneTimePurchaseOfferDetailsList
+                ?.firstOrNull()
+                ?.offerToken
+                ?: throw IllegalStateException("구매 가능한 상품 옵션을 찾지 못했습니다.")
+            val productDetailsParams = BillingFlowParams.ProductDetailsParams.newBuilder()
+                .setProductDetails(productDetails)
+                .setOfferToken(offerToken)
+                .build()
+            val billingFlowParams = BillingFlowParams.newBuilder()
+                .setProductDetailsParamsList(listOf(productDetailsParams))
+                .build()
+            val launchResult = withContext(Dispatchers.Main) {
+                billingClient.launchBillingFlow(activity, billingFlowParams)
+            }
+
+            check(launchResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                launchResult.safeErrorMessage("결제창을 열지 못했습니다.")
+            }
+        }.onFailure {
+            activeProductId = null
+        }
     }
 
     override suspend fun verifyPurchase(productId: String, purchaseToken: String): Result<Long> {
@@ -96,4 +138,131 @@ class BillingRepositoryImpl @Inject constructor(
         val code: String?,
         val message: String?,
     )
+
+    private suspend fun awaitConnection(): Result<Unit> {
+        if (billingClient.isReady) return Result.success(Unit)
+
+        return suspendCancellableCoroutine { continuation ->
+            billingClient.startConnection(object : BillingClientStateListener {
+                override fun onBillingSetupFinished(billingResult: BillingResult) {
+                    if (!continuation.isActive) return
+                    if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                        continuation.resume(Result.success(Unit))
+                    } else {
+                        continuation.resume(
+                            Result.failure(
+                                IllegalStateException(
+                                    billingResult.safeErrorMessage("결제 서비스 연결에 실패했습니다.")
+                                )
+                            )
+                        )
+                    }
+                }
+
+                override fun onBillingServiceDisconnected() {
+                    if (continuation.isActive) {
+                        continuation.resume(Result.failure(IllegalStateException("결제 서비스 연결이 끊겼습니다.")))
+                    }
+                }
+            })
+        }
+    }
+
+    private suspend fun queryProductDetails(productId: String): Result<ProductDetails> {
+        val product = QueryProductDetailsParams.Product.newBuilder()
+            .setProductId(productId)
+            .setProductType(BillingClient.ProductType.INAPP)
+            .build()
+        val params = QueryProductDetailsParams.newBuilder()
+            .setProductList(listOf(product))
+            .build()
+
+        return suspendCancellableCoroutine { continuation ->
+            billingClient.queryProductDetailsAsync(params) { billingResult, queryResult ->
+                if (!continuation.isActive) return@queryProductDetailsAsync
+                val productDetails = queryResult.productDetailsList.firstOrNull()
+                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && productDetails != null) {
+                    continuation.resume(Result.success(productDetails))
+                } else {
+                    continuation.resume(
+                        Result.failure(
+                            IllegalStateException(
+                                billingResult.safeErrorMessage("상품 정보를 불러오지 못했습니다.")
+                            )
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    private fun handlePurchaseUpdate(billingResult: BillingResult, purchases: List<Purchase>) {
+        when (billingResult.responseCode) {
+            BillingClient.BillingResponseCode.OK -> {
+                if (purchases.isEmpty()) {
+                    activeProductId?.let { productId ->
+                        emitFailed(productId, "결제 결과를 확인하지 못했습니다.")
+                    }
+                    activeProductId = null
+                } else {
+                    purchases.forEach(::handlePurchase)
+                }
+            }
+            BillingClient.BillingResponseCode.USER_CANCELED -> {
+                activeProductId?.let { productId ->
+                    _purchaseEvents.tryEmit(BillingPurchaseEvent.Canceled(productId))
+                }
+                activeProductId = null
+            }
+            else -> {
+                activeProductId?.let { productId ->
+                    emitFailed(productId, billingResult.safeErrorMessage("결제에 실패했습니다."))
+                }
+                activeProductId = null
+            }
+        }
+    }
+
+    private fun handlePurchase(purchase: Purchase) {
+        val productId = purchase.products.firstOrNull() ?: activeProductId ?: return
+        activeProductId = null
+
+        when (purchase.purchaseState) {
+            Purchase.PurchaseState.PURCHASED -> {
+                scope.launch {
+                    verifyPurchase(productId, purchase.purchaseToken)
+                        .onSuccess { emojiId ->
+                            _purchaseEvents.emit(BillingPurchaseEvent.Verified(productId, emojiId))
+                        }
+                        .onFailure { error ->
+                            if (error is BillingVerificationException && error.isAlreadyProcessed) {
+                                _purchaseEvents.emit(BillingPurchaseEvent.Verified(productId, emojiId = null))
+                            } else {
+                                _purchaseEvents.emit(
+                                    BillingPurchaseEvent.Failed(
+                                        productId = productId,
+                                        message = error.message?.takeIf { it.isNotBlank() }
+                                            ?: "결제 검증에 실패했습니다.",
+                                    )
+                                )
+                            }
+                        }
+                }
+            }
+            Purchase.PurchaseState.PENDING -> {
+                _purchaseEvents.tryEmit(BillingPurchaseEvent.Pending(productId))
+            }
+            else -> {
+                emitFailed(productId, "결제 상태를 확인하지 못했습니다.")
+            }
+        }
+    }
+
+    private fun emitFailed(productId: String, message: String) {
+        _purchaseEvents.tryEmit(BillingPurchaseEvent.Failed(productId, message))
+    }
+
+    private fun BillingResult.safeErrorMessage(fallback: String): String {
+        return debugMessage.takeIf { it.isNotBlank() } ?: fallback
+    }
 }
