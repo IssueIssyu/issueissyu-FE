@@ -10,9 +10,11 @@ import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.LocationRepository
 
 import com.issueissyu.fe.data.repository.CommunityRepositoryImpl
+import com.issueissyu.fe.data.repository.BillingRepositoryImpl
 import com.issueissyu.fe.data.repository.MapRepositoryImpl
 import com.issueissyu.fe.data.repository.PinRepositoryImpl
 import com.issueissyu.fe.domain.repository.CommunityRepository
+import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.Binds
@@ -67,4 +69,10 @@ abstract class RepositoryModule {
     abstract fun bindMapRepository(
         impl: MapRepositoryImpl
     ): MapRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindBillingRepository(
+        impl: BillingRepositoryImpl
+    ): BillingRepository
 }
