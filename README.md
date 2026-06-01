@@ -31,7 +31,7 @@ com.issueissyu.fe/
 ├── ui/                             # UI 및 Presentation 레이어
 │   ├── screens/                    # 화면 단위 Compose 컴포넌트 (스크린), viewmodel도 함께 관리
 │   ├── components/                 # 재사용 가능한 공통 UI 컴포넌트 (버튼, 다이얼로그 등)
-│   ├── navigation/                 # 
+│   ├── navigation/                 # 앱 전체 라우팅 및 세션 상태 관리
 │   └── theme/                      # 앱 테마 (글씨, 색상 등)
 │
 ├── domain/                         # 도메인 레이어
@@ -41,7 +41,7 @@ com.issueissyu.fe/
 │
 ├── data/                           # 데이터 레이어
 │   ├── remote/                     # 원격 데이터 소스
-│   │   ├── dto/                    # 네트워크 통신 객체 맟 도메인 모델 매퍼
+│   │   ├── dto/                    # 네트워크 통신 객체 및 도메인 모델 매퍼
 │   │   └── api/                    # Retrofit2 API 인터페이스 정의
 │   ├── repository/                 # 도메인/UI 레이어와 데이터 소스를 중개하는 Repository 구현체
 │   └── local/                      # 로컬 데이터 소스 (Room 데이터베이스, DataStore)
