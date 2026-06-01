@@ -7,7 +7,7 @@ issueissyu(이슈있슈) Frontend는 지역 기반 핀·커뮤니티·지도 서
 ## 👥 Team
 |                                 FE (PartLeader)                                  |                                 FE                                  |
 |:-----------------------------------------------------------------------:|:-------------------------------------------------------------------:|
-|  |  |
+| <img width="186" height="215" alt="스크린샷 2026-06-01 121731" src="https://github.com/user-attachments/assets/5d2dc43f-146d-4330-a227-8d0ed080e0cc" /> | <img width="183" height="213" alt="스크린샷 2026-06-01 115030" src="https://github.com/user-attachments/assets/b4d4a41d-6cc1-47ef-be5d-52b78e017304" /> |
 |       김가은<br/><a href="https://github.com/silver-kg">@silver-kg</a>       |       유현<br/><a href="https://github.com/dda-zi">@dda-zi</a>        |
 
 
