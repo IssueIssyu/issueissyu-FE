@@ -9,7 +9,12 @@ class BillingRepositoryImpl(private val context: Context) : BillingRepository {
         .setListener { billingResult, purchase ->
             //구매 업데이트 처리
         }
-        .enablePendingPurchases()
+        .enablePendingPurchases(
+            PendingPurchasesParams.newBuilder()
+                .enableOneTimeProducts()
+                .build()
+        )
+        .enableAutoServiceReconnection()
         .build()
 
     override fun connect() {
@@ -20,7 +25,7 @@ class BillingRepositoryImpl(private val context: Context) : BillingRepository {
             }
 
             override fun onBillingServiceDisconnected() {
-                //자동 재연결 메서드는 버전 9.0.0에서만 가능해서 이 부분 로직 추가 필요합니다.
+                // API 호출 시 BillingClient가 자동 재연결을 시도합니다.
             }
         })
     }
