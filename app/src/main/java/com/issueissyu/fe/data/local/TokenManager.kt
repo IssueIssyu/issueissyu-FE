@@ -3,6 +3,7 @@ package com.issueissyu.fe.data.local
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
+import android.util.Log
 
 //암호화 라이브러리 - deprecated 경고
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -18,18 +19,31 @@ import javax.inject.Singleton
 class TokenManager @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    //암호화 키 생성
     private val masterKey = MasterKey.Builder(context)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
 
-    private val sharedPreferences: SharedPreferences = EncryptedSharedPreferences.create(
-        context,
-        PREFS_NAME,
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val sharedPreferences: SharedPreferences = createEncryptedSharedPreferences()
+
+    private fun createEncryptedSharedPreferences(): SharedPreferences {
+        return try {
+            openEncryptedSharedPreferences()
+        } catch (e: Exception) {
+            Log.w(TAG, "Encrypted prefs unavailable, recreating store", e)
+            context.deleteSharedPreferences(PREFS_NAME)
+            openEncryptedSharedPreferences()
+        }
+    }
+
+    private fun openEncryptedSharedPreferences(): SharedPreferences {
+        return EncryptedSharedPreferences.create(
+            context,
+            PREFS_NAME,
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+    }
 
     fun saveTokens(
         accessToken: String,
@@ -162,6 +176,7 @@ class TokenManager @Inject constructor(
     }
 
     companion object {
+        private const val TAG = "TokenManager"
         private const val PREFS_NAME = "auth_prefs"
         private const val KEY_ACCESS_TOKEN = "access_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
