@@ -11,6 +11,7 @@ import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
+import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,13 +27,15 @@ import javax.inject.Inject
 data class PinCreationNavigationEvent(
     val category: PinCategory,
     val pinCoordinate: PinCoordinate,
-    val userCoordinate: PinCoordinate
+    val userCoordinate: PinCoordinate,
+    val address: String,
 )
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val mapRepository: MapRepository,
     private val pinRepository: PinRepository,
+    private val locationRepository: LocationRepository,
     private val tokenManager: TokenManager,
 ) : ViewModel() {
 
@@ -230,6 +233,7 @@ class MapViewModel @Inject constructor(
         _isLocationSelectionMode.value = true
         _selectedPinCategory.value = category
         _selectedPinCoordinate.value = null
+        _selectedPin.value = null
     }
 
     fun exitLocationSelectionMode() {
@@ -240,21 +244,32 @@ class MapViewModel @Inject constructor(
     }
 
     fun onMapCoordinateSelected(selectedCoordinate: PinCoordinate, currentCoordinate: PinCoordinate?) {
-        if (!_isLocationSelectionMode.value || _selectedPinCategory.value == null) return
+        val selectedCategory = _selectedPinCategory.value
+        if (!_isLocationSelectionMode.value || selectedCategory == null) return
         if (currentCoordinate == null) {
-            // TODO: 현재 위치를 가져오지 못한 경우 안내 UI 표시
+            _messageEvents.tryEmit("현재 위치를 확인한 뒤 다시 시도해주세요.")
             return
         }
 
         viewModelScope.launch {
-            _navigateToPinCreation.emit(
-                PinCreationNavigationEvent(
-                    category = _selectedPinCategory.value!!,
-                    pinCoordinate = selectedCoordinate,
-                    userCoordinate = currentCoordinate
+            locationRepository.checkPinCreationAvailable(
+                userCoordinate = currentCoordinate,
+                pinCoordinate = selectedCoordinate,
+            ).onSuccess { address ->
+                _navigateToPinCreation.emit(
+                    PinCreationNavigationEvent(
+                        category = selectedCategory,
+                        pinCoordinate = selectedCoordinate,
+                        userCoordinate = currentCoordinate,
+                        address = address,
+                    )
                 )
-            )
-            exitLocationSelectionMode()
+                exitLocationSelectionMode()
+            }.onFailure { e ->
+                _messageEvents.emit(e.message?.takeIf { it.isNotBlank() } ?: "이 위치에는 핀을 생성할 수 없습니다.")
+                // 생성 불가 위치를 선택한 경우 위치 선택 모드를 종료해 핀 종류 선택부터 다시 진행하도록 한다.
+                exitLocationSelectionMode()
+            }
         }
     }
 

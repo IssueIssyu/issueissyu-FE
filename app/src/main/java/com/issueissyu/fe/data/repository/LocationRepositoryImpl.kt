@@ -3,6 +3,7 @@ package com.issueissyu.fe.data.repository
 import android.content.Context
 import android.location.Geocoder
 import android.os.Build
+import com.google.gson.Gson
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.data.remote.dto.response.location.LocationRegionGroupResponse
 import com.issueissyu.fe.data.remote.dto.response.location.LocationRegionItemResponse
@@ -20,6 +21,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
+import java.io.IOException
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -28,6 +31,7 @@ import kotlin.coroutines.resume
 @Singleton
 class LocationRepositoryImpl @Inject constructor(
     private val locationApi: LocationApi,
+    private val gson: Gson,
     @ApplicationContext private val context: Context,
 ) : LocationRepository {
 
@@ -167,12 +171,63 @@ class LocationRepositoryImpl @Inject constructor(
             if (response.isSuccess) {
                 Result.success(response.result?.address?.takeIf { it.isNotBlank() }.orEmpty())
             } else {
-                Result.failure(Exception(response.message.ifBlank { "이 위치에는 핀을 생성할 수 없습니다." }))
+                Result.failure(
+                    pinCreationAvailabilityException(
+                        code = response.code,
+                        message = response.message,
+                    ),
+                )
             }
+        } catch (e: HttpException) {
+            val errorEnvelope = e.response()
+                ?.errorBody()
+                ?.string()
+                ?.takeIf { it.isNotBlank() }
+                ?.let { body ->
+                    runCatching { gson.fromJson(body, LocationErrorEnvelope::class.java) }.getOrNull()
+                }
+            Result.failure(
+                pinCreationAvailabilityException(
+                    code = errorEnvelope?.code,
+                    message = errorEnvelope?.message,
+                    httpStatus = e.code(),
+                ),
+            )
+        } catch (e: IOException) {
+            Result.failure(Exception("네트워크 연결을 확인한 뒤 다시 시도해주세요.", e))
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(Exception("핀 생성 가능 여부를 확인하지 못했습니다. 잠시 후 다시 시도해주세요.", e))
         }
     }
+
+    private fun pinCreationAvailabilityException(
+        code: String?,
+        message: String?,
+        httpStatus: Int? = null,
+    ): Exception {
+        val fallbackMessage = when {
+            code == "LOCATION_400_1" || httpStatus == 400 ->
+                "선택한 위치 정보가 올바르지 않습니다. 다른 위치를 선택해주세요."
+            httpStatus == 401 ->
+                "로그인 정보를 확인한 뒤 다시 시도해주세요."
+            httpStatus == 403 ->
+                "현재 위치와 선택한 위치가 너무 멉니다. 가까운 위치를 선택해주세요."
+            code == "LOCATION_404_1" || code == "LOCATION_404_3" || httpStatus == 404 ->
+                "선택한 위치의 주소를 찾을 수 없습니다. 다른 위치를 선택해주세요."
+            code == "LOCATION_502_2" || httpStatus == 502 ->
+                "위치 확인 서비스 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+            code == "COMMON_500" || httpStatus?.let { it >= 500 } == true ->
+                "일시적인 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+            else ->
+                "핀 생성 가능 여부를 확인하지 못했습니다. 잠시 후 다시 시도해주세요."
+        }
+        return Exception(message?.takeIf { it.isNotBlank() } ?: fallbackMessage)
+    }
+
+    private data class LocationErrorEnvelope(
+        val code: String = "",
+        val message: String = "",
+    )
 
     override suspend fun getRegionList(): Result<LocationRegions> {
         return try {

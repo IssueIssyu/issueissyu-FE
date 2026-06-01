@@ -20,10 +20,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,10 +34,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.issueissyu.fe.core.constants.PinImageUploadConstraints
+import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
@@ -52,8 +58,8 @@ import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 import androidx.compose.ui.tooling.preview.Preview
+import coil.compose.AsyncImage
 
-// TODO: AI 초안 응답을 title/description 상태에 반영
 @Composable
 fun PinCreateScreen(
     category: PinCategory,
@@ -61,14 +67,30 @@ fun PinCreateScreen(
     pinLng: Double,
     userLat: Double,
     userLng: Double,
+    address: String,
     onBackClick: () -> Unit,
+    onCreated: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PinCreateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(category, pinLat, pinLng, userLat, userLng) {
-        viewModel.initialize(category, pinLat, pinLng, userLat, userLng)
+    val photoSourcePicker = rememberPhotoSourcePicker(
+        currentCount = uiState.imageUris.size,
+        maxCount = PinImageUploadConstraints.MAX_COUNT,
+        onImagesPicked = viewModel::addImageUris,
+        cameraFileNamePrefix = "pin-create",
+    )
+    photoSourcePicker.PhotoSourceBottomSheet()
+
+    LaunchedEffect(category, pinLat, pinLng, userLat, userLng, address) {
+        viewModel.initialize(category, pinLat, pinLng, userLat, userLng, address)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.createdEvents.collect { createdPinId ->
+            onCreated(createdPinId)
+        }
     }
 
     PinCreateContent(
@@ -78,6 +100,10 @@ fun PinCreateScreen(
         onTitleChange = viewModel::onTitleChange,
         onDescriptionChange = viewModel::onDescriptionChange,
         onToneChange = viewModel::onToneChange,
+        onPhotoAddClick = photoSourcePicker.showSourceSheet,
+        onPhotoRemoveClick = viewModel::removeImageUri,
+        onSetMainImageClick = viewModel::setMainImageUri,
+        onAiDraftClick = viewModel::createAiDraft,
         onSubmit = viewModel::submitPin,
         modifier = modifier
     )
@@ -91,6 +117,10 @@ private fun PinCreateContent(
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onToneChange: (String) -> Unit,
+    onPhotoAddClick: () -> Unit,
+    onPhotoRemoveClick: (String) -> Unit,
+    onSetMainImageClick: (String) -> Unit,
+    onAiDraftClick: () -> Unit,
     onSubmit: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -117,7 +147,13 @@ private fun PinCreateContent(
                 .padding(horizontal = 28.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            PhotoUploadSection(imageCount = uiState.imageUris.size)
+            PhotoUploadSection(
+                imageUris = uiState.imageUris,
+                mainImageUri = uiState.mainImageUri,
+                onPhotoAddClick = onPhotoAddClick,
+                onPhotoRemoveClick = onPhotoRemoveClick,
+                onSetMainImageClick = onSetMainImageClick,
+            )
 
             LocationSection(
                 address = uiState.address,
@@ -136,26 +172,52 @@ private fun PinCreateContent(
                 value = uiState.description,
                 onValueChange = onDescriptionChange,
                 label = "상세 설명",
-                placeholder = "상세 설명을 작성해 주세요.\n해시태그를 눌러 이슈있슈 AI로 빠르게 원하는 말투로 글을 작성할 수 있어요!",
+                placeholder = when (category) {
+                    PinCategory.ISSUE ->
+                        "상세 설명을 작성해 주세요.\n해시태그를 눌러 이슈있슈 AI로 빠르게 원하는 말투로 글을 작성할 수 있어요!"
+                    PinCategory.COMMUNICATION -> "상세 설명을 작성해 주세요."
+                    PinCategory.SHOP, PinCategory.FESTIVAL -> "상세 설명을 작성해 주세요."
+                },
                 maxLines = 8,
                 maxLength = 500,
                 textStyle = IssueTypo.Regular16
             )
 
-            ToneSelectionSection(
-                selectedTone = uiState.selectedTone,
-                onToneChange = onToneChange
-            )
+            if (category == PinCategory.ISSUE) {
+                ToneSelectionSection(
+                    toneOptions = uiState.toneOptions,
+                    isLoading = uiState.isLoadingToneOptions,
+                    selectedTone = uiState.selectedTone,
+                    onToneChange = onToneChange,
+                )
+            }
+
+            if (category == PinCategory.ISSUE) {
+                AiDraftButton(
+                    isLoading = uiState.isGeneratingAiContent,
+                    isEnabled = uiState.title.isNotBlank() &&
+                        uiState.description.isNotBlank() &&
+                        !uiState.isGeneratingAiContent,
+                    onClick = onAiDraftClick,
+                )
+            }
+
+            uiState.errorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                Text(
+                    text = message,
+                    style = IssueTypo.Regular12.copy(color = Orange),
+                    modifier = Modifier.padding(horizontal = 10.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(4.dp))
         }
 
         HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-        // TODO: PinRepository.createPin 연결
         CommonButton(
             onClick = onSubmit,
-            text = "작성 완료",
+            text = if (uiState.isSubmitting) "작성 중" else "작성 완료",
             isEnabled = uiState.title.isNotBlank() &&
                 uiState.description.isNotBlank() &&
                 !uiState.isSubmitting,
@@ -186,25 +248,41 @@ private fun SectionLabel(
     }
 }
 
-// TODO: 이미지 선택/업로드 기능 연결 (최대 5장)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PhotoUploadSection(imageCount: Int) {
+private fun PhotoUploadSection(
+    imageUris: List<String>,
+    mainImageUri: String?,
+    onPhotoAddClick: () -> Unit,
+    onPhotoRemoveClick: (String) -> Unit,
+    onSetMainImageClick: (String) -> Unit,
+) {
     Column {
         SectionLabel(
             text = "사진",
             trailing = {
                 Text(
-                    text = "$imageCount/5",
+                    text = "${imageUris.size}/${PinImageUploadConstraints.MAX_COUNT}",
                     style = IssueTypo.Regular12.copy(color = Gray_6)
                 )
             }
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            PhotoAddBox(
-                onClick = {
-                    // TODO: 사진 선택 launcher 호출 후 viewModel에 반영
-                }
-            )
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (imageUris.size < PinImageUploadConstraints.MAX_COUNT) {
+                PhotoAddBox(onClick = onPhotoAddClick)
+            }
+            imageUris.forEach { uri ->
+                SelectedPhotoBox(
+                    uri = uri,
+                    isMain = uri == mainImageUri,
+                    onSetMainClick = { onSetMainImageClick(uri) },
+                    onRemoveClick = { onPhotoRemoveClick(uri) },
+                )
+            }
         }
     }
 }
@@ -232,6 +310,64 @@ private fun PhotoAddBox(onClick: () -> Unit) {
             text = "사진 추가",
             style = IssueTypo.Regular12.copy(color = Gray_5)
         )
+    }
+}
+
+@Composable
+private fun SelectedPhotoBox(
+    uri: String,
+    isMain: Boolean,
+    onSetMainClick: () -> Unit,
+    onRemoveClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(80.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(Gray_1)
+            .then(
+                if (isMain) {
+                    Modifier.border(2.dp, Orange, RoundedCornerShape(12.dp))
+                } else {
+                    Modifier
+                },
+            )
+            .clickable(onClick = onSetMainClick),
+    ) {
+        AsyncImage(
+            model = uri,
+            contentDescription = "첨부 사진",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (isMain) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(4.dp)
+                    .background(Orange, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = "대표",
+                    style = IssueTypo.Regular12.copy(color = White),
+                )
+            }
+        }
+        IconButton(
+            onClick = onRemoveClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(28.dp)
+                .background(Title.copy(alpha = 0.6f), RoundedCornerShape(bottomStart = 12.dp)),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = "사진 삭제",
+                tint = White,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 
@@ -286,31 +422,29 @@ private fun LocationSection(
     }
 }
 
-// TODO: 서버/기획 확정 후 enum 또는 서버 응답 기반으로 교체
-private val PinToneOptions = listOf(
-    "#가볍게",
-    "#공손하게",
-    "#친근하게",
-    "#부드럽게",
-    "#진중하게",
-    "#공식적으로"
-)
-
-// TODO: 선택된 말투를 AI 초안 요청 파라미터에 포함
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ToneSelectionSection(
+    toneOptions: List<String>,
+    isLoading: Boolean,
     selectedTone: String?,
-    onToneChange: (String) -> Unit
+    onToneChange: (String) -> Unit,
 ) {
     Column {
         SectionLabel(text = "말투 설정")
+        if (isLoading && toneOptions.isEmpty()) {
+            Text(
+                text = "말투 목록 불러오는 중…",
+                style = IssueTypo.Regular12.copy(color = Gray_4),
+            )
+            return@Column
+        }
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            PinToneOptions.forEach { tone ->
+            toneOptions.forEach { tone ->
                 ToneChip(
                     label = tone,
                     selected = selectedTone == tone,
@@ -319,6 +453,21 @@ private fun ToneSelectionSection(
             }
         }
     }
+}
+
+@Composable
+private fun AiDraftButton(
+    isLoading: Boolean,
+    isEnabled: Boolean,
+    onClick: () -> Unit,
+) {
+    CommonButton(
+        onClick = onClick,
+        text = if (isLoading) "AI 글 작성 중" else "AI 글쓰기",
+        isEnabled = isEnabled,
+        textStyle = IssueTypo.Bold18.copy(fontSize = 16.sp),
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
@@ -359,12 +508,17 @@ private fun PinCreateScreenPreview_IssueFilled() {
                 description = "퇴근 시간대 사람이 너무 많은데 신호가 30초밖에 안 돼서 못 건너요.",
                 address = "서울 광진구 능동로 120",
                 locationName = "건국대학교 입구",
-                selectedTone = "#공손하게"
+                toneOptions = listOf("없음", "한줄요약형", "상황설명형", "개선요청형", "긴급요청형", "불편호소형"),
+                selectedTone = "개선요청형",
             ),
             onBackClick = {},
             onTitleChange = {},
             onDescriptionChange = {},
             onToneChange = {},
+            onPhotoAddClick = {},
+            onPhotoRemoveClick = {},
+            onSetMainImageClick = {},
+            onAiDraftClick = {},
             onSubmit = {}
         )
     }
@@ -382,12 +536,15 @@ private fun PinCreateScreenPreview_Communication() {
                 description = "어린이대공원 근처 살아요. 가볍게 한 바퀴 도실 분 모집합니다.",
                 address = "서울 광진구 화양동",
                 locationName = "화양동 주민센터 앞",
-                selectedTone = "#친근하게"
             ),
             onBackClick = {},
             onTitleChange = {},
             onDescriptionChange = {},
             onToneChange = {},
+            onPhotoAddClick = {},
+            onPhotoRemoveClick = {},
+            onSetMainImageClick = {},
+            onAiDraftClick = {},
             onSubmit = {}
         )
     }

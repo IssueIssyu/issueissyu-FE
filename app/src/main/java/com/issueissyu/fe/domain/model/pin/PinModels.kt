@@ -337,7 +337,10 @@ data class CreatePinRequest(
     val locationName: String? = null,
     val neighborhoodId: String? = null,
     val neighborhoodName: String? = null,
-    val imageUrls: List<String> = emptyList()
+    val imageUris: List<String> = emptyList(),
+    val mainImageUri: String? = null,
+    val imageUrls: List<String> = emptyList(),
+    val tone: String = "없음",
 )
 
 data class UpdatePinRequest(

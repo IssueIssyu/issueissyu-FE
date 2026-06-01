@@ -28,7 +28,7 @@ interface PinRepository {
     suspend fun getIssuePins(): List<Pin>
     suspend fun getCommunityPins(): List<Pin>
     suspend fun getMyPins(): List<Pin>
-    suspend fun createPin(request: CreatePinRequest): Pin
+    suspend fun createPin(request: CreatePinRequest): Result<Pin>
     suspend fun updatePin(pinId: String, request: UpdatePinRequest): Pin
 
     suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker>

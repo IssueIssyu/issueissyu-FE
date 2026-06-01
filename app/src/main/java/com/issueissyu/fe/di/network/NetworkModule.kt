@@ -22,12 +22,15 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+
+    private const val AI_TIMEOUT_SECONDS = 60L
     @Provides
     @Singleton
     fun provideGson(): Gson = Gson()
@@ -82,8 +85,30 @@ object NetworkModule {
     @Provides
     @Singleton
     @Named("ai")
+    fun provideAiOkHttpClient(
+        loggingInterceptor: HttpLoggingInterceptor,
+        authInterceptor: AuthInterceptor,
+        tokenAuthenticator: TokenAuthenticator,
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectTimeout(AI_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .readTimeout(AI_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .writeTimeout(AI_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+            .addInterceptor(authInterceptor)
+            .apply {
+                if (BuildConfig.DEBUG) {
+                    addInterceptor(loggingInterceptor)
+                }
+            }
+            .authenticator(tokenAuthenticator)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("ai")
     fun provideAiRetrofit(
-        okHttpClient: OkHttpClient,
+        @Named("ai") okHttpClient: OkHttpClient,
         gson: Gson,
     ): Retrofit {
         return Retrofit.Builder()
