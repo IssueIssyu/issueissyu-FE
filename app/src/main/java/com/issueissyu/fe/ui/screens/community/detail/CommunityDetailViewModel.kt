@@ -435,15 +435,20 @@ class CommunityDetailViewModel @Inject constructor(
             }
             return
         }
-        _uiState.update { it.copy(emojiPicker = it.emojiPicker.copy(selectedEmojiId = emojiId)) }
+        _uiState.update {
+            val nextSelection = if (it.emojiPicker.selectedEmojiId == emojiId) null else emojiId
+            it.copy(emojiPicker = it.emojiPicker.copy(selectedEmojiId = nextSelection))
+        }
     }
 
     fun applySelectedEmoji() {
         val picker = _uiState.value.emojiPicker
         val pinId = picker.targetPinId ?: return
-        val selectedEmojiId = picker.selectedEmojiId ?: return
-        val selectedCandidate = picker.candidates.firstOrNull { it.emojiId == selectedEmojiId } ?: return
-        if (!selectedCandidate.canReact || picker.isSubmitting) return
+        val selectedEmojiId = picker.selectedEmojiId
+        val selectedCandidate = selectedEmojiId?.let { emojiId ->
+            picker.candidates.firstOrNull { it.emojiId == emojiId }
+        }
+        if (selectedCandidate?.canReact == false || picker.isSubmitting) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(emojiPicker = it.emojiPicker.copy(isSubmitting = true)) }

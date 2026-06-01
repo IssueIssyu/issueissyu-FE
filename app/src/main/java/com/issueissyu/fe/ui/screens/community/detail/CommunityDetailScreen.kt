@@ -181,6 +181,7 @@ fun CommunityDetailScreenContent(
             onDismiss = onEmojiPickerDismiss,
             onEmojiClick = onEmojiCandidateClick,
             onApplyClick = onEmojiApplyClick,
+            allowApplyWithoutSelection = true,
         )
     }
 
