@@ -9,6 +9,7 @@ import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.repository.LocationRepository
@@ -30,6 +31,18 @@ data class PinCreationNavigationEvent(
     val userCoordinate: PinCoordinate,
     val address: String,
 )
+
+data class MapEmojiPickerUiState(
+    val targetPinId: Long? = null,
+    val candidates: List<PinEmojiCandidate> = emptyList(),
+    val selectedEmojiId: Long? = null,
+    val isLoading: Boolean = false,
+    val isSubmitting: Boolean = false,
+    val errorMessage: String? = null,
+) {
+    val isVisible: Boolean
+        get() = targetPinId != null
+}
 
 @HiltViewModel
 class MapViewModel @Inject constructor(
@@ -84,6 +97,9 @@ class MapViewModel @Inject constructor(
 
     private val _messageEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val messageEvents = _messageEvents.asSharedFlow()
+
+    private val _emojiPickerUiState = MutableStateFlow(MapEmojiPickerUiState())
+    val emojiPickerUiState: StateFlow<MapEmojiPickerUiState> = _emojiPickerUiState.asStateFlow()
 
     init {
         loadNotices()
@@ -227,6 +243,80 @@ class MapViewModel @Inject constructor(
                     emojiImageUrl = emoji.emojiImageUrl,
                 )
             }
+    }
+
+    fun openEmojiPicker(pinId: String) {
+        val numericPinId = pinId.toLongOrNull() ?: return
+        val selectedEmojiId = _selectedPin.value
+            ?.takeIf { it.id == pinId }
+            ?.emojiReactions
+            ?.firstOrNull { it.reactedByMe }
+            ?.emojiId
+            ?.toLongOrNull()
+
+        _emojiPickerUiState.value = MapEmojiPickerUiState(
+            targetPinId = numericPinId,
+            selectedEmojiId = selectedEmojiId,
+            isLoading = true,
+        )
+
+        viewModelScope.launch {
+            pinRepository.getEmojiCandidates()
+                .onSuccess { candidates ->
+                    _emojiPickerUiState.value = _emojiPickerUiState.value.copy(
+                        candidates = candidates,
+                        isLoading = false,
+                        errorMessage = null,
+                    )
+                }
+                .onFailure { error ->
+                    _emojiPickerUiState.value = _emojiPickerUiState.value.copy(
+                        isLoading = false,
+                        errorMessage = error.message?.takeIf { it.isNotBlank() }
+                            ?: "이모지 목록을 불러오지 못했습니다.",
+                    )
+                }
+        }
+    }
+
+    fun closeEmojiPicker() {
+        _emojiPickerUiState.value = MapEmojiPickerUiState()
+    }
+
+    fun selectEmojiCandidate(emojiId: Long) {
+        val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
+            ?: return
+        if (!candidate.canReact) {
+            _messageEvents.tryEmit("구매가 필요한 이모지입니다.")
+            return
+        }
+        val nextSelection = if (_emojiPickerUiState.value.selectedEmojiId == emojiId) null else emojiId
+        _emojiPickerUiState.value = _emojiPickerUiState.value.copy(selectedEmojiId = nextSelection)
+    }
+
+    fun applySelectedEmoji() {
+        val picker = _emojiPickerUiState.value
+        val pinId = picker.targetPinId ?: return
+        val selectedEmojiId = picker.selectedEmojiId
+        val selectedCandidate = selectedEmojiId?.let { emojiId ->
+            picker.candidates.firstOrNull { it.emojiId == emojiId }
+        }
+        if (selectedCandidate?.canReact == false || picker.isSubmitting) return
+
+        viewModelScope.launch {
+            _emojiPickerUiState.value = _emojiPickerUiState.value.copy(isSubmitting = true)
+            pinRepository.applyPinEmojiFromPicker(pinId, selectedEmojiId)
+                .onSuccess {
+                    loadPinEmojis(pinId.toString())
+                    closeEmojiPicker()
+                }
+                .onFailure { error ->
+                    _emojiPickerUiState.value = _emojiPickerUiState.value.copy(isSubmitting = false)
+                    _messageEvents.emit(
+                        error.message?.takeIf { it.isNotBlank() } ?: "이모지 반응 등록에 실패했습니다.",
+                    )
+                }
+        }
     }
 
     fun enterLocationSelectionMode(category: PinCategory) {

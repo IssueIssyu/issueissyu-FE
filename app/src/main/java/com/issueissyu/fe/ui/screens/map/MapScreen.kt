@@ -62,6 +62,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
+import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
 import com.issueissyu.fe.ui.components.map.toLatLng
 import com.issueissyu.fe.ui.navigation.AppDestinations
@@ -119,6 +120,7 @@ fun MapScreen(
     val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
+    val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId
 
     LaunchedEffect(isLocationSelectionMode) {
@@ -129,6 +131,24 @@ fun MapScreen(
         onDispose {
             onLocationSelectionModeChanged(false)
         }
+    }
+
+    if (emojiPickerUiState.isVisible) {
+        EmojiReactionBottomSheet(
+            candidates = emojiPickerUiState.candidates,
+            selectedEmojiId = emojiPickerUiState.selectedEmojiId,
+            isLoading = emojiPickerUiState.isLoading,
+            isSubmitting = emojiPickerUiState.isSubmitting,
+            errorMessage = emojiPickerUiState.errorMessage,
+            onDismiss = {
+                if (!emojiPickerUiState.isSubmitting) {
+                    viewModel.closeEmojiPicker()
+                }
+            },
+            onEmojiClick = viewModel::selectEmojiCandidate,
+            onApplyClick = viewModel::applySelectedEmoji,
+            allowApplyWithoutSelection = true,
+        )
     }
 
     // TODO: ViewModel에서 combine(_mapPins, _selectedCategory)로 visibleMapPins StateFlow를 노출하고, UI는 collect만 하도록 정리
@@ -560,7 +580,7 @@ fun MapScreen(
                 onSympathyClick = { pinId ->
                     viewModel.toggleSympathy(pinId)
                 },
-                onEmojiClick = {},
+                onEmojiClick = viewModel::openEmojiPicker,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
