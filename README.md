@@ -7,7 +7,7 @@ issueissyu(이슈있슈) Frontend는 지역 기반 핀·커뮤니티·지도 서
 ## 👥 Team
 |                                 FE (PartLeader)                                  |                                 FE                                  |
 |:-----------------------------------------------------------------------:|:-------------------------------------------------------------------:|
-| <img width="186" height="215" alt="스크린샷 2026-06-01 121731" src="https://github.com/user-attachments/assets/5d2dc43f-146d-4330-a227-8d0ed080e0cc" /> | <img width="183" height="213" alt="스크린샷 2026-06-01 115030" src="https://github.com/user-attachments/assets/b4d4a41d-6cc1-47ef-be5d-52b78e017304" /> |
+| <img width="213" height="213" alt="image" src="https://github.com/user-attachments/assets/1c533cf2-65fd-476f-ab70-79586e174a63" /> | <img width="183" height="213" alt="스크린샷 2026-06-01 115030" src="https://github.com/user-attachments/assets/b4d4a41d-6cc1-47ef-be5d-52b78e017304" /> |
 |       김가은<br/><a href="https://github.com/silver-kg">@silver-kg</a>       |       유현<br/><a href="https://github.com/dda-zi">@dda-zi</a>        |
 
 
@@ -29,19 +29,28 @@ issueissyu(이슈있슈) Frontend는 지역 기반 핀·커뮤니티·지도 서
 ```
 com.issueissyu.fe/
 ├── ui/                             # UI 및 Presentation 레이어
-│   ├── screens/                    # 화면 단위 Compose 컴포넌트 (스크린)
+│   ├── screens/                    # 화면 단위 Compose 컴포넌트 (스크린), viewmodel도 함께 관리
 │   ├── components/                 # 재사용 가능한 공통 UI 컴포넌트 (버튼, 다이얼로그 등)
-│   └── viewmodels/                 # UI 상태 관리 및 비즈니스 로직 연결 (ViewModel)
+│   ├── navigation/                 # 
+│   └── theme/                      # 앱 테마 (글씨, 색상 등)
 │
-├── data/                           # 데이터 레이어 (로컬/원격 데이터 소스 및 레포지토리)
-│   ├── remote/                     # 원격 데이터 원천
-│   │   ├── dto/                    # Data Transfer Object (네트워크 통신 객체)
+├── domain/                         # 도메인 레이어
+│   ├── model/                      # 앱 내부에서 사용하는 순수 도메인 모델
+│   ├── repository/                 # 데이터 접근 추상화 인터페이스
+│   └── usecase/                    # 단일 비즈니스 로직 단위 (UseCase)
+│
+├── data/                           # 데이터 레이어
+│   ├── remote/                     # 원격 데이터 소스
+│   │   ├── dto/                    # 네트워크 통신 객체 맟 도메인 모델 매퍼
 │   │   └── api/                    # Retrofit2 API 인터페이스 정의
 │   ├── repository/                 # 도메인/UI 레이어와 데이터 소스를 중개하는 Repository 구현체
 │   └── local/                      # 로컬 데이터 소스 (Room 데이터베이스, DataStore)
+(EncryptedSharedPreferences 등)
 │
 ├── core/                           # 전역 공통 모듈 및 유틸리티
+│   ├── auth/                       # 세션 상태 관리
 │   ├── network/                    # 네트워크 공통 설정 (OkHttpClient, Interceptor 등)
+│   ├── notification/               # FCM 서비스 및 알림 생성 유틸
 │   ├── constants/                  # 전역 상수 관리 (API URL, 키값 등)
 │   └── utils/                      # 코틀린 표준 문법을 활용한 조건부 Modifier 등 공통 확장함수 및 유틸
 │
