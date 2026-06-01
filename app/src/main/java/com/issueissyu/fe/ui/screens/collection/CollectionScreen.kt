@@ -108,7 +108,6 @@ fun CollectionScreen(
                 is CollectionEffect.NavigateToPinDetail -> {
                     onNavigateToPinDetail(effect.pinId)
                 }
-                is CollectionEffect.ProfileUpdatedSuccess -> {}
             }
         }
     }

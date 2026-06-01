@@ -21,6 +21,7 @@ import com.issueissyu.fe.domain.model.auth.AuthUser
 import com.issueissyu.fe.domain.model.auth.OnboardingProfile
 import com.issueissyu.fe.domain.model.TermsAgreementResult
 import com.issueissyu.fe.domain.repository.AuthRepository
+import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,7 +30,13 @@ class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
     private val tokenManager: TokenManager,
     private val sessionManager: SessionManager,
+    private val userCollectionsStore: UserCollectionsStore,
 ) : AuthRepository {
+
+    private fun clearUserSession() {
+        sessionManager.clearSession()
+        userCollectionsStore.clear()
+    }
 
     companion object {
         private const val TAG = "AuthRepository"
@@ -367,7 +374,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun logout(): Result<Unit> {
         return try {
             val response = runCatching { authApi.logout() }.getOrNull()
-            sessionManager.clearSession()
+            clearUserSession()
             when (response?.code) {
                 "LOGOUT_200",
                 "LOGOUT_401",
@@ -381,7 +388,7 @@ class AuthRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            sessionManager.clearSession()
+            clearUserSession()
             Result.success(Unit)
         }
     }
@@ -393,7 +400,7 @@ class AuthRepositoryImpl @Inject constructor(
             }
             val response = authApi.deleteSignOut()
             if (response.isSuccess) {
-                sessionManager.clearSession()
+                clearUserSession()
                 Result.success(Unit)
             } else {
                 Result.failure(

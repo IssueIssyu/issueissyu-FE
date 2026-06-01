@@ -13,7 +13,9 @@ import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.data.repository.CommunityRepositoryImpl
 import com.issueissyu.fe.data.repository.MapRepositoryImpl
 import com.issueissyu.fe.data.repository.PinRepositoryImpl
+import com.issueissyu.fe.data.repository.UserCollectionsStoreImpl
 import com.issueissyu.fe.domain.repository.CollectionRepository
+import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import com.issueissyu.fe.domain.repository.CommunityRepository
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
@@ -75,4 +77,10 @@ abstract class RepositoryModule {
     abstract fun bindCollectionRepository(
         impl: CollectionRepositoryImpl
     ): CollectionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserCollectionsStore(
+        impl: UserCollectionsStoreImpl
+    ): UserCollectionsStore
 }
