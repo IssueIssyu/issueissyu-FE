@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.SharedFlow
 interface BillingRepository {
     val purchaseEvents: SharedFlow<BillingPurchaseEvent>
 
-    fun connect()
+    suspend fun restorePurchases(): Result<Unit>
     suspend fun purchaseProduct(activity: Activity, productId: String): Result<Unit>
     suspend fun verifyPurchase(productId: String, purchaseToken: String): Result<Long>
 }
