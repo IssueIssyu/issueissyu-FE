@@ -27,7 +27,7 @@ issueissyu(이슈있슈) Frontend는 지역 기반 핀·커뮤니티·지도 서
 ## **📂 Project Structure**
 레이어형 (Layered Architecture - MVVM 구조)
 ```
-com.example.app/
+com.issueissyu.fe/
 ├── ui/                             # UI 및 Presentation 레이어
 │   ├── screens/                    # 화면 단위 Compose 컴포넌트 (스크린)
 │   ├── components/                 # 재사용 가능한 공통 UI 컴포넌트 (버튼, 다이얼로그 등)
