@@ -84,7 +84,8 @@ import com.issueissyu.fe.ui.theme.White
 
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
-private const val SELECTED_MARKER_SCALE = 1.5f
+private const val DEFAULT_MARKER_SCALE = 1.5f
+private const val SELECTED_MARKER_SCALE = 2f
 private const val SELECTED_MARKER_Z_INDEX = 1
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
@@ -232,11 +233,12 @@ fun MapScreen(
             val marker = Marker().apply {
                 position = mapPin.coordinate.toLatLng()
                 icon = OverlayImage.fromResource(iconRes)
+                val markerScale = if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE
+                ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
+                    width = (drawable.intrinsicWidth * markerScale).toInt()
+                    height = (drawable.intrinsicHeight * markerScale).toInt()
+                }
                 if (isSelected) {
-                    ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-                        width = (drawable.intrinsicWidth * SELECTED_MARKER_SCALE).toInt()
-                        height = (drawable.intrinsicHeight * SELECTED_MARKER_SCALE).toInt()
-                    }
                     zIndex = SELECTED_MARKER_Z_INDEX
                 }
                 this.map = naverMap
