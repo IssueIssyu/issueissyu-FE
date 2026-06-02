@@ -72,6 +72,7 @@ fun PinDetailScreen(
     pinId: String,
     onBackClick: () -> Unit,
     onReportClick: (String) -> Unit,
+    onCommunityClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
     savedStateHandle: SavedStateHandle? = null,
     viewModel: PinDetailViewModel = hiltViewModel(),
@@ -186,7 +187,9 @@ fun PinDetailScreen(
                         onDeleteClick = { deletePinId ->
                             viewModel.deletePin(deletePinId, onSuccess = onBackClick)
                         },
-                        onCommunityClick = { /* TODO: 커뮤니티 상세 */ },
+                        onCommunityClick = { communityId ->
+                            communityId.toLongOrNull()?.let(onCommunityClick)
+                        },
                         onAttachProofClick = launchResolutionProofCamera,
                         onGoNowClick = viewModel::joinProblemSolver,
                         onPetitionClick = viewModel::joinPetition,

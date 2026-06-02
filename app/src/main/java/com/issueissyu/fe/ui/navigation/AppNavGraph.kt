@@ -457,6 +457,9 @@ fun AppNavGraph(
                     onReportClick = { reportPinId ->
                         navController.navigate(AppDestinations.pinReportRoute(reportPinId))
                     },
+                    onCommunityClick = { communityId ->
+                        navController.navigate(AppDestinations.communityDetailRoute(communityId))
+                    },
                 )
             }
         }
