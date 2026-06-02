@@ -26,11 +26,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -529,18 +527,14 @@ fun MapScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                FloatingActionButton(
-                    onClick = { viewModel.openPinTypeSelector() },
-                    modifier = Modifier.size(56.dp),
-                    shape = CircleShape,
-                    containerColor = BrandColor
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AddLocation,
-                        contentDescription = "핀 생성",
-                        tint = White
-                    )
-                }
+                Icon(
+                    painter = painterResource(id = R.drawable.pinbutton),
+                    contentDescription = "핀 생성",
+                    modifier = Modifier
+                        .size(width = 70.dp, height = 81.dp)
+                        .clickable { viewModel.openPinTypeSelector() },
+                    tint = Color.Unspecified
+                )
             }
         }
 
