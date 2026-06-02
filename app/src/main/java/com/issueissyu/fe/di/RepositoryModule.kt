@@ -1,5 +1,6 @@
 package com.issueissyu.fe.di
 
+import com.issueissyu.fe.data.repository.AlarmRepositoryImpl
 import com.issueissyu.fe.data.repository.AuthRepositoryImpl
 import com.issueissyu.fe.data.repository.CollectionRepositoryImpl
 import com.issueissyu.fe.data.repository.IssueRepositoryImpl
@@ -13,6 +14,7 @@ import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.data.repository.CommunityRepositoryImpl
 import com.issueissyu.fe.data.repository.MapRepositoryImpl
 import com.issueissyu.fe.data.repository.PinRepositoryImpl
+import com.issueissyu.fe.domain.repository.AlarmRepository
 import com.issueissyu.fe.domain.repository.CollectionRepository
 import com.issueissyu.fe.domain.repository.CommunityRepository
 import com.issueissyu.fe.domain.repository.MapRepository
@@ -75,4 +77,10 @@ abstract class RepositoryModule {
     abstract fun bindCollectionRepository(
         impl: CollectionRepositoryImpl
     ): CollectionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAlarmRepository(
+        impl: AlarmRepositoryImpl
+    ): AlarmRepository
 }
