@@ -240,6 +240,11 @@ fun MapScreen(
                 this.map = naverMap
                 setOnClickListener {
                     viewModel.selectPinById(mapPin.pinId)
+                    naverMap.moveCamera(
+                        CameraUpdate
+                            .scrollTo(mapPin.coordinate.toLatLng())
+                            .animate(CameraAnimation.Easing)
+                    )
                     true
                 }
             }
@@ -446,12 +451,9 @@ fun MapScreen(
                     },
                     iconResId = R.drawable.ic_megaphone,
                     onClick = { clickedNotice ->
-                        val communityId = clickedNotice.pinId?.toLongOrNull()
-                        if (communityId != null) {
-                            navController.navigate(
-                                AppDestinations.communityDetailRoute(communityId)
-                            )
-                        }
+                        clickedNotice.pinId
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { pinId -> navController.navigateToPinDetail(pinId) }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -538,14 +540,6 @@ fun MapScreen(
                     )
                 }
             }
-        }
-
-        if (selectedPin != null && !isLocationSelectionMode) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { viewModel.clearSelectedPin() }
-            )
         }
 
         selectedPin?.takeUnless { isLocationSelectionMode }?.let { pin ->

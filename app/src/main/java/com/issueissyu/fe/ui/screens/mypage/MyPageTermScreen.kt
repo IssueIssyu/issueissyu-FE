@@ -63,26 +63,21 @@ fun selectTerm(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onNavClick)
             .padding(20.dp, 15.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-    ){
-        // 텍스트
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+    ) {
         Text(
             text = text,
-            style = IssueTypo.Bold18.copy(
-                color = Text
-            )
+            style = IssueTypo.Bold18.copy(color = Text),
         )
 
-        //아이콘
         Icon(
             imageVector = Icons.Default.ChevronRight,
-            contentDescription = text,
+            contentDescription = null,
             tint = Gray_5,
-            modifier = Modifier
-                .size(35.dp)
-                .clickable(onClick = onNavClick)
+            modifier = Modifier.size(35.dp),
         )
     }
 }

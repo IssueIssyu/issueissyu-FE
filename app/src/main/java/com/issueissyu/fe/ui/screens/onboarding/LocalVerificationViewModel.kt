@@ -6,6 +6,7 @@ import com.issueissyu.fe.data.local.OnboardingSessionStore
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.LocationRepository
+import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +20,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LocalVerificationViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
+    private val userRepository: UserRepository,
     private val authRepository: AuthRepository,
     private val onboardingSessionStore: OnboardingSessionStore,
     private val tokenManager: TokenManager,

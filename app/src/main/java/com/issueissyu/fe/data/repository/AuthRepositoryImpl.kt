@@ -21,6 +21,7 @@ import com.issueissyu.fe.domain.model.auth.AuthUser
 import com.issueissyu.fe.domain.model.auth.OnboardingProfile
 import com.issueissyu.fe.domain.model.TermsAgreementResult
 import com.issueissyu.fe.domain.repository.AuthRepository
+import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -29,7 +30,13 @@ class AuthRepositoryImpl @Inject constructor(
     private val authApi: AuthApi,
     private val tokenManager: TokenManager,
     private val sessionManager: SessionManager,
+    private val userCollectionsStore: UserCollectionsStore,
 ) : AuthRepository {
+
+    private fun clearUserSession() {
+        sessionManager.clearSession()
+        userCollectionsStore.clear()
+    }
 
     companion object {
         private const val TAG = "AuthRepository"
@@ -45,6 +52,29 @@ class AuthRepositoryImpl @Inject constructor(
 
     private fun safeMessage(rawMessage: String?, fallback: String): String {
         return rawMessage?.takeIf { it.isNotBlank() } ?: fallback
+    }
+
+    private fun persistAuthTokens(
+        accessToken: String,
+        refreshToken: String,
+        isNewUser: Boolean? = null,
+        loginSocialType: String? = null,
+        userUuid: String? = null,
+        userName: String? = null,
+    ): Result<Unit> {
+        if (!tokenManager.saveTokens(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+                isNewUser = isNewUser,
+                loginSocialType = loginSocialType,
+                userUuid = userUuid,
+                userName = userName,
+            )
+        ) {
+            return Result.failure(Exception(SessionManager.STORAGE_UNAVAILABLE_MESSAGE))
+        }
+        sessionManager.markAuthenticated()
+        return Result.success(Unit)
     }
     // 회원가입
     override suspend fun signUpLocal(
@@ -143,10 +173,6 @@ class AuthRepositoryImpl @Inject constructor(
                             ),
                         )
                     }
-                    if (resolvedTempUuid == null) {
-                        tokenManager.clearTempUuid()
-                    }
-
                     val resolvedUuid = uuidRaw?.takeIf { it.isNotBlank() }
                         ?: resolvedTempUuid
                         ?: return Result.failure(
@@ -159,24 +185,20 @@ class AuthRepositoryImpl @Inject constructor(
                         )
                     val resolvedUserName = userNameRaw?.takeIf { it.isNotBlank() } ?: "NAVER_USER"
 
-                    tokenManager.saveTokens(
+                    persistAuthTokens(
                         accessToken = result.accessToken,
                         refreshToken = result.refreshToken,
                         isNewUser = result.isNew,
-                        tempUuid = resolvedTempUuid,
                         loginSocialType = result.socialType.takeIf { it.isNotBlank() },
                         userUuid = resolvedUuid,
                         userName = resolvedUserName,
-                    )
-                    sessionManager.markAuthenticated()
-
-                    Result.success(
+                    ).map {
                         AuthUser(
                             uuid = resolvedUuid,
                             userName = resolvedUserName,
                             isNew = result.isNew,
-                        ),
-                    )
+                        )
+                    }
                 }
 
                 "NAVER_LOGIN_401" ->
@@ -240,10 +262,6 @@ class AuthRepositoryImpl @Inject constructor(
                             ),
                         )
                     }
-                    if (resolvedTempUuid == null) {
-                        tokenManager.clearTempUuid()
-                    }
-
                     val resolvedUuid = uuidRaw?.takeIf { it.isNotBlank() }
                         ?: resolvedTempUuid
                         ?: return Result.failure(
@@ -256,31 +274,27 @@ class AuthRepositoryImpl @Inject constructor(
                         )
                     val resolvedUserName = userNameRaw?.takeIf { it.isNotBlank() } ?: userName
 
-                    tokenManager.saveTokens(
+                    persistAuthTokens(
                         accessToken = result.accessToken,
                         refreshToken = result.refreshToken,
                         isNewUser = result.isNew,
-                        tempUuid = resolvedTempUuid,
                         loginSocialType = result.socialType.takeIf { it.isNotBlank() },
                         userUuid = resolvedUuid,
                         userName = resolvedUserName,
-                    )
-                    sessionManager.markAuthenticated()
-
-                    val authUser = AuthUser(
-                        uuid = resolvedUuid,
-                        userName = resolvedUserName,
-                        isNew = result.isNew,
-                    )
-
-                    if (BuildConfig.DEBUG) {
-                        Log.d(
-                            TAG,
-                            "loginLocal success code=${response.code} message=${response.message} isNew=${authUser.isNew} userName=${authUser.userName}",
-                        )
+                    ).map {
+                        AuthUser(
+                            uuid = resolvedUuid,
+                            userName = resolvedUserName,
+                            isNew = result.isNew,
+                        ).also { authUser ->
+                            if (BuildConfig.DEBUG) {
+                                Log.d(
+                                    TAG,
+                                    "loginLocal success code=${response.code} message=${response.message} isNew=${authUser.isNew} userName=${authUser.userName}",
+                                )
+                            }
+                        }
                     }
-
-                    Result.success(authUser)
                 }
 
                 "LOCAL_LOGIN_400_1" ->
@@ -327,12 +341,10 @@ class AuthRepositoryImpl @Inject constructor(
                                 response.message.ifBlank { "토큰 재발급 응답이 올바르지 않습니다." },
                             ),
                         )
-                    tokenManager.saveTokens(
+                    persistAuthTokens(
                         accessToken = result.accessToken,
                         refreshToken = result.refreshToken,
                     )
-                    sessionManager.markAuthenticated()
-                    Result.success(Unit)
                 }
 
                 "REFRESH_401" ->
@@ -344,12 +356,10 @@ class AuthRepositoryImpl @Inject constructor(
 
                 else ->
                     if (response.isSuccess && response.result != null) {
-                        tokenManager.saveTokens(
+                        persistAuthTokens(
                             accessToken = response.result.accessToken,
                             refreshToken = response.result.refreshToken,
                         )
-                        sessionManager.markAuthenticated()
-                        Result.success(Unit)
                     } else {
                         val msg = response.message.ifBlank { "토큰 재발급에 실패했습니다." }
                         if (response.code == "REFRESH_401") {
@@ -367,7 +377,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun logout(): Result<Unit> {
         return try {
             val response = runCatching { authApi.logout() }.getOrNull()
-            sessionManager.clearSession()
+            clearUserSession()
             when (response?.code) {
                 "LOGOUT_200",
                 "LOGOUT_401",
@@ -381,8 +391,32 @@ class AuthRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            sessionManager.clearSession()
+            clearUserSession()
             Result.success(Unit)
+        }
+    }
+
+    override suspend fun withdraw(): Result<Unit> {
+        return try {
+            if (BuildConfig.DEBUG) {
+                Log.d(TAG, "withdraw: DELETE api/auth/signout")
+            }
+            val response = authApi.deleteSignOut()
+            if (response.isSuccess) {
+                clearUserSession()
+                Result.success(Unit)
+            } else {
+                Result.failure(
+                    Exception(safeMessage(response.message, "회원탈퇴에 실패했습니다.")),
+                )
+            }
+        } catch (e: Exception) {
+            if (BuildConfig.DEBUG) {
+                Log.e(TAG, "withdraw failed", e)
+            }
+            Result.failure(
+                Exception(safeMessage(e.message, "회원탈퇴에 실패했습니다.")),
+            )
         }
     }
 
@@ -600,8 +634,8 @@ class AuthRepositoryImpl @Inject constructor(
                     )
                 tokenManager.saveCurrentUser(userUuid = resolvedUuid)
                 sessionManager.markAuthenticated()
-                // 연동 직후에는 로그아웃·로그인 화면으로만 갈 것 — isNew/토큰 재저장으로 스플래시·다른 화면이 메인으로 튀는 레이스 방지
-                tokenManager.clearTempUuid()
+                // 연동 직후 스플래시가 온보딩/메인으로 튀지 않도록 신규 회원 플래그만 해제
+                tokenManager.clearNewUserFlag()
                 return Result.success(Unit)
             }
 
@@ -657,7 +691,7 @@ class AuthRepositoryImpl @Inject constructor(
                         userName = nickname,
                     )
                     sessionManager.markAuthenticated()
-                    tokenManager.clearTempUuid()
+                    tokenManager.clearNewUserFlag()
                     Result.success(r.toDomain())
                 }
                 "ONBOAREDING_400" ->
@@ -672,7 +706,7 @@ class AuthRepositoryImpl @Inject constructor(
                             userName = nickname,
                         )
                         sessionManager.markAuthenticated()
-                        tokenManager.clearTempUuid()
+                        tokenManager.clearNewUserFlag()
                         Result.success(result.toDomain())
                     } else {
                         Result.failure(

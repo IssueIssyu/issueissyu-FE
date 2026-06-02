@@ -1,6 +1,7 @@
 package com.issueissyu.fe.di
 
 import com.issueissyu.fe.data.repository.AuthRepositoryImpl
+import com.issueissyu.fe.data.repository.CollectionRepositoryImpl
 import com.issueissyu.fe.data.repository.IssueRepositoryImpl
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.UserRepository
@@ -13,6 +14,9 @@ import com.issueissyu.fe.data.repository.CommunityRepositoryImpl
 import com.issueissyu.fe.data.repository.BillingRepositoryImpl
 import com.issueissyu.fe.data.repository.MapRepositoryImpl
 import com.issueissyu.fe.data.repository.PinRepositoryImpl
+import com.issueissyu.fe.data.repository.UserCollectionsStoreImpl
+import com.issueissyu.fe.domain.repository.CollectionRepository
+import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import com.issueissyu.fe.domain.repository.CommunityRepository
 import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.domain.repository.MapRepository
@@ -75,4 +79,16 @@ abstract class RepositoryModule {
     abstract fun bindBillingRepository(
         impl: BillingRepositoryImpl
     ): BillingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCollectionRepository(
+        impl: CollectionRepositoryImpl
+    ): CollectionRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindUserCollectionsStore(
+        impl: UserCollectionsStoreImpl
+    ): UserCollectionsStore
 }

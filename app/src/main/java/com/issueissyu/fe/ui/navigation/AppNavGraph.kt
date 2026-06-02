@@ -23,6 +23,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.issueissyu.fe.core.auth.AuthSessionState
 import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
 import com.issueissyu.fe.ui.screens.map.MapScreen
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
@@ -50,6 +51,7 @@ import com.issueissyu.fe.ui.screens.map.PIN_CREATE_MAP_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.AlarmSettingScreen
 import com.issueissyu.fe.ui.screens.mypage.ChangeLocalScreen
 import com.issueissyu.fe.ui.screens.mypage.MyIssueScreen
+import com.issueissyu.fe.ui.screens.mypage.MYPAGE_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
 import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
 import com.issueissyu.fe.ui.screens.mypage.MyPageTermScreen
@@ -72,6 +74,29 @@ fun AppNavGraph(
                 navController.navigateToLoginClearingBackStack()
             }
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(sessionViewModel, navController) {
+        // SessionManager는 토큰이 있으면 기동 시 Authenticated. 스플래시→메인은 markAuthenticated()를
+        // 호출하지 않아도 되지만, collect 전 만료 등에 대비해 현재 상태로 시드한다.
+        var wasAuthenticated =
+            sessionViewModel.authState.value == AuthSessionState.Authenticated
+        sessionViewModel.authState.collect { state ->
+            when (state) {
+                AuthSessionState.Authenticated -> wasAuthenticated = true
+                AuthSessionState.Unauthenticated -> {
+                    if (!wasAuthenticated) return@collect
+                    val route = navController.currentDestination?.route ?: return@collect
+                    if (
+                        route == AppDestinations.Onboarding.SPLASH_ROUTE ||
+                        route == LOGIN_ROUTE
+                    ) {
+                        return@collect
+                    }
+                    navController.navigateToLoginClearingBackStack()
+                }
+            }
         }
     }
 
@@ -198,10 +223,8 @@ fun AppNavGraph(
         composable(AppDestinations.COLLECTION_ROUTE) {
             NavScreenWrapper(paddingValues = paddingValues) {
                 CollectionScreen(
-                    onNavigateToNoticeDetail = { notice ->
-                        notice.toLongOrNull()?.let { communityId ->
-                            navController.navigate(AppDestinations.communityDetailRoute(communityId))
-                        }
+                    onNavigateToPinDetail = { pinId ->
+                        navController.navigateToPinDetail(pinId)
                     },
                 )
             }
@@ -300,10 +323,11 @@ fun AppNavGraph(
                 )
             }
         }
-        composable(AppDestinations.MyPage.MYPAGE_ROUTE) {
+        composable(AppDestinations.MyPage.MYPAGE_ROUTE) { backStackEntry ->
             NavScreenWrapper(paddingValues = paddingValues) {
                 MyPageScreen(
                     modifier = Modifier,
+                    savedStateHandle = backStackEntry.savedStateHandle,
                     onEvent = { event ->
                         when (event) {
                             MyPageEvent.NavigateBack -> navController.navigateUp()
@@ -325,8 +349,6 @@ fun AppNavGraph(
                             MyPageEvent.NavigateToTerm -> {
                                 navController.navigate(AppDestinations.MyPage.TERMS_ROUTE)
                             }
-                            MyPageEvent.Logout -> Unit
-                            MyPageEvent.Withdraw -> Unit
                         }
                     },
                 )
@@ -339,9 +361,21 @@ fun AppNavGraph(
                 removeTopPadding = true,
             ) {
                 ProfileChangeScreen(
-                    onBackClick = { navController.navigateUp() },
+                    onBackClick = { refreshMyPage ->
+                        if (refreshMyPage) {
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set(MYPAGE_REFRESH_KEY, true)
+                        }
+                        navController.navigateUp()
+                    },
                     onCollectionClick = { navController.navigate(AppDestinations.COLLECTION_ROUTE) },
-                    onCompleteClick = { navController.navigateUp() },
+                    onCompleteClick = {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set(MYPAGE_REFRESH_KEY, true)
+                        navController.navigateUp()
+                    },
                 )
             }
         }
@@ -374,7 +408,7 @@ fun AppNavGraph(
             ) {
                 MyIssueScreen(
                     onBackClick = { navController.navigateUp() },
-                    onPinClick = { pinId, _, _ ->
+                    onPinClick = { pinId ->
                         pinId.toLongOrNull()?.let { id ->
                             navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
                                 popUpTo(AppDestinations.TOWN_ROUTE) {
@@ -444,6 +478,9 @@ fun AppNavGraph(
                     onBackClick = { navController.popBackStack() },
                     onReportClick = { reportPinId ->
                         navController.navigate(AppDestinations.pinReportRoute(reportPinId))
+                    },
+                    onCommunityClick = { communityId ->
+                        navController.navigate(AppDestinations.communityDetailRoute(communityId))
                     },
                 )
             }

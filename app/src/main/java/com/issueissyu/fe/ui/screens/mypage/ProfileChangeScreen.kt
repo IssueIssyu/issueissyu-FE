@@ -2,43 +2,42 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_3
@@ -52,18 +51,32 @@ import com.issueissyu.fe.ui.theme.White
 
 @Composable
 fun ProfileChangeScreen(
-    onBackClick: () -> Unit,
+    onBackClick: (refreshMyPage: Boolean) -> Unit,
     onCollectionClick: () -> Unit,
     onCompleteClick: () -> Unit,
-    viewModel: ProfileChangeViewModel = hiltViewModel()
-){
-    val currentNickname by viewModel.currentNickname.collectAsStateWithLifecycle()
+    viewModel: ProfileChangeViewModel = hiltViewModel(),
+) {
     val inputNickname by viewModel.inputNickname.collectAsStateWithLifecycle()
     val isNicknameAvailable by viewModel.isNicknameAvailable.collectAsStateWithLifecycle()
     val isCheckingNickname by viewModel.isCheckingNickname.collectAsStateWithLifecycle()
     val isCompleteEnabled by viewModel.isCompleteEnabled.collectAsStateWithLifecycle()
     val isCheckButtonEnabled by viewModel.isCheckButtonEnabled.collectAsStateWithLifecycle()
+    val isUpdating by viewModel.isUpdating.collectAsStateWithLifecycle()
+    val isLoadingProfile by viewModel.isLoadingProfile.collectAsStateWithLifecycle()
+    val profileLoadErrorMessage by viewModel.profileLoadErrorMessage.collectAsStateWithLifecycle()
+    val profileImageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
     val context = LocalContext.current
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onScreenResume()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.showToast.collect { message ->
@@ -74,18 +87,84 @@ fun ProfileChangeScreen(
     Column(
         modifier = Modifier
             .background(White)
-    ){
-
-        //상단 바
+    ) {
         IssueissyuTopAppBar(
             titleText = "프로필 편집",
-            onBackClick = onBackClick
+            onBackClick = { onBackClick(viewModel.consumeMyPageRefreshPending()) },
         )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(31.dp, 50.dp)
-        ){
+
+        when {
+            isLoadingProfile -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            profileLoadErrorMessage != null -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = profileLoadErrorMessage.orEmpty(),
+                        style = IssueTypo.Regular16.copy(color = Text),
+                    )
+
+                    Spacer(modifier = Modifier.size(16.dp))
+
+                    Button(onClick = viewModel::loadProfile) {
+                        Text(text = "다시 시도")
+                    }
+                }
+            }
+
+            else -> {
+                ProfileChangeContent(
+                    inputNickname = inputNickname,
+                    isNicknameAvailable = isNicknameAvailable,
+                    isCheckingNickname = isCheckingNickname,
+                    isCompleteEnabled = isCompleteEnabled,
+                    isCheckButtonEnabled = isCheckButtonEnabled,
+                    isUpdating = isUpdating,
+                    profileImageUrl = profileImageUrl,
+                    onCollectionClick = {
+                        viewModel.openCollection()
+                        onCollectionClick()
+                    },
+                    onCompleteClick = { viewModel.updateProfile(onSuccess = onCompleteClick) },
+                    onNicknameChange = viewModel::onNicknameChange,
+                    onCheckNicknameDuplicate = viewModel::checkNicknameDuplicate,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileChangeContent(
+    inputNickname: String,
+    isNicknameAvailable: Boolean?,
+    isCheckingNickname: Boolean,
+    isCompleteEnabled: Boolean,
+    isCheckButtonEnabled: Boolean,
+    isUpdating: Boolean,
+    profileImageUrl: String?,
+    onCollectionClick: () -> Unit,
+    onCompleteClick: () -> Unit,
+    onNicknameChange: (String) -> Unit,
+    onCheckNicknameDuplicate: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(31.dp, 50.dp),
+    ) {
             //프로필 편집
             Column(
                 modifier = Modifier
@@ -93,19 +172,10 @@ fun ProfileChangeScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ){
                 //프로필 사진
-                Image(
-                    painter = painterResource(R.drawable.ic_fire),
-                    contentDescription = "프로필 사진",
-                    modifier = Modifier
-                        .size(130.dp)
-                        .background(White, CircleShape)
-                        .clip(CircleShape)
-                        .scale(1.5f),
-                    contentScale = ContentScale.Crop,
-                    alignment = BiasAlignment(
-                        horizontalBias = 0f,     // 가로는 중앙
-                        verticalBias = -0.3f     // 세로는 top과 center 중간
-                    )
+                ProfileImageFrame(
+                    size = 130.dp,
+                    imageUrl = profileImageUrl,
+                    borderWidth = 0.dp,
                 )
 
                 Spacer(modifier = Modifier.size(15.dp))
@@ -152,7 +222,7 @@ fun ProfileChangeScreen(
                 CommonTextField(
                     label = "닉네임 재설정",
                     value = inputNickname,
-                    onValueChange = viewModel::onNicknameChange,
+                    onValueChange = onNicknameChange,
                 )
 
                 Spacer(modifier = Modifier.size(10.dp))
@@ -161,12 +231,13 @@ fun ProfileChangeScreen(
                     // 중복 확인 상태 메시지
                     if (isNicknameAvailable != null) {
                         Text(
-                            text = if (isNicknameAvailable == true)
+                            text = if (isNicknameAvailable) {
                                 "사용 가능한 닉네임입니다"
-                            else
-                                "이미 사용 중인 닉네임입니다",
+                            } else {
+                                "이미 사용 중인 닉네임입니다"
+                            },
                             style = IssueTypo.Regular16.copy(
-                                color = if (isNicknameAvailable == true) BrandColor else Issue
+                                color = if (isNicknameAvailable) BrandColor else Issue,
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -176,7 +247,7 @@ fun ProfileChangeScreen(
 
                     //중복 확인 버튼
                     Button(
-                        onClick = viewModel::checkNicknameDuplicate,
+                        onClick = onCheckNicknameDuplicate,
                         shape = RoundedCornerShape(20.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if(isCheckButtonEnabled && !isCheckingNickname) BrandColor else Gray_2
@@ -194,13 +265,11 @@ fun ProfileChangeScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             CommonButton(
-                onClick = { viewModel.updateProfile(onSuccess = onCompleteClick) },
-                text = "완료",
-                modifier = Modifier
-                    .fillMaxWidth(),
-                isEnabled = isCompleteEnabled,
+                onClick = onCompleteClick,
+                text = if (isUpdating) "변경 중..." else "완료",
+                modifier = Modifier.fillMaxWidth(),
+                isEnabled = isCompleteEnabled && !isUpdating,
             )
-        }
     }
 }
 
@@ -213,9 +282,9 @@ fun ProfileChangeScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewProfileChangeScreen(){
+fun PreviewProfileChangeScreen() {
     ProfileChangeScreen(
-        onBackClick = {},
+        onBackClick = { _ -> },
         onCollectionClick = {},
         onCompleteClick = {}
     )

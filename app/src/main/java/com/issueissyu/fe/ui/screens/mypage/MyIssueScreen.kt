@@ -3,130 +3,227 @@ package com.issueissyu.fe.ui.screens.mypage
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
-import com.issueissyu.fe.ui.theme.*
+import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Communication
+import com.issueissyu.fe.ui.theme.CommunicationContainerLight
+import com.issueissyu.fe.ui.theme.Gray_2
+import com.issueissyu.fe.ui.theme.Issue
+import com.issueissyu.fe.ui.theme.IssueContainerLight
+import com.issueissyu.fe.ui.theme.IssueTypo
+import com.issueissyu.fe.ui.theme.Text
+import com.issueissyu.fe.ui.theme.Title
+import com.issueissyu.fe.ui.theme.White
+import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 @Composable
 fun MyIssueScreen(
     onBackClick: () -> Unit,
-    onPinClick: (pinId: String, latitude: Double, longitude: Double) -> Unit,
-    viewModel: MyIssueViewModel = hiltViewModel()
+    onPinClick: (pinId: String) -> Unit,
+    viewModel: MyIssueViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: return@derivedStateOf false
+
+            uiState.hasNext &&
+                !uiState.isLoadingMore &&
+                uiState.issues.isNotEmpty() &&
+                lastVisibleIndex >= uiState.issues.lastIndex - MyIssueViewModel.LOAD_MORE_THRESHOLD
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            viewModel.loadIssues(append = true)
+        }
+    }
 
     Column(
         modifier = Modifier
             .background(White)
-            .fillMaxSize()
+            .fillMaxSize(),
     ) {
-        // 상단 바
         IssueissyuTopAppBar(
             titleText = "내 이슈",
-            onBackClick = onBackClick
+            onBackClick = onBackClick,
         )
 
-        // 본문
-        if (uiState.issues.isEmpty()) {
-            // 빈 상태
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = "아직 생성한 핀이 없어요",
-                        style = IssueTypo.Bold18.copy(color = Title)
-                    )
-                    Text(
-                        text = "지도에서 우리 동네를 기록해보세요!",
-                        style = IssueTypo.Regular15.copy(color = Text)
-                    )
+                    CircularProgressIndicator()
                 }
             }
-        } else {
 
-            // 본문
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 31.dp, vertical = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(uiState.issues) { issue ->
-                    MyIssueCard(
-                        issue = issue,
-                        onNavClick = {
-                            onPinClick(
-                                issue.id,
-                                issue.latitude,
-                                issue.longitude
-                            )
+            uiState.errorMessage != null && uiState.issues.isEmpty() -> {
+                MyIssueErrorState(
+                    message = uiState.errorMessage.orEmpty(),
+                    onRetry = { viewModel.loadIssues() },
+                )
+            }
+
+            uiState.issues.isEmpty() -> {
+                MyIssueEmptyState()
+            }
+
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = listState,
+                    contentPadding = PaddingValues(horizontal = 31.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(uiState.issues, key = { it.id }) { issue ->
+                        MyIssueCard(
+                            issue = issue,
+                            onClick = { onPinClick(issue.id) },
+                        )
+                    }
+
+                    if (uiState.isLoadingMore) {
+                        item(key = "loading_more") {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                            }
                         }
-                    )
+                    }
                 }
             }
         }
     }
 }
 
-// 알림 카드
+@Composable
+private fun MyIssueErrorState(
+    message: String,
+    onRetry: () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(
+            text = message,
+            style = IssueTypo.Regular16.copy(color = Text),
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onRetry) {
+            Text("다시 시도")
+        }
+    }
+}
+
+@Composable
+private fun MyIssueEmptyState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "아직 생성한 핀이 없어요",
+                style = IssueTypo.Bold18.copy(color = Title),
+            )
+            Text(
+                text = "지도에서 우리 동네를 기록해보세요!",
+                style = IssueTypo.Regular15.copy(color = Text),
+            )
+        }
+    }
+}
+
 @Composable
 fun MyIssueCard(
     issue: MyIssueItem,
-    onNavClick: () -> Unit
+    onClick: () -> Unit,
 ) {
-    // 핀 타입 정보
-    val (pinTypeText, pinTypeColor) = when (issue.pinType) {
-        PinType.ISSUE -> "이슈" to Issue
-        PinType.COMMUNICATION -> "소통" to Communication
+    val cardShape = RoundedCornerShape(15.dp)
+    val (pinTypeLabel, pinTypeColor) = when (issue.pinType) {
+        PinCategory.ISSUE -> "이슈" to Issue
+        PinCategory.COMMUNICATION -> "소통" to Communication
+        else -> "핀" to Text
     }
 
-    val cardBackgroundColor = when (issue.status) {
-        IssueStatus.BEFORE_RESOLUTION -> Gray_2
-        IssueStatus.IN_PROGRESS -> IssueContainerLight
-        IssueStatus.RESOLVED -> CommunicationContainerLight
-        else -> White
+    val cardBackgroundColor = when (issue.resolutionStatus) {
+        ResolutionStatus.BEFORE_RESOLUTION -> Gray_2
+        ResolutionStatus.IN_PROGRESS -> IssueContainerLight
+        ResolutionStatus.RESOLVED -> CommunicationContainerLight
+        null -> White
     }
 
-    // 소통 핀일 때만 테두리
-    val borderModifier = if (issue.status == null) {
-        Modifier.border(1.dp, Communication, RoundedCornerShape(15.dp))
+    val borderModifier = if (issue.resolutionStatus == null) {
+        Modifier.border(1.dp, Communication, cardShape)
     } else {
         Modifier
     }
 
     Column(
         modifier = Modifier
-            .clickable(onClick = onNavClick)
+            .clickable(onClick = onClick)
             .then(borderModifier)
-            .background(cardBackgroundColor, RoundedCornerShape(15.dp))
+            .background(cardBackgroundColor, cardShape)
             .padding(20.dp)
     ) {
-        // 윗줄 (제목 + 핀종류)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+            verticalAlignment = Alignment.Bottom,
         ) {
             Text(
                 text = issue.title,
@@ -134,110 +231,79 @@ fun MyIssueCard(
                 fontWeight = FontWeight.Medium,
                 fontSize = 20.sp,
                 color = Title,
-                modifier = Modifier.weight(1f)
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
             )
 
             Spacer(modifier = Modifier.width(8.dp))
 
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.wrapContentWidth(),
             ) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
-                    contentDescription = pinTypeText,
+                    contentDescription = pinTypeLabel,
                     tint = pinTypeColor,
-                    modifier = Modifier.size(25.dp)
+                    modifier = Modifier.size(25.dp),
                 )
                 Text(
-                    text = pinTypeText,
-                    style = IssueTypo.ExtraBold15.copy(color = Text)
+                    text = pinTypeLabel,
+                    style = IssueTypo.ExtraBold15.copy(color = Text),
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(5.dp))
 
-        // 아랫줄 (위치 + 진척도)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 위치
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = "위치",
+                tint = Title,
+                modifier = Modifier.size(25.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = issue.address,
+                style = IssueTypo.Regular15.copy(color = Text),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = "위치",
-                    tint = Title,
-                    modifier = Modifier.size(25.dp)
-                )
-                Text(
-                    text = issue.address,
-                    style = IssueTypo.Regular15.copy(color = Text),
-                    maxLines = 1
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            // 진척도 (IssuePin만)
-            if (issue.status != null) {
-                ProgressChip(status = issue.status)
+            )
+            issue.resolutionStatus?.let { status ->
+                Spacer(modifier = Modifier.width(8.dp))
+                MyIssueStatusChip(status = status)
             }
         }
     }
 }
 
 @Composable
-fun ProgressChip(status: IssueStatus) {
-    val (text, backgroundColor) = when (status) {
-        IssueStatus.BEFORE_RESOLUTION -> "해결 전" to Title
-        IssueStatus.IN_PROGRESS -> "진행중" to Issue
-        IssueStatus.RESOLVED -> "해결 완료" to BrandColor
+private fun MyIssueStatusChip(status: ResolutionStatus) {
+    val chipShape = RoundedCornerShape(15.dp)
+    val (label, backgroundColor) = when (status) {
+        ResolutionStatus.BEFORE_RESOLUTION -> "해결 전" to Title
+        ResolutionStatus.IN_PROGRESS -> "진행중" to Issue
+        ResolutionStatus.RESOLVED -> "해결 완료" to BrandColor
     }
 
     Box(
         modifier = Modifier
-            .background(backgroundColor, RoundedCornerShape(15.dp))
+            .wrapContentWidth(unbounded = true)
+            .background(backgroundColor, chipShape)
             .padding(horizontal = 18.dp, vertical = 5.dp)
     ) {
         Text(
-            text = text,
+            text = label,
             style = IssueTypo.Regular16.copy(
                 color = White,
                 fontWeight = FontWeight.Bold
             )
         )
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewMyIssueCard() {
-    val dummyIssue = MyIssueItem(
-        id = "test_1",
-        title = "쓰레기 무단투기",
-        address = "서울특별시 강남구 역삼동",
-        pinType = PinType.ISSUE,
-        status = IssueStatus.BEFORE_RESOLUTION,
-        latitude = 37.5665,
-        longitude = 126.9780
-    )
-
-    MyIssueCard(
-        issue = dummyIssue,
-        onNavClick = {}
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewMyIssueScreen() {
-    MyIssueScreen(
-        onBackClick = {},
-        onPinClick = { _, _, _ -> }
-    )
 }
