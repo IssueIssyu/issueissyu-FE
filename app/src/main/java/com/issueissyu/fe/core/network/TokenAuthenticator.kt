@@ -11,6 +11,7 @@ import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.Route
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Named
 import javax.inject.Singleton
@@ -59,9 +60,11 @@ class TokenAuthenticator @Inject constructor(
                             .build()
                     }
                     RefreshOutcome.InvalidToken -> {
-                        sessionManager.expireSession()
+                        sessionManager.expireSession(SessionManager.DEFAULT_SESSION_EXPIRED_MESSAGE)
                         null
                     }
+                    RefreshOutcome.StorageUnavailable -> null
+                    RefreshOutcome.NetworkError -> null
                     RefreshOutcome.Failed -> null
                 }
             }
@@ -74,32 +77,46 @@ class TokenAuthenticator @Inject constructor(
             when (apiResponse.code) {
                 "REFRESH_200" -> {
                     val result = apiResponse.result ?: return RefreshOutcome.Failed
-                    tokenManager.saveTokens(
-                        accessToken = result.accessToken,
-                        refreshToken = result.refreshToken,
-                    )
-                    RefreshOutcome.Success
+                    persistRefreshedTokens(result.accessToken, result.refreshToken)
                 }
                 "REFRESH_401" -> RefreshOutcome.InvalidToken
                 else ->
                     if (apiResponse.isSuccess && apiResponse.result != null) {
-                        tokenManager.saveTokens(
-                            accessToken = apiResponse.result.accessToken,
-                            refreshToken = apiResponse.result.refreshToken,
+                        persistRefreshedTokens(
+                            apiResponse.result.accessToken,
+                            apiResponse.result.refreshToken,
                         )
-                        RefreshOutcome.Success
                     } else {
                         RefreshOutcome.Failed
                     }
             }
+        } catch (_: IOException) {
+            RefreshOutcome.NetworkError
         } catch (_: Exception) {
             RefreshOutcome.Failed
         }
     }
 
+    private fun persistRefreshedTokens(
+        accessToken: String,
+        refreshToken: String,
+    ): RefreshOutcome {
+        if (!tokenManager.saveTokens(
+                accessToken = accessToken,
+                refreshToken = refreshToken,
+            )
+        ) {
+            sessionManager.expireSession(SessionManager.STORAGE_UNAVAILABLE_MESSAGE)
+            return RefreshOutcome.StorageUnavailable
+        }
+        return RefreshOutcome.Success
+    }
+
     private enum class RefreshOutcome {
         Success,
         InvalidToken,
+        StorageUnavailable,
+        NetworkError,
         Failed,
     }
 

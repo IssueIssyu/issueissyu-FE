@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 sealed interface SplashDestination {
     data object Loading : SplashDestination
-    data object Login : SplashDestination
+    data class Login(val showStorageWarning: Boolean = false) : SplashDestination
     data object Main : SplashDestination
     data object Onboarding : SplashDestination
 }
@@ -30,7 +30,9 @@ class SplashViewModel @Inject constructor(
         viewModelScope.launch {
             delay(800)
             _destination.value = when {
-                !tokenManager.hasTokens() -> SplashDestination.Login
+                !tokenManager.hasTokens() -> SplashDestination.Login(
+                    showStorageWarning = !tokenManager.isStorageAvailable,
+                )
                 tokenManager.getIsNewUser() -> SplashDestination.Onboarding
                 else -> SplashDestination.Main
             }
