@@ -35,6 +35,7 @@ class BillingRepositoryImpl @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _purchaseEvents = MutableSharedFlow<BillingPurchaseEvent>(extraBufferCapacity = 8)
     override val purchaseEvents: SharedFlow<BillingPurchaseEvent> = _purchaseEvents.asSharedFlow()
+    @Volatile
     private var activeProductId: String? = null
     private val processingPurchaseTokens = mutableSetOf<String>()
     private val connectionMutex = Mutex()
