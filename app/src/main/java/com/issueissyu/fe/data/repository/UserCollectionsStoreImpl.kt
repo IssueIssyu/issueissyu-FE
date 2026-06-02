@@ -29,7 +29,7 @@ class UserCollectionsStoreImpl @Inject constructor(
         if (!force && myPageCacheValid) {
             _snapshot.value?.let { return Result.success(it) }
         }
-        return fetchAndCache(checkUnlock = false, markMyPageCacheValid = true)
+        return fetchAndCache(checkUnlock = false, markMyPageCacheValid = true, force = force)
     }
 
     override suspend fun refreshForCollectionTab(): Result<CollectionPageSummary> {
@@ -65,7 +65,11 @@ class UserCollectionsStoreImpl @Inject constructor(
     private suspend fun fetchAndCache(
         checkUnlock: Boolean,
         markMyPageCacheValid: Boolean,
+        force: Boolean = false,
     ): Result<CollectionPageSummary> = mutex.withLock {
+        if (!force && !checkUnlock && myPageCacheValid) {
+            _snapshot.value?.let { return Result.success(it) }
+        }
         collectionRepository.getCollections(checkUnlock = checkUnlock)
             .onSuccess { summary ->
                 _snapshot.value = summary
