@@ -1,5 +1,6 @@
 package com.issueissyu.fe.core.auth
 
+import com.issueissyu.fe.core.notification.FcmTokenSyncManager
 import com.issueissyu.fe.data.local.TokenManager
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,6 +17,7 @@ sealed interface AuthSessionState {
 @Singleton
 class SessionManager @Inject constructor(
     private val tokenManager: TokenManager,
+    private val fcmTokenSyncManager: FcmTokenSyncManager,
 ) {
     private val _authState = MutableStateFlow(resolveInitialAuthState(tokenManager))
     val authState = _authState.asStateFlow()
@@ -25,16 +27,19 @@ class SessionManager @Inject constructor(
 
     fun markAuthenticated() {
         _authState.value = AuthSessionState.Authenticated
+        fcmTokenSyncManager.syncCurrentTokenIfNeeded()
     }
 
     fun clearSession() {
         tokenManager.clearTokens()
+        fcmTokenSyncManager.clearLastSynced()
         _authState.value = AuthSessionState.Unauthenticated
     }
 
     fun expireSession(message: String = DEFAULT_SESSION_EXPIRED_MESSAGE) {
         val shouldNotify = _authState.value != AuthSessionState.Unauthenticated || tokenManager.hasTokens()
         tokenManager.clearTokens()
+        fcmTokenSyncManager.clearLastSynced()
         _authState.value = AuthSessionState.Unauthenticated
         if (shouldNotify) {
             notifyReloginRequired(message)

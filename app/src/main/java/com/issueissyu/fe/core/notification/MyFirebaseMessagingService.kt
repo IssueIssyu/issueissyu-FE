@@ -1,27 +1,19 @@
 package com.issueissyu.fe.core.notification
 
-import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
-import com.issueissyu.fe.domain.repository.AlarmRepository
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
     @Inject
-    lateinit var alarmRepository: AlarmRepository
+    lateinit var fcmTokenSyncManager: FcmTokenSyncManager
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("FCM", "NEW 토큰: $token")
-        CoroutineScope(Dispatchers.IO).launch {
-            alarmRepository.storePushToken(token)
-        }
+        fcmTokenSyncManager.syncToken(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
