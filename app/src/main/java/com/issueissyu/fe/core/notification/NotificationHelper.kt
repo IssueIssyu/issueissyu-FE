@@ -24,10 +24,10 @@ object NotificationHelper {
         val manager = context.getSystemService(NotificationManager::class.java)
 
         listOf(
-            NotificationChannel(CHANNEL_LIKE, "내 핀 좋아요", NotificationManager.IMPORTANCE_DEFAULT),
-            NotificationChannel(CHANNEL_EVENT, "이벤트", NotificationManager.IMPORTANCE_DEFAULT),
-            NotificationChannel(CHANNEL_POPULAR, "인기 게시글", NotificationManager.IMPORTANCE_DEFAULT),
-            NotificationChannel(CHANNEL_STORE_AD, "가게 홍보", NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(CHANNEL_LIKE, "내 핀 좋아요", NotificationManager.IMPORTANCE_HIGH),
+            NotificationChannel(CHANNEL_EVENT, "이벤트", NotificationManager.IMPORTANCE_HIGH),
+            NotificationChannel(CHANNEL_POPULAR, "인기 게시글", NotificationManager.IMPORTANCE_HIGH),
+            NotificationChannel(CHANNEL_STORE_AD, "가게 홍보", NotificationManager.IMPORTANCE_HIGH),
             ).forEach { manager.createNotificationChannel(it) }
     }
 
