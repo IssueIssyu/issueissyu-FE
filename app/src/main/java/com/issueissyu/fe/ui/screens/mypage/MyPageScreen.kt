@@ -94,7 +94,7 @@ fun MyPageScreen(
 
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh) {
-            viewModel.loadCollections()
+            viewModel.loadCollections(force = true)
             savedStateHandle?.set(MYPAGE_REFRESH_KEY, false)
         }
     }

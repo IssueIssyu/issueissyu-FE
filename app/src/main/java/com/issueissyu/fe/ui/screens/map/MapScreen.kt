@@ -442,12 +442,9 @@ fun MapScreen(
                     },
                     iconResId = R.drawable.ic_megaphone,
                     onClick = { clickedNotice ->
-                        val communityId = clickedNotice.pinId?.toLongOrNull()
-                        if (communityId != null) {
-                            navController.navigate(
-                                AppDestinations.communityDetailRoute(communityId)
-                            )
-                        }
+                        clickedNotice.pinId
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { pinId -> navController.navigateToPinDetail(pinId) }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
