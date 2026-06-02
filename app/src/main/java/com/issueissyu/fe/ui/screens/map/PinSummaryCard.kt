@@ -38,6 +38,7 @@ import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.ui.components.CompactSympathyButton
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.*
 
 @Composable
@@ -90,6 +91,7 @@ fun PinSummaryCard(
 
                     // 2. 장소 + 해결 상태
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -100,11 +102,11 @@ fun PinSummaryCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = pin.locationName ?: pin.address,
+                            text = (pin.locationName ?: pin.address).toSummaryAddress(),
                             style = IssueTypo.Regular12.copy(color = Gray_7),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 190.dp)
+                            modifier = Modifier.weight(1f)
                         )
 
                         val issueDetail = pin.detail as? IssuePinDetail
@@ -124,11 +126,10 @@ fun PinSummaryCard(
                     ) {
                         when (val detail = pin.detail) {
                             is IssuePinDetail -> {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .background(Gray_3)
+                                ProfileImageFrame(
+                                    size = 24.dp,
+                                    imageUrl = detail.writer.imageUrl,
+                                    borderWidth = 1.dp,
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
@@ -166,11 +167,10 @@ fun PinSummaryCard(
                                 )
                             }
                             is CommunicationPinDetail -> {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .background(Gray_3)
+                                ProfileImageFrame(
+                                    size = 24.dp,
+                                    imageUrl = detail.writer.imageUrl,
+                                    borderWidth = 1.dp,
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
@@ -494,6 +494,11 @@ private fun ResolutionStatus.toDisplayText(): String {
         ResolutionStatus.IN_PROGRESS -> "해결 중"
         ResolutionStatus.RESOLVED -> "해결 완료"
     }
+}
+
+private fun String.toSummaryAddress(): String {
+    val addressParts = trim().split(Regex("\\s+"))
+    return addressParts.drop(2).joinToString(" ").ifBlank { trim() }
 }
 
 @Composable
