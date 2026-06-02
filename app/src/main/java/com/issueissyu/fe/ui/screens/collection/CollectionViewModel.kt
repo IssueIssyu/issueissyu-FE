@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.MapNotice
 import com.issueissyu.fe.domain.model.collection.CollectionCharacter
 import com.issueissyu.fe.domain.model.collection.CollectionPageSummary
+import com.issueissyu.fe.domain.model.mypage.ProfileCollectionUpdate
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -80,15 +81,9 @@ class CollectionViewModel @Inject constructor(
 
     private var loadJob: Job? = null
     private var resetSelectionOnNextSnapshot = false
-    private var alignSelectionToProfileOnNextSnapshot = false
     private var unlockOverlayDismissed = false
 
     init {
-        viewModelScope.launch {
-            userCollectionsStore.snapshot.collect { summary ->
-                summary?.let { syncFromSnapshot(it) }
-            }
-        }
         loadCollectionPage()
         loadNotices()
     }
@@ -108,27 +103,25 @@ class CollectionViewModel @Inject constructor(
     fun loadCollectionPage() {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            val hasCachedData = userCollectionsStore.snapshot.value != null
             resetSelectionOnNextSnapshot = true
             unlockOverlayDismissed = false
             _uiState.update {
                 it.copy(
-                    isLoading = !hasCachedData,
+                    isLoading = true,
                     errorMessage = null,
+                    newlyUnlocked = emptyList(),
                 )
             }
 
             userCollectionsStore.refreshForCollectionTab()
+                .onSuccess { summary -> syncFromSnapshot(summary) }
                 .onFailure { error ->
                     val message = error.message ?: LOAD_COLLECTION_PAGE_ERROR_MESSAGE
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = if (hasCachedData) null else message,
+                            errorMessage = message,
                         )
-                    }
-                    if (hasCachedData) {
-                        emitSnackbar(message)
                     }
                 }
         }
@@ -183,11 +176,6 @@ class CollectionViewModel @Inject constructor(
                 return profilePin
             }
 
-            alignSelectionToProfileOnNextSnapshot -> {
-                alignSelectionToProfileOnNextSnapshot = false
-                return profilePin
-            }
-
             else -> {
                 val selectedId = current.selectedPin?.collectionId
                 return pins.find { it.collectionId == selectedId } ?: profilePin
@@ -222,7 +210,8 @@ class CollectionViewModel @Inject constructor(
                     collectionId = pin.collectionId,
                     isBookmarked = targetBookmarked,
                 )
-                    .onSuccess {
+                    .onSuccess { update ->
+                        applyBookmarkUpdate(update.collectionId, update.isBookmarked)
                         emitToast("북마크가 변경되었습니다")
                     }
                     .onFailure { error ->
@@ -249,8 +238,8 @@ class CollectionViewModel @Inject constructor(
             _uiState.update { it.copy(isUpdatingProfile = true) }
 
             userCollectionsStore.setProfile(selected.collectionId)
-                .onSuccess {
-                    alignSelectionToProfileOnNextSnapshot = true
+                .onSuccess { update ->
+                    applyProfileUpdate(update)
                     _uiState.update {
                         it.copy(
                             isUpdatingProfile = false,
@@ -272,6 +261,40 @@ class CollectionViewModel @Inject constructor(
                 .onSuccess { notices ->
                     _uiState.update { it.copy(notices = notices) }
                 }
+        }
+    }
+
+    private fun applyBookmarkUpdate(collectionId: Long, isBookmarked: Boolean) {
+        _uiState.update { state ->
+            state.copy(
+                pins = state.pins.map { pin ->
+                    if (pin.collectionId == collectionId) {
+                        pin.copy(isBookmarked = isBookmarked)
+                    } else {
+                        pin
+                    }
+                },
+            )
+        }
+    }
+
+    private fun applyProfileUpdate(update: ProfileCollectionUpdate) {
+        _uiState.update { state ->
+            val pins = state.pins.map { pin ->
+                if (pin.collectionId == update.profileCollectionId) {
+                    pin.copy(imageUrl = update.profileImageUrl.ifBlank { pin.imageUrl })
+                } else {
+                    pin
+                }
+            }
+            val profilePin = pins.find { it.collectionId == update.profileCollectionId }
+                ?: state.selectedPin
+                ?: state.currentProfilePin
+            state.copy(
+                pins = pins,
+                currentProfilePin = profilePin,
+                selectedPin = profilePin,
+            )
         }
     }
 
