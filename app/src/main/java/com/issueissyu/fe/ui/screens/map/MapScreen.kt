@@ -231,6 +231,11 @@ fun MapScreen(
                 this.map = naverMap
                 setOnClickListener {
                     viewModel.selectPinById(mapPin.pinId)
+                    naverMap.moveCamera(
+                        CameraUpdate
+                            .scrollTo(mapPin.coordinate.toLatLng())
+                            .animate(CameraAnimation.Easing)
+                    )
                     true
                 }
             }
@@ -529,14 +534,6 @@ fun MapScreen(
                     )
                 }
             }
-        }
-
-        if (selectedPin != null && !isLocationSelectionMode) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clickable { viewModel.clearSelectedPin() }
-            )
         }
 
         selectedPin?.takeUnless { isLocationSelectionMode }?.let { pin ->
