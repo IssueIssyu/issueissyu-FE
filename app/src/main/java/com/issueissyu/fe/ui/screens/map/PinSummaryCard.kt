@@ -61,6 +61,12 @@ fun PinSummaryCard(
     }
 
     val canEdit = pin.canEditBy(currentUserId)
+    val hasCategoryInfo = when (val detail = pin.detail) {
+        is ShopPinDetail -> !detail.currentNews.isNullOrBlank()
+        is FestivalPinDetail -> detail.startDate != null || detail.endDate != null
+        is IssuePinDetail,
+        is CommunicationPinDetail -> false
+    }
 
     Box(
         modifier = modifier
@@ -237,12 +243,12 @@ fun PinSummaryCard(
             // 3) CategoryInfoRow 또는 CategoryInfoBox
             when (val detail = pin.detail) {
                 is ShopPinDetail -> {
-                    detail.currentNews?.let { news ->
+                    detail.currentNews?.takeIf { it.isNotBlank() }?.let { news ->
                         CategoryInfoBox(
                             text = "최신 소식: $news",
                             modifier = Modifier.padding(horizontal = 0.dp)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                     }
                 }
                 is FestivalPinDetail -> {
@@ -254,7 +260,7 @@ fun PinSummaryCard(
                             text = "기간: ${startDateText ?: "시작일 미정"} ~ ${endDateText ?: "종료일 미정"}",
                             modifier = Modifier.padding(horizontal = 0.dp)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                     }
                 }
 
@@ -269,7 +275,7 @@ fun PinSummaryCard(
                 Text(
                     text = pin.description,
                     style = IssueTypo.Regular15.copy(color = Text),
-                    maxLines = 2,
+                    maxLines = if (hasCategoryInfo) 1 else 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
@@ -280,8 +286,7 @@ fun PinSummaryCard(
                 )
             }
 
-            // 기존 카테고리별 추가 박스 제거되었으므로 Spacer 유지
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
             // 6) BottomActionRow: 이모지/반응 영역 + 커뮤니티 버튼
             Row(
