@@ -22,6 +22,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.issueissyu.fe.core.auth.AuthSessionState
 import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
 import com.issueissyu.fe.ui.screens.map.MapScreen
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
@@ -69,6 +70,29 @@ fun AppNavGraph(
                 navController.navigateToLoginClearingBackStack()
             }
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    LaunchedEffect(sessionViewModel, navController) {
+        // SessionManager는 토큰이 있으면 기동 시 Authenticated. 스플래시→메인은 markAuthenticated()를
+        // 호출하지 않아도 되지만, collect 전 만료 등에 대비해 현재 상태로 시드한다.
+        var wasAuthenticated =
+            sessionViewModel.authState.value == AuthSessionState.Authenticated
+        sessionViewModel.authState.collect { state ->
+            when (state) {
+                AuthSessionState.Authenticated -> wasAuthenticated = true
+                AuthSessionState.Unauthenticated -> {
+                    if (!wasAuthenticated) return@collect
+                    val route = navController.currentDestination?.route ?: return@collect
+                    if (
+                        route == AppDestinations.Onboarding.SPLASH_ROUTE ||
+                        route == LOGIN_ROUTE
+                    ) {
+                        return@collect
+                    }
+                    navController.navigateToLoginClearingBackStack()
+                }
+            }
         }
     }
 

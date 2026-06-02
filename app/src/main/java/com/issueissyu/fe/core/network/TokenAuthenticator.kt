@@ -2,7 +2,7 @@ package com.issueissyu.fe.core.network
 
 import com.issueissyu.fe.core.auth.SessionManager
 import com.issueissyu.fe.data.local.TokenManager
-import com.issueissyu.fe.data.remote.api.AuthApi
+import com.issueissyu.fe.data.remote.api.PlainAuthApi
 import com.issueissyu.fe.data.remote.dto.request.auth.RefreshTokenRequest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -20,7 +20,7 @@ import javax.inject.Singleton
 class TokenAuthenticator @Inject constructor(
     private val tokenManager: TokenManager,
     private val sessionManager: SessionManager,
-    @Named("auth_plain") private val plainAuthApi: AuthApi,
+    @Named("auth_plain") private val plainAuthApi: PlainAuthApi,
 ) : Authenticator {
 
     private val mutex = Mutex()
@@ -39,7 +39,7 @@ class TokenAuthenticator @Inject constructor(
         return runBlocking {
             mutex.withLock {
                 val currentToken = tokenManager.getAccessToken()
-                val failedToken = response.request.header("Authorization")?.removePrefix("Bearer ")
+                val failedToken = response.request.accessTokenOrNull()
 
                 if (currentToken != null && currentToken != failedToken) {
                     return@withLock response.request.newBuilder()
@@ -73,7 +73,17 @@ class TokenAuthenticator @Inject constructor(
 
     private suspend fun runRefreshAccessToken(refreshToken: String): RefreshOutcome {
         return try {
-            val apiResponse = plainAuthApi.refreshToken(RefreshTokenRequest(refreshToken))
+            val rawResponse = plainAuthApi.refreshToken(RefreshTokenRequest(refreshToken))
+
+            if (!rawResponse.isSuccessful) {
+                return if (rawResponse.code() == 401) {
+                    RefreshOutcome.InvalidToken
+                } else {
+                    RefreshOutcome.Failed
+                }
+            }
+
+            val apiResponse = rawResponse.body() ?: return RefreshOutcome.Failed
             when (apiResponse.code) {
                 "REFRESH_200" -> {
                     val result = apiResponse.result ?: return RefreshOutcome.Failed

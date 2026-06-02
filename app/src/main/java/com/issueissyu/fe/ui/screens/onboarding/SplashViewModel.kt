@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.core.auth.SessionManager
 import com.issueissyu.fe.data.local.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
@@ -21,6 +22,7 @@ sealed interface SplashDestination {
 @HiltViewModel
 class SplashViewModel @Inject constructor(
     private val tokenManager: TokenManager,
+    private val sessionManager: SessionManager,
 ) : ViewModel() {
 
     private val _destination = MutableStateFlow<SplashDestination>(SplashDestination.Loading)
@@ -33,8 +35,14 @@ class SplashViewModel @Inject constructor(
                 !tokenManager.hasTokens() -> SplashDestination.Login(
                     showStorageWarning = !tokenManager.isStorageAvailable,
                 )
-                tokenManager.getIsNewUser() -> SplashDestination.Onboarding
-                else -> SplashDestination.Main
+                tokenManager.getIsNewUser() -> {
+                    sessionManager.markAuthenticated()
+                    SplashDestination.Onboarding
+                }
+                else -> {
+                    sessionManager.markAuthenticated()
+                    SplashDestination.Main
+                }
             }
         }
     }
