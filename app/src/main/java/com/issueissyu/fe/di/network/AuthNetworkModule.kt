@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.core.constants.NetworkConstants
 import com.issueissyu.fe.data.remote.api.AuthApi
+import com.issueissyu.fe.data.remote.api.PlainAuthApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -49,8 +50,8 @@ object AuthNetworkModule {
     @Provides
     @Singleton
     @Named("auth_plain")
-    fun providePlainAuthApi(@Named("auth_plain") retrofit: Retrofit): AuthApi {
-        return retrofit.create(AuthApi::class.java)
+    fun providePlainAuthApi(@Named("auth_plain") retrofit: Retrofit): PlainAuthApi {
+        return retrofit.create(PlainAuthApi::class.java)
     }
 
     @Provides
