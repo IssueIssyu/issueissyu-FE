@@ -22,7 +22,7 @@ class CollectionRepositoryImpl @Inject constructor(
     private val apiErrorMapper: ApiErrorMapper,
 ) : CollectionRepository {
 
-    private fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
         Result.failure(apiErrorMapper.toException(e, fallback))
 
     override suspend fun getCollections(checkUnlock: Boolean): Result<CollectionPageSummary> {

@@ -3,7 +3,6 @@ package com.issueissyu.fe.data.repository
 import android.content.Context
 import android.location.Geocoder
 import android.os.Build
-import com.google.gson.Gson
 import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.data.remote.api.LocationApi
 import com.issueissyu.fe.data.remote.dto.response.location.LocationRegionGroupResponse
@@ -32,7 +31,6 @@ import kotlin.coroutines.resume
 @Singleton
 class LocationRepositoryImpl @Inject constructor(
     private val locationApi: LocationApi,
-    private val gson: Gson,
     private val apiErrorMapper: ApiErrorMapper,
     @ApplicationContext private val context: Context,
 ) : LocationRepository {
@@ -93,7 +91,7 @@ class LocationRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: HttpException) {
-            val errorEnvelope = parseLocationErrorEnvelope(e)
+            val errorEnvelope = apiErrorMapper.parseHttpErrorEnvelope(e, LocationErrorEnvelope::class.java)
             Result.failure(
                 locationCertifyException(
                     code = errorEnvelope?.code,
@@ -206,7 +204,7 @@ class LocationRepositoryImpl @Inject constructor(
                 )
             }
         } catch (e: HttpException) {
-            val errorEnvelope = parseLocationErrorEnvelope(e)
+            val errorEnvelope = apiErrorMapper.parseHttpErrorEnvelope(e, LocationErrorEnvelope::class.java)
             Result.failure(
                 pinCreationAvailabilityException(
                     code = errorEnvelope?.code,
@@ -244,17 +242,6 @@ class LocationRepositoryImpl @Inject constructor(
         }
         return Exception(message?.takeIf { it.isNotBlank() } ?: fallbackMessage)
     }
-
-    private suspend fun parseLocationErrorEnvelope(exception: HttpException): LocationErrorEnvelope? =
-        withContext(Dispatchers.IO) {
-            exception.response()
-                ?.errorBody()
-                ?.string()
-                ?.takeIf { it.isNotBlank() }
-                ?.let { body ->
-                    runCatching { gson.fromJson(body, LocationErrorEnvelope::class.java) }.getOrNull()
-                }
-        }
 
     private data class LocationErrorEnvelope(
         val code: String = "",

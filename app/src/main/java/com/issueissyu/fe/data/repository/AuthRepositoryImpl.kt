@@ -56,7 +56,7 @@ class AuthRepositoryImpl @Inject constructor(
         return rawMessage?.takeIf { it.isNotBlank() } ?: fallback
     }
 
-    private fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
         Result.failure(apiErrorMapper.toException(e, fallback))
 
     private fun persistAuthTokens(

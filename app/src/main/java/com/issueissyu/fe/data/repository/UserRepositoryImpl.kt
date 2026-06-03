@@ -20,7 +20,7 @@ class UserRepositoryImpl @Inject constructor(
     private val apiErrorMapper: ApiErrorMapper,
 ) : UserRepository {
 
-    private fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
         Result.failure(apiErrorMapper.toException(e, fallback))
     //TODO: API 연동 시 교체 / 더미 데이터
     private val _user = MutableStateFlow(User(nickname = "뱌삐우소로소1세"))

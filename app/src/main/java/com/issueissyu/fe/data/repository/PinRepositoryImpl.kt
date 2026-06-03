@@ -91,7 +91,7 @@ class PinRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : PinRepository {
 
-    private fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
         Result.failure(apiErrorMapper.toException(e, fallback))
 
     // TODO: 실제 백엔드와 연결 시 PinSamples 의존을 제거하고 네트워크 호출 로직으로 대체.
@@ -174,9 +174,8 @@ class PinRepositoryImpl @Inject constructor(
                 )
             }
         } catch (e: HttpException) {
-            val rawBody = e.response()?.errorBody()?.string().orEmpty()
-            val errorEnvelope = rawBody.takeIf { it.isNotBlank() }
-                ?.let { body -> runCatching { gson.fromJson(body, PinCreateErrorEnvelope::class.java) }.getOrNull() }
+            val rawBody = apiErrorMapper.readHttpErrorBody(e)
+            val errorEnvelope = apiErrorMapper.parseErrorBody(rawBody, PinCreateErrorEnvelope::class.java)
             if (request.imageUris.isNotEmpty()) {
                 PinImageUploadDiagnostics.logUploadFailure(
                     httpStatus = e.code(),

@@ -1,6 +1,8 @@
 package com.issueissyu.fe.core.network
 
 import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.IOException
 import javax.inject.Inject
@@ -15,7 +17,7 @@ class ApiErrorMapper @Inject constructor(
         val message: String = "",
     )
 
-    fun toUserMessage(throwable: Throwable, fallback: String): String {
+    suspend fun toUserMessage(throwable: Throwable, fallback: String): String {
         return when (throwable) {
             is HttpException -> messageFromHttp(throwable, fallback)
             is IOException -> NETWORK_ERROR_MESSAGE
@@ -23,7 +25,7 @@ class ApiErrorMapper @Inject constructor(
         }
     }
 
-    fun toException(throwable: Throwable, fallback: String): Exception {
+    suspend fun toException(throwable: Throwable, fallback: String): Exception {
         val message = toUserMessage(throwable, fallback)
         return if (throwable is Exception) {
             Exception(message, throwable)
@@ -32,14 +34,22 @@ class ApiErrorMapper @Inject constructor(
         }
     }
 
-    private fun messageFromHttp(exception: HttpException, fallback: String): String {
-        val envelope = exception.response()
-            ?.errorBody()
-            ?.string()
-            ?.takeIf { it.isNotBlank() }
-            ?.let { body ->
-                runCatching { gson.fromJson(body, ErrorEnvelope::class.java) }.getOrNull()
+    suspend fun readHttpErrorBody(exception: HttpException): String =
+        withContext(Dispatchers.IO) {
+            exception.response()?.errorBody()?.string().orEmpty()
+        }
+
+    suspend fun <T> parseHttpErrorEnvelope(exception: HttpException, type: Class<T>): T? =
+        parseErrorBody(readHttpErrorBody(exception), type)
+
+    fun <T> parseErrorBody(body: String, type: Class<T>): T? =
+        body.takeIf { it.isNotBlank() }
+            ?.let { raw ->
+                runCatching { gson.fromJson(raw, type) }.getOrNull()
             }
+
+    private suspend fun messageFromHttp(exception: HttpException, fallback: String): String {
+        val envelope = parseHttpErrorEnvelope(exception, ErrorEnvelope::class.java)
         return envelope?.message?.takeIf { isUserFacingMessage(it) } ?: fallback
     }
 
