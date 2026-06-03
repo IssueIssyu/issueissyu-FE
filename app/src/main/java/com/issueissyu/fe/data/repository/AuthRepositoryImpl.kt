@@ -333,7 +333,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun refreshToken(): Result<Unit> {
         return try {
             val currentRefreshToken = tokenManager.getRefreshToken()
-                ?: return Result.failure(Exception("Refresh token not found"))
+                ?: return Result.failure(Exception("로그인 정보를 확인한 뒤 다시 시도해주세요."))
 
             val request = RefreshTokenRequest(currentRefreshToken)
             val response = authApi.refreshToken(request)

@@ -1,5 +1,6 @@
 package com.issueissyu.fe.core.network
 
+import android.util.Log
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -21,7 +22,10 @@ class ApiErrorMapper @Inject constructor(
         return when (throwable) {
             is HttpException -> messageFromHttp(throwable, fallback)
             is IOException -> NETWORK_ERROR_MESSAGE
-            else -> throwable.message?.takeIf { isUserFacingMessage(it) } ?: fallback
+            else -> {
+                logUnexpectedError(throwable, fallback)
+                fallback
+            }
         }
     }
 
@@ -59,7 +63,12 @@ class ApiErrorMapper @Inject constructor(
         return true
     }
 
+    private fun logUnexpectedError(throwable: Throwable, fallback: String) {
+        Log.w(TAG, "Unexpected error: $fallback", throwable)
+    }
+
     companion object {
+        private const val TAG = "ApiErrorMapper"
         const val NETWORK_ERROR_MESSAGE = "네트워크 연결을 확인한 뒤 다시 시도해주세요."
     }
 }
