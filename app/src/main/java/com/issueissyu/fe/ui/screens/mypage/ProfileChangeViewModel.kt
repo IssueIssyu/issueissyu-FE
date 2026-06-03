@@ -50,8 +50,8 @@ class ProfileChangeViewModel @Inject constructor(
     private val _isUpdating = MutableStateFlow(false)
     val isUpdating = _isUpdating.asStateFlow()
 
-    private val _showToast = MutableSharedFlow<String>()
-    val showToast = _showToast.asSharedFlow()
+    private val _showSnackbar = MutableSharedFlow<String>()
+    val showSnackbar = _showSnackbar.asSharedFlow()
 
     private var shouldRefreshFromCollection = false
     private var myPageRefreshPending = false
@@ -100,7 +100,7 @@ class ProfileChangeViewModel @Inject constructor(
             userCollectionsStore.refreshForMyPage(force = true)
                 .onSuccess { applyProfileFromSummary(it, trackImageChange = true) }
                 .onFailure { error ->
-                    _showToast.emit(error.message ?: LOAD_PROFILE_ERROR_MESSAGE)
+                    _showSnackbar.emit(error.message ?: LOAD_PROFILE_ERROR_MESSAGE)
                 }
         }
     }
@@ -154,7 +154,7 @@ class ProfileChangeViewModel @Inject constructor(
             } catch (e: Exception) {
                 if (_inputNickname.value == requestedNickname) {
                     _isNicknameAvailable.value = null
-                    _showToast.emit(
+                    _showSnackbar.emit(
                         e.message ?: "닉네임 중복 확인에 실패했습니다",
                     )
                 }
@@ -177,7 +177,7 @@ class ProfileChangeViewModel @Inject constructor(
                 myPageRefreshPending = true
                 onSuccess()
             } catch (e: Exception) {
-                _showToast.emit(e.message ?: "프로필 변경에 실패했습니다")
+                _showSnackbar.emit(e.message ?: "프로필 변경에 실패했습니다")
             } finally {
                 _isUpdating.value = false
                 updateCompleteButtonState()

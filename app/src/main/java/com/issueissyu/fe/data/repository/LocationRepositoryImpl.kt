@@ -169,7 +169,7 @@ class LocationRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            Result.failure(apiErrorMapper.toException(e, "주소 조회에 실패했습니다."))
         }
     }
 

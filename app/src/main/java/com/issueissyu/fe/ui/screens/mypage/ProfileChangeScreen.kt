@@ -1,6 +1,5 @@
 package com.issueissyu.fe.ui.screens.mypage
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,17 +18,19 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -65,7 +66,7 @@ fun ProfileChangeScreen(
     val isLoadingProfile by viewModel.isLoadingProfile.collectAsStateWithLifecycle()
     val profileLoadErrorMessage by viewModel.profileLoadErrorMessage.collectAsStateWithLifecycle()
     val profileImageUrl by viewModel.profileImageUrl.collectAsStateWithLifecycle()
-    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -79,14 +80,18 @@ fun ProfileChangeScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.showToast.collect { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.showSnackbar.collect { message ->
+            snackbarHostState.showSnackbar(message)
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
-            .background(White)
+            .fillMaxSize()
+            .background(White),
+    ) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
     ) {
         IssueissyuTopAppBar(
             titleText = "프로필 편집",
@@ -143,6 +148,14 @@ fun ProfileChangeScreen(
                 )
             }
         }
+    }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+        )
     }
 }
 
