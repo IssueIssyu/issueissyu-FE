@@ -93,13 +93,7 @@ class LocationRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: HttpException) {
-            val errorEnvelope = e.response()
-                ?.errorBody()
-                ?.string()
-                ?.takeIf { it.isNotBlank() }
-                ?.let { body ->
-                    runCatching { gson.fromJson(body, LocationErrorEnvelope::class.java) }.getOrNull()
-                }
+            val errorEnvelope = parseLocationErrorEnvelope(e)
             Result.failure(
                 locationCertifyException(
                     code = errorEnvelope?.code,
@@ -212,13 +206,7 @@ class LocationRepositoryImpl @Inject constructor(
                 )
             }
         } catch (e: HttpException) {
-            val errorEnvelope = e.response()
-                ?.errorBody()
-                ?.string()
-                ?.takeIf { it.isNotBlank() }
-                ?.let { body ->
-                    runCatching { gson.fromJson(body, LocationErrorEnvelope::class.java) }.getOrNull()
-                }
+            val errorEnvelope = parseLocationErrorEnvelope(e)
             Result.failure(
                 pinCreationAvailabilityException(
                     code = errorEnvelope?.code,
@@ -256,6 +244,17 @@ class LocationRepositoryImpl @Inject constructor(
         }
         return Exception(message?.takeIf { it.isNotBlank() } ?: fallbackMessage)
     }
+
+    private suspend fun parseLocationErrorEnvelope(exception: HttpException): LocationErrorEnvelope? =
+        withContext(Dispatchers.IO) {
+            exception.response()
+                ?.errorBody()
+                ?.string()
+                ?.takeIf { it.isNotBlank() }
+                ?.let { body ->
+                    runCatching { gson.fromJson(body, LocationErrorEnvelope::class.java) }.getOrNull()
+                }
+        }
 
     private data class LocationErrorEnvelope(
         val code: String = "",
