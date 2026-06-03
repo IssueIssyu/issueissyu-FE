@@ -3,8 +3,13 @@ package com.issueissyu.fe.ui.screens.onboarding
 import android.content.Context
 import android.content.ContextWrapper
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,6 +41,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.R
+import com.issueissyu.fe.core.auth.SessionManager
 import com.navercorp.nid.NaverIdLoginSDK
 import com.navercorp.nid.oauth.OAuthLoginCallback
 import com.issueissyu.fe.ui.components.CommonButton
@@ -51,6 +57,7 @@ import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 @Composable
 fun LoginScreen(
+    showStorageWarning: Boolean = false,
     viewModel: LoginViewModel = hiltViewModel(),
     onLoginSuccess: (isNew: Boolean) -> Unit,
     onNavigateToSignUp: () -> Unit,
@@ -58,6 +65,13 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val onLoginSuccessUpdated by rememberUpdatedState(onLoginSuccess)
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(showStorageWarning) {
+        if (showStorageWarning) {
+            snackbarHostState.showSnackbar(SessionManager.STORAGE_UNAVAILABLE_MESSAGE)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
@@ -68,6 +82,7 @@ fun LoginScreen(
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     LoginContent(
         userId = uiState.userId,
         userPw = uiState.userPw,
@@ -119,6 +134,14 @@ fun LoginScreen(
         },
         onSignUpClick = onNavigateToSignUp
     )
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+        )
+    }
 }
 
 

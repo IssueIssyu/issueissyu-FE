@@ -3,7 +3,6 @@ package com.issueissyu.fe.ui.screens.onboarding
 
 import android.Manifest
 import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -48,6 +47,7 @@ fun TermScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
@@ -83,11 +83,12 @@ fun TermScreen(
 
     LaunchedEffect(uiState.submitError) {
         uiState.submitError?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            snackbarHostState.showSnackbar(message)
             viewModel.consumeSubmitError()
         }
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         topBar = {
             IssueissyuTopAppBar()
@@ -235,6 +236,14 @@ fun TermScreen(
                 )
             }
         }
+    }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+        )
     }
 }
 
