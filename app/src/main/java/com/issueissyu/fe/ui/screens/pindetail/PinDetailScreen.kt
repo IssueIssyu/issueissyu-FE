@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.pindetail
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
@@ -27,15 +28,12 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,8 +64,6 @@ import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-import kotlinx.coroutines.launch
-
 internal const val PIN_DETAIL_REFRESH_KEY = "pin_detail_refresh"
 
 @Composable
@@ -84,8 +80,6 @@ fun PinDetailScreen(
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId.orEmpty()
     val context = LocalContext.current
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
     var pendingResolutionProofUri by remember { mutableStateOf<String?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -93,9 +87,7 @@ fun PinDetailScreen(
     ) { bitmap ->
         val proofUri = bitmap?.let { CapturedImageSaver.saveJpegToCache(context, it, "resolution-proof") }
         if (proofUri == null) {
-            scope.launch {
-                snackbarHostState.showSnackbar("사진 촬영이 취소되었습니다.")
-            }
+            Toast.makeText(context, "사진 촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
         } else {
             pendingResolutionProofUri = proofUri
         }
@@ -107,9 +99,7 @@ fun PinDetailScreen(
         if (granted) {
             cameraLauncher.launch(null)
         } else {
-            scope.launch {
-                snackbarHostState.showSnackbar("카메라 권한이 필요합니다.")
-            }
+            Toast.makeText(context, "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -145,18 +135,17 @@ fun PinDetailScreen(
     LaunchedEffect(Unit) {
         viewModel.effect.collect { effect ->
             when (effect) {
-                is PinDetailEffect.ShowSnackbar -> snackbarHostState.showSnackbar(effect.message)
+                is PinDetailEffect.ShowToast -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxSize()
             .background(White),
-    ) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
     ) {
         IssueissyuTopAppBar(
             onBackClick = onBackClick,
@@ -248,14 +237,6 @@ fun PinDetailScreen(
                 )
             }
         }
-    }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-        )
     }
 }
 

@@ -16,8 +16,8 @@ class PinReportViewModel @Inject constructor(
     private val declareCommunityUseCase: DeclareCommunityUseCase,
 ) : ViewModel() {
 
-    private val _snackbarMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
-    val snackbarMessage = _snackbarMessage.asSharedFlow()
+    private val _toastMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val toastMessage = _toastMessage.asSharedFlow()
 
     fun report(targetId: String, targetType: ReportTargetType, reasonIndex: Int, onSuccess: () -> Unit) {
         viewModelScope.launch {
@@ -29,7 +29,7 @@ class PinReportViewModel @Inject constructor(
 
             result
                 .onSuccess { onSuccess() }
-                .onFailure { e -> _snackbarMessage.emit(e.message.orEmpty()) }
+                .onFailure { e -> _toastMessage.emit(e.message.orEmpty()) }
         }
     }
 }
