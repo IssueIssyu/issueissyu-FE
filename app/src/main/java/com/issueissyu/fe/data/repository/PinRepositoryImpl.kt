@@ -14,7 +14,6 @@ import com.issueissyu.fe.data.remote.dto.pin.toPinComment
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojiCandidate
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojis
 import com.issueissyu.fe.data.remote.dto.pin.toPostSympathyContentOrNull
-import com.issueissyu.fe.data.remote.dto.pin.toPinLike
 import com.issueissyu.fe.data.remote.dto.pin.toProblemSolverInfo
 import com.issueissyu.fe.data.remote.dto.pin.toProblemSolverJoinInfo
 import com.issueissyu.fe.data.remote.dto.pin.toProblemSolverPhotoInfo
@@ -30,8 +29,6 @@ import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.GoNowResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionStatusResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionSubmitResponse
-import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
-import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinImportResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
@@ -63,14 +60,11 @@ import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PetitionSubmit
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
-import com.issueissyu.fe.domain.model.pin.PinDetail
 import com.issueissyu.fe.domain.model.pin.PinSolveStatus
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import java.time.Instant
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import com.issueissyu.fe.core.constants.PinImageUploadConstraints
+import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.core.media.PinImageMimeResolver
 import com.issueissyu.fe.core.media.PinImageUploadDiagnostics
 import com.issueissyu.fe.core.media.PinImageUploadMeta
@@ -93,8 +87,12 @@ class PinRepositoryImpl @Inject constructor(
     private val pinApi: PinApi,
     private val aiIssueApiService: AiIssueApiService,
     private val gson: Gson,
+    private val apiErrorMapper: ApiErrorMapper,
     @ApplicationContext private val context: Context,
 ) : PinRepository {
+
+    private fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+        Result.failure(apiErrorMapper.toException(e, fallback))
 
     // TODO: 실제 백엔드와 연결 시 PinSamples 의존을 제거하고 네트워크 호출 로직으로 대체.
     private val dummyPins: MutableList<Pin> = PinSamples.pins.toMutableList()
@@ -190,7 +188,7 @@ class PinRepositoryImpl @Inject constructor(
             Result.failure(
                 toPinCreateException(
                     code = errorEnvelope?.code,
-                    message = errorEnvelope?.message ?: e.message(),
+                    message = errorEnvelope?.message,
                     fallbackMessage = "핀 생성에 실패했습니다.",
                 ),
             )
@@ -202,7 +200,7 @@ class PinRepositoryImpl @Inject constructor(
                     metas = uploadMetas,
                 )
             }
-            Result.failure(e)
+            failureFrom(e, "핀 생성에 실패했습니다.")
         }
     }
 
@@ -426,7 +424,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 상세 홈 조회에 실패했습니다.")
         }
     }
 
@@ -461,7 +459,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 상세 포스트 조회에 실패했습니다.")
         }
     }
 
@@ -508,7 +506,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 공감에 실패했습니다.")
         }
     }
 
@@ -545,7 +543,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 반응 목록 조회에 실패했습니다.")
         }
     }
 
@@ -564,7 +562,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "청원 현황 조회에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "청원 현황 조회에 실패했습니다.")
         }
     }
 
@@ -583,7 +581,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "이슈 해결 상태 조회에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "이슈 해결 상태 조회에 실패했습니다.")
         }
     }
 
@@ -602,7 +600,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "청원하기에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "청원하기에 실패했습니다.")
         }
     }
 
@@ -621,7 +619,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "지금가요 참여에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "지금가요 참여에 실패했습니다.")
         }
     }
 
@@ -634,7 +632,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "이모지 목록 조회에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "이모지 목록 조회에 실패했습니다.")
         }
     }
 
@@ -671,12 +669,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(Exception(resolveApplyPinEmojiErrorMessage(response.code, response.message)))
             }
         } catch (e: Exception) {
-            Result.failure(
-                Exception(
-                    e.message?.takeIf { it.isNotBlank() } ?: "이모지 반응 처리에 실패했습니다.",
-                    e,
-                ),
-            )
+            failureFrom(e, "이모지 반응 처리에 실패했습니다.")
         }
     }
 
@@ -779,7 +772,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 삭제에 실패했습니다.")
         }
     }
 
@@ -817,7 +810,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 신고에 실패했습니다.")
         }
     }
 
@@ -848,7 +841,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 댓글 목록 조회에 실패했습니다.")
         }
     }
 
@@ -898,7 +891,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 댓글 작성에 실패했습니다.")
         }
     }
 
@@ -941,7 +934,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 댓글 수정에 실패했습니다.")
         }
     }
 
@@ -975,7 +968,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 댓글 삭제에 실패했습니다.")
         }
     }
 
@@ -1016,7 +1009,7 @@ class PinRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "핀 상세 해결하기 조회에 실패했습니다.")
         }
     }
 
@@ -1036,7 +1029,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(problemSolverJoinException(response.code, response.message))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "시민해결사 참여에 실패했습니다.")
         }
     }
 
@@ -1055,7 +1048,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(problemSolverGetException(response.code, response.message))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "시민해결사 조회에 실패했습니다.")
         }
     }
 
@@ -1082,7 +1075,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(problemSolverPhotoException(response.code, response.message))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "사진 인증 등록에 실패했습니다.")
         }
     }
 
@@ -1101,7 +1094,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(problemSolverVerificationException(response.code, response.message))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "시민해결사 인증에 실패했습니다.")
         }
     }
 
@@ -1121,7 +1114,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(petitionStatusException(response.code, response.message))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "청원 현황 조회에 실패했습니다.")
         }
     }
 
@@ -1140,7 +1133,7 @@ class PinRepositoryImpl @Inject constructor(
                 Result.failure(petitionJoinException(response.code, response.message))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "청원에 실패했습니다.")
         }
     }
 }

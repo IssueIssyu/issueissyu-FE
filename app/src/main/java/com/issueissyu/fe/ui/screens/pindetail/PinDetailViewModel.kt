@@ -73,7 +73,7 @@ data class PinDetailEmojiPickerUiState(
 )
 
 sealed interface PinDetailEffect {
-    data class ShowToast(val message: String) : PinDetailEffect
+    data class ShowSnackbar(val message: String) : PinDetailEffect
 }
 
 @HiltViewModel
@@ -147,7 +147,14 @@ class PinDetailViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = e.message?.takeIf { msg ->
+                                msg.isNotBlank() && !msg.startsWith("HTTP ")
+                            } ?: "핀 정보를 불러오지 못했습니다.",
+                        )
+                    }
                 }
         }
     }
@@ -181,7 +188,7 @@ class PinDetailViewModel @Inject constructor(
             }
             .onFailure { e ->
                 _uiState.update { it.copy(isCommentsLoading = false) }
-                showToast(e.message ?: "댓글을 불러오지 못했습니다.")
+                showSnackbar(e.message ?: "댓글을 불러오지 못했습니다.")
             }
     }
 
@@ -271,20 +278,20 @@ class PinDetailViewModel @Inject constructor(
         pinRepository.getPinSolve(pinId)
             .onSuccess { solveInfo = it }
             .onFailure { e ->
-                showToast(e.message ?: "해결하기 정보를 불러오지 못했습니다.")
+                showSnackbar(e.message ?: "해결하기 정보를 불러오지 못했습니다.")
             }
 
         pinRepository.getPetition(pinId)
             .onSuccess { petitionStatusInfo = it }
             .onFailure { e ->
-                showToast(e.message ?: "청원 현황을 불러오지 못했습니다.")
+                showSnackbar(e.message ?: "청원 현황을 불러오지 못했습니다.")
             }
 
         if (!currentUserId.isNullOrBlank()) {
             pinRepository.getProblemSolver(pinId, currentUserId)
                 .onSuccess { problemSolverInfo = it }
                 .onFailure { e ->
-                    showToast(e.message ?: "시민해결사 목록을 불러오지 못했습니다.")
+                    showSnackbar(e.message ?: "시민해결사 목록을 불러오지 못했습니다.")
                 }
         }
 
@@ -326,7 +333,7 @@ class PinDetailViewModel @Inject constructor(
     fun submitComment(content: String) {
         val trimmed = content.trim()
         if (trimmed.isBlank()) {
-            showToast("댓글을 입력해 주세요.")
+            showSnackbar("댓글을 입력해 주세요.")
             return
         }
         if (_uiState.value.isCommentSubmitting) return
@@ -338,7 +345,7 @@ class PinDetailViewModel @Inject constructor(
         }
 
         val pinId = resolvePinId() ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
 
@@ -356,7 +363,7 @@ class PinDetailViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isCommentSubmitting = false) }
-                    showToast(e.message ?: "댓글 작성에 실패했습니다.")
+                    showSnackbar(e.message ?: "댓글 작성에 실패했습니다.")
                 }
         }
     }
@@ -377,7 +384,7 @@ class PinDetailViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isCommentSubmitting = false) }
-                    showToast(e.message ?: "댓글 수정에 실패했습니다.")
+                    showSnackbar(e.message ?: "댓글 수정에 실패했습니다.")
                 }
         }
     }
@@ -399,7 +406,7 @@ class PinDetailViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure { e -> showToast(e.message ?: "댓글 삭제에 실패했습니다.") }
+                .onFailure { e -> showSnackbar(e.message ?: "댓글 삭제에 실패했습니다.") }
         }
     }
 
@@ -420,7 +427,7 @@ class PinDetailViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure { e -> showToast(e.message ?: "공감에 실패했습니다.") }
+                .onFailure { e -> showSnackbar(e.message ?: "공감에 실패했습니다.") }
         }
     }
 
@@ -464,7 +471,7 @@ class PinDetailViewModel @Inject constructor(
         val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
             ?: return
         if (!candidate.canReact) {
-            showToast("구매가 필요한 이모지입니다.")
+            showSnackbar("구매가 필요한 이모지입니다.")
             return
         }
         _emojiPickerUiState.update { state ->
@@ -475,7 +482,7 @@ class PinDetailViewModel @Inject constructor(
 
     fun submitPickedEmoji() {
         val pinId = resolvePinId() ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         if (_emojiPickerUiState.value.isSubmitting) return
@@ -489,20 +496,20 @@ class PinDetailViewModel @Inject constructor(
                 .onSuccess {
                     refreshPostEmojis(pinId)
                         .onFailure { e ->
-                            showToast(e.message ?: "반응 목록을 갱신하지 못했습니다.")
+                            showSnackbar(e.message ?: "반응 목록을 갱신하지 못했습니다.")
                         }
                     closeEmojiPicker()
                 }
                 .onFailure { e ->
                     _emojiPickerUiState.update { it.copy(isSubmitting = false) }
-                    showToast(e.message ?: "이모지 반응 처리에 실패했습니다.")
+                    showSnackbar(e.message ?: "이모지 반응 처리에 실패했습니다.")
                 }
         }
     }
 
     fun toggleEmojiFromList(emojiId: Long) {
         val pinId = resolvePinId() ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
 
@@ -511,11 +518,11 @@ class PinDetailViewModel @Inject constructor(
                 .onSuccess {
                     refreshPostEmojis(pinId)
                         .onFailure { e ->
-                            showToast(e.message ?: "반응 목록을 갱신하지 못했습니다.")
+                            showSnackbar(e.message ?: "반응 목록을 갱신하지 못했습니다.")
                         }
                 }
                 .onFailure { e ->
-                    showToast(e.message ?: "이모지 반응 처리에 실패했습니다.")
+                    showSnackbar(e.message ?: "이모지 반응 처리에 실패했습니다.")
                 }
         }
     }
@@ -533,7 +540,7 @@ class PinDetailViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isDeleting = false) }
-                    showToast(e.message ?: "핀 삭제에 실패했습니다.")
+                    showSnackbar(e.message ?: "핀 삭제에 실패했습니다.")
                 }
         }
     }
@@ -541,24 +548,24 @@ class PinDetailViewModel @Inject constructor(
     fun joinProblemSolver(onSuccess: () -> Unit = {}) {
         val currentUserId = resolveRequiredCurrentUserId() ?: return
         val pinId = resolvePinId() ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         val currentPin = _uiState.value.pin ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         val issueDetail = currentPin.detail as? IssuePinDetail ?: run {
-            showToast("해결 참여는 이슈 핀에서만 가능합니다.")
+            showSnackbar("해결 참여는 이슈 핀에서만 가능합니다.")
             return
         }
         if (_uiState.value.isResolutionJoining) return
         if (issueDetail.writer.id == currentUserId) {
-            showToast("작성자는 시민해결사로 참여할 수 없습니다.")
+            showSnackbar("작성자는 시민해결사로 참여할 수 없습니다.")
             return
         }
         if (issueDetail.isProblemSolverByMe || issueDetail.myProblemSolverId != null) {
-            showToast("이미 참여 중입니다.")
+            showSnackbar("이미 참여 중입니다.")
             return
         }
 
@@ -588,7 +595,7 @@ class PinDetailViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isResolutionJoining = false) }
-                    showToast(e.message ?: "시민해결사 참여에 실패했습니다.")
+                    showSnackbar(e.message ?: "시민해결사 참여에 실패했습니다.")
                 }
             if (result.isSuccess) {
                 refreshResolutionTab(pinId, currentUserId)
@@ -602,20 +609,20 @@ class PinDetailViewModel @Inject constructor(
     ) {
         val currentUserId = resolveRequiredCurrentUserId() ?: return
         val pinId = resolvePinId() ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         val currentPin = _uiState.value.pin ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         val issueDetail = currentPin.detail as? IssuePinDetail ?: run {
-            showToast("해결 인증은 이슈 핀에서만 가능합니다.")
+            showSnackbar("해결 인증은 이슈 핀에서만 가능합니다.")
             return
         }
         if (_uiState.value.isResolutionProofSubmitting) return
         if (!issueDetail.isProblemSolverByMe && issueDetail.myProblemSolverId == null) {
-            showToast("참여한 시민해결사만 사진 인증을 할 수 있어요.")
+            showSnackbar("참여한 시민해결사만 사진 인증을 할 수 있어요.")
             return
         }
         val problemSolverId = issueDetail.myProblemSolverId
@@ -623,7 +630,7 @@ class PinDetailViewModel @Inject constructor(
                 .firstOrNull { it.user.id == currentUserId }
                 ?.problemSolverId
             ?: run {
-            showToast("시민해결사 인증 정보를 찾을 수 없습니다.")
+            showSnackbar("시민해결사 인증 정보를 찾을 수 없습니다.")
             return
         }
 
@@ -644,12 +651,12 @@ class PinDetailViewModel @Inject constructor(
                             ),
                         )
                     }
-                    showToast("사진 인증이 등록되었습니다.")
+                    showSnackbar("사진 인증이 등록되었습니다.")
                     onSuccess()
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isResolutionProofSubmitting = false) }
-                    showToast(e.message ?: "사진 인증 등록에 실패했습니다.")
+                    showSnackbar(e.message ?: "사진 인증 등록에 실패했습니다.")
                 }
             if (result.isSuccess) {
                 refreshResolutionTab(pinId, currentUserId)
@@ -660,32 +667,32 @@ class PinDetailViewModel @Inject constructor(
     fun verifyProblemSolver(problemSolverId: Long) {
         val currentUserId = resolveRequiredCurrentUserId() ?: return
         val pinId = resolvePinId() ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         val currentPin = _uiState.value.pin ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         val issueDetail = currentPin.detail as? IssuePinDetail ?: run {
-            showToast("해결 인증은 이슈 핀에서만 가능합니다.")
+            showSnackbar("해결 인증은 이슈 핀에서만 가능합니다.")
             return
         }
         if (issueDetail.writer.id != currentUserId) {
-            showToast("작성자만 시민해결사 인증을 완료할 수 있어요.")
+            showSnackbar("작성자만 시민해결사 인증을 완료할 수 있어요.")
             return
         }
         if (issueDetail.resolutionStatus == ResolutionStatus.RESOLVED) {
-            showToast("이미 해결 완료된 핀입니다.")
+            showSnackbar("이미 해결 완료된 핀입니다.")
             return
         }
         val targetParticipation = issueDetail.resolverParticipations
             .firstOrNull { it.problemSolverId == problemSolverId } ?: run {
-            showToast("선택한 시민해결사를 찾을 수 없습니다.")
+            showSnackbar("선택한 시민해결사를 찾을 수 없습니다.")
             return
         }
         if (targetParticipation.proofImageUrls.isEmpty()) {
-            showToast("사진 인증이 등록된 참여자만 확인할 수 있어요.")
+            showSnackbar("사진 인증이 등록된 참여자만 확인할 수 있어요.")
             return
         }
 
@@ -702,10 +709,10 @@ class PinDetailViewModel @Inject constructor(
                             ),
                         )
                     }
-                    showToast("시민해결사 인증을 완료했습니다.")
+                    showSnackbar("시민해결사 인증을 완료했습니다.")
                 }
                 .onFailure { e ->
-                    showToast(e.message ?: "시민해결사 인증에 실패했습니다.")
+                    showSnackbar(e.message ?: "시민해결사 인증에 실패했습니다.")
                 }
             if (result.isSuccess) {
                 refreshResolutionTab(pinId, currentUserId)
@@ -715,20 +722,20 @@ class PinDetailViewModel @Inject constructor(
 
     fun joinPetition() {
         val pinId = resolvePinId() ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         val currentPin = _uiState.value.pin ?: run {
-            showToast("핀 정보를 찾을 수 없습니다.")
+            showSnackbar("핀 정보를 찾을 수 없습니다.")
             return
         }
         val issueDetail = currentPin.detail as? IssuePinDetail ?: run {
-            showToast("청원은 이슈 핀에서만 가능합니다.")
+            showSnackbar("청원은 이슈 핀에서만 가능합니다.")
             return
         }
         if (_uiState.value.isPetitionSubmitting) return
         if (issueDetail.isPetitionedByMe) {
-            showToast("이미 청원되었습니다.")
+            showSnackbar("이미 청원되었습니다.")
             return
         }
 
@@ -745,18 +752,18 @@ class PinDetailViewModel @Inject constructor(
                             ),
                         )
                     }
-                    showToast("청원에 성공했습니다.")
+                    showSnackbar("청원에 성공했습니다.")
                 }
                 .onFailure { e ->
                     _uiState.update { it.copy(isPetitionSubmitting = false) }
-                    showToast(e.message ?: "청원에 실패했습니다.")
+                    showSnackbar(e.message ?: "청원에 실패했습니다.")
                 }
         }
     }
 
     private fun resolveRequiredCurrentUserId(): String? {
         return tokenManager.getCurrentUserUuid()?.takeIf { it.isNotBlank() } ?: run {
-            showToast("로그인 정보를 찾을 수 없습니다. 다시 로그인해 주세요.")
+            showSnackbar("로그인 정보를 찾을 수 없습니다. 다시 로그인해 주세요.")
             null
         }
     }
@@ -773,8 +780,8 @@ class PinDetailViewModel @Inject constructor(
             ?: _uiState.value.pin?.id?.toLongOrNull()
     }
 
-    private fun showToast(message: String) {
-        _effect.tryEmit(PinDetailEffect.ShowToast(message))
+    private fun showSnackbar(message: String) {
+        _effect.tryEmit(PinDetailEffect.ShowSnackbar(message))
     }
 }
 
