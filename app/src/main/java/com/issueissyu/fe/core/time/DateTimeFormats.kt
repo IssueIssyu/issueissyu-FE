@@ -52,13 +52,20 @@ fun parseFlexibleDateTime(
     return null
 }
 
-/** 핀 상세 홈 — 항상 MM.dd HH:mm (예: 05.19 19:13) */
+//날짜 표기
+//올해 -> MM.DD HH:MM
+//else -> YY.MM.DD
 fun formatPinHomeCreatedAt(
     raw: String,
     zone: ZoneId = ZoneId.systemDefault(),
 ): String {
     val dateTime = parseFlexibleDateTime(raw, zone) ?: return raw
-    return dateTime.format(DateTimeFormatter.ofPattern("MM.dd HH:mm", Locale.getDefault()))
+    val localDate = dateTime.toLocalDate()
+    return if (localDate.year == LocalDate.now(zone).year) {
+        dateTime.format(DateTimeFormatter.ofPattern("MM.dd  HH:mm", Locale.getDefault()))
+    } else {
+        localDate.format(DateTimeFormatter.ofPattern("yy.MM.dd", Locale.getDefault()))
+    }
 }
 
 /** 포스트 댓글 — 오늘이면 HH:mm (예: 06:00), 아니면 MM/dd */

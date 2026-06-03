@@ -1,10 +1,6 @@
 package com.issueissyu.fe.ui.screens.pindetail
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,7 +40,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -53,7 +48,7 @@ import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
-import com.issueissyu.fe.core.media.CapturedImageSaver
+import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -82,41 +77,15 @@ fun PinDetailScreen(
     val context = LocalContext.current
     var pendingResolutionProofUri by remember { mutableStateOf<String?>(null) }
 
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap ->
-        val proofUri = bitmap?.let { CapturedImageSaver.saveJpegToCache(context, it, "resolution-proof") }
-        if (proofUri == null) {
-            Toast.makeText(context, "사진 촬영이 취소되었습니다.", Toast.LENGTH_SHORT).show()
-        } else {
-            pendingResolutionProofUri = proofUri
-        }
-    }
-
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            cameraLauncher.launch(null)
-        } else {
-            Toast.makeText(context, "카메라 권한이 필요합니다.", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    val launchResolutionProofCamera = remember(context, cameraLauncher, cameraPermissionLauncher) {
-        {
-            val hasPermission = ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-
-            if (hasPermission) {
-                cameraLauncher.launch(null)
-            } else {
-                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-            }
-        }
-    }
+    val resolutionProofPhotoPicker = rememberPhotoSourcePicker(
+        currentCount = 0,
+        maxCount = 1,
+        onImagesPicked = { uris ->
+            uris.firstOrNull()?.let { pendingResolutionProofUri = it }
+        },
+        cameraFileNamePrefix = "resolution-proof",
+    )
+    resolutionProofPhotoPicker.PhotoSourceBottomSheet()
 
     LaunchedEffect(pinId) {
         viewModel.loadPin(pinId)
@@ -189,7 +158,7 @@ fun PinDetailScreen(
                         onCommunityClick = { communityId ->
                             communityId.toLongOrNull()?.let(onCommunityClick)
                         },
-                        onAttachProofClick = launchResolutionProofCamera,
+                        onAttachProofClick = resolutionProofPhotoPicker.showSourceSheet,
                         onGoNowClick = viewModel::joinProblemSolver,
                         onPetitionClick = viewModel::joinPetition,
                         onConfirmResolverClick = viewModel::verifyProblemSolver,
