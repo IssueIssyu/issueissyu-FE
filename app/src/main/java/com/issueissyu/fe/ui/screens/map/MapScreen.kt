@@ -23,11 +23,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -83,6 +81,9 @@ import com.issueissyu.fe.ui.theme.White
 
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
+private const val DEFAULT_MARKER_SCALE = 1.5f
+private const val SELECTED_MARKER_SCALE = 2f
+private const val SELECTED_MARKER_Z_INDEX = 1
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
 
@@ -227,16 +228,26 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(naverMapInstance, visibleMapPins) {
+    LaunchedEffect(naverMapInstance, visibleMapPins, selectedPin?.id) {
         val naverMap = naverMapInstance ?: return@LaunchedEffect
 
         mapMarkers.forEach { it.map = null }
         mapMarkers.clear()
 
         visibleMapPins.forEach { mapPin ->
+            val iconRes = mapPin.category.toMarkerIconRes()
+            val isSelected = mapPin.pinId == selectedPin?.id
             val marker = Marker().apply {
                 position = mapPin.coordinate.toLatLng()
-                icon = OverlayImage.fromResource(mapPin.category.toMarkerIconRes())
+                icon = OverlayImage.fromResource(iconRes)
+                val markerScale = if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE
+                ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
+                    width = (drawable.intrinsicWidth * markerScale).toInt()
+                    height = (drawable.intrinsicHeight * markerScale).toInt()
+                }
+                if (isSelected) {
+                    zIndex = SELECTED_MARKER_Z_INDEX
+                }
                 this.map = naverMap
                 setOnClickListener {
                     viewModel.selectPinById(mapPin.pinId)
@@ -527,18 +538,14 @@ fun MapScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                FloatingActionButton(
-                    onClick = { viewModel.openPinTypeSelector() },
-                    modifier = Modifier.size(56.dp),
-                    shape = CircleShape,
-                    containerColor = BrandColor
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.AddLocation,
-                        contentDescription = "핀 생성",
-                        tint = White
-                    )
-                }
+                Icon(
+                    painter = painterResource(id = R.drawable.pinbutton),
+                    contentDescription = "핀 생성",
+                    modifier = Modifier
+                        .size(width = 70.dp, height = 81.dp)
+                        .clickable { viewModel.openPinTypeSelector() },
+                    tint = Color.Unspecified
+                )
             }
         }
 
