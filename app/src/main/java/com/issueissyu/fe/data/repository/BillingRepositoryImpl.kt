@@ -249,10 +249,6 @@ class BillingRepositoryImpl @Inject constructor(
         if (activeProductId == productId) {
             activeProductId = null
         }
-        if (purchase.purchaseState == Purchase.PurchaseState.PURCHASED && purchase.isAcknowledged) {
-            return
-        }
-
         when (purchase.purchaseState) {
             Purchase.PurchaseState.PURCHASED -> {
                 val shouldProcess = synchronized(processingPurchaseTokens) {
