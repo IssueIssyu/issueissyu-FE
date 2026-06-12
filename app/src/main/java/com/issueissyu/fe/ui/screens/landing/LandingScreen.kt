@@ -235,6 +235,10 @@ private fun LandingPage(
                     highlightCommunity = page == 4,
                     modifier = Modifier.fillMaxSize(),
                 )
+            } else if (page == 5) {
+                LandingFestivalPinGuideOverlay(
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }
@@ -469,7 +473,8 @@ private fun LandingPinTypesPage(
                     .align(Alignment.TopCenter)
                     .alpha(
                         if (selectedType == null ||
-                            selectedType == LandingPinShowcaseType.ISSUE
+                            selectedType == LandingPinShowcaseType.ISSUE ||
+                            selectedType == LandingPinShowcaseType.FESTIVAL
                         ) {
                             1f
                         } else {
@@ -490,7 +495,9 @@ private fun LandingPinTypesPage(
                         "소통 핀에서는 우리 동네 사람들과\n다양한 이야기를 나눌 수 있어요!"
                 }
 
-                if (type != LandingPinShowcaseType.ISSUE) {
+                if (type != LandingPinShowcaseType.ISSUE &&
+                    type != LandingPinShowcaseType.FESTIVAL
+                ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -584,6 +591,193 @@ private fun LandingPinTypeGrid(
             )
         }
     }
+}
+
+@Composable
+private fun LandingFestivalPinGuideOverlay(modifier: Modifier = Modifier) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.18f)),
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(x = 16.dp, y = 157.dp)
+                .width(325.dp)
+                .height(90.dp)
+                .shadow(4.dp, RoundedCornerShape(15.dp))
+                .background(White, RoundedCornerShape(15.dp))
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFF999999).copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(15.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "이벤트 핀에서는 동네에서 열리는\n다양한 축제와 행사를 확인할 수 있어요.",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                color = Color.Black,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Image(
+            painter = painterResource(R.drawable.ic_character_default),
+            contentDescription = null,
+            modifier = Modifier
+                .offset(x = 272.dp, y = 262.dp)
+                .width(90.dp)
+                .height(139.dp),
+            contentScale = ContentScale.Fit,
+        )
+
+        LandingFestivalGuideCard(
+            modifier = Modifier
+                .offset(x = 12.dp, y = 341.dp)
+                .width(387.dp)
+                .height(292.dp),
+        )
+    }
+}
+
+@Composable
+private fun LandingFestivalGuideCard(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 10.dp,
+                shape = RoundedCornerShape(30.dp),
+                clip = false,
+            )
+            .clip(RoundedCornerShape(30.dp))
+            .background(Color(0xFFF3D6FF))
+            .padding(horizontal = 24.dp, vertical = 25.dp),
+    ) {
+        Text(
+            text = "벼룩시장 행사",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 30.sp,
+            lineHeight = 30.sp,
+            color = Gray_7,
+        )
+
+        Row(
+            modifier = Modifier.offset(y = 40.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = Gray_7,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = "서울 마포구 서교동 348-80",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 10.sp,
+                color = Gray_7,
+            )
+        }
+
+        Row(
+            modifier = Modifier.offset(y = 66.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LandingFestivalTag("#소소한 행복")
+            Spacer(modifier = Modifier.width(5.dp))
+            LandingFestivalTag("#5/2 토요일")
+            Spacer(modifier = Modifier.width(5.dp))
+            CompactSympathyButton(
+                sympathyCount = 34,
+                isSympathizedByMe = false,
+                onClick = {},
+                enabled = false,
+                height = 26.dp,
+                horizontalPadding = 10.dp,
+                iconSize = 13.dp,
+            )
+        }
+
+        Image(
+            painter = painterResource(R.drawable.img_landing_festival_market),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(94.dp)
+                .clip(RoundedCornerShape(10.dp)),
+            contentScale = ContentScale.Crop,
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 109.dp)
+                .height(1.dp)
+                .background(Gray_5),
+        )
+
+        Text(
+            text = "함께 나누는 따뜻한 하루🌿 이웃과 함께하는 특별한 하루,\n버리기 아까운 물건을 나누고 새로운 가치를 만드는 우리 동네 아나바다 축제가 열립니다! 옷, 책, 소품 등 다... 더보기",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+            color = Gray_7,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 124.dp),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomStart),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "☺",
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .size(25.dp)
+                    .border(1.dp, Color.Black, CircleShape),
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "커뮤니티 ›",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                color = White,
+                modifier = Modifier
+                    .background(Issue, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandingFestivalTag(text: String) {
+    Text(
+        text = text,
+        fontFamily = suiteFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 12.sp,
+        color = Color.Black,
+        modifier = Modifier
+            .background(White.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+            .padding(horizontal = 8.dp, vertical = 5.dp),
+    )
 }
 
 @Composable
