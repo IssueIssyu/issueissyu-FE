@@ -21,10 +21,13 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,6 +51,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.issueissyu.fe.R
+import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
+import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
+import com.issueissyu.fe.domain.model.pin.IssuePinDetail
+import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
+import com.issueissyu.fe.domain.model.pin.PinUser
+import com.issueissyu.fe.domain.model.pin.ResolutionStatus
+import com.issueissyu.fe.domain.model.pin.ShopPinDetail
+import com.issueissyu.fe.ui.screens.map.PinSummaryCard
+import com.issueissyu.fe.ui.screens.map.PinSummaryCardHighlight
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
@@ -506,167 +520,107 @@ private fun LandingPinShowcaseCard(
     guideFocus: LandingPinGuideFocus = LandingPinGuideFocus.NONE,
     modifier: Modifier = Modifier,
 ) {
-    val data = when (type) {
-        LandingPinShowcaseType.ISSUE -> LandingPinShowcaseData(
-            title = "쓰레기 무단투기",
-            description = "최근 골목에서 쓰레기 무단투기가 지속적으로 발생하고 있습니다. " +
-                "주변 환경과 위생 문제로 인해 주민 불편이 커지고 있어요.",
-            badge = "해결 완료",
-            reaction = "😩 3   🤬 1   😡 1   +11",
-            color = IssueContainer,
-            accentColor = Issue,
-            iconRes = R.drawable.issue,
-        )
-        LandingPinShowcaseType.FESTIVAL -> LandingPinShowcaseData(
-            title = "버룩시장 행사",
-            description = "함께 나누는 따뜻한 하루, 이웃과 함께하는 특별한 하루를 만나보세요.",
-            badge = "#소소한 행복",
-            reaction = "👍 34",
-            color = FestivalContainer,
-            accentColor = Festival,
-            iconRes = R.drawable.festival,
-        )
-        LandingPinShowcaseType.SHOP -> LandingPinShowcaseData(
-            title = "커피빈",
-            description = "전 품목 50% 할인! 소중한 고객님께 감사하는 마음을 담아 진행하는 봄맞이 행사입니다.",
-            badge = "전 품목 50% 할인",
-            reaction = "👍 6",
-            color = ShopContainer,
-            accentColor = Shop,
-            iconRes = R.drawable.shop,
-        )
-        LandingPinShowcaseType.COMMUNICATION -> LandingPinShowcaseData(
-            title = "비둘기 폭탄 맞음",
-            description = "진짜 요즘 비둘기 때문에 너무 불편함. 사람들이 많이 지나다니는 곳에 " +
-                "비둘기가 계속 모여 있으니까 은근 스트레스임.",
-            badge = "#동네 소통",
-            reaction = "😨 3   🤣 3   💢 1",
-            color = Communication,
-            accentColor = BrandColor,
-            iconRes = R.drawable.communicate,
-        )
-    }
-
-    Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(data.color)
-            .padding(22.dp),
+    Box(
+        modifier = modifier.height(260.dp),
     ) {
-        val contentAlpha =
-            if (guideFocus == LandingPinGuideFocus.NONE) 1f else 0.35f
-
-        Row(
-            modifier = Modifier.alpha(contentAlpha),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Image(
-                painter = painterResource(data.iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(42.dp),
-                contentScale = ContentScale.Fit,
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = data.title,
-                style = IssueTypo.ExtraBold30.copy(color = Gray_7),
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.alpha(contentAlpha),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = Icons.Default.LocationOn,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-            Text(
-                text = "서울 마포구 홍익로 6길 34",
-                style = IssueTypo.Regular12.copy(color = Gray_7),
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = data.badge,
-            style = IssueTypo.Bold12.copy(color = data.accentColor),
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(White, RoundedCornerShape(16.dp))
-                .border(1.dp, data.accentColor, RoundedCornerShape(16.dp))
-                .padding(horizontal = 14.dp, vertical = 8.dp)
-                .alpha(contentAlpha),
-            textAlign = TextAlign.Center,
+        PinSummaryCard(
+            pin = type.toSamplePin(),
+            currentUserId = SAMPLE_WRITER_ID,
+            onDetailClick = {},
+            onCommunityClick = {},
+            onEditClick = {},
+            onDeleteClick = {},
+            onSympathyClick = {},
+            onEmojiClick = {},
+            modifier = Modifier.fillMaxSize(),
+            interactionsEnabled = false,
+            highlight = when (guideFocus) {
+                LandingPinGuideFocus.REACTIONS -> PinSummaryCardHighlight.SYMPATHY
+                LandingPinGuideFocus.COMMUNITY_BUTTON -> PinSummaryCardHighlight.COMMUNITY
+                LandingPinGuideFocus.NONE -> PinSummaryCardHighlight.NONE
+            },
         )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Text(
-            text = data.description,
-            modifier = Modifier.alpha(contentAlpha),
-            style = IssueTypo.Regular15.copy(
-                color = Gray_7,
-                lineHeight = 22.sp,
-            ),
-        )
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = data.reaction,
-                modifier = Modifier.alpha(
-                    if (
-                        guideFocus == LandingPinGuideFocus.NONE ||
-                        guideFocus == LandingPinGuideFocus.REACTIONS
-                    ) {
-                        1f
-                    } else {
-                        0.35f
-                    }
-                ),
-                style = IssueTypo.Regular16.copy(color = Title),
-            )
-            Text(
-                text = "커뮤니티 ›",
-                style = IssueTypo.Bold12.copy(color = White),
-                modifier = Modifier
-                    .background(data.accentColor, RoundedCornerShape(12.dp))
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
-                    .alpha(
-                        if (
-                            guideFocus == LandingPinGuideFocus.NONE ||
-                            guideFocus == LandingPinGuideFocus.COMMUNITY_BUTTON
-                        ) {
-                            1f
-                        } else {
-                            0.35f
-                        }
-                    ),
-            )
-        }
     }
 }
 
-private data class LandingPinShowcaseData(
-    val title: String,
-    val description: String,
-    val badge: String,
-    val reaction: String,
-    val color: Color,
-    val accentColor: Color,
-    val iconRes: Int,
-)
+private const val SAMPLE_WRITER_ID = "landing-writer"
+
+private fun LandingPinShowcaseType.toSamplePin(): Pin {
+    val writer = PinUser(
+        id = SAMPLE_WRITER_ID,
+        name = "이웃 A",
+        imageUrl = null,
+    )
+    val commonReactions = listOf(
+        PinEmojiReaction(emojiId = "sad", count = 3),
+        PinEmojiReaction(emojiId = "angry", count = 1),
+        PinEmojiReaction(emojiId = "surprised", count = 1),
+    )
+
+    return when (this) {
+        LandingPinShowcaseType.ISSUE -> Pin(
+            id = "landing-issue",
+            title = "공원 조명 고장",
+            description = "동네 공원의 조명이 꺼져 있어 저녁 시간에 이용하기 불편하다는 제보가 있어요.",
+            coordinate = PinCoordinate(0.0, 0.0),
+            address = "예시시 예시구 가상로 12",
+            locationName = "가상동 중앙공원",
+            sympathyCount = 21,
+            isSympathizedByMe = true,
+            emojiReactions = commonReactions,
+            communityPostId = "landing-community",
+            createdAt = "2025-01-01T00:00:00Z",
+            detail = IssuePinDetail(
+                writer = writer,
+                resolutionStatus = ResolutionStatus.RESOLVED,
+            ),
+        )
+        LandingPinShowcaseType.FESTIVAL -> Pin(
+            id = "landing-festival",
+            title = "우리동네 나눔 행사",
+            description = "이웃과 함께 물건을 나누고 새로운 가치를 만드는 가상의 동네 행사예요.",
+            coordinate = PinCoordinate(0.0, 0.0),
+            address = "예시시 예시구 가상로 20",
+            locationName = "가상동 주민광장",
+            sympathyCount = 34,
+            communityPostId = "landing-festival-community",
+            createdAt = "2025-01-01T00:00:00Z",
+            detail = FestivalPinDetail(
+                keywords = listOf("소소한 행복"),
+                startDate = "2025-01-01",
+                endDate = "2025-01-01",
+            ),
+        )
+        LandingPinShowcaseType.SHOP -> Pin(
+            id = "landing-shop",
+            title = "동네카페 새소식",
+            description = "가상의 동네카페에서 준비한 신메뉴와 할인 소식을 소개합니다.",
+            coordinate = PinCoordinate(0.0, 0.0),
+            address = "예시시 예시구 가상로 30",
+            locationName = "가상동 동네카페",
+            sympathyCount = 6,
+            communityPostId = "landing-shop-community",
+            createdAt = "2025-01-01T00:00:00Z",
+            detail = ShopPinDetail(
+                keywords = listOf("분위기", "커피맛집"),
+                currentNews = "전 품목 50% 할인",
+            ),
+        )
+        LandingPinShowcaseType.COMMUNICATION -> Pin(
+            id = "landing-communication",
+            title = "저녁 산책 모임",
+            description = "오늘 저녁 가상동 공원에서 함께 산책하며 이야기 나눌 이웃을 찾아요.",
+            coordinate = PinCoordinate(0.0, 0.0),
+            address = "예시시 예시구 가상로 12",
+            locationName = "가상동 중앙공원",
+            sympathyCount = 18,
+            emojiReactions = commonReactions,
+            communityPostId = "landing-communication-community",
+            createdAt = "2025-01-01T00:00:00Z",
+            detail = CommunicationPinDetail(writer = writer),
+        )
+    }
+}
 
 @Composable
 private fun LandingPinCreatePage(modifier: Modifier = Modifier) {
@@ -707,19 +661,49 @@ private fun LandingPinCreatePage(modifier: Modifier = Modifier) {
                         .fillMaxSize()
                         .clip(RoundedCornerShape(30.dp))
                         .background(White)
-                        .padding(20.dp),
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
                 ) {
                     Text(
                         text = "‹             이슈 작성",
                         style = IssueTypo.Bold12.copy(color = Title),
                     )
-                    Spacer(modifier = Modifier.height(22.dp))
-                    LandingFormField("사진", "사진 추가")
-                    LandingFormField("등록 장소", "서울시 마포구")
-                    LandingFormField("제목", "제목을 작성해 주세요.")
-                    LandingFormField("내용", "상세 설명을 작성해 주세요.", height = 92.dp)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text("사진", style = IssueTypo.Bold12.copy(color = Title))
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Column(
+                        modifier = Modifier
+                            .size(62.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFF7F7F7))
+                            .border(1.dp, Color(0xFFE2E2E2), RoundedCornerShape(10.dp)),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoCamera,
+                            contentDescription = null,
+                            tint = Gray_4,
+                            modifier = Modifier.size(21.dp),
+                        )
+                        Text("사진 추가", style = IssueTypo.Regular12.copy(color = Gray_4))
+                    }
+                    Spacer(modifier = Modifier.height(9.dp))
+                    LandingFormField(
+                        label = "등록 장소",
+                        placeholder = "예시시 예시구 가상동",
+                        height = 40.dp,
+                        filled = true,
+                    )
+                    LandingFormField("제목", "제목을 입력하세요.", height = 40.dp)
+                    LandingFormField(
+                        "상세 설명",
+                        "상세 설명을 작성해 주세요.",
+                        height = 62.dp,
+                    )
+                    Text("말투 설정", style = IssueTypo.Bold12.copy(color = Title))
+                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
-                        text = "#간편하게  #친근하게  #부드럽게",
+                        text = "#기본체  #친근하게  #부드럽게",
                         style = IssueTypo.Regular12.copy(color = Gray_7),
                     )
                     Spacer(modifier = Modifier.weight(1f))
@@ -762,15 +746,22 @@ private fun LandingFormField(
     label: String,
     placeholder: String,
     height: androidx.compose.ui.unit.Dp = 56.dp,
+    filled: Boolean = false,
 ) {
-    Column(modifier = Modifier.padding(bottom = 10.dp)) {
-        Text(label, style = IssueTypo.Regular12.copy(color = Gray_7))
+    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+        Text(label, style = IssueTypo.Bold12.copy(color = Title))
+        Spacer(modifier = Modifier.height(4.dp))
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(height)
-                .border(1.dp, Gray_4, RoundedCornerShape(8.dp))
+                .background(
+                    if (filled) Color(0xFFF7F7F7) else White,
+                    RoundedCornerShape(10.dp),
+                )
+                .border(1.dp, Color(0xFFE2E2E2), RoundedCornerShape(10.dp))
                 .padding(10.dp),
+            contentAlignment = Alignment.CenterStart,
         ) {
             Text(placeholder, style = IssueTypo.Regular12.copy(color = Gray_4))
         }
@@ -833,9 +824,9 @@ private fun LandingHistoryPage(modifier: Modifier = Modifier) {
                     style = IssueTypo.Regular12.copy(color = Gray_7),
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                HistoryItem("쓰레기 무단투기", "해결 전", IssueContainer, Gray_7)
-                HistoryItem("보도 블럭 파손", "진행 중", IssueContainer.copy(alpha = 0.6f), Issue)
-                HistoryItem("신호등 고장", "해결 완료", Communication, BrandColor)
+                HistoryItem("공원 조명 점검", 51, "해결 전", White, Color.Black)
+                HistoryItem("산책로 보수", 100, "진행 중", IssueContainer, Issue)
+                HistoryItem("안내판 교체", 107, "해결 완료", Communication, BrandColor)
             }
         }
     }
@@ -844,40 +835,63 @@ private fun LandingHistoryPage(modifier: Modifier = Modifier) {
 @Composable
 private fun HistoryItem(
     title: String,
+    viewCount: Int,
     status: String,
     color: Color,
     statusColor: Color,
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 14.dp)
-            .background(color, RoundedCornerShape(8.dp))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(bottom = 10.dp)
+            .background(color, RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 9.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(title, style = IssueTypo.Bold12.copy(color = Title))
-            Spacer(modifier = Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = title,
+                style = IssueTypo.Bold12.copy(color = Title),
+                modifier = Modifier.weight(1f),
+            )
+            Text("조회 $viewCount", style = IssueTypo.Regular12.copy(color = Gray_4))
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = null,
+                tint = Gray_4,
+                modifier = Modifier
+                    .size(18.dp)
+                    .background(Color(0xFFF0F0F0), CircleShape),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("이웃 A", style = IssueTypo.Bold12.copy(color = Gray_7))
+        }
+        Spacer(modifier = Modifier.height(7.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Icon(
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = null,
-                    modifier = Modifier.size(12.dp),
+                    tint = Gray_7,
+                    modifier = Modifier.size(15.dp),
                 )
+                Spacer(modifier = Modifier.width(3.dp))
                 Text(
-                    text = "서울 마포구 홍익로",
+                    text = "예시시 예시구 가상동",
                     style = IssueTypo.Regular12.copy(color = Gray_7),
                 )
             }
+            Text(
+                text = status,
+                style = IssueTypo.Bold12.copy(color = White),
+                modifier = Modifier
+                    .background(statusColor, RoundedCornerShape(16.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            )
         }
-        Text(
-            text = status,
-            style = IssueTypo.Bold12.copy(color = White),
-            modifier = Modifier
-                .background(statusColor, RoundedCornerShape(16.dp))
-                .padding(horizontal = 10.dp, vertical = 6.dp),
-        )
     }
 }
 
@@ -912,11 +926,13 @@ private fun LandingCommunityPage(modifier: Modifier = Modifier) {
                     modifier = Modifier
                         .fillMaxSize()
                         .clip(RoundedCornerShape(28.dp))
-                        .background(White)
-                        .padding(14.dp),
+                        .background(Color(0xFFF7F7F7)),
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(White)
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
                         listOf("🔥 HOT", "📍 이슈", "🏪 가게", "🎉 행사").forEach { label ->
@@ -930,19 +946,38 @@ private fun LandingCommunityPage(modifier: Modifier = Modifier) {
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(18.dp))
-                    Text(
-                        text = "우리 동네 인기 소식",
-                        style = IssueTypo.ExtraBold18.copy(color = Title),
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    CommunityFeedItem(
-                        icon = Icons.Default.Storefront,
-                        title = "라멘야",
-                        subtitle = "오늘만 특별 할인",
-                        color = ShopContainer,
-                    )
-                    CommunityPostPreview()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(White)
+                            .padding(horizontal = 12.dp, vertical = 7.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        Text(
+                            text = "예시시 예시구⌄",
+                            style = IssueTypo.Bold12.copy(color = BrandColor),
+                            modifier = Modifier
+                                .border(1.dp, BrandColor, RoundedCornerShape(14.dp))
+                                .padding(horizontal = 9.dp, vertical = 5.dp),
+                        )
+                    }
+
+                    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        CommunityFeedItem(
+                            title = "동네식당 새소식",
+                            subtitle = "가상 할인 행사 · 기간: 예시일",
+                            footer = "조회 100·공감 43",
+                            color = ShopContainer,
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = "우리 동네 인기 소식 🔥",
+                            style = IssueTypo.ExtraBold18.copy(color = Title),
+                        )
+                        Spacer(modifier = Modifier.height(7.dp))
+                        CommunityPostPreview()
+                    }
                 }
             }
 
@@ -970,71 +1005,84 @@ private fun LandingCommunityPage(modifier: Modifier = Modifier) {
 
 @Composable
 private fun CommunityPostPreview() {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF8FAFD), RoundedCornerShape(12.dp))
-            .padding(12.dp),
+            .height(126.dp)
+            .background(White, RoundedCornerShape(12.dp))
+            .padding(10.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(R.drawable.ic_character_default),
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Column {
-                Text("밤티", style = IssueTypo.Bold12.copy(color = Title))
-                Text("04.07 18:24 · 조회 51", style = IssueTypo.Regular12.copy(color = Gray_7))
-            }
-        }
-        Spacer(modifier = Modifier.height(10.dp))
-        Text("쓰레기 무단투기", style = IssueTypo.Bold18.copy(color = Title))
-        Text(
-            "최근 골목에서 쓰레기 무단투기가 지속적으로 발생하고 있습니다.",
-            style = IssueTypo.Regular12.copy(color = Gray_7, lineHeight = 17.sp),
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        Text("❤️ 30  🤯 10  😡 3  👊 1", style = IssueTypo.Regular12.copy(color = Title))
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(92.dp)
+                .background(IssueContainer, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(
-                imageVector = Icons.Default.ChatBubbleOutline,
+                painter = painterResource(R.drawable.issue),
                 contentDescription = null,
-                tint = BrandColor,
-                modifier = Modifier.size(20.dp),
+                tint = Issue,
+                modifier = Modifier.size(42.dp),
             )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text("저건 좀 아니다..", style = IssueTypo.Regular12.copy(color = Gray_7))
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.fillMaxHeight()) {
+            Text("공원 조명 고장", style = IssueTypo.Bold18.copy(color = Title))
+            Spacer(modifier = Modifier.height(5.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.ic_character_default),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("이웃 A", style = IssueTypo.Regular12.copy(color = Gray_7))
+            }
+            Text(
+                "예시시 예시구 가상동",
+                style = IssueTypo.Regular12.copy(color = Gray_7),
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text("조회 51·공감 38", style = IssueTypo.Regular12.copy(color = Gray_4))
         }
     }
 }
 
 @Composable
 private fun CommunityFeedItem(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
     subtitle: String,
+    footer: String,
     color: Color,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 10.dp)
-            .background(color.copy(alpha = 0.75f), RoundedCornerShape(12.dp))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .height(116.dp)
+            .background(White, RoundedCornerShape(14.dp))
+            .padding(10.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = BrandColor,
-            modifier = Modifier.size(32.dp),
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
+        Box(
+            modifier = Modifier
+                .size(92.dp)
+                .background(color, RoundedCornerShape(10.dp)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Storefront,
+                contentDescription = null,
+                tint = Shop,
+                modifier = Modifier.size(40.dp),
+            )
+        }
+        Spacer(modifier = Modifier.width(10.dp))
+        Column(modifier = Modifier.fillMaxHeight()) {
             Text(title, style = IssueTypo.Bold18.copy(color = Title))
+            Spacer(modifier = Modifier.height(6.dp))
             Text(subtitle, style = IssueTypo.Regular12.copy(color = Gray_7))
+            Spacer(modifier = Modifier.weight(1f))
+            Text(footer, style = IssueTypo.Regular12.copy(color = Gray_4))
         }
     }
 }
