@@ -229,9 +229,10 @@ private fun LandingPage(
                 }
             }
 
-            if (page in 2..3) {
+            if (page in 2..4) {
                 LandingIssuePinGuideOverlay(
                     highlightSympathy = page == 3,
+                    highlightCommunity = page == 4,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -468,8 +469,7 @@ private fun LandingPinTypesPage(
                     .align(Alignment.TopCenter)
                     .alpha(
                         if (selectedType == null ||
-                            selectedType == LandingPinShowcaseType.ISSUE &&
-                            guideFocus != LandingPinGuideFocus.COMMUNITY_BUTTON
+                            selectedType == LandingPinShowcaseType.ISSUE
                         ) {
                             1f
                         } else {
@@ -490,9 +490,7 @@ private fun LandingPinTypesPage(
                         "소통 핀에서는 우리 동네 사람들과\n다양한 이야기를 나눌 수 있어요!"
                 }
 
-                if (type != LandingPinShowcaseType.ISSUE ||
-                    guideFocus == LandingPinGuideFocus.COMMUNITY_BUTTON
-                ) {
+                if (type != LandingPinShowcaseType.ISSUE) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -591,10 +589,11 @@ private fun LandingPinTypeGrid(
 @Composable
 private fun LandingIssuePinGuideOverlay(
     highlightSympathy: Boolean,
+    highlightCommunity: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
-        if (highlightSympathy) {
+        if (highlightSympathy || highlightCommunity) {
             LandingIssueGuideCard(
                 modifier = Modifier
                     .offset(x = 13.dp, y = 338.dp)
@@ -605,6 +604,8 @@ private fun LandingIssuePinGuideOverlay(
 
         if (highlightSympathy) {
             LandingDimOverlayWithSympathyCutout()
+        } else if (highlightCommunity) {
+            LandingDimOverlayWithCommunityCutout()
         } else {
             Box(
                 modifier = Modifier
@@ -616,8 +617,16 @@ private fun LandingIssuePinGuideOverlay(
         Box(
             modifier = Modifier
                 .offset(
-                    x = if (highlightSympathy) 36.dp else 16.dp,
-                    y = if (highlightSympathy) 334.dp else 157.dp,
+                    x = when {
+                        highlightSympathy -> 36.dp
+                        highlightCommunity -> 52.dp
+                        else -> 16.dp
+                    },
+                    y = when {
+                        highlightSympathy -> 334.dp
+                        highlightCommunity -> 458.dp
+                        else -> 157.dp
+                    },
                 )
                 .width(if (highlightSympathy) 266.dp else 325.dp)
                 .height(if (highlightSympathy) 79.dp else 90.dp)
@@ -633,6 +642,8 @@ private fun LandingIssuePinGuideOverlay(
             Text(
                 text = if (highlightSympathy) {
                     "공감 10개 이상을 받으면\n커뮤니티에 올라가요!"
+                } else if (highlightCommunity) {
+                    "핀 내용을 더 자세히 보고 싶다면,\n커뮤니티에서 다양한 의견을 확인해 보세요."
                 } else {
                     "지도 위 이슈 핀을 눌러\n동네에서 일어나는 이슈를 확인해 보세요!"
                 },
@@ -645,7 +656,7 @@ private fun LandingIssuePinGuideOverlay(
             )
         }
 
-        if (!highlightSympathy) {
+        if (!highlightSympathy && !highlightCommunity) {
             Image(
                 painter = painterResource(R.drawable.ic_character_default),
                 contentDescription = null,
@@ -689,6 +700,35 @@ private fun LandingDimOverlayWithSympathyCutout() {
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(
                 x = 16.dp.toPx(),
                 y = 16.dp.toPx(),
+            ),
+            blendMode = BlendMode.Clear,
+        )
+    }
+}
+
+@Composable
+private fun LandingDimOverlayWithCommunityCutout() {
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            },
+    ) {
+        drawRect(Color.Black.copy(alpha = 0.18f))
+        drawRoundRect(
+            color = Color.Transparent,
+            topLeft = androidx.compose.ui.geometry.Offset(
+                x = 309.dp.toPx(),
+                y = 569.dp.toPx(),
+            ),
+            size = androidx.compose.ui.geometry.Size(
+                width = 70.dp.toPx(),
+                height = 40.dp.toPx(),
+            ),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                x = 12.dp.toPx(),
+                y = 12.dp.toPx(),
             ),
             blendMode = BlendMode.Clear,
         )
