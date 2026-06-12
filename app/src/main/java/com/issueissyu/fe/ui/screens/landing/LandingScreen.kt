@@ -413,7 +413,7 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 description = "주민들이 제보한\n생활 이슈 확인",
                 color = IssueContainer,
                 accentColor = Issue,
-                iconRes = R.drawable.issue,
+                iconRes = R.drawable.issue_landing_outline,
                 modifier = Modifier.weight(1f),
             )
             LandingPinTypeCard(
@@ -422,7 +422,7 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 description = "우리 동네의\n축제 및 행사를 한번에!",
                 color = FestivalContainer,
                 accentColor = Festival,
-                iconRes = R.drawable.festival,
+                iconRes = R.drawable.festival_landing_outline,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -439,7 +439,7 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 description = "우리 동네 가게의 정보와\n추천을 간편하게!",
                 color = ShopContainer,
                 accentColor = Shop,
-                iconRes = R.drawable.shop,
+                iconRes = R.drawable.shop_landing_outline,
                 modifier = Modifier.weight(1f),
             )
             LandingPinTypeCard(
@@ -448,7 +448,7 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 description = "이웃과 의견을\n자유롭게 나누어요!",
                 color = Communication,
                 accentColor = BrandColor,
-                iconRes = R.drawable.communicate,
+                iconRes = R.drawable.communicate_landing_outline,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -483,25 +483,14 @@ private fun LandingPinTypeCard(
                 .padding(horizontal = 12.dp, vertical = 4.dp),
         )
 
-        Box(
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = null,
+            tint = Color.Unspecified,
             modifier = Modifier
                 .padding(top = 4.dp, bottom = 6.dp)
-                .size(48.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = White,
-                modifier = Modifier.size(46.dp),
-            )
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = accentColor,
-                modifier = Modifier.size(38.dp),
-            )
-        }
+                .size(42.dp),
+        )
 
         Text(
             text = title,
