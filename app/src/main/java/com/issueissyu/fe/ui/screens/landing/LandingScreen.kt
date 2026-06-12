@@ -243,6 +243,10 @@ private fun LandingPage(
                 LandingShopPinGuideOverlay(
                     modifier = Modifier.fillMaxSize(),
                 )
+            } else if (page == 7) {
+                LandingCommunicationPinGuideOverlay(
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }
@@ -479,7 +483,8 @@ private fun LandingPinTypesPage(
                         if (selectedType == null ||
                             selectedType == LandingPinShowcaseType.ISSUE ||
                             selectedType == LandingPinShowcaseType.FESTIVAL ||
-                            selectedType == LandingPinShowcaseType.SHOP
+                            selectedType == LandingPinShowcaseType.SHOP ||
+                            selectedType == LandingPinShowcaseType.COMMUNICATION
                         ) {
                             1f
                         } else {
@@ -502,7 +507,8 @@ private fun LandingPinTypesPage(
 
                 if (type != LandingPinShowcaseType.ISSUE &&
                     type != LandingPinShowcaseType.FESTIVAL &&
-                    type != LandingPinShowcaseType.SHOP
+                    type != LandingPinShowcaseType.SHOP &&
+                    type != LandingPinShowcaseType.COMMUNICATION
                 ) {
                     Column(
                         modifier = Modifier
@@ -995,6 +1001,248 @@ private fun LandingShopGuideCard(modifier: Modifier = Modifier) {
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun LandingCommunicationPinGuideOverlay(modifier: Modifier = Modifier) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.18f)),
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(x = 16.dp, y = 157.dp)
+                .width(325.dp)
+                .height(90.dp)
+                .shadow(4.dp, RoundedCornerShape(15.dp))
+                .background(White, RoundedCornerShape(15.dp))
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFF999999).copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(15.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "소통 핀에서는 우리 동네 사람들과\n다양한 이야기를 나눌 수 있어요!",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                color = Color.Black,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Image(
+            painter = painterResource(R.drawable.ic_character_default),
+            contentDescription = null,
+            modifier = Modifier
+                .offset(x = 272.dp, y = 262.dp)
+                .width(90.dp)
+                .height(139.dp),
+            contentScale = ContentScale.Fit,
+        )
+
+        LandingCommunicationGuideCard(
+            modifier = Modifier
+                .offset(x = 13.dp, y = 346.dp)
+                .width(387.dp)
+                .height(292.dp),
+        )
+
+        Text(
+            text = "🔥",
+            fontSize = 34.sp,
+            modifier = Modifier.offset(x = 13.dp, y = 325.dp),
+        )
+    }
+}
+
+@Composable
+private fun LandingCommunicationGuideCard(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 10.dp,
+                shape = RoundedCornerShape(30.dp),
+                clip = false,
+            )
+            .clip(RoundedCornerShape(30.dp))
+            .background(Color(0xFFC6E5FF))
+            .padding(horizontal = 24.dp, vertical = 25.dp),
+    ) {
+        Text(
+            text = "비둘기 폭탄 맞음",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 30.sp,
+            lineHeight = 30.sp,
+            color = Gray_7,
+        )
+
+        Row(
+            modifier = Modifier.offset(y = 40.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = Gray_7,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = "서울 마포구 서교동 348-80",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 10.sp,
+                color = Gray_7,
+            )
+        }
+
+        Row(
+            modifier = Modifier.offset(y = 66.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.img_landing_communication_profile),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .border(3.dp, BrandColor.copy(alpha = 0.2f), CircleShape),
+                contentScale = ContentScale.Crop,
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "따지",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+                color = Gray_7,
+            )
+            Spacer(modifier = Modifier.width(20.dp))
+            Text(
+                text = "✎",
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .size(22.dp)
+                    .background(White, CircleShape),
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = "♲",
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .size(22.dp)
+                    .background(White, CircleShape),
+            )
+            Spacer(modifier = Modifier.width(20.dp))
+            CompactSympathyButton(
+                sympathyCount = 18,
+                isSympathizedByMe = false,
+                onClick = {},
+                enabled = false,
+                height = 26.dp,
+                horizontalPadding = 10.dp,
+                iconSize = 13.dp,
+            )
+        }
+
+        Image(
+            painter = painterResource(R.drawable.img_landing_communication_pigeon),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(y = 1.dp)
+                .size(94.dp)
+                .clip(RoundedCornerShape(10.dp)),
+            contentScale = ContentScale.Crop,
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 111.dp)
+                .height(1.dp)
+                .background(Gray_5),
+        )
+
+        Text(
+            text = "진짜 요즘 비둘기 때문에 너무 불편함.\n사람들 많이 지나다니는 곳에 비둘기 계속 모여 있으니까 은근 스트레스임. 먹이 주는 분들 있으면 제발 자제... 더보기",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+            color = Gray_7,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 126.dp),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomStart),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LandingCommunicationReaction(
+                imageRes = R.drawable.img_landing_reaction_sad,
+                count = 3,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            LandingCommunicationReaction(
+                imageRes = R.drawable.img_landing_reaction_laugh,
+                count = 3,
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            LandingCommunicationReaction(
+                imageRes = R.drawable.img_landing_reaction_angry,
+                count = 1,
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "커뮤니티 ›",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                color = White,
+                modifier = Modifier
+                    .background(Issue, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+            )
+        }
+
+    }
+}
+
+@Composable
+private fun LandingCommunicationReaction(
+    imageRes: Int,
+    count: Int,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(
+            painter = painterResource(imageRes),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            contentScale = ContentScale.Fit,
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = count.toString(),
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp,
+            color = Color.Black,
+        )
     }
 }
 
