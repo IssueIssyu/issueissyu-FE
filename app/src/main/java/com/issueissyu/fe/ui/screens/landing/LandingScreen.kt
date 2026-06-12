@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -317,48 +318,105 @@ private enum class LandingPinGuideFocus {
 
 @Composable
 private fun LandingIntroPage(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
+    Box(
+        modifier = modifier.fillMaxSize(),
     ) {
         Image(
             painter = painterResource(R.drawable.img_logo),
             contentDescription = "이슈있슈",
             modifier = Modifier
+                .offset(x = 69.dp, y = (-55).dp)
                 .width(220.dp)
                 .height(150.dp),
             contentScale = ContentScale.Fit,
         )
 
         Text(
-            text = "우리 동네의\n모든 이슈를 한눈에!",
-            style = IssueTypo.ExtraBold30.copy(
-                color = Gray_7,
-                lineHeight = 44.sp,
-            ),
+            text = "우리 동네의\n모든 이슈를 한눈에!\n이슈를 발견하고\n핀을 찍어 공유하고\n해결해 보세요!",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 24.sp,
+            lineHeight = 40.sp,
+            color = Gray_7,
             textAlign = TextAlign.Center,
+            modifier = Modifier
+                .offset(x = 2.dp, y = 101.dp)
+                .width(344.dp)
+                .height(185.dp),
         )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        Text(
-            text = "이슈를 발견하고\n핀을 찍어 공유하고\n해결해 보세요!",
-            style = IssueTypo.Regular18.copy(
-                color = Gray_7,
-                lineHeight = 36.sp,
-            ),
-            textAlign = TextAlign.Center,
-        )
-
-        Spacer(modifier = Modifier.height(18.dp))
 
         Image(
-            painter = painterResource(R.drawable.img_logo_circle),
+            painter = painterResource(R.drawable.ic_character_default),
             contentDescription = null,
-            modifier = Modifier.size(118.dp),
+            modifier = Modifier
+                .offset(x = 133.dp, y = 311.dp)
+                .width(90.dp)
+                .height(139.dp),
             contentScale = ContentScale.Fit,
         )
+
+        LandingIntroMapIcon(
+            iconRes = R.drawable.shop_landing_outline,
+            width = 32.dp,
+            height = 29.dp,
+            x = 158.dp,
+            y = 630.dp,
+        )
+        LandingIntroMapIcon(
+            iconRes = R.drawable.shop_landing_outline,
+            width = 32.dp,
+            height = 29.dp,
+            x = 268.dp,
+            y = 514.dp,
+        )
+        LandingIntroMapIcon(
+            iconRes = R.drawable.issue_landing_outline,
+            width = 27.dp,
+            height = 32.dp,
+            x = 255.dp,
+            y = 598.dp,
+        )
+        LandingIntroMapIcon(
+            iconRes = R.drawable.issue_landing_outline,
+            width = 27.dp,
+            height = 32.dp,
+            x = 177.dp,
+            y = 543.dp,
+        )
+        LandingIntroMapIcon(
+            iconRes = R.drawable.festival_landing_outline,
+            width = 30.dp,
+            height = 32.dp,
+            x = 49.dp,
+            y = 614.dp,
+        )
+        LandingIntroMapIcon(
+            iconRes = R.drawable.communicate_landing_outline,
+            width = 24.dp,
+            height = 32.dp,
+            x = 100.dp,
+            y = 543.dp,
+        )
     }
+}
+
+@Composable
+private fun LandingIntroMapIcon(
+    iconRes: Int,
+    width: androidx.compose.ui.unit.Dp,
+    height: androidx.compose.ui.unit.Dp,
+    x: androidx.compose.ui.unit.Dp,
+    y: androidx.compose.ui.unit.Dp,
+) {
+    Icon(
+        painter = painterResource(iconRes),
+        contentDescription = null,
+        tint = Color.Unspecified,
+        modifier = Modifier
+            .offset(x = x, y = y)
+            .width(width)
+            .height(height),
+    )
 }
 
 @Composable
