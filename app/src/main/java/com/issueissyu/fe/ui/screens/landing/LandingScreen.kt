@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -707,19 +709,31 @@ private fun LandingPinCreatePage(modifier: Modifier = Modifier) {
                     )
                     Text("말투 설정", style = IssueTypo.Bold12.copy(color = Title))
                     Spacer(modifier = Modifier.height(5.dp))
-                    Text(
-                        text = "#기본체  #친근하게  #부드럽게",
-                        style = IssueTypo.Regular12.copy(color = Gray_7),
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        listOf("#기본체", "#친근하게", "#부드럽게").forEach { tone ->
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(White)
+                                    .border(1.dp, Gray_4, RoundedCornerShape(20.dp))
+                                    .padding(horizontal = 8.dp, vertical = 5.dp),
+                            ) {
+                                Text(
+                                    text = tone,
+                                    style = IssueTypo.Regular12.copy(color = Title),
+                                )
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.weight(1f))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(42.dp)
-                            .background(Gray_4, RoundedCornerShape(8.dp)),
+                            .background(Color(0xFFE8E8E8), RoundedCornerShape(15.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text("작성 완료", style = IssueTypo.Bold12.copy(color = White))
+                        Text("작성 완료", style = IssueTypo.Bold12.copy(color = Gray_4))
                     }
                 }
             }
@@ -933,21 +947,43 @@ private fun LandingCommunityPage(modifier: Modifier = Modifier) {
                         .clip(RoundedCornerShape(28.dp))
                         .background(Color(0xFFF7F7F7)),
                 ) {
-                    Row(
+                    LazyRow(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(White)
                             .padding(horizontal = 10.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
-                        listOf("🔥 HOT", "📍 이슈", "🏪 가게", "🎉 행사").forEach { label ->
-                            Text(
-                                text = label,
-                                style = IssueTypo.Bold12.copy(color = Gray_7),
+                        items(landingCommunityCategories) { category ->
+                            Row(
                                 modifier = Modifier
-                                    .background(Color(0xFFF4F4F4), RoundedCornerShape(12.dp))
-                                    .padding(horizontal = 6.dp, vertical = 5.dp),
-                            )
+                                    .height(32.dp)
+                                    .background(
+                                        if (category.selected) Color(0xFF333333) else White,
+                                        RoundedCornerShape(18.dp),
+                                    )
+                                    .border(
+                                        1.dp,
+                                        if (category.selected) Color(0xFF333333) else Color(0xFFE1E1E1),
+                                        RoundedCornerShape(18.dp),
+                                    )
+                                    .padding(horizontal = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    painter = painterResource(category.iconRes),
+                                    contentDescription = null,
+                                    tint = if (category.selected) White else category.iconColor,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = category.label,
+                                    style = IssueTypo.Bold12.copy(
+                                        color = if (category.selected) White else Title,
+                                    ),
+                                )
+                            }
                         }
                     }
 
@@ -1007,6 +1043,25 @@ private fun LandingCommunityPage(modifier: Modifier = Modifier) {
         }
     }
 }
+
+private data class LandingCommunityCategory(
+    val label: String,
+    val iconRes: Int,
+    val iconColor: Color,
+    val selected: Boolean = false,
+)
+
+private val landingCommunityCategories = listOf(
+    LandingCommunityCategory("HOT", R.drawable.ic_fire, Issue, selected = true),
+    LandingCommunityCategory("이슈", R.drawable.issue, Issue),
+    LandingCommunityCategory("소통", R.drawable.communicate, Communication),
+    LandingCommunityCategory("가게 홍보", R.drawable.shop, Shop),
+    LandingCommunityCategory("축제·행사", R.drawable.festival, Festival),
+    LandingCommunityCategory("정책", R.drawable.ic_policy, Gray_4),
+    LandingCommunityCategory("공모전", R.drawable.ic_award, Shop),
+    LandingCommunityCategory("카드뉴스", R.drawable.ic_cardnews, BrandColor),
+    LandingCommunityCategory("전체", R.drawable.ic_all, Title),
+)
 
 @Composable
 private fun CommunityPostPreview() {
