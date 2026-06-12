@@ -229,8 +229,14 @@ fun AppNavGraph(
 
             LandingScreen(
                 onComplete = {
-                    navController.navigate(AppDestinations.TOWN_ROUTE) {
-                        popUpTo(0) { inclusive = true }
+                    val previousRoute =
+                        navController.previousBackStackEntry?.destination?.route
+                    if (previousRoute == AppDestinations.MyPage.MYPAGE_ROUTE) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(AppDestinations.TOWN_ROUTE) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 },
             )
@@ -360,6 +366,9 @@ fun AppNavGraph(
                                 navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
                             }
                             MyPageEvent.NavigateToLanding -> {
+                                navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLogin -> {
                                 navController.navigateToLoginClearingBackStack()
                             }
                             MyPageEvent.NavigateToTerm -> {
