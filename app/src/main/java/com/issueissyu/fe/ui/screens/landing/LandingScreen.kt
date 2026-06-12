@@ -101,7 +101,12 @@ fun LandingScreen(
             onNext = {
                 if (page < LANDING_STAGE_COUNT - 1) {
                     coroutineScope.launch {
-                        pagerState.animateScrollToPage(page + 1)
+                        val nextPage = page + 1
+                        if (page.toProgressIndex() == nextPage.toProgressIndex()) {
+                            pagerState.scrollToPage(nextPage)
+                        } else {
+                            pagerState.animateScrollToPage(nextPage)
+                        }
                     }
                 }
             },
