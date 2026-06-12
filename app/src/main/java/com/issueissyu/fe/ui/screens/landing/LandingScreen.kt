@@ -223,6 +223,12 @@ private fun LandingPage(
                     }
                 }
             }
+
+            if (page == 2) {
+                LandingIssuePinGuideOverlay(
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
     }
 }
@@ -450,10 +456,20 @@ private fun LandingPinTypesPage(
             contentAlignment = Alignment.Center,
         ) {
             LandingPinTypeGrid(
+                showGuideLabels = selectedType != null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
-                    .alpha(if (selectedType == null) 1f else 0.38f),
+                    .alpha(
+                        if (selectedType == null ||
+                            selectedType == LandingPinShowcaseType.ISSUE &&
+                            guideFocus == LandingPinGuideFocus.NONE
+                        ) {
+                            1f
+                        } else {
+                            0.38f
+                        },
+                    ),
             )
 
             selectedType?.let { type ->
@@ -468,19 +484,23 @@ private fun LandingPinTypesPage(
                         "소통 핀에서는 우리 동네 사람들과\n다양한 이야기를 나눌 수 있어요!"
                 }
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.Center),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                if (type != LandingPinShowcaseType.ISSUE ||
+                    guideFocus != LandingPinGuideFocus.NONE
                 ) {
-                    LandingSpeechBubble(text = pinGuideText)
-                    Spacer(modifier = Modifier.height(14.dp))
-                    LandingPinShowcaseCard(
-                        type = type,
-                        guideFocus = guideFocus,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.Center),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        LandingSpeechBubble(text = pinGuideText)
+                        Spacer(modifier = Modifier.height(14.dp))
+                        LandingPinShowcaseCard(
+                            type = type,
+                            guideFocus = guideFocus,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }
@@ -488,14 +508,17 @@ private fun LandingPinTypesPage(
 }
 
 @Composable
-private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
+private fun LandingPinTypeGrid(
+    showGuideLabels: Boolean = false,
+    modifier: Modifier = Modifier,
+) {
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LandingPinTypeCard(
-                label = "이슈",
+                label = if (showGuideLabels) "제보" else "이슈",
                 title = "생활 이슈",
                 description = "주민들이 제보한\n생활 이슈 확인",
                 color = IssueContainer,
@@ -529,7 +552,7 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LandingPinTypeCard(
-                label = "홍보",
+                label = if (showGuideLabels) "가게" else "홍보",
                 title = "동네 가게",
                 description = "우리 동네 가게의 정보와\n추천을 간편하게!",
                 color = ShopContainer,
@@ -542,7 +565,7 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 modifier = Modifier.weight(1f),
             )
             LandingPinTypeCard(
-                label = "소통",
+                label = if (showGuideLabels) "커뮤니티" else "소통",
                 title = "동네 소통",
                 description = "이웃과 의견을\n자유롭게 나누어요!",
                 color = Communication,
@@ -554,6 +577,232 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 titleOffsetY = 117,
                 descriptionOffsetY = 143,
                 modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandingIssuePinGuideOverlay(modifier: Modifier = Modifier) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.18f)),
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(x = 16.dp, y = 157.dp)
+                .width(325.dp)
+                .height(90.dp)
+                .shadow(4.dp, RoundedCornerShape(15.dp))
+                .background(White, RoundedCornerShape(15.dp))
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFF999999).copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(15.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "지도 위 이슈 핀을 눌러\n동네에서 일어나는 이슈를 확인해 보세요!",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                color = Color.Black,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Image(
+            painter = painterResource(R.drawable.ic_character_default),
+            contentDescription = null,
+            modifier = Modifier
+                .offset(x = 272.dp, y = 262.dp)
+                .width(90.dp)
+                .height(139.dp),
+            contentScale = ContentScale.Fit,
+        )
+
+        LandingIssueGuideCard(
+            modifier = Modifier
+                .offset(x = 13.dp, y = 338.dp)
+                .width(387.dp)
+                .height(292.dp),
+        )
+    }
+}
+
+@Composable
+private fun LandingIssueGuideCard(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 10.dp,
+                shape = RoundedCornerShape(30.dp),
+                clip = false,
+            )
+            .clip(RoundedCornerShape(30.dp))
+            .background(IssueContainer)
+            .padding(horizontal = 24.dp, vertical = 25.dp),
+    ) {
+        Text(
+            text = "쓰레기 무단투기",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 30.sp,
+            lineHeight = 32.sp,
+            color = Gray_7,
+            modifier = Modifier.offset(y = 1.dp),
+        )
+
+        Row(
+            modifier = Modifier.offset(y = 42.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = Gray_7,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = "서울 마포구 홍익로 6길 34",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 10.sp,
+                color = Gray_7,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "해결 완료",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 10.sp,
+                lineHeight = 19.sp,
+                color = White,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .width(50.dp)
+                    .height(19.dp)
+                    .background(BrandColor, RoundedCornerShape(15.dp)),
+            )
+        }
+
+        Row(
+            modifier = Modifier.offset(y = 72.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.ic_character_default),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(30.dp)
+                    .clip(CircleShape)
+                    .background(White),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "바드",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 13.sp,
+                color = Gray_7,
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "✎",
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(White, CircleShape),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = "♲",
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(White, CircleShape),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "👍 21",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 12.sp,
+                modifier = Modifier
+                    .background(White, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            )
+        }
+
+        Image(
+            painter = painterResource(R.drawable.img_landing_issue_trash),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(94.dp)
+                .clip(RoundedCornerShape(10.dp)),
+            contentScale = ContentScale.Crop,
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 119.dp)
+                .height(1.dp)
+                .background(Gray_5),
+        )
+
+        Text(
+            text = "최근 홍대입구역 근처 골목에서 쓰레기 무단투기가 지속적으로 발생하고 있습니다.\n주변 환경이 훼손되고 악취 및 위생 문제로 인해... 더보기",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+            color = Gray_7,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 135.dp),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomStart),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("😩 3", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text("🤯 1", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(12.dp))
+            Text("😡 1", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "+11",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .background(White, RoundedCornerShape(20.dp))
+                    .padding(horizontal = 9.dp, vertical = 4.dp),
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "커뮤니티 ›",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                color = White,
+                modifier = Modifier
+                    .background(Issue, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }
     }
