@@ -431,55 +431,56 @@ private fun LandingPinTypesPage(
         contentAlignment = Alignment.TopCenter,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             LandingTitle(
                 title = "핀의 종류",
                 subtitle = "다양한 핀으로 정보를 한눈에 구분할 수 있어요!",
             )
+        }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Box(
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 97.dp)
+                .height(423.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            LandingPinTypeGrid(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(420.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                LandingPinTypeGrid(
+                    .align(Alignment.TopCenter)
+                    .alpha(if (selectedType == null) 1f else 0.38f),
+            )
+
+            selectedType?.let { type ->
+                val pinGuideText = guideText ?: when (type) {
+                    LandingPinShowcaseType.ISSUE ->
+                        "이슈 핀에서는 동네에서 발생한 문제를 확인하고\n해결 과정에 함께 참여할 수 있어요."
+                    LandingPinShowcaseType.FESTIVAL ->
+                        "이벤트 핀에서는 동네에서 열리는\n다양한 축제와 행사를 확인할 수 있어요."
+                    LandingPinShowcaseType.SHOP ->
+                        "홍보 핀에서는 우리 동네 가게의 행사, 할인,\n신규 소식을 확인할 수 있어요."
+                    LandingPinShowcaseType.COMMUNICATION ->
+                        "소통 핀에서는 우리 동네 사람들과\n다양한 이야기를 나눌 수 있어요!"
+                }
+
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .align(Alignment.Center)
-                        .alpha(if (selectedType == null) 1f else 0.38f),
-                )
-
-                selectedType?.let { type ->
-                    val pinGuideText = guideText ?: when (type) {
-                        LandingPinShowcaseType.ISSUE ->
-                            "이슈 핀에서는 동네에서 발생한 문제를 확인하고\n해결 과정에 함께 참여할 수 있어요."
-                        LandingPinShowcaseType.FESTIVAL ->
-                            "이벤트 핀에서는 동네에서 열리는\n다양한 축제와 행사를 확인할 수 있어요."
-                        LandingPinShowcaseType.SHOP ->
-                            "홍보 핀에서는 우리 동네 가게의 행사, 할인,\n신규 소식을 확인할 수 있어요."
-                        LandingPinShowcaseType.COMMUNICATION ->
-                            "소통 핀에서는 우리 동네 사람들과\n다양한 이야기를 나눌 수 있어요!"
-                    }
-
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        LandingSpeechBubble(text = pinGuideText)
-                        Spacer(modifier = Modifier.height(14.dp))
-                        LandingPinShowcaseCard(
-                            type = type,
-                            guideFocus = guideFocus,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                        .align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    LandingSpeechBubble(text = pinGuideText)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    LandingPinShowcaseCard(
+                        type = type,
+                        guideFocus = guideFocus,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
             }
         }
@@ -500,6 +501,10 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 color = IssueContainer,
                 accentColor = Issue,
                 iconRes = R.drawable.issue_landing_outline,
+                iconSize = 52,
+                iconOffsetY = 42,
+                titleOffsetY = 109,
+                descriptionOffsetY = 138,
                 modifier = Modifier.weight(1f),
             )
             LandingPinTypeCard(
@@ -509,11 +514,15 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 color = FestivalContainer,
                 accentColor = Festival,
                 iconRes = R.drawable.festival_landing_outline,
+                iconSize = 52,
+                iconOffsetY = 39,
+                titleOffsetY = 109,
+                descriptionOffsetY = 138,
                 modifier = Modifier.weight(1f),
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(15.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -526,6 +535,10 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 color = ShopContainer,
                 accentColor = Shop,
                 iconRes = R.drawable.shop_landing_outline,
+                iconSize = 60,
+                iconOffsetY = 47,
+                titleOffsetY = 114,
+                descriptionOffsetY = 143,
                 modifier = Modifier.weight(1f),
             )
             LandingPinTypeCard(
@@ -535,6 +548,11 @@ private fun LandingPinTypeGrid(modifier: Modifier = Modifier) {
                 color = Communication,
                 accentColor = BrandColor,
                 iconRes = R.drawable.communicate_landing_outline,
+                labelWidth = 74,
+                iconSize = 60,
+                iconOffsetY = 47,
+                titleOffsetY = 117,
+                descriptionOffsetY = 143,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -549,16 +567,16 @@ private fun LandingPinTypeCard(
     color: Color,
     accentColor: Color,
     iconRes: Int,
+    labelWidth: Int = 47,
+    iconSize: Int,
+    iconOffsetY: Int,
+    titleOffsetY: Int,
+    descriptionOffsetY: Int,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    Box(
         modifier = modifier
             .height(204.dp)
-            .shadow(
-                elevation = 5.dp,
-                shape = RoundedCornerShape(15.dp),
-                clip = false,
-            )
             .clip(RoundedCornerShape(14.dp))
             .background(
                 brush = Brush.verticalGradient(
@@ -568,9 +586,7 @@ private fun LandingPinTypeCard(
                     ),
                 ),
             )
-            .border(6.dp, White, RoundedCornerShape(15.dp))
-            .padding(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .border(6.dp, White, RoundedCornerShape(15.dp)),
     ) {
         Text(
             text = label,
@@ -580,9 +596,12 @@ private fun LandingPinTypeCard(
             lineHeight = 21.sp,
             color = White,
             modifier = Modifier
-                .align(Alignment.Start)
+                .offset(x = 15.dp, y = 14.dp)
+                .width(labelWidth.dp)
+                .height(23.dp)
                 .background(accentColor, RoundedCornerShape(14.dp))
-                .padding(horizontal = 9.dp, vertical = 1.dp),
+                .padding(top = 1.dp),
+            textAlign = TextAlign.Center,
         )
 
         Icon(
@@ -590,8 +609,9 @@ private fun LandingPinTypeCard(
             contentDescription = null,
             tint = Color.Unspecified,
             modifier = Modifier
-                .padding(top = 4.dp, bottom = 4.dp)
-                .size(52.dp),
+                .align(Alignment.TopCenter)
+                .offset(y = iconOffsetY.dp)
+                .size(iconSize.dp),
         )
 
         Text(
@@ -601,9 +621,11 @@ private fun LandingPinTypeCard(
             fontSize = 20.sp,
             lineHeight = 21.sp,
             color = Title,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = titleOffsetY.dp),
         )
-
-        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = description,
@@ -613,6 +635,9 @@ private fun LandingPinTypeCard(
             lineHeight = 21.sp,
             color = Title,
             textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = descriptionOffsetY.dp),
         )
     }
 }
