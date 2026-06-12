@@ -52,7 +52,9 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -755,14 +757,7 @@ private fun LandingFestivalGuideCard(modifier: Modifier = Modifier) {
                 .align(Alignment.BottomStart),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "☺",
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .size(25.dp)
-                    .border(1.dp, Color.Black, CircleShape),
-            )
+            LandingAddEmojiButton()
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = "커뮤니티 ›",
@@ -981,14 +976,7 @@ private fun LandingShopGuideCard(modifier: Modifier = Modifier) {
                 .align(Alignment.BottomStart),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "☺",
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .size(25.dp)
-                    .border(1.dp, Color.Black, CircleShape),
-            )
+            LandingAddEmojiButton()
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = "커뮤니티 ›",
@@ -1001,6 +989,38 @@ private fun LandingShopGuideCard(modifier: Modifier = Modifier) {
                     .padding(horizontal = 10.dp, vertical = 8.dp),
             )
         }
+    }
+}
+
+@Composable
+private fun LandingAddEmojiButton() {
+    Box(
+        modifier = Modifier
+            .width(25.dp)
+            .height(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawRoundRect(
+                color = Color.Black,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                    x = size.height / 2f,
+                    y = size.height / 2f,
+                ),
+                style = Stroke(
+                    width = 1.dp.toPx(),
+                    pathEffect = PathEffect.dashPathEffect(
+                        intervals = floatArrayOf(2.dp.toPx(), 2.dp.toPx()),
+                    ),
+                ),
+            )
+        }
+        Icon(
+            painter = painterResource(R.drawable.ic_landing_face_add),
+            contentDescription = null,
+            tint = Color.Unspecified,
+            modifier = Modifier.size(16.dp),
+        )
     }
 }
 
@@ -1055,10 +1075,12 @@ private fun LandingCommunicationPinGuideOverlay(modifier: Modifier = Modifier) {
                 .height(292.dp),
         )
 
-        Text(
-            text = "🔥",
-            fontSize = 34.sp,
-            modifier = Modifier.offset(x = 13.dp, y = 325.dp),
+        Image(
+            painter = painterResource(R.drawable.ic_landing_fire_badge),
+            contentDescription = null,
+            modifier = Modifier
+                .offset(x = 13.dp, y = 325.dp)
+                .size(41.dp),
         )
     }
 }
