@@ -1,5 +1,7 @@
 package com.issueissyu.fe.ui.screens.landing
 
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -107,7 +109,13 @@ fun LandingScreen(
                         if (page.toProgressIndex() == nextPage.toProgressIndex()) {
                             pagerState.scrollToPage(nextPage)
                         } else {
-                            pagerState.animateScrollToPage(nextPage)
+                            pagerState.animateScrollToPage(
+                                page = nextPage,
+                                animationSpec = tween(
+                                    durationMillis = 250,
+                                    easing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f),
+                                ),
+                            )
                         }
                     }
                 }
