@@ -1968,36 +1968,68 @@ private fun LandingHistoryPage(modifier: Modifier = Modifier) {
             subtitle = "우리 동네가 변화하고 있는 모습과\n변화 과정을 담은 패치노트를 확인할 수 있어요.",
         )
 
-        Spacer(modifier = Modifier.height(42.dp))
+        Spacer(modifier = Modifier.height(55.dp))
 
         Column(
             modifier = Modifier
-                .width(280.dp)
-                .height(410.dp)
-                .clip(RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp))
+                .width(248.dp)
+                .height(385.dp)
+                .clip(RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp))
                 .background(Color.Black)
-                .padding(start = 6.dp, top = 6.dp, end = 6.dp),
+                .padding(start = 7.dp, top = 7.dp, end = 7.dp),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp))
+                    .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
                     .background(White)
-                    .padding(18.dp),
+                    .padding(top = 11.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    text = "‹             동네 패치노트",
+                    text = "9:41",
                     style = IssueTypo.Bold12.copy(color = Title),
+                    modifier = Modifier
+                        .align(Alignment.Start)
+                        .padding(start = 14.dp),
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(11.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(34.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "‹",
+                        style = IssueTypo.Bold18.copy(color = Title),
+                        modifier = Modifier
+                            .align(Alignment.CenterStart)
+                            .padding(start = 12.dp),
+                    )
+                    Text(
+                        text = "동네 패치노트",
+                        style = IssueTypo.Bold12.copy(color = Title),
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(Gray_3),
+                )
+                Spacer(modifier = Modifier.height(13.dp))
                 Text(
                     text = "지난 동네의 히스토리를 볼 수 있어요",
                     style = IssueTypo.Regular12.copy(color = Gray_7),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                HistoryItem("공원 조명 점검", 51, "해결 전", White, Color.Black)
-                HistoryItem("산책로 보수", 100, "진행 중", IssueContainer, Issue)
-                HistoryItem("안내판 교체", 107, "해결 완료", Communication, BrandColor)
+                Spacer(modifier = Modifier.height(11.dp))
+                HistoryItem("쓰레기 무단투기", 51, "범티", "해결 전", White, Color.Black)
+                HistoryItem("보도 블럭 파손", 100, "안", "진행 중", IssueContainer, Issue)
+                HistoryItem("신호등 고장", 107, "VIP", "해결 완료", Communication, BrandColor)
             }
         }
     }
@@ -2007,16 +2039,18 @@ private fun LandingHistoryPage(modifier: Modifier = Modifier) {
 private fun HistoryItem(
     title: String,
     viewCount: Int,
+    writerName: String,
     status: String,
     color: Color,
     statusColor: Color,
 ) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 10.dp)
-            .background(color, RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .width(207.dp)
+            .padding(bottom = 8.dp)
+            .shadow(2.dp, RoundedCornerShape(8.dp))
+            .background(color, RoundedCornerShape(8.dp))
+            .padding(horizontal = 10.dp, vertical = 7.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -2024,20 +2058,31 @@ private fun HistoryItem(
                 style = IssueTypo.Bold12.copy(color = Title),
                 modifier = Modifier.weight(1f),
             )
-            Text("조회 $viewCount", style = IssueTypo.Regular12.copy(color = Gray_4))
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = null,
-                tint = Gray_4,
-                modifier = Modifier
-                    .size(18.dp)
-                    .background(Color(0xFFF0F0F0), CircleShape),
+            Text(
+                text = "조회 $viewCount",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 7.sp,
+                color = Gray_4,
             )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text("이웃 A", style = IssueTypo.Bold12.copy(color = Gray_7))
+            Spacer(modifier = Modifier.width(5.dp))
+            Image(
+                painter = painterResource(R.drawable.ic_character_default),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(12.dp)
+                    .clip(CircleShape),
+            )
+            Spacer(modifier = Modifier.width(2.dp))
+            Text(
+                text = writerName,
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 7.sp,
+                color = Gray_7,
+            )
         }
-        Spacer(modifier = Modifier.height(7.dp))
+        Spacer(modifier = Modifier.height(5.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
                 modifier = Modifier.weight(1f),
@@ -2047,20 +2092,26 @@ private fun HistoryItem(
                     imageVector = Icons.Default.LocationOn,
                     contentDescription = null,
                     tint = Gray_7,
-                    modifier = Modifier.size(15.dp),
+                    modifier = Modifier.size(11.dp),
                 )
-                Spacer(modifier = Modifier.width(3.dp))
+                Spacer(modifier = Modifier.width(2.dp))
                 Text(
-                    text = "예시시 예시구 가상동",
-                    style = IssueTypo.Regular12.copy(color = Gray_7),
+                    text = "서울 마포구 홍익로 6길 34",
+                    fontFamily = suiteFontFamily,
+                    fontWeight = FontWeight.Normal,
+                    fontSize = 7.sp,
+                    color = Gray_7,
                 )
             }
             Text(
                 text = status,
-                style = IssueTypo.Bold12.copy(color = White),
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 8.sp,
+                color = White,
                 modifier = Modifier
-                    .background(statusColor, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                    .background(statusColor, RoundedCornerShape(12.dp))
+                    .padding(horizontal = 9.dp, vertical = 4.dp),
             )
         }
     }
