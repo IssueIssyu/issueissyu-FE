@@ -239,6 +239,10 @@ private fun LandingPage(
                 LandingFestivalPinGuideOverlay(
                     modifier = Modifier.fillMaxSize(),
                 )
+            } else if (page == 6) {
+                LandingShopPinGuideOverlay(
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }
@@ -474,7 +478,8 @@ private fun LandingPinTypesPage(
                     .alpha(
                         if (selectedType == null ||
                             selectedType == LandingPinShowcaseType.ISSUE ||
-                            selectedType == LandingPinShowcaseType.FESTIVAL
+                            selectedType == LandingPinShowcaseType.FESTIVAL ||
+                            selectedType == LandingPinShowcaseType.SHOP
                         ) {
                             1f
                         } else {
@@ -496,7 +501,8 @@ private fun LandingPinTypesPage(
                 }
 
                 if (type != LandingPinShowcaseType.ISSUE &&
-                    type != LandingPinShowcaseType.FESTIVAL
+                    type != LandingPinShowcaseType.FESTIVAL &&
+                    type != LandingPinShowcaseType.SHOP
                 ) {
                     Column(
                         modifier = Modifier
@@ -778,6 +784,218 @@ private fun LandingFestivalTag(text: String) {
             .background(White.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
             .padding(horizontal = 8.dp, vertical = 5.dp),
     )
+}
+
+@Composable
+private fun LandingShopPinGuideOverlay(modifier: Modifier = Modifier) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.18f)),
+        )
+
+        Box(
+            modifier = Modifier
+                .offset(x = 16.dp, y = 157.dp)
+                .width(325.dp)
+                .height(90.dp)
+                .shadow(4.dp, RoundedCornerShape(15.dp))
+                .background(White, RoundedCornerShape(15.dp))
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFF999999).copy(alpha = 0.7f),
+                    shape = RoundedCornerShape(15.dp),
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "홍보 핀에서는 우리 동네 가게의 행사, 할인,\n신규 소식을 확인할 수 있어요.",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                color = Color.Black,
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Image(
+            painter = painterResource(R.drawable.ic_character_default),
+            contentDescription = null,
+            modifier = Modifier
+                .offset(x = 272.dp, y = 262.dp)
+                .width(90.dp)
+                .height(139.dp),
+            contentScale = ContentScale.Fit,
+        )
+
+        LandingShopGuideCard(
+            modifier = Modifier
+                .offset(x = 13.dp, y = 346.dp)
+                .width(387.dp)
+                .height(292.dp),
+        )
+    }
+}
+
+@Composable
+private fun LandingShopGuideCard(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .shadow(
+                elevation = 10.dp,
+                shape = RoundedCornerShape(30.dp),
+                clip = false,
+            )
+            .clip(RoundedCornerShape(30.dp))
+            .background(Color(0xFFFFE7B3))
+            .padding(horizontal = 24.dp, vertical = 25.dp),
+    ) {
+        Image(
+            painter = painterResource(R.drawable.img_landing_shop_logo),
+            contentDescription = null,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape),
+            contentScale = ContentScale.Fit,
+        )
+
+        Text(
+            text = "커피빈",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 30.sp,
+            lineHeight = 30.sp,
+            color = Gray_7,
+            modifier = Modifier.offset(x = 44.dp),
+        )
+
+        Row(
+            modifier = Modifier.offset(y = 42.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = Gray_7,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text(
+                text = "서울 마포구 홍익로 6길 26",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Normal,
+                fontSize = 10.sp,
+                color = Gray_7,
+            )
+        }
+
+        Row(
+            modifier = Modifier.offset(y = 66.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            LandingFestivalTag("#분위기")
+            Spacer(modifier = Modifier.width(5.dp))
+            LandingFestivalTag("#커피맛집")
+            Spacer(modifier = Modifier.width(5.dp))
+            CompactSympathyButton(
+                sympathyCount = 6,
+                isSympathizedByMe = false,
+                onClick = {},
+                enabled = false,
+                height = 26.dp,
+                horizontalPadding = 10.dp,
+                iconSize = 13.dp,
+            )
+        }
+
+        Image(
+            painter = painterResource(R.drawable.img_landing_shop_coffee),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(94.dp)
+                .clip(RoundedCornerShape(10.dp)),
+            contentScale = ContentScale.Crop,
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 104.dp)
+                .height(1.dp)
+                .background(Gray_5),
+        )
+
+        Row(
+            modifier = Modifier
+                .offset(y = 114.dp)
+                .height(30.dp)
+                .border(1.dp, Shop, RoundedCornerShape(15.dp))
+                .padding(horizontal = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "%",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 11.sp,
+                color = Shop,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .size(18.dp)
+                    .border(1.dp, Shop, CircleShape),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "전 품목 50% 할인",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                color = Shop,
+            )
+        }
+
+        Text(
+            text = "[커피빈 홍대역점/전 품목 50% 할인] 소중한 고객님께 감사하는 마음을 담아 진행하는 봄맞이 행사!! 따뜻... 더보기",
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+            color = Gray_7,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = 154.dp),
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomStart),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "☺",
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .size(25.dp)
+                    .border(1.dp, Color.Black, CircleShape),
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "커뮤니티 ›",
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                color = White,
+                modifier = Modifier
+                    .background(Issue, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+            )
+        }
+    }
 }
 
 @Composable
