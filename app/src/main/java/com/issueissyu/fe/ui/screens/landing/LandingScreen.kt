@@ -29,6 +29,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubbleOutline
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -44,6 +45,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -70,7 +73,11 @@ import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.FestivalContainer
+import com.issueissyu.fe.ui.theme.Gray_1
+import com.issueissyu.fe.ui.theme.Gray_2
+import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
+import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueContainer
@@ -85,7 +92,7 @@ import com.issueissyu.fe.ui.theme.suiteFontFamily
 import kotlinx.coroutines.launch
 
 private const val GUIDE_PAGE_COUNT = 6
-private const val LANDING_STAGE_COUNT = 12
+private const val LANDING_STAGE_COUNT = 14
 
 @Composable
 fun LandingScreen(
@@ -132,12 +139,13 @@ private fun LandingPage(
     onComplete: () -> Unit,
 ) {
     val isCompletePage = page == LANDING_STAGE_COUNT - 1
+    val isIssueDetailGuidePage = page in 11..12
 
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .clipToBounds()
-            .background(Color(0xFFF3F8FF))
+            .background(if (isIssueDetailGuidePage) White else Color(0xFFF3F8FF))
             .pointerInput(page, isCompletePage) {
                 if (!isCompletePage) {
                     detectTapGestures(onTap = { onNext() })
@@ -153,6 +161,14 @@ private fun LandingPage(
                 .width(deviceViewportWidth)
                 .fillMaxHeight()
         ) {
+            if (isIssueDetailGuidePage) {
+                LandingIssueDetailGuidePage(
+                    showActionGuide = page == 12,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                return@Box
+            }
+
             Image(
                 painter = painterResource(
                     if (isCompletePage) {
@@ -172,15 +188,20 @@ private fun LandingPage(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .padding(horizontal = 28.dp, vertical = 20.dp),
+                    .padding(
+                        start = 27.dp,
+                        top = 58.dp,
+                        end = 27.dp,
+                        bottom = 20.dp,
+                    ),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 LandingProgress(
                     currentPage = page.toProgressIndex(),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.width(320.dp),
                 )
 
-                Spacer(modifier = Modifier.height(44.dp))
+                Spacer(modifier = Modifier.height(95.dp))
 
                 Box(
                     modifier = Modifier
@@ -265,7 +286,8 @@ private fun LandingGuideContent(
         )
         8 -> LandingPinCreatePage(modifier)
         9 -> LandingHistoryPage(modifier)
-        else -> LandingCommunityPage(modifier)
+        10 -> LandingCommunityPage(modifier)
+        else -> Unit
     }
 }
 
@@ -275,7 +297,7 @@ private fun Int.toProgressIndex(): Int {
         in 1..7 -> 1
         8 -> 2
         9 -> 3
-        10 -> 4
+        in 10..12 -> 4
         else -> 5
     }
 }
@@ -348,12 +370,10 @@ private fun LandingPinTypesPage(
 ) {
     Box(
         modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.TopCenter,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             LandingTitle(
@@ -475,20 +495,36 @@ private fun LandingPinTypeCard(
 ) {
     Column(
         modifier = modifier
-            .height(196.dp)
+            .height(204.dp)
+            .shadow(
+                elevation = 5.dp,
+                shape = RoundedCornerShape(15.dp),
+                clip = false,
+            )
             .clip(RoundedCornerShape(14.dp))
-            .background(color.copy(alpha = 0.88f))
-            .border(4.dp, White.copy(alpha = 0.72f), RoundedCornerShape(14.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        color.copy(alpha = 0.7f),
+                        White.copy(alpha = 0.7f),
+                    ),
+                ),
+            )
+            .border(6.dp, White, RoundedCornerShape(15.dp))
             .padding(14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = label,
-            style = IssueTypo.Bold12.copy(color = White),
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 16.sp,
+            lineHeight = 21.sp,
+            color = White,
             modifier = Modifier
                 .align(Alignment.Start)
                 .background(accentColor, RoundedCornerShape(14.dp))
-                .padding(horizontal = 12.dp, vertical = 4.dp),
+                .padding(horizontal = 9.dp, vertical = 1.dp),
         )
 
         Icon(
@@ -496,23 +532,28 @@ private fun LandingPinTypeCard(
             contentDescription = null,
             tint = Color.Unspecified,
             modifier = Modifier
-                .padding(top = 4.dp, bottom = 6.dp)
-                .size(42.dp),
+                .padding(top = 4.dp, bottom = 4.dp)
+                .size(52.dp),
         )
 
         Text(
             text = title,
-            style = IssueTypo.ExtraBold18.copy(color = Title),
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 20.sp,
+            lineHeight = 21.sp,
+            color = Title,
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         Text(
             text = description,
-            style = IssueTypo.Regular15.copy(
-                color = Gray_7,
-                lineHeight = 21.sp,
-            ),
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.Medium,
+            fontSize = 16.sp,
+            lineHeight = 21.sp,
+            color = Title,
             textAlign = TextAlign.Center,
         )
     }
@@ -1151,16 +1192,21 @@ private fun LandingTitle(
 ) {
     Text(
         text = title,
-        style = IssueTypo.ExtraBold30.copy(color = Color.Black),
+        fontFamily = suiteFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 32.sp,
+        lineHeight = 38.sp,
+        color = Title,
         textAlign = TextAlign.Center,
     )
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(3.dp))
     Text(
         text = subtitle,
-        style = IssueTypo.Regular16.copy(
-            color = Gray_7,
-            lineHeight = 24.sp,
-        ),
+        fontFamily = suiteFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 18.sp,
+        lineHeight = 21.sp,
+        color = Gray_7,
         textAlign = TextAlign.Center,
     )
 }
@@ -1184,6 +1230,348 @@ private fun LandingSpeechBubble(
                 color = Title,
                 lineHeight = 24.sp,
             ),
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun LandingIssueDetailGuidePage(
+    showActionGuide: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .background(White)
+            .statusBarsPadding()
+            .navigationBarsPadding(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "#이슈",
+                    style = IssueTypo.Bold18.copy(color = Title),
+                    modifier = Modifier
+                        .background(Color(0xFFD8E8F8), RoundedCornerShape(18.dp))
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .border(1.dp, Gray_4, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_report),
+                        contentDescription = null,
+                        tint = Issue,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.weight(1f))
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .border(1.dp, Gray_4, CircleShape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = null,
+                        tint = BrandColor,
+                        modifier = Modifier.size(22.dp),
+                    )
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(R.drawable.ic_character_default),
+                    contentDescription = null,
+                    modifier = Modifier.size(42.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Column {
+                    Text("밤티", style = IssueTypo.Bold18.copy(color = Title))
+                    Text(
+                        "04.07 18:24 · 조회 51 · 공감 38",
+                        style = IssueTypo.Regular12.copy(color = Gray_7),
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("쓰레기 무단투기", style = IssueTypo.Bold18.copy(color = Title, fontSize = 22.sp))
+            Spacer(modifier = Modifier.height(5.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.LocationOn,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("서울 마포구 홍익로 6길 34", style = IssueTypo.Regular15.copy(color = Title))
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(120.dp)
+                            .background(Color(0xFFD7D0C7), RoundedCornerShape(10.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoCamera,
+                            contentDescription = null,
+                            tint = Gray_7,
+                            modifier = Modifier.size(34.dp),
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(7.dp)
+                    .background(Gray_3, RoundedCornerShape(4.dp)),
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = "최근 홍대입구역 근처 골목에서 쓰레기 무단투기가 지속적으로 발생하고 있습니다.\n" +
+                    "주변 환경이 훼손되고 악취 및 위생 문제로 인해 주민 불편이 커지고 있는 상황입니다.\n" +
+                    "해당 지역에 대한 확인 및 적절한 조치 부탁드립니다.",
+                style = IssueTypo.Regular15.copy(
+                    color = Title,
+                    lineHeight = 22.sp,
+                ),
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(White, RoundedCornerShape(15.dp))
+                    .padding(horizontal = 10.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                LandingReactionRow(listOf("❤️ 30", "🥳 10", "😡 3", "👊 1", "👎 1"))
+                LandingReactionRow(listOf("😤 1", "😮 1", "🫨 1", "🤫 1", "☺ 1"))
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .background(White, RoundedCornerShape(15.dp))
+                    .padding(7.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                LandingIssueActionButton(
+                    text = "🔥 지금 가요",
+                    backgroundColor = Gray_1,
+                    textColor = Issue,
+                    modifier = Modifier.weight(1f),
+                )
+                LandingIssueActionButton(
+                    text = "📣 청원 (0)",
+                    backgroundColor = Color(0xFFFF6F35),
+                    textColor = White,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            Spacer(modifier = Modifier.height(28.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(Gray_1, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                    .padding(14.dp),
+            ) {
+                LandingGuideComment("밤티", "저건 좀 아니다,,")
+                Spacer(modifier = Modifier.height(10.dp))
+                LandingGuideComment("밤티", "저건 좀 아니다,,")
+                Spacer(modifier = Modifier.weight(1f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp)
+                        .background(Gray_2, RoundedCornerShape(22.dp)),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .size(36.dp)
+                            .background(BrandColor, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoCamera,
+                            contentDescription = null,
+                            tint = White,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Text(
+                        "댓글 달기",
+                        style = IssueTypo.Regular15.copy(color = Gray_5),
+                        modifier = Modifier.padding(start = 10.dp),
+                    )
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.18f)),
+        )
+
+        if (showActionGuide) {
+            LandingGuideCallout(
+                text = "이슈 핀에서는\n‘지금 가요’ 버튼으로\n직접 해결에 참여할 수도 있고,",
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 13.dp, end = 74.dp)
+                    .padding(bottom = 60.dp),
+            )
+            LandingGuideCallout(
+                text = "‘청원’ 버튼을 눌러\n청원에 동참해 지자체에 목소리를 전달할 수도 있어요.",
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(start = 37.dp, end = 16.dp, bottom = 145.dp),
+            )
+        } else {
+            LandingGuideCallout(
+                text = "커뮤니티에서는\n이모지와 댓글을 통해\n의견을 공유할 수 있어요.",
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp, end = 71.dp, bottom = 110.dp),
+            )
+        }
+
+        if (!showActionGuide) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 54.dp)
+                    .size(42.dp)
+                    .background(BrandColor, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowUpward,
+                    contentDescription = null,
+                    tint = White,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandingReactionRow(reactions: List<String>) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        reactions.forEach { reaction ->
+            Text(
+                text = reaction,
+                style = IssueTypo.Regular15.copy(color = Title),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandingIssueActionButton(
+    text: String,
+    backgroundColor: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .background(backgroundColor, RoundedCornerShape(13.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = IssueTypo.Bold18.copy(color = textColor),
+        )
+    }
+}
+
+@Composable
+private fun LandingGuideComment(
+    nickname: String,
+    content: String,
+) {
+    Row(verticalAlignment = Alignment.Top) {
+        Image(
+            painter = painterResource(R.drawable.ic_character_default),
+            contentDescription = null,
+            modifier = Modifier.size(32.dp),
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Column {
+            Text(nickname, style = IssueTypo.Regular12.copy(color = Gray_7))
+            Text(
+                content,
+                style = IssueTypo.Regular15.copy(color = White),
+                modifier = Modifier
+                    .background(BrandColor, RoundedCornerShape(18.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandingGuideCallout(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 5.dp,
+                shape = RoundedCornerShape(15.dp),
+                clip = false,
+            )
+            .background(White, RoundedCornerShape(15.dp))
+            .border(1.dp, Gray_5.copy(alpha = 0.7f), RoundedCornerShape(15.dp))
+            .padding(horizontal = 12.dp, vertical = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.Medium,
+            fontSize = 16.sp,
+            lineHeight = 21.sp,
+            color = Color.Black,
             textAlign = TextAlign.Center,
         )
     }
@@ -1430,6 +1818,40 @@ private fun LandingCommunityPreview() {
     IssueissyuTheme {
         LandingPage(
             page = 10,
+            onNext = {},
+            onComplete = {},
+        )
+    }
+}
+
+@Preview(
+    name = "Landing - Issue Emoji And Comments Guide",
+    showSystemUi = true,
+    widthDp = 412,
+    heightDp = 917,
+)
+@Composable
+private fun LandingIssueEmojiAndCommentsGuidePreview() {
+    IssueissyuTheme {
+        LandingPage(
+            page = 11,
+            onNext = {},
+            onComplete = {},
+        )
+    }
+}
+
+@Preview(
+    name = "Landing - Issue Actions Guide",
+    showSystemUi = true,
+    widthDp = 412,
+    heightDp = 917,
+)
+@Composable
+private fun LandingIssueActionsGuidePreview() {
+    IssueissyuTheme {
+        LandingPage(
+            page = 12,
             onNext = {},
             onComplete = {},
         )
