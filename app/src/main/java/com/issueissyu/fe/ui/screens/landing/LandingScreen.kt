@@ -2,6 +2,7 @@ package com.issueissyu.fe.ui.screens.landing
 
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,8 +48,11 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -68,6 +72,7 @@ import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
+import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.screens.map.PinSummaryCard
 import com.issueissyu.fe.ui.screens.map.PinSummaryCardHighlight
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -224,8 +229,9 @@ private fun LandingPage(
                 }
             }
 
-            if (page == 2) {
+            if (page in 2..3) {
                 LandingIssuePinGuideOverlay(
+                    highlightSympathy = page == 3,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -463,7 +469,7 @@ private fun LandingPinTypesPage(
                     .alpha(
                         if (selectedType == null ||
                             selectedType == LandingPinShowcaseType.ISSUE &&
-                            guideFocus == LandingPinGuideFocus.NONE
+                            guideFocus != LandingPinGuideFocus.COMMUNITY_BUTTON
                         ) {
                             1f
                         } else {
@@ -485,7 +491,7 @@ private fun LandingPinTypesPage(
                 }
 
                 if (type != LandingPinShowcaseType.ISSUE ||
-                    guideFocus != LandingPinGuideFocus.NONE
+                    guideFocus == LandingPinGuideFocus.COMMUNITY_BUTTON
                 ) {
                     Column(
                         modifier = Modifier
@@ -583,19 +589,38 @@ private fun LandingPinTypeGrid(
 }
 
 @Composable
-private fun LandingIssuePinGuideOverlay(modifier: Modifier = Modifier) {
+private fun LandingIssuePinGuideOverlay(
+    highlightSympathy: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Box(modifier = modifier) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.18f)),
-        )
+        if (highlightSympathy) {
+            LandingIssueGuideCard(
+                modifier = Modifier
+                    .offset(x = 13.dp, y = 338.dp)
+                    .width(387.dp)
+                    .height(292.dp),
+            )
+        }
+
+        if (highlightSympathy) {
+            LandingDimOverlayWithSympathyCutout()
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.18f)),
+            )
+        }
 
         Box(
             modifier = Modifier
-                .offset(x = 16.dp, y = 157.dp)
-                .width(325.dp)
-                .height(90.dp)
+                .offset(
+                    x = if (highlightSympathy) 36.dp else 16.dp,
+                    y = if (highlightSympathy) 334.dp else 157.dp,
+                )
+                .width(if (highlightSympathy) 266.dp else 325.dp)
+                .height(if (highlightSympathy) 79.dp else 90.dp)
                 .shadow(4.dp, RoundedCornerShape(15.dp))
                 .background(White, RoundedCornerShape(15.dp))
                 .border(
@@ -606,7 +631,11 @@ private fun LandingIssuePinGuideOverlay(modifier: Modifier = Modifier) {
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "지도 위 이슈 핀을 눌러\n동네에서 일어나는 이슈를 확인해 보세요!",
+                text = if (highlightSympathy) {
+                    "공감 10개 이상을 받으면\n커뮤니티에 올라가요!"
+                } else {
+                    "지도 위 이슈 핀을 눌러\n동네에서 일어나는 이슈를 확인해 보세요!"
+                },
                 fontFamily = suiteFontFamily,
                 fontWeight = FontWeight.Medium,
                 fontSize = 16.sp,
@@ -616,21 +645,52 @@ private fun LandingIssuePinGuideOverlay(modifier: Modifier = Modifier) {
             )
         }
 
-        Image(
-            painter = painterResource(R.drawable.ic_character_default),
-            contentDescription = null,
-            modifier = Modifier
-                .offset(x = 272.dp, y = 262.dp)
-                .width(90.dp)
-                .height(139.dp),
-            contentScale = ContentScale.Fit,
-        )
+        if (!highlightSympathy) {
+            Image(
+                painter = painterResource(R.drawable.ic_character_default),
+                contentDescription = null,
+                modifier = Modifier
+                    .offset(x = 272.dp, y = 262.dp)
+                    .width(90.dp)
+                    .height(139.dp),
+                contentScale = ContentScale.Fit,
+            )
 
-        LandingIssueGuideCard(
-            modifier = Modifier
-                .offset(x = 13.dp, y = 338.dp)
-                .width(387.dp)
-                .height(292.dp),
+            LandingIssueGuideCard(
+                modifier = Modifier
+                    .offset(x = 13.dp, y = 338.dp)
+                    .width(387.dp)
+                    .height(292.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandingDimOverlayWithSympathyCutout() {
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            },
+    ) {
+        drawRect(Color.Black.copy(alpha = 0.18f))
+        drawRoundRect(
+            color = Color.Transparent,
+            topLeft = androidx.compose.ui.geometry.Offset(
+                x = 155.dp.toPx(),
+                y = 434.dp.toPx(),
+            ),
+            size = androidx.compose.ui.geometry.Size(
+                width = 58.dp.toPx(),
+                height = 32.dp.toPx(),
+            ),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                x = 16.dp.toPx(),
+                y = 16.dp.toPx(),
+            ),
+            blendMode = BlendMode.Clear,
         )
     }
 }
@@ -731,14 +791,14 @@ private fun LandingIssueGuideCard(modifier: Modifier = Modifier) {
                     .background(White, CircleShape),
             )
             Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "👍 21",
-                fontFamily = suiteFontFamily,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 12.sp,
-                modifier = Modifier
-                    .background(White, RoundedCornerShape(20.dp))
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            CompactSympathyButton(
+                sympathyCount = 21,
+                isSympathizedByMe = false,
+                onClick = {},
+                enabled = false,
+                height = 26.dp,
+                horizontalPadding = 10.dp,
+                iconSize = 13.dp,
             )
         }
 
