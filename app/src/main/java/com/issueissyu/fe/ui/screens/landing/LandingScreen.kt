@@ -23,8 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -35,7 +33,6 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -2133,220 +2130,87 @@ private fun LandingCommunityPage(modifier: Modifier = Modifier) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(500.dp),
+                .height(525.dp),
         ) {
-            Column(
+            Image(
+                painter = painterResource(R.drawable.img_landing_community_feed),
+                contentDescription = null,
                 modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .width(300.dp)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(34.dp))
-                    .background(Color.Black)
-                    .padding(6.dp),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(Color(0xFFF7F7F7)),
-                ) {
-                    LazyRow(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(White)
-                            .padding(horizontal = 10.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                    ) {
-                        items(landingCommunityCategories) { category ->
-                            Row(
-                                modifier = Modifier
-                                    .height(32.dp)
-                                    .background(
-                                        if (category.selected) Color(0xFF333333) else White,
-                                        RoundedCornerShape(18.dp),
-                                    )
-                                    .border(
-                                        1.dp,
-                                        if (category.selected) Color(0xFF333333) else Color(0xFFE1E1E1),
-                                        RoundedCornerShape(18.dp),
-                                    )
-                                    .padding(horizontal = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    painter = painterResource(category.iconRes),
-                                    contentDescription = null,
-                                    tint = if (category.selected) White else category.iconColor,
-                                    modifier = Modifier.size(15.dp),
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = category.label,
-                                    style = IssueTypo.Bold12.copy(
-                                        color = if (category.selected) White else Title,
-                                    ),
-                                )
-                            }
-                        }
-                    }
+                    .offset(x = 6.dp)
+                    .width(230.dp)
+                    .height(340.dp)
+                    .clip(RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp))
+                    .border(
+                        width = 7.dp,
+                        color = Color.Black,
+                        shape = RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp),
+                    ),
+                contentScale = ContentScale.FillWidth,
+                alignment = Alignment.TopCenter,
+            )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(White)
-                            .padding(horizontal = 12.dp, vertical = 7.dp),
-                        horizontalArrangement = Arrangement.End,
-                    ) {
-                        Text(
-                            text = "예시시 예시구⌄",
-                            style = IssueTypo.Bold12.copy(color = BrandColor),
-                            modifier = Modifier
-                                .border(1.dp, BrandColor, RoundedCornerShape(14.dp))
-                                .padding(horizontal = 9.dp, vertical = 5.dp),
-                        )
-                    }
+            Image(
+                painter = painterResource(R.drawable.img_landing_community_detail),
+                contentDescription = null,
+                modifier = Modifier
+                    .offset(x = 135.dp, y = 134.dp)
+                    .width(224.dp)
+                    .height(391.dp)
+                    .clipToBounds(),
+                contentScale = ContentScale.FillWidth,
+                alignment = Alignment.Center,
+            )
 
-                    Column(modifier = Modifier.padding(horizontal = 12.dp)) {
-                        Spacer(modifier = Modifier.height(10.dp))
-                        CommunityFeedItem(
-                            title = "동네식당 새소식",
-                            subtitle = "가상 할인 행사 · 기간: 예시일",
-                            footer = "조회 100·공감 43",
-                            color = ShopContainer,
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "우리 동네 인기 소식 🔥",
-                            style = IssueTypo.ExtraBold18.copy(color = Title),
-                        )
-                        Spacer(modifier = Modifier.height(7.dp))
-                        CommunityPostPreview()
-                    }
-                }
-            }
-
-            LandingStepChip(
+            LandingCommunityStepChip(
                 text = "카테고리 선택으로 원하는 정보만 쏙쏙!",
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 36.dp),
+                    .offset(x = 112.dp, y = 51.dp)
+                    .width(245.dp)
+                    .height(39.dp),
             )
-            LandingStepChip(
+            LandingCommunityStepChip(
                 text = "이웃이 올린 이슈에\n공감하고",
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(top = 90.dp),
+                    .offset(x = 24.dp, y = 321.dp)
+                    .width(150.dp)
+                    .height(51.dp),
             )
-            LandingStepChip(
+            LandingCommunityStepChip(
                 text = "댓글로 의견 남기기!",
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(bottom = 42.dp),
+                    .offset(x = 212.dp, y = 414.dp)
+                    .width(150.dp)
+                    .height(37.dp),
             )
         }
     }
 }
 
-private data class LandingCommunityCategory(
-    val label: String,
-    val iconRes: Int,
-    val iconColor: Color,
-    val selected: Boolean = false,
-)
-
-private val landingCommunityCategories = listOf(
-    LandingCommunityCategory("HOT", R.drawable.ic_fire, Issue, selected = true),
-    LandingCommunityCategory("이슈", R.drawable.issue, Issue),
-    LandingCommunityCategory("소통", R.drawable.communicate, Communication),
-    LandingCommunityCategory("가게 홍보", R.drawable.shop, Shop),
-    LandingCommunityCategory("축제·행사", R.drawable.festival, Festival),
-    LandingCommunityCategory("정책", R.drawable.ic_policy, Gray_4),
-    LandingCommunityCategory("공모전", R.drawable.ic_award, Shop),
-    LandingCommunityCategory("카드뉴스", R.drawable.ic_cardnews, BrandColor),
-    LandingCommunityCategory("전체", R.drawable.ic_all, Title),
-)
-
 @Composable
-private fun CommunityPostPreview() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(126.dp)
-            .background(White, RoundedCornerShape(12.dp))
-            .padding(10.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(92.dp)
-                .background(IssueContainer, RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.issue),
-                contentDescription = null,
-                tint = Issue,
-                modifier = Modifier.size(42.dp),
-            )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.fillMaxHeight()) {
-            Text("공원 조명 고장", style = IssueTypo.Bold18.copy(color = Title))
-            Spacer(modifier = Modifier.height(5.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(R.drawable.ic_character_default),
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("이웃 A", style = IssueTypo.Regular12.copy(color = Gray_7))
-            }
-            Text(
-                "예시시 예시구 가상동",
-                style = IssueTypo.Regular12.copy(color = Gray_7),
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            Text("조회 51·공감 38", style = IssueTypo.Regular12.copy(color = Gray_4))
-        }
-    }
-}
-
-@Composable
-private fun CommunityFeedItem(
-    title: String,
-    subtitle: String,
-    footer: String,
-    color: Color,
+private fun LandingCommunityStepChip(
+    text: String,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(116.dp)
-            .background(White, RoundedCornerShape(14.dp))
-            .padding(10.dp),
-        verticalAlignment = Alignment.Top,
+    Box(
+        modifier = modifier
+            .shadow(4.dp, RoundedCornerShape(15.dp))
+            .background(White, RoundedCornerShape(15.dp))
+            .border(
+                width = 1.dp,
+                color = Color(0xFF999999).copy(alpha = 0.7f),
+                shape = RoundedCornerShape(15.dp),
+            ),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(92.dp)
-                .background(color, RoundedCornerShape(10.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                imageVector = Icons.Default.Storefront,
-                contentDescription = null,
-                tint = Shop,
-                modifier = Modifier.size(40.dp),
-            )
-        }
-        Spacer(modifier = Modifier.width(10.dp))
-        Column(modifier = Modifier.fillMaxHeight()) {
-            Text(title, style = IssueTypo.Bold18.copy(color = Title))
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(subtitle, style = IssueTypo.Regular12.copy(color = Gray_7))
-            Spacer(modifier = Modifier.weight(1f))
-            Text(footer, style = IssueTypo.Regular12.copy(color = Gray_4))
-        }
+        Text(
+            text = text,
+            fontFamily = suiteFontFamily,
+            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp,
+            lineHeight = 21.sp,
+            color = Title,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
