@@ -2394,7 +2394,11 @@ private fun LandingIssueDetailGuidePage(
             Spacer(modifier = Modifier.height(14.dp))
             LandingStaticReactionSection()
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(
+                modifier = Modifier.height(
+                    if (showActionGuide) 89.dp else 14.dp,
+                ),
+            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2431,15 +2435,14 @@ private fun LandingIssueDetailGuidePage(
             LandingGuideCallout(
                 text = "이슈 핀에서는\n‘지금 가요’ 버튼으로\n직접 해결에 참여할 수도 있고,",
                 modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 13.dp, end = 74.dp)
-                    .padding(bottom = 60.dp),
+                    .align(Alignment.TopCenter)
+                    .padding(start = 13.dp, top = 455.dp, end = 74.dp),
             )
             LandingGuideCallout(
                 text = "‘청원’ 버튼을 눌러\n청원에 동참해 지자체에 목소리를 전달할 수도 있어요.",
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(start = 37.dp, end = 16.dp, bottom = 145.dp),
+                    .align(Alignment.TopCenter)
+                    .padding(start = 37.dp, top = 685.dp, end = 16.dp),
             )
         } else {
             LandingGuideCallout(
@@ -2468,7 +2471,7 @@ private fun LandingIssueDetailHighlight(
             drawRoundRect(
                 color = Color.Transparent,
                 topLeft = androidx.compose.ui.geometry.Offset(
-                    x = 20.dp.toPx(),
+                    x = 24.dp.toPx(),
                     y = 578.dp.toPx(),
                 ),
                 size = androidx.compose.ui.geometry.Size(
@@ -2481,11 +2484,11 @@ private fun LandingIssueDetailHighlight(
             drawRoundRect(
                 color = Color.Transparent,
                 topLeft = androidx.compose.ui.geometry.Offset(
-                    x = 209.dp.toPx(),
+                    x = 207.dp.toPx(),
                     y = 578.dp.toPx(),
                 ),
                 size = androidx.compose.ui.geometry.Size(
-                    width = 183.dp.toPx(),
+                    width = 182.dp.toPx(),
                     height = 64.dp.toPx(),
                 ),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()),
