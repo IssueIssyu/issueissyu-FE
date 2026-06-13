@@ -40,7 +40,9 @@ class ApiErrorMapper @Inject constructor(
 
     suspend fun readHttpErrorBody(exception: HttpException): String =
         withContext(Dispatchers.IO) {
-            exception.response()?.errorBody()?.string().orEmpty()
+            runCatching {
+                exception.response()?.errorBody()?.use { it.string() }
+            }.getOrNull().orEmpty()
         }
 
     suspend fun <T> parseHttpErrorEnvelope(exception: HttpException, type: Class<T>): T? =
