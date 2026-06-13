@@ -1,26 +1,1 @@
-package com.issueissyu.fe
-
-import android.os.Bundle
-import androidx.activity.compose.setContent
-import androidx.fragment.app.FragmentActivity
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
-import com.issueissyu.fe.ui.App
-import com.issueissyu.fe.ui.theme.IssueissyuTheme
-import dagger.hilt.android.AndroidEntryPoint
-
-@AndroidEntryPoint
-class MainActivity : FragmentActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            IssueissyuTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    App()
-                }
-            }
-        }
-    }
-}
+package com.issueissyu.feimport android.content.Intentimport android.os.Bundleimport androidx.activity.compose.setContentimport androidx.compose.foundation.layout.fillMaxSizeimport androidx.compose.material3.Surfaceimport androidx.compose.runtime.getValueimport androidx.compose.runtime.mutableStateOfimport androidx.compose.runtime.setValueimport androidx.compose.ui.Modifierimport androidx.fragment.app.FragmentActivityimport com.issueissyu.fe.core.notification.PushDestinationimport com.issueissyu.fe.core.notification.clearPushExtrasimport com.issueissyu.fe.core.notification.parsePushDestinationimport com.issueissyu.fe.ui.Appimport com.issueissyu.fe.ui.theme.IssueissyuThemeimport dagger.hilt.android.AndroidEntryPoint@AndroidEntryPointclass MainActivity : FragmentActivity() {    private var pendingPush by mutableStateOf<PushDestination?>(null)    override fun onCreate(savedInstanceState: Bundle?) {        super.onCreate(savedInstanceState)        handlePushIntent(intent)        setContent {            IssueissyuTheme {                Surface(modifier = Modifier.fillMaxSize()) {                    App(                        pendingPush = pendingPush,                        onPendingPushHandled = { pendingPush = null },                    )                }            }        }    }    override fun onNewIntent(intent: Intent) {        super.onNewIntent(intent)        setIntent(intent)        handlePushIntent(intent)    }    private fun handlePushIntent(intent: Intent?) {        val destination = intent?.parsePushDestination() ?: return        pendingPush = destination        intent.clearPushExtras()    }}

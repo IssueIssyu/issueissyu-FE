@@ -17,8 +17,6 @@ import javax.inject.Singleton
 class FcmTokenSyncManager @Inject constructor(
     @ApplicationContext context: Context,
     private val tokenManager: TokenManager,
-    // dagger.Lazy 주입: AlarmRepository → OkHttp(TokenAuthenticator) → SessionManager →
-    // FcmTokenSyncManager 순환을 그래프 생성 시점이 아닌 사용 시점으로 미뤄 끊는다.
     private val alarmRepository: Lazy<AlarmRepository>,
 ) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

@@ -12,40 +12,65 @@ import androidx.core.app.NotificationManagerCompat
 import com.issueissyu.fe.MainActivity
 import com.issueissyu.fe.R
 
-object NotificationHelper {
+enum class PushType(
+    val serverCode: String,
+    val channelId: String,
+    val channelName: String,
+    private val fixedNotificationId: Int? = null,
+) {
+    PIN_LIKED("PIN_LIKED", "channel_like", "내 핀 좋아요", 1001),
+    PIN_EVENT("PIN_EVENT", "channel_event", "이벤트"),
+    PIN_POPULAR("PIN_POPULAR", "channel_popular", "인기 게시글"),
+    PIN_STORE_AD("PIN_STORE_AD", "channel_store_ad", "가게 홍보"),
+    ;
 
-    const val CHANNEL_LIKE = "channel_like"
-    const val CHANNEL_EVENT = "channel_event"
-    const val CHANNEL_POPULAR = "channel_popular"
-    const val CHANNEL_STORE_AD = "channel_store_ad"
-
-    //앱 시작 -> 알림 채널 생성
-    fun createChannel(context: Context) {
-        val manager = context.getSystemService(NotificationManager::class.java)
-
-        listOf(
-            NotificationChannel(CHANNEL_LIKE, "내 핀 좋아요", NotificationManager.IMPORTANCE_HIGH),
-            NotificationChannel(CHANNEL_EVENT, "이벤트", NotificationManager.IMPORTANCE_HIGH),
-            NotificationChannel(CHANNEL_POPULAR, "인기 게시글", NotificationManager.IMPORTANCE_HIGH),
-            NotificationChannel(CHANNEL_STORE_AD, "가게 홍보", NotificationManager.IMPORTANCE_HIGH),
-            ).forEach { manager.createNotificationChannel(it) }
+    fun resolveDestination(pinId: String?, communityId: String?): PushDestination? = when (this) {
+        PIN_LIKED -> pinId?.takeIf { it.isNotBlank() }?.let { PushDestination.PinDetail(it) }
+        PIN_EVENT, PIN_STORE_AD -> communityId?.toLongOrNull()?.let { PushDestination.CommunityDetail(it) }
+        PIN_POPULAR -> null
     }
 
-    //화면에 띄우는 알림 팝업
-    fun show(context: Context, type: String?, targetId: String?, title: String, body: String) {
-        //type으로 channel 분기
-        val channelId = when (type) {
-            "PIN_LIKED" -> CHANNEL_LIKE
-            "PIN_EVENT" -> CHANNEL_EVENT
-            "PIN_POPULAR" -> CHANNEL_POPULAR
-            "PIN_STORE_AD" -> CHANNEL_STORE_AD
-            else -> CHANNEL_LIKE
+    fun notificationId(): Int =
+        fixedNotificationId ?: (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
+
+    companion object {
+        fun fromServer(value: String?): PushType? =
+            entries.find { it.serverCode.equals(value, ignoreCase = true) }
+    }
+}
+
+object NotificationHelper {
+
+    const val EXTRA_TYPE = "type"
+    const val EXTRA_PIN_ID = "pinId"
+    const val EXTRA_COMMUNITY_ID = "communityId"
+
+    fun createChannel(context: Context) {
+        val manager = context.getSystemService(NotificationManager::class.java)
+        PushType.entries.forEach { type ->
+            manager.createNotificationChannel(
+                NotificationChannel(type.channelId, type.channelName, NotificationManager.IMPORTANCE_HIGH)
+            )
         }
+    }
+
+    fun show(
+        context: Context,
+        type: String?,
+        pinId: String?,
+        communityId: String?,
+        title: String,
+        body: String,
+    ) {
+        val pushType = PushType.fromServer(type) ?: return
 
         val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("type", type)
-            putExtra("targetId", targetId)
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_TYPE, pushType.serverCode)
+            putExtra(EXTRA_PIN_ID, pinId)
+            putExtra(EXTRA_COMMUNITY_ID, communityId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -53,7 +78,7 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(context, channelId)
+        val notification = NotificationCompat.Builder(context, pushType.channelId)
             .setContentTitle(title)
             .setContentText(body)
             .setSmallIcon(R.drawable.ic_report) // 나중에 아이콘 교체
@@ -67,14 +92,35 @@ object NotificationHelper {
             ) != PackageManager.PERMISSION_GRANTED
         ) return
 
-        NotificationManagerCompat.from(context).notify(getNotificationId(type), notification)
+        NotificationManagerCompat.from(context).notify(pushType.notificationId(), notification)
     }
+}
 
-    //핀 좋아요 -> 덮어씌워서 보여주기
-    private fun getNotificationId(type: String?): Int{
-        return when(type){
-            "PIN_LIKED" -> 1001
-            else -> (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
-        }
-    }
+sealed interface PushDestination {
+    data class PinDetail(val pinId: String) : PushDestination
+    data class CommunityDetail(val communityId: Long) : PushDestination
+}
+
+fun Intent?.parsePushDestination(): PushDestination? {
+    if (this == null) return null
+    val pushType = PushType.fromServer(
+        getStringExtra(NotificationHelper.EXTRA_TYPE) ?: getStringExtra("type")
+    ) ?: return null
+
+    return pushType.resolveDestination(readPinId(), readCommunityId())
+}
+
+private fun Intent.readPinId(): String? = (
+    getStringExtra(NotificationHelper.EXTRA_PIN_ID)
+        ?: getStringExtra("pinId")
+    )?.takeIf { it.isNotBlank() }
+
+private fun Intent.readCommunityId(): String? =
+    getStringExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
+        ?: getStringExtra("communityId")
+
+fun Intent.clearPushExtras() {
+    removeExtra(NotificationHelper.EXTRA_TYPE)
+    removeExtra(NotificationHelper.EXTRA_PIN_ID)
+    removeExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
 }

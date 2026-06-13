@@ -20,11 +20,11 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
 
         val type = message.data["type"]
-        val targetId = message.data["pinId"]
-        val likeAlarmId = message.data["likeAlarmId"]
+        val pinId = message.data["pinId"]
+        val communityId = message.data["communityId"]
         val title = message.data["title"] ?: message.notification?.title ?: "이슈이슈 알림"
         val body = message.data["body"] ?: message.notification?.body ?: ""
 
-        NotificationHelper.show(this, type, targetId, title, body)
+        NotificationHelper.show(this, type, pinId, communityId, title, body)
     }
 }

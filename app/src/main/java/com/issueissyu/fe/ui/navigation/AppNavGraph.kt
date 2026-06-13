@@ -12,18 +12,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.issueissyu.fe.core.auth.AuthSessionState
+import com.issueissyu.fe.core.notification.PushDestination
 import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
 import com.issueissyu.fe.domain.model.notification.Notification
 import com.issueissyu.fe.domain.model.notification.NotificationType
@@ -61,15 +64,39 @@ import com.issueissyu.fe.ui.screens.mypage.MyPageTermScreen
 import com.issueissyu.fe.ui.screens.mypage.ProfileChangeScreen
 import com.issueissyu.fe.ui.screens.mypage.TermsType as MyPageTermsType
 import com.issueissyu.fe.ui.screens.onboarding.TermsType as OnboardingTermsType
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues,
     onMapLocationSelectionModeChanged: (Boolean) -> Unit = {},
+    pendingPush: PushDestination? = null,
+    onPendingPushHandled: () -> Unit = {},
 ) {
     val sessionViewModel: AppSessionViewModel = hiltViewModel()
     val context = LocalContext.current
+    val authState by sessionViewModel.authState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(pendingPush, authState) {
+        val destination = pendingPush ?: return@LaunchedEffect
+        if (authState != AuthSessionState.Authenticated) return@LaunchedEffect
+
+        repeat(30) {
+            val route = navController.currentDestination?.route
+            if (canNavigateFromPush(route)) {
+                when (destination) {
+                    is PushDestination.PinDetail ->
+                        navController.navigateToPinDetail(destination.pinId)
+                    is PushDestination.CommunityDetail ->
+                        navController.navigate(AppDestinations.communityDetailRoute(destination.communityId))
+                }
+                onPendingPushHandled()
+                return@LaunchedEffect
+            }
+            delay(100)
+        }
+    }
 
     LaunchedEffect(sessionViewModel, navController, context) {
         sessionViewModel.sessionExpiredMessages.collect { message ->
@@ -639,6 +666,11 @@ private fun NavScreenWrapper(
 @Composable
 private fun OnboardingBackDisabledHandler() {
     BackHandler { }
+}
+
+private fun canNavigateFromPush(route: String?): Boolean {
+    if (route == null) return false
+    return route != AppDestinations.Onboarding.SPLASH_ROUTE && route != LOGIN_ROUTE
 }
 
 private fun NavHostController.navigateToLoginClearingBackStack() {
