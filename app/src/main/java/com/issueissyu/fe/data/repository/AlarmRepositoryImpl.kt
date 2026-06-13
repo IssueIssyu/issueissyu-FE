@@ -2,10 +2,12 @@ package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.AlarmApi
 import com.issueissyu.fe.data.remote.dto.request.alarm.StoreTokenRequest
-import com.issueissyu.fe.data.remote.dto.response.alarm.toAlarmToggleState
+import com.issueissyu.fe.data.remote.dto.response.alarm.activeFor
 import com.issueissyu.fe.data.remote.dto.response.alarm.toNotificationPage
-import com.issueissyu.fe.domain.model.notification.AlarmToggleState
+import com.issueissyu.fe.data.remote.dto.response.alarm.toTermsAgreementResult
+import com.issueissyu.fe.domain.model.TermsAgreementResult
 import com.issueissyu.fe.domain.model.notification.NotificationPage
+import com.issueissyu.fe.domain.model.notification.NotificationType
 import com.issueissyu.fe.domain.repository.AlarmRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -86,7 +88,7 @@ class AlarmRepositoryImpl @Inject constructor(
         Result.failure(e)
     }
 
-    override suspend fun getAlarmToggleState(): Result<AlarmToggleState> = try {
+    override suspend fun getAlarmToggleState(): Result<TermsAgreementResult> = try {
         val response = alarmApi.getAlarmToggle()
         when (response.code) {
             "ALARM_STATE_200" -> {
@@ -96,14 +98,51 @@ class AlarmRepositoryImpl @Inject constructor(
                             response.message.ifBlank { "알림 설정 응답이 올바르지 않습니다." },
                         ),
                     )
-                Result.success(result.toAlarmToggleState())
+                Result.success(result.toTermsAgreementResult())
             }
             else -> if (response.isSuccess && response.result != null) {
-                Result.success(response.result.toAlarmToggleState())
+                Result.success(response.result.toTermsAgreementResult())
             } else {
                 Result.failure(
                     Exception(
                         response.message.takeIf { it.isNotBlank() } ?: "알림 설정을 불러오지 못했습니다.",
+                    ),
+                )
+            }
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    override suspend fun updateAlarmToggle(
+        alarmType: NotificationType,
+    ): Result<Boolean> = try {
+        val response = alarmApi.updateAlarmToggle(alarmType.name)
+        when (response.code) {
+            "USER_ALARM_200_1",
+            "USER_ALARM_200_2",
+            "USER_ALARM_200_3",
+            "USER_ALARM_200_4",
+            -> {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "알림 설정 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.activeFor(alarmType))
+            }
+            "USER_ALARM_400" -> Result.failure(
+                Exception(
+                    response.message.takeIf { it.isNotBlank() } ?: "존재하지 않는 알람 설정입니다.",
+                ),
+            )
+            else -> if (response.isSuccess && response.result != null) {
+                Result.success(response.result.activeFor(alarmType))
+            } else {
+                Result.failure(
+                    Exception(
+                        response.message.takeIf { it.isNotBlank() } ?: "알림 설정 변경에 실패했습니다.",
                     ),
                 )
             }

@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +54,16 @@ fun AlarmSettingScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.event.collect { event ->
+            when (event) {
+                is AlarmSettingsViewModel.UiEvent.ShowError -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
 
     fun hasNotificationPermission(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
@@ -144,16 +156,32 @@ fun AlarmSettingScreen(
                     Column(
                         verticalArrangement = Arrangement.spacedBy(15.dp),
                     ) {
-                        AlarmToggleItem("내 핀 좋아요", uiState.pinLike) {
+                        AlarmToggleItem(
+                            title = "내 핀 좋아요",
+                            checked = uiState.pinLike,
+                            enabled = !uiState.isUpdating,
+                        ) {
                             onToggle(uiState.pinLike) { viewModel.updatePinLike(it) }
                         }
-                        AlarmToggleItem("이벤트", uiState.event) {
+                        AlarmToggleItem(
+                            title = "이벤트",
+                            checked = uiState.event,
+                            enabled = !uiState.isUpdating,
+                        ) {
                             onToggle(uiState.event) { viewModel.updateEvent(it) }
                         }
-                        AlarmToggleItem("인기 게시글", uiState.popularPost) {
+                        AlarmToggleItem(
+                            title = "인기 게시글",
+                            checked = uiState.popularPost,
+                            enabled = !uiState.isUpdating,
+                        ) {
                             onToggle(uiState.popularPost) { viewModel.updatePopularPost(it) }
                         }
-                        AlarmToggleItem("가게 홍보", uiState.storePromo) {
+                        AlarmToggleItem(
+                            title = "가게 홍보",
+                            checked = uiState.storePromo,
+                            enabled = !uiState.isUpdating,
+                        ) {
                             onToggle(uiState.storePromo) { viewModel.updateStorePromo(it) }
                         }
                     }
@@ -167,6 +195,7 @@ fun AlarmSettingScreen(
 fun AlarmToggleItem(
     title: String,
     checked: Boolean,
+    enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
     Card(
@@ -186,6 +215,7 @@ fun AlarmToggleItem(
             Switch(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
+                enabled = enabled,
                 colors = SwitchDefaults.colors(
                     checkedTrackColor = BrandColor
                 )

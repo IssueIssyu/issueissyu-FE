@@ -32,7 +32,13 @@ interface AlarmApi {
         @Path("alarmId") alarmId: Long
     ): BaseResponse<ConfirmAlarmResponse?>
 
-    //마이페이지 - 알람 토클 상태 조회
+    //마이페이지 - 알람 토글 상태 조회
     @GET("api/users/me/alarms/state")
     suspend fun getAlarmToggle(): BaseResponse<AlarmToggleResponse?>
+
+    //마이페이지 - 알람 토글 상태 업데이트
+    @PATCH("api/users/me/alarms/{alarmType}")
+    suspend fun updateAlarmToggle(
+        @Path("alarmType") alarmType: String
+    ): BaseResponse<AlarmToggleResponse?>
 }
