@@ -62,9 +62,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.issueissyu.fe.R
-import com.issueissyu.fe.domain.model.community.CommunityComment
-import com.issueissyu.fe.domain.model.community.CommunityDetail
-import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
@@ -75,8 +72,6 @@ import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.ui.components.CompactSympathyButton
-import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreenContent
-import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailUiState
 import com.issueissyu.fe.ui.screens.map.PinSummaryCard
 import com.issueissyu.fe.ui.screens.map.PinSummaryCardHighlight
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -88,11 +83,13 @@ import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.Gray_5
+import com.issueissyu.fe.ui.theme.Gray_6
 import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueContainer
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
+import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Shop
 import com.issueissyu.fe.ui.theme.ShopContainer
 import com.issueissyu.fe.ui.theme.Title
@@ -2274,11 +2271,6 @@ private fun LandingIssueDetailGuidePage(
     showActionGuide: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    if (!showActionGuide) {
-        LandingCommunityIssueDetailGuide(modifier = modifier)
-        return
-    }
-
     Box(
         modifier = modifier
             .background(White)
@@ -2298,10 +2290,10 @@ private fun LandingIssueDetailGuidePage(
             ) {
                 Text(
                     text = "#이슈",
-                    style = IssueTypo.Bold18.copy(color = Title),
+                    style = IssueTypo.Bold12.copy(color = Orange),
                     modifier = Modifier
-                        .background(Color(0xFFD8E8F8), RoundedCornerShape(18.dp))
-                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                        .background(Orange.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Box(
@@ -2400,16 +2392,7 @@ private fun LandingIssueDetailGuidePage(
             )
 
             Spacer(modifier = Modifier.height(14.dp))
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(White, RoundedCornerShape(15.dp))
-                    .padding(horizontal = 10.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                LandingReactionRow(listOf("❤️ 30", "🥳 10", "😡 3", "👊 1", "👎 1"))
-                LandingReactionRow(listOf("😤 1", "😮 1", "🫨 1", "🤫 1", "☺ 1"))
-            }
+            LandingStaticReactionSection()
 
             Spacer(modifier = Modifier.height(14.dp))
             Row(
@@ -2435,179 +2418,44 @@ private fun LandingIssueDetailGuidePage(
             }
 
             Spacer(modifier = Modifier.height(28.dp))
-            Column(
+            LandingStaticCommentSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .background(Gray_1, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-                    .padding(14.dp),
-            ) {
-                LandingGuideComment("밤티", "저건 좀 아니다,,")
-                Spacer(modifier = Modifier.height(10.dp))
-                LandingGuideComment("밤티", "저건 좀 아니다,,")
-                Spacer(modifier = Modifier.weight(1f))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp)
-                        .background(Gray_2, RoundedCornerShape(22.dp)),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .size(36.dp)
-                            .background(BrandColor, CircleShape),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PhotoCamera,
-                            contentDescription = null,
-                            tint = White,
-                            modifier = Modifier.size(20.dp),
-                        )
-                    }
-                    Text(
-                        "댓글 달기",
-                        style = IssueTypo.Regular15.copy(color = Gray_5),
-                        modifier = Modifier.padding(start = 10.dp),
-                    )
-                }
-            }
+            )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.20f)),
-        )
+        LandingIssueDetailHighlight(showActionGuide = showActionGuide)
 
-        LandingGuideCallout(
-            text = "이슈 핀에서는\n‘지금 가요’ 버튼으로\n직접 해결에 참여할 수도 있고,",
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 13.dp, end = 74.dp)
-                .padding(bottom = 60.dp),
-        )
-        LandingGuideCallout(
-            text = "‘청원’ 버튼을 눌러\n청원에 동참해 지자체에 목소리를 전달할 수도 있어요.",
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(start = 37.dp, end = 16.dp, bottom = 145.dp),
-        )
+        if (showActionGuide) {
+            LandingGuideCallout(
+                text = "이슈 핀에서는\n‘지금 가요’ 버튼으로\n직접 해결에 참여할 수도 있고,",
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 13.dp, end = 74.dp)
+                    .padding(bottom = 60.dp),
+            )
+            LandingGuideCallout(
+                text = "‘청원’ 버튼을 눌러\n청원에 동참해 지자체에 목소리를 전달할 수도 있어요.",
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(start = 37.dp, end = 16.dp, bottom = 145.dp),
+            )
+        } else {
+            LandingGuideCallout(
+                text = "커뮤니티에서는\n이모지와 댓글을 통해\n의견을 공유할 수 있어요.",
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = 16.dp, end = 71.dp, bottom = 110.dp),
+            )
+        }
     }
 }
 
 @Composable
-private fun LandingCommunityIssueDetailGuide(
-    modifier: Modifier = Modifier,
+private fun LandingIssueDetailHighlight(
+    showActionGuide: Boolean,
 ) {
-    val detail = CommunityDetail(
-        communityId = 1L,
-        pinId = 1L,
-        kind = CommunityItemKind.ISSUE,
-        title = "쓰레기 무단투기",
-        content = "최근 홍대입구역 근처 골목에서 쓰레기 무단투기가 지속적으로 발생하고 있습니다.\n" +
-            "주변 환경이 훼손되고 악취 및 위생 문제로 인해 주민 불편이 커지고 있는 상황입니다.",
-        imageUrls = listOf(
-            "android.resource://com.issueissyu.fe/drawable/img_landing_issue_trash",
-            "android.resource://com.issueissyu.fe/drawable/img_landing_issue_trash",
-            "android.resource://com.issueissyu.fe/drawable/img_landing_issue_trash",
-        ),
-        writerNickname = "범티",
-        writerProfileUrl = null,
-        address = "서울 마포구 홍익로 6길 34",
-        viewCount = 51,
-        likeCount = 38,
-        createdAt = "2026-04-07T18:24:00.000Z",
-        updatedAt = null,
-        isReported = false,
-        isPetitioned = false,
-        isProblemSolver = false,
-        isMine = false,
-        reliabilityScore = 80,
-        reliabilityReason = null,
-        issueStatusText = "해결 전",
-        petitionCount = 0,
-        petitionTargetCount = 100,
-    )
-    val comments = listOf(
-        CommunityComment(
-            commentId = 1L,
-            nickname = "파이팅",
-            profileImageUrl = null,
-            content = "저건 좀 아니다,,",
-            isEdited = false,
-            createdAt = "2026-04-07T18:30:00.000Z",
-            isMine = false,
-        ),
-        CommunityComment(
-            commentId = 2L,
-            nickname = "파이팅",
-            profileImageUrl = null,
-            content = "저건 좀 아니다,,",
-            isEdited = false,
-            createdAt = "2026-04-07T18:31:00.000Z",
-            isMine = true,
-        ),
-    )
-    val reactions = listOf(
-        PinEmojiReaction(
-            "sad",
-            30,
-            emojiImageUrl = "android.resource://com.issueissyu.fe/drawable/img_landing_reaction_sad",
-        ),
-        PinEmojiReaction(
-            "laugh",
-            10,
-            emojiImageUrl = "android.resource://com.issueissyu.fe/drawable/img_landing_reaction_laugh",
-        ),
-        PinEmojiReaction(
-            "angry",
-            3,
-            emojiImageUrl = "android.resource://com.issueissyu.fe/drawable/img_landing_reaction_angry",
-        ),
-    )
-
-    Box(modifier = modifier.background(White)) {
-        CommunityDetailScreenContent(
-            uiState = CommunityDetailUiState(
-                detail = detail,
-                comments = comments,
-                emojiReactions = reactions,
-            ),
-            onBackClick = {},
-            initialContentItemIndex = 4,
-        )
-
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(
-                                pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial,
-                            )
-                            event.changes.forEach { it.consume() }
-                        }
-                    }
-                },
-        )
-
-        LandingCommunityDetailHighlight()
-
-        LandingGuideCallout(
-            text = "커뮤니티에서는\n이모지와 댓글을 통해\n의견을 공유할 수 있어요.",
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(start = 16.dp, top = 290.dp, end = 72.dp),
-        )
-    }
-}
-
-@Composable
-private fun LandingCommunityDetailHighlight() {
     Canvas(
         modifier = Modifier
             .fillMaxSize()
@@ -2616,50 +2464,215 @@ private fun LandingCommunityDetailHighlight() {
             },
     ) {
         drawRect(Color.Black.copy(alpha = 0.22f))
-        drawRoundRect(
-            color = Color.Transparent,
-            topLeft = androidx.compose.ui.geometry.Offset(
-                x = 20.dp.toPx(),
-                y = 487.dp.toPx(),
-            ),
-            size = androidx.compose.ui.geometry.Size(
-                width = (size.width - 168.dp.toPx()),
-                height = 42.dp.toPx(),
-            ),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                x = 16.dp.toPx(),
-                y = 16.dp.toPx(),
-            ),
-            blendMode = BlendMode.Clear,
+        if (showActionGuide) {
+            drawRoundRect(
+                color = Color.Transparent,
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    x = 20.dp.toPx(),
+                    y = 578.dp.toPx(),
+                ),
+                size = androidx.compose.ui.geometry.Size(
+                    width = 179.dp.toPx(),
+                    height = 64.dp.toPx(),
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()),
+                blendMode = BlendMode.Clear,
+            )
+            drawRoundRect(
+                color = Color.Transparent,
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    x = 209.dp.toPx(),
+                    y = 578.dp.toPx(),
+                ),
+                size = androidx.compose.ui.geometry.Size(
+                    width = 183.dp.toPx(),
+                    height = 64.dp.toPx(),
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()),
+                blendMode = BlendMode.Clear,
+            )
+        } else {
+            drawRoundRect(
+                color = Color.Transparent,
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    x = 20.dp.toPx(),
+                    y = 430.dp.toPx(),
+                ),
+                size = androidx.compose.ui.geometry.Size(
+                    width = size.width - 40.dp.toPx(),
+                    height = 66.dp.toPx(),
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(15.dp.toPx()),
+                blendMode = BlendMode.Clear,
+            )
+            drawRoundRect(
+                color = Color.Transparent,
+                topLeft = androidx.compose.ui.geometry.Offset(
+                    x = 14.dp.toPx(),
+                    y = 600.dp.toPx(),
+                ),
+                size = androidx.compose.ui.geometry.Size(
+                    width = size.width - 28.dp.toPx(),
+                    height = 176.dp.toPx(),
+                ),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
+                blendMode = BlendMode.Clear,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LandingStaticReactionSection() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = "반응",
+            style = IssueTypo.Bold12.copy(color = Gray_6),
         )
-        drawRoundRect(
-            color = Color.Transparent,
-            topLeft = androidx.compose.ui.geometry.Offset(
-                x = 12.dp.toPx(),
-                y = 612.dp.toPx(),
-            ),
-            size = androidx.compose.ui.geometry.Size(
-                width = (size.width - 20.dp.toPx()),
-                height = (size.height - 772.dp.toPx()),
-            ),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                x = 16.dp.toPx(),
-                y = 16.dp.toPx(),
-            ),
-            blendMode = BlendMode.Clear,
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_add_emoji),
+                contentDescription = null,
+                tint = Color.Unspecified,
+                modifier = Modifier.size(28.dp),
+            )
+            LandingStaticReactionChip(R.drawable.img_landing_reaction_sad, 30)
+            LandingStaticReactionChip(R.drawable.img_landing_reaction_laugh, 10)
+            LandingStaticReactionChip(R.drawable.img_landing_reaction_angry, 3)
+        }
+    }
+}
+
+@Composable
+private fun LandingStaticReactionChip(
+    imageRes: Int,
+    count: Int,
+) {
+    Row(
+        modifier = Modifier
+            .border(1.dp, Gray_3, RoundedCornerShape(20.dp))
+            .padding(horizontal = 10.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Image(
+            painter = painterResource(imageRes),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = count.toString(),
+            style = IssueTypo.Regular12.copy(color = Title),
         )
     }
 }
 
 @Composable
-private fun LandingReactionRow(reactions: List<String>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        reactions.forEach { reaction ->
+private fun LandingStaticCommentSection(
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .background(Gray_1, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            .padding(start = 14.dp, top = 14.dp, end = 14.dp, bottom = 8.dp),
+    ) {
+        Text(
+            text = "댓글 2",
+            style = IssueTypo.Bold18.copy(color = Title),
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        LandingStaticCommentItem("파이팅", "저건 좀 아니다,,")
+        Spacer(modifier = Modifier.height(10.dp))
+        LandingStaticCommentItem("파이팅", "저건 좀 아니다,,", showActions = true)
+        Spacer(modifier = Modifier.weight(1f))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(44.dp)
+                .background(White, RoundedCornerShape(22.dp))
+                .border(1.dp, BrandColor, RoundedCornerShape(22.dp))
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
             Text(
-                text = reaction,
-                style = IssueTypo.Regular15.copy(color = Title),
+                text = "댓글을 입력해주세요...",
+                style = IssueTypo.Regular15.copy(color = Gray_5),
             )
         }
+    }
+}
+
+@Composable
+private fun LandingStaticCommentItem(
+    nickname: String,
+    content: String,
+    showActions: Boolean = false,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Image(
+            painter = painterResource(R.drawable.ic_character_default),
+            contentDescription = null,
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = nickname,
+                style = IssueTypo.Bold12.copy(color = Title),
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = content,
+                    style = IssueTypo.Regular15.copy(color = White),
+                    modifier = Modifier
+                        .background(
+                            BrandColor,
+                            RoundedCornerShape(
+                                topStart = 2.dp,
+                                topEnd = 16.dp,
+                                bottomEnd = 16.dp,
+                                bottomStart = 16.dp,
+                            ),
+                        )
+                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+                if (showActions) {
+                    LandingStaticCommentAction("✎")
+                    LandingStaticCommentAction("×")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LandingStaticCommentAction(text: String) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .background(White, CircleShape)
+            .border(1.dp, Gray_3, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            style = IssueTypo.Regular12.copy(color = Gray_5),
+        )
     }
 }
 
@@ -2680,31 +2693,6 @@ private fun LandingIssueActionButton(
             text = text,
             style = IssueTypo.Bold18.copy(color = textColor),
         )
-    }
-}
-
-@Composable
-private fun LandingGuideComment(
-    nickname: String,
-    content: String,
-) {
-    Row(verticalAlignment = Alignment.Top) {
-        Image(
-            painter = painterResource(R.drawable.ic_character_default),
-            contentDescription = null,
-            modifier = Modifier.size(32.dp),
-        )
-        Spacer(modifier = Modifier.width(6.dp))
-        Column {
-            Text(nickname, style = IssueTypo.Regular12.copy(color = Gray_7))
-            Text(
-                content,
-                style = IssueTypo.Regular15.copy(color = White),
-                modifier = Modifier
-                    .background(BrandColor, RoundedCornerShape(18.dp))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            )
-        }
     }
 }
 
