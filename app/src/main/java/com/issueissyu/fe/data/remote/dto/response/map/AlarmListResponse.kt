@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.remote.dto.response.map
 
+import com.issueissyu.fe.core.time.formatAlarmTimeAgo
 import com.issueissyu.fe.domain.model.notification.Notification
 import com.issueissyu.fe.domain.model.notification.NotificationPage
 import com.issueissyu.fe.domain.model.notification.NotificationType
@@ -16,7 +17,7 @@ data class Alarm(
     val alarmTitle: String,
     val alarmBody: String,
     val pinId: Long,
-    val communityId: Long? = null,
+    val communityId: Long?,
     val createdAt: String,
     val timeAgo: String,
 )
@@ -41,10 +42,9 @@ fun Alarm.toNotification(): Notification? {
         type = type,
         title = alarmTitle,
         body = alarmBody,
-        time = timeAgo,
+        timeAgo = formatAlarmTimeAgo(timeAgo),
         isUnread = !isConfirmed,
-        createdAtEpochMillis = 0L,
-        targetId = pinId.toString(),
+        pinId = pinId,
         communityId = communityId,
     )
 }

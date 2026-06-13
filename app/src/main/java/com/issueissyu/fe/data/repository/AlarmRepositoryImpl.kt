@@ -28,7 +28,7 @@ class AlarmRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getAlarmList(
-        size: Int?,
+        size: Int,
         cursor: String?,
     ): Result<NotificationPage> = try {
         val response = alarmApi.getAlarmList(size = size, cursor = cursor)

@@ -5,10 +5,9 @@ data class Notification(
     val type: NotificationType,
     val title: String,
     val body: String,
-    val time: String,
+    val timeAgo: String,
     val isUnread: Boolean,
-    val createdAtEpochMillis: Long,
-    val targetId: String? = null,
+    val pinId: Long,
     val communityId: Long? = null,
 )
 

@@ -25,7 +25,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.issueissyu.fe.core.auth.AuthSessionState
 import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
+import com.issueissyu.fe.domain.model.notification.Notification
+import com.issueissyu.fe.domain.model.notification.NotificationType
 import com.issueissyu.fe.ui.screens.map.MapScreen
+import com.issueissyu.fe.ui.screens.map.NotificationRoute
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
 import com.issueissyu.fe.ui.screens.onboarding.LocalVerificationScreen
 import com.issueissyu.fe.ui.screens.onboarding.LoginScreen
@@ -445,6 +448,19 @@ fun AppNavGraph(
                 )
             }
         }
+        composable(AppDestinations.NOTIFICATION_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                NotificationRoute(
+                    onBack = { navController.popBackStack() },
+                    onItemClick = { notification ->
+                        navController.navigateFromNotification(notification)
+                    },
+                )
+            }
+        }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
             NavScreenWrapper(
                 paddingValues = paddingValues,
@@ -635,4 +651,17 @@ private fun NavHostController.navigateToLoginClearingBackStack() {
 fun NavHostController.navigateToPinDetail(pinId: String) {
     if (pinId.isBlank()) return
     navigate(AppDestinations.pinDetailRoute(pinId))
+}
+
+/** 알람 type별 상세 화면 이동 (LIKE → 핀, HOT/EVENT/STORE → 커뮤니티) */
+fun NavHostController.navigateFromNotification(notification: Notification) {
+    when (notification.type) {
+        NotificationType.LIKE -> navigateToPinDetail(notification.pinId.toString())
+        NotificationType.HOT,
+        NotificationType.EVENT,
+        NotificationType.STORE -> {
+            val communityId = notification.communityId ?: return
+            navigate(AppDestinations.communityDetailRoute(communityId))
+        }
+    }
 }

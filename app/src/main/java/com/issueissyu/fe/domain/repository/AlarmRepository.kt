@@ -6,7 +6,11 @@ interface AlarmRepository {
     suspend fun storePushToken(fcmPushToken: String): Result<Unit>
 
     suspend fun getAlarmList(
-        size: Int? = null,
+        size: Int = DEFAULT_PAGE_SIZE,
         cursor: String? = null,
     ): Result<NotificationPage>
+
+    companion object {
+        const val DEFAULT_PAGE_SIZE = 10
+    }
 }

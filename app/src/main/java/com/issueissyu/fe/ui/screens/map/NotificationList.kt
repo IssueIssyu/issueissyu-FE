@@ -3,6 +3,7 @@ package com.issueissyu.fe.ui.screens.map
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,14 +16,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,71 +41,96 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.notification.Notification
 import com.issueissyu.fe.domain.model.notification.NotificationType
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Festival
+import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.Issue
+import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Shop
 import com.issueissyu.fe.ui.theme.White
 
-private const val SAMPLE_NOW = 1_740_000_000_000L
-
-val sampleNotifications = listOf(
-    Notification(
-        id = "like-1",
-        type = NotificationType.LIKE,
-        title = "공감 달성!",
-        body = "'쓰레기 무단투기' 핀이 공감 10개를 달성했어요.",
-        time = "방금 전",
-        isUnread = true,
-        createdAtEpochMillis = SAMPLE_NOW,
-        targetId = "101",
-    ),
-    Notification(
-        id = "hot-1",
-        type = NotificationType.HOT,
-        title = "인기 게시글 등록",
-        body = "'쓰레기 무단투기' 핀이 우리 동네 인기 소식에 올라갔어요.",
-        time = "5분 전",
-        isUnread = true,
-        createdAtEpochMillis = SAMPLE_NOW - 5 * 60_000L,
-        targetId = "301",
-    ),
-    Notification(
-        id = "store-1",
-        type = NotificationType.STORE,
-        title = "커피빈 행사",
-        body = "커피빈 홍대역점에서 전 품목 50% 할인 쿠폰이 새로 등록되었어요! ☕",
-        time = "1시간 전",
-        isUnread = false,
-        createdAtEpochMillis = SAMPLE_NOW - 60 * 60_000L,
-        targetId = "401",
-    ),
-    Notification(
-        id = "event-1",
-        type = NotificationType.EVENT,
-        title = "행사 D-1 🎪",
-        body = "'벼룩시장 행사'가 내일 열려요! 서교동 348-80에서 오전 10시부터 시작합니다.",
-        time = "2시간 전",
-        isUnread = false,
-        createdAtEpochMillis = SAMPLE_NOW - 2 * 60 * 60_000L,
-        targetId = "201",
-    ),
-)
-
 @Composable
-fun NotificationScreen(
-    notifications: List<Notification> = sampleNotifications,
+fun NotificationRoute(
+    viewModel: NotificationListViewModel = hiltViewModel(),
     onBack: () -> Unit = {},
     onItemClick: (Notification) -> Unit = {},
 ) {
-    val sortedNotifications = notifications.sortedByDescending { it.createdAtEpochMillis }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var shouldRefreshOnResume by remember { mutableStateOf(false) }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> shouldRefreshOnResume = true
+                Lifecycle.Event.ON_RESUME -> {
+                    if (shouldRefreshOnResume) {
+                        shouldRefreshOnResume = false
+                        viewModel.refreshNotifications()
+                    }
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    NotificationScreen(
+        uiState = uiState,
+        onBack = onBack,
+        onRetry = viewModel::loadNotifications,
+        onLoadMore = viewModel::loadMoreNotifications,
+        onItemClick = { notification ->
+            viewModel.markAsRead(notification.id)
+            onItemClick(notification)
+        },
+    )
+}
+
+@Composable
+fun NotificationScreen(
+    uiState: NotificationListUiState,
+    onBack: () -> Unit = {},
+    onRetry: () -> Unit = {},
+    onLoadMore: () -> Unit = {},
+    onItemClick: (Notification) -> Unit = {},
+) {
+    val listState = rememberLazyListState()
+    val shouldLoadMore by remember(
+        listState,
+        uiState.hasNext,
+        uiState.isLoadingMore,
+        uiState.notifications.size,
+    ) {
+        derivedStateOf {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                ?: return@derivedStateOf false
+
+            uiState.hasNext &&
+                !uiState.isLoadingMore &&
+                uiState.notifications.isNotEmpty() &&
+                lastVisibleIndex >= uiState.notifications.lastIndex - LoadMoreThreshold
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore) {
+            onLoadMore()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -106,18 +142,72 @@ fun NotificationScreen(
             onBackClick = onBack,
         )
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            items(
-                items = sortedNotifications,
-                key = { it.id },
-            ) { notification ->
-                NotificationRow(
-                    notification = notification,
-                    onClick = { onItemClick(notification) },
-                )
-                HorizontalDivider(color = Color(0xFFF0F0F0))
+        Box(modifier = Modifier.fillMaxSize()) {
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                }
+
+                uiState.errorMessage != null && uiState.notifications.isEmpty() -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = uiState.errorMessage,
+                            style = IssueTypo.Regular16,
+                            color = Gray_7,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onRetry) {
+                            Text("다시 시도")
+                        }
+                    }
+                }
+
+                uiState.notifications.isEmpty() -> {
+                    Text(
+                        text = "알림이 없습니다.",
+                        style = IssueTypo.Regular16,
+                        color = Gray_7,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                }
+
+                else -> {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(
+                            items = uiState.notifications,
+                            key = { it.id },
+                        ) { notification ->
+                            NotificationRow(
+                                notification = notification,
+                                onClick = { onItemClick(notification) },
+                            )
+                            HorizontalDivider(color = Color(0xFFF0F0F0))
+                        }
+
+                        if (uiState.isLoadingMore) {
+                            item(key = "loading_more") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -193,7 +283,7 @@ fun NotificationRow(
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = notification.time,
+                text = notification.timeAgo,
                 fontSize = 12.sp,
                 color = Color(0xFFAAAAAA),
             )
@@ -244,8 +334,4 @@ private fun NotificationType.toVisual(): NotificationTypeVisual = when (this) {
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun NotificationScreenPreview() {
-    NotificationScreen()
-}
+private const val LoadMoreThreshold = 3

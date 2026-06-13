@@ -7,13 +7,12 @@ enum class NotificationType {
     STORE,
     ;
 
-    //helper에서도 사용가능한 형태
     companion object {
         fun fromServer(value: String?): NotificationType? = when (value?.uppercase()) {
-            "LIKE", "PIN_LIKED" -> LIKE
-            "EVENT", "PIN_EVENT" -> EVENT
-            "HOT", "PIN_POPULAR", "POPULAR" -> HOT
-            "STORE", "PIN_STORE_AD", "STORE_AD" -> STORE
+            "LIKE" -> LIKE
+            "EVENT" -> EVENT
+            "HOT" -> HOT
+            "STORE" -> STORE
             else -> null
         }
     }
