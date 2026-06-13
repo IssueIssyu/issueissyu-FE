@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.firebase.messaging.FirebaseMessaging
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.domain.repository.AlarmRepository
+import dagger.Lazy
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +17,9 @@ import javax.inject.Singleton
 class FcmTokenSyncManager @Inject constructor(
     @ApplicationContext context: Context,
     private val tokenManager: TokenManager,
-    private val alarmRepository: AlarmRepository,
+    // dagger.Lazy 주입: AlarmRepository → OkHttp(TokenAuthenticator) → SessionManager →
+    // FcmTokenSyncManager 순환을 그래프 생성 시점이 아닌 사용 시점으로 미뤄 끊는다.
+    private val alarmRepository: Lazy<AlarmRepository>,
 ) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -40,7 +43,7 @@ class FcmTokenSyncManager @Inject constructor(
         if (!tokenManager.hasTokens() || fcmToken.isBlank()) return
         if (prefs.getString(KEY_LAST_SYNCED, null) == fcmToken) return
 
-        alarmRepository.storePushToken(fcmToken).onSuccess {
+        alarmRepository.get().storePushToken(fcmToken).onSuccess {
             prefs.edit().putString(KEY_LAST_SYNCED, fcmToken).apply()
         }
     }
