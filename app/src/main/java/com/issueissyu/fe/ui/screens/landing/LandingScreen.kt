@@ -62,6 +62,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.issueissyu.fe.R
+import com.issueissyu.fe.domain.model.community.CommunityComment
+import com.issueissyu.fe.domain.model.community.CommunityDetail
+import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
@@ -72,6 +75,8 @@ import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.ui.components.CompactSympathyButton
+import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailScreenContent
+import com.issueissyu.fe.ui.screens.community.detail.CommunityDetailUiState
 import com.issueissyu.fe.ui.screens.map.PinSummaryCard
 import com.issueissyu.fe.ui.screens.map.PinSummaryCardHighlight
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -2269,6 +2274,11 @@ private fun LandingIssueDetailGuidePage(
     showActionGuide: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    if (!showActionGuide) {
+        LandingCommunityIssueDetailGuide(modifier = modifier)
+        return
+    }
+
     Box(
         modifier = modifier
             .background(White)
@@ -2331,7 +2341,7 @@ private fun LandingIssueDetailGuidePage(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Column {
-                    Text("밤티", style = IssueTypo.Bold18.copy(color = Title))
+                    Text("범티", style = IssueTypo.Bold18.copy(color = Title))
                     Text(
                         "04.07 18:24 · 조회 51 · 공감 38",
                         style = IssueTypo.Regular12.copy(color = Gray_7),
@@ -2359,20 +2369,15 @@ private fun LandingIssueDetailGuidePage(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 repeat(3) {
-                    Box(
+                    Image(
+                        painter = painterResource(R.drawable.img_landing_issue_trash),
+                        contentDescription = null,
                         modifier = Modifier
                             .weight(1f)
                             .height(120.dp)
-                            .background(Color(0xFFD7D0C7), RoundedCornerShape(10.dp)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PhotoCamera,
-                            contentDescription = null,
-                            tint = Gray_7,
-                            modifier = Modifier.size(34.dp),
-                        )
-                    }
+                            .clip(RoundedCornerShape(10.dp)),
+                        contentScale = ContentScale.Crop,
+                    )
                 }
             }
 
@@ -2474,48 +2479,175 @@ private fun LandingIssueDetailGuidePage(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.18f)),
+                .background(Color.Black.copy(alpha = 0.20f)),
         )
 
-        if (showActionGuide) {
-            LandingGuideCallout(
-                text = "이슈 핀에서는\n‘지금 가요’ 버튼으로\n직접 해결에 참여할 수도 있고,",
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 13.dp, end = 74.dp)
-                    .padding(bottom = 60.dp),
-            )
-            LandingGuideCallout(
-                text = "‘청원’ 버튼을 눌러\n청원에 동참해 지자체에 목소리를 전달할 수도 있어요.",
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(start = 37.dp, end = 16.dp, bottom = 145.dp),
-            )
-        } else {
-            LandingGuideCallout(
-                text = "커뮤니티에서는\n이모지와 댓글을 통해\n의견을 공유할 수 있어요.",
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp, end = 71.dp, bottom = 110.dp),
-            )
-        }
+        LandingGuideCallout(
+            text = "이슈 핀에서는\n‘지금 가요’ 버튼으로\n직접 해결에 참여할 수도 있고,",
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 13.dp, end = 74.dp)
+                .padding(bottom = 60.dp),
+        )
+        LandingGuideCallout(
+            text = "‘청원’ 버튼을 눌러\n청원에 동참해 지자체에 목소리를 전달할 수도 있어요.",
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(start = 37.dp, end = 16.dp, bottom = 145.dp),
+        )
+    }
+}
 
-        if (!showActionGuide) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = 54.dp)
-                    .size(42.dp)
-                    .background(BrandColor, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowUpward,
-                    contentDescription = null,
-                    tint = White,
-                )
-            }
-        }
+@Composable
+private fun LandingCommunityIssueDetailGuide(
+    modifier: Modifier = Modifier,
+) {
+    val detail = CommunityDetail(
+        communityId = 1L,
+        pinId = 1L,
+        kind = CommunityItemKind.ISSUE,
+        title = "쓰레기 무단투기",
+        content = "최근 홍대입구역 근처 골목에서 쓰레기 무단투기가 지속적으로 발생하고 있습니다.\n" +
+            "주변 환경이 훼손되고 악취 및 위생 문제로 인해 주민 불편이 커지고 있는 상황입니다.",
+        imageUrls = listOf(
+            "android.resource://com.issueissyu.fe/drawable/img_landing_issue_trash",
+            "android.resource://com.issueissyu.fe/drawable/img_landing_issue_trash",
+            "android.resource://com.issueissyu.fe/drawable/img_landing_issue_trash",
+        ),
+        writerNickname = "범티",
+        writerProfileUrl = null,
+        address = "서울 마포구 홍익로 6길 34",
+        viewCount = 51,
+        likeCount = 38,
+        createdAt = "2026-04-07T18:24:00.000Z",
+        updatedAt = null,
+        isReported = false,
+        isPetitioned = false,
+        isProblemSolver = false,
+        isMine = false,
+        reliabilityScore = 80,
+        reliabilityReason = null,
+        issueStatusText = "해결 전",
+        petitionCount = 0,
+        petitionTargetCount = 100,
+    )
+    val comments = listOf(
+        CommunityComment(
+            commentId = 1L,
+            nickname = "파이팅",
+            profileImageUrl = null,
+            content = "저건 좀 아니다,,",
+            isEdited = false,
+            createdAt = "2026-04-07T18:30:00.000Z",
+            isMine = false,
+        ),
+        CommunityComment(
+            commentId = 2L,
+            nickname = "파이팅",
+            profileImageUrl = null,
+            content = "저건 좀 아니다,,",
+            isEdited = false,
+            createdAt = "2026-04-07T18:31:00.000Z",
+            isMine = true,
+        ),
+    )
+    val reactions = listOf(
+        PinEmojiReaction(
+            "sad",
+            30,
+            emojiImageUrl = "android.resource://com.issueissyu.fe/drawable/img_landing_reaction_sad",
+        ),
+        PinEmojiReaction(
+            "laugh",
+            10,
+            emojiImageUrl = "android.resource://com.issueissyu.fe/drawable/img_landing_reaction_laugh",
+        ),
+        PinEmojiReaction(
+            "angry",
+            3,
+            emojiImageUrl = "android.resource://com.issueissyu.fe/drawable/img_landing_reaction_angry",
+        ),
+    )
+
+    Box(modifier = modifier.background(White)) {
+        CommunityDetailScreenContent(
+            uiState = CommunityDetailUiState(
+                detail = detail,
+                comments = comments,
+                emojiReactions = reactions,
+            ),
+            onBackClick = {},
+            initialContentItemIndex = 4,
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(
+                                pass = androidx.compose.ui.input.pointer.PointerEventPass.Initial,
+                            )
+                            event.changes.forEach { it.consume() }
+                        }
+                    }
+                },
+        )
+
+        LandingCommunityDetailHighlight()
+
+        LandingGuideCallout(
+            text = "커뮤니티에서는\n이모지와 댓글을 통해\n의견을 공유할 수 있어요.",
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(start = 16.dp, top = 290.dp, end = 72.dp),
+        )
+    }
+}
+
+@Composable
+private fun LandingCommunityDetailHighlight() {
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            },
+    ) {
+        drawRect(Color.Black.copy(alpha = 0.22f))
+        drawRoundRect(
+            color = Color.Transparent,
+            topLeft = androidx.compose.ui.geometry.Offset(
+                x = 20.dp.toPx(),
+                y = 487.dp.toPx(),
+            ),
+            size = androidx.compose.ui.geometry.Size(
+                width = (size.width - 168.dp.toPx()),
+                height = 42.dp.toPx(),
+            ),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                x = 16.dp.toPx(),
+                y = 16.dp.toPx(),
+            ),
+            blendMode = BlendMode.Clear,
+        )
+        drawRoundRect(
+            color = Color.Transparent,
+            topLeft = androidx.compose.ui.geometry.Offset(
+                x = 12.dp.toPx(),
+                y = 612.dp.toPx(),
+            ),
+            size = androidx.compose.ui.geometry.Size(
+                width = (size.width - 20.dp.toPx()),
+                height = (size.height - 772.dp.toPx()),
+            ),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                x = 16.dp.toPx(),
+                y = 16.dp.toPx(),
+            ),
+            blendMode = BlendMode.Clear,
+        )
     }
 }
 
