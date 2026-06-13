@@ -7,18 +7,36 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_6
@@ -29,17 +47,12 @@ import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 @Composable
 fun AlarmSettingScreen(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    viewModel: AlarmSettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    // 각 토글 상태
-    var pinLike by remember { mutableStateOf(true) }
-    var event by remember { mutableStateOf(true) }
-    var popularPost by remember { mutableStateOf(true) }
-    var storePromo by remember { mutableStateOf(true) }
-
-    //알람 권한 확인
     fun hasNotificationPermission(): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
         return ContextCompat.checkSelfPermission(
@@ -76,29 +89,75 @@ fun AlarmSettingScreen(
             onBackClick = onBackClick
         )
 
-        //content
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(31.dp, 20.dp)
-        ){
-            Text(
-                text = "여기서 끄면 비슷한 내용의 알림은 보내지 않아요",
-                fontFamily = suiteFontFamily,
-                fontWeight = FontWeight.Medium,
-                fontSize = 16.sp,
-                color = Gray_6,
-            )
+        when {
+            uiState.isLoading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
 
-            Spacer(modifier = Modifier.height(50.dp))
+            uiState.errorMessage != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 31.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text(
+                            text = uiState.errorMessage.orEmpty(),
+                            fontFamily = suiteFontFamily,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp,
+                            color = Gray_6,
+                            textAlign = TextAlign.Center,
+                        )
+                        Button(onClick = viewModel::loadAlarmSettings) {
+                            Text("다시 시도")
+                        }
+                    }
+                }
+            }
 
-            Column(
-                verticalArrangement = Arrangement.spacedBy(15.dp)
-            ) {
-                AlarmToggleItem("내 핀 좋아요", pinLike) { onToggle(pinLike)  { pinLike = it }}
-                AlarmToggleItem("이벤트", event) { onToggle(event)  { event = it }}
-                AlarmToggleItem("인기 게시글", popularPost) { onToggle(popularPost)  { popularPost = it }}
-                AlarmToggleItem("가게 홍보", storePromo) { onToggle(storePromo)  { storePromo = it }}
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(31.dp, 20.dp),
+                ){
+                    Text(
+                        text = "여기서 끄면 비슷한 내용의 알림은 보내지 않아요",
+                        fontFamily = suiteFontFamily,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 16.sp,
+                        color = Gray_6,
+                    )
+
+                    Spacer(modifier = Modifier.height(50.dp))
+
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(15.dp),
+                    ) {
+                        AlarmToggleItem("내 핀 좋아요", uiState.pinLike) {
+                            onToggle(uiState.pinLike) { viewModel.updatePinLike(it) }
+                        }
+                        AlarmToggleItem("이벤트", uiState.event) {
+                            onToggle(uiState.event) { viewModel.updateEvent(it) }
+                        }
+                        AlarmToggleItem("인기 게시글", uiState.popularPost) {
+                            onToggle(uiState.popularPost) { viewModel.updatePopularPost(it) }
+                        }
+                        AlarmToggleItem("가게 홍보", uiState.storePromo) {
+                            onToggle(uiState.storePromo) { viewModel.updateStorePromo(it) }
+                        }
+                    }
+                }
             }
         }
     }
@@ -139,6 +198,6 @@ fun AlarmToggleItem(
 @Composable
 fun AlarmSettingScreenPreview() {
     AlarmSettingScreen(
-        onBackClick = {}
+        onBackClick = {},
     )
 }

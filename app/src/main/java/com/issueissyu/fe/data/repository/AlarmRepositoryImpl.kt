@@ -2,7 +2,9 @@ package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.AlarmApi
 import com.issueissyu.fe.data.remote.dto.request.alarm.StoreTokenRequest
+import com.issueissyu.fe.data.remote.dto.response.alarm.toAlarmToggleState
 import com.issueissyu.fe.data.remote.dto.response.alarm.toNotificationPage
+import com.issueissyu.fe.domain.model.notification.AlarmToggleState
 import com.issueissyu.fe.domain.model.notification.NotificationPage
 import com.issueissyu.fe.domain.repository.AlarmRepository
 import javax.inject.Inject
@@ -79,6 +81,32 @@ class AlarmRepositoryImpl @Inject constructor(
                     response.message.takeIf { it.isNotBlank() } ?: "알람 확인에 실패했습니다.",
                 ),
             )
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    override suspend fun getAlarmToggleState(): Result<AlarmToggleState> = try {
+        val response = alarmApi.getAlarmToggle()
+        when (response.code) {
+            "ALARM_STATE_200" -> {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "알림 설정 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toAlarmToggleState())
+            }
+            else -> if (response.isSuccess && response.result != null) {
+                Result.success(response.result.toAlarmToggleState())
+            } else {
+                Result.failure(
+                    Exception(
+                        response.message.takeIf { it.isNotBlank() } ?: "알림 설정을 불러오지 못했습니다.",
+                    ),
+                )
+            }
         }
     } catch (e: Exception) {
         Result.failure(e)
