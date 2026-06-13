@@ -225,12 +225,14 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.LANDING_ROUTE) {
-            OnboardingBackDisabledHandler()
+            val previousRoute =
+                navController.previousBackStackEntry?.destination?.route
+            if (previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE) {
+                OnboardingBackDisabledHandler()
+            }
 
             LandingScreen(
                 onComplete = {
-                    val previousRoute =
-                        navController.previousBackStackEntry?.destination?.route
                     if (previousRoute == AppDestinations.MyPage.MYPAGE_ROUTE) {
                         navController.popBackStack()
                     } else {

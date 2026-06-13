@@ -139,7 +139,6 @@ fun CommunityDetailScreen(
 fun CommunityDetailScreenContent(
     uiState: CommunityDetailUiState,
     onBackClick: () -> Unit,
-    initialContentItemIndex: Int = 0,
     onRetry: () -> Unit = {},
     onGoNowClick: () -> Unit = {},
     onPetitionClick: () -> Unit = {},
@@ -229,7 +228,6 @@ fun CommunityDetailScreenContent(
                 else -> {
                 CommunityDetailBody(
                     detail = uiState.detail,
-                    initialContentItemIndex = initialContentItemIndex,
                     reliabilityStatus = uiState.reliabilityStatus.toUiReliabilityStatus(),
                     onMapClick = onMapClick,
                     onReportClick = { onCommunityReportClick(uiState.detail.communityId) },
@@ -293,7 +291,6 @@ private fun CommunityDetailErrorState(
 @Composable
 private fun CommunityDetailBody(
     detail: CommunityDetail,
-    initialContentItemIndex: Int,
     reliabilityStatus: UiIssueReliabilityStatus,
     onMapClick: (Long) -> Unit,
     onReportClick: () -> Unit,
@@ -313,12 +310,7 @@ private fun CommunityDetailBody(
     onCommentEditClick: (CommunityComment) -> Unit,
     onCommentDeleteClick: (Long) -> Unit,
 ) {
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = initialContentItemIndex,
-    )
-
     LazyColumn(
-        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
