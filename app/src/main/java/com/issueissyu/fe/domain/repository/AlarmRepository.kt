@@ -10,6 +10,8 @@ interface AlarmRepository {
         cursor: String? = null,
     ): Result<NotificationPage>
 
+    suspend fun confirmAlarm(alarmId: Long): Result<Unit>
+
     companion object {
         const val DEFAULT_PAGE_SIZE = 10
     }

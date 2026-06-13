@@ -1,4 +1,4 @@
-package com.issueissyu.fe.data.remote.dto.response.map
+package com.issueissyu.fe.data.remote.dto.response.alarm
 
 import com.issueissyu.fe.core.time.formatAlarmTimeAgo
 import com.issueissyu.fe.domain.model.notification.Notification
@@ -38,7 +38,7 @@ fun AlarmListResponse.toNotificationPage(): NotificationPage {
 fun Alarm.toNotification(): Notification? {
     val type = NotificationType.fromServer(alarmType) ?: return null
     return Notification(
-        id = alarmId.toString(),
+        alarmId = alarmId,
         type = type,
         title = alarmTitle,
         body = alarmBody,

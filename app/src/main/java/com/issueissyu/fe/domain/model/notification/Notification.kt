@@ -1,7 +1,7 @@
 package com.issueissyu.fe.domain.model.notification
 
 data class Notification(
-    val id: String,
+    val alarmId: Long,
     val type: NotificationType,
     val title: String,
     val body: String,

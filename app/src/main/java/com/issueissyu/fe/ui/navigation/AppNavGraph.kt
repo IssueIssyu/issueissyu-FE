@@ -85,12 +85,7 @@ fun AppNavGraph(
         repeat(30) {
             val route = navController.currentDestination?.route
             if (canNavigateFromPush(route)) {
-                when (destination) {
-                    is PushDestination.PinDetail ->
-                        navController.navigateToPinDetail(destination.pinId)
-                    is PushDestination.CommunityDetail ->
-                        navController.navigate(AppDestinations.communityDetailRoute(destination.communityId))
-                }
+                navController.navigateToPushDestination(destination)
                 onPendingPushHandled()
                 return@LaunchedEffect
             }
@@ -685,15 +680,21 @@ fun NavHostController.navigateToPinDetail(pinId: String) {
     navigate(AppDestinations.pinDetailRoute(pinId))
 }
 
-/** 알람 type별 상세 화면 이동 (LIKE → 핀, HOT/EVENT/STORE → 커뮤니티) */
+fun NavHostController.navigateToPushDestination(destination: PushDestination) {
+    when (destination) {
+        is PushDestination.PinDetail -> navigateToPinDetail(destination.pinId)
+        is PushDestination.CommunityDetail ->
+            navigate(AppDestinations.communityDetailRoute(destination.communityId))
+    }
+}
+
+/** 알람 목록 탭 → 상세 (LIKE → 핀, HOT/EVENT/STORE → 커뮤니티) */
 fun NavHostController.navigateFromNotification(notification: Notification) {
-    when (notification.type) {
-        NotificationType.LIKE -> navigateToPinDetail(notification.pinId.toString())
+    val destination = when (notification.type) {
+        NotificationType.LIKE -> PushDestination.PinDetail(notification.pinId.toString())
         NotificationType.HOT,
         NotificationType.EVENT,
-        NotificationType.STORE -> {
-            val communityId = notification.communityId ?: return
-            navigate(AppDestinations.communityDetailRoute(communityId))
-        }
-    }
+        NotificationType.STORE -> notification.communityId?.let { PushDestination.CommunityDetail(it) }
+    } ?: return
+    navigateToPushDestination(destination)
 }

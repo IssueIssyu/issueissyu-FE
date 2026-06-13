@@ -2,7 +2,7 @@ package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.AlarmApi
 import com.issueissyu.fe.data.remote.dto.request.alarm.StoreTokenRequest
-import com.issueissyu.fe.data.remote.dto.response.map.toNotificationPage
+import com.issueissyu.fe.data.remote.dto.response.alarm.toNotificationPage
 import com.issueissyu.fe.domain.model.notification.NotificationPage
 import com.issueissyu.fe.domain.repository.AlarmRepository
 import javax.inject.Inject
@@ -58,6 +58,25 @@ class AlarmRepositoryImpl @Inject constructor(
                 alarmListException(
                     message = response.message,
                     fallback = "알림 목록 조회에 실패했습니다.",
+                ),
+            )
+        }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    override suspend fun confirmAlarm(alarmId: Long): Result<Unit> = try {
+        val response = alarmApi.confirmAlarm(alarmId)
+        when (response.code) {
+            "ALARM_CONFIRM_200" -> Result.success(Unit)
+            "ALARM_CONFIRM_400" -> Result.failure(
+                Exception(
+                    response.message.takeIf { it.isNotBlank() } ?: "존재하지 않는 알람입니다.",
+                ),
+            )
+            else -> Result.failure(
+                Exception(
+                    response.message.takeIf { it.isNotBlank() } ?: "알람 확인에 실패했습니다.",
                 ),
             )
         }

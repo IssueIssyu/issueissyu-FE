@@ -94,7 +94,7 @@ fun NotificationRoute(
         onRetry = viewModel::loadNotifications,
         onLoadMore = viewModel::loadMoreNotifications,
         onItemClick = { notification ->
-            viewModel.markAsRead(notification.id)
+            viewModel.markAsRead(notification.alarmId)
             onItemClick(notification)
         },
     )
@@ -185,7 +185,7 @@ fun NotificationScreen(
                     ) {
                         items(
                             items = uiState.notifications,
-                            key = { it.id },
+                            key = { it.alarmId },
                         ) { notification ->
                             NotificationRow(
                                 notification = notification,

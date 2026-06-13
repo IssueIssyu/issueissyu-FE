@@ -78,9 +78,9 @@ class NotificationListViewModel @Inject constructor(
                         val mergedNotifications = if (state.notifications.size <= page.items.size) {
                             page.items
                         } else {
-                            val refreshedById = page.items.associateBy { it.id }
+                            val refreshedById = page.items.associateBy { it.alarmId }
                             state.notifications.map { existing ->
-                                refreshedById[existing.id] ?: existing
+                                refreshedById[existing.alarmId] ?: existing
                             }
                         }
                         state.copy(
@@ -95,11 +95,11 @@ class NotificationListViewModel @Inject constructor(
         }
     }
 
-    fun markAsRead(notificationId: String) {
+    fun markAsRead(alarmId: Long) {
         _uiState.update { state ->
             state.copy(
                 notifications = state.notifications.map { notification ->
-                    if (notification.id == notificationId) {
+                    if (notification.alarmId == alarmId) {
                         notification.copy(isUnread = false)
                     } else {
                         notification

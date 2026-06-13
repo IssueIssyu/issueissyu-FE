@@ -44,6 +44,7 @@ object NotificationHelper {
     const val EXTRA_TYPE = "type"
     const val EXTRA_PIN_ID = "pinId"
     const val EXTRA_COMMUNITY_ID = "communityId"
+    const val EXTRA_ALARM_ID = "alarmId"
 
     fun createChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -61,6 +62,7 @@ object NotificationHelper {
         communityId: String?,
         title: String,
         body: String,
+        alarmId: String? = null,
     ) {
         val pushType = PushType.fromServer(type) ?: return
 
@@ -68,6 +70,7 @@ object NotificationHelper {
             putExtra(EXTRA_TYPE, pushType.serverCode)
             putExtra(EXTRA_PIN_ID, pinId)
             putExtra(EXTRA_COMMUNITY_ID, communityId)
+            putExtra(EXTRA_ALARM_ID, alarmId)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP
@@ -110,6 +113,21 @@ fun Intent?.parsePushDestination(): PushDestination? {
     return pushType.resolveDestination(readPinId(), readCommunityId())
 }
 
+fun Intent?.readPushAlarmId(): Long? {
+    if (this == null) return null
+    return (
+        getStringExtra(NotificationHelper.EXTRA_ALARM_ID)
+            ?: getStringExtra("alarmId")
+        )?.toLongOrNull()
+}
+
+fun Intent.clearPushExtras() {
+    removeExtra(NotificationHelper.EXTRA_TYPE)
+    removeExtra(NotificationHelper.EXTRA_PIN_ID)
+    removeExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
+    removeExtra(NotificationHelper.EXTRA_ALARM_ID)
+}
+
 private fun Intent.readPinId(): String? = (
     getStringExtra(NotificationHelper.EXTRA_PIN_ID)
         ?: getStringExtra("pinId")
@@ -118,9 +136,3 @@ private fun Intent.readPinId(): String? = (
 private fun Intent.readCommunityId(): String? =
     getStringExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
         ?: getStringExtra("communityId")
-
-fun Intent.clearPushExtras() {
-    removeExtra(NotificationHelper.EXTRA_TYPE)
-    removeExtra(NotificationHelper.EXTRA_PIN_ID)
-    removeExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
-}
