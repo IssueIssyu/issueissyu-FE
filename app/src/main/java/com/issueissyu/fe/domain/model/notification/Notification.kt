@@ -9,4 +9,11 @@ data class Notification(
     val isUnread: Boolean,
     val createdAtEpochMillis: Long,
     val targetId: String? = null,
+    val communityId: Long? = null,
+)
+
+data class NotificationPage(
+    val items: List<Notification>,
+    val hasNext: Boolean,
+    val nextCursor: String?,
 )
