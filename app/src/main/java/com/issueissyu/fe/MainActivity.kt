@@ -2,6 +2,7 @@ package com.issueissyu.fe
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -55,7 +56,13 @@ class MainActivity : FragmentActivity() {
         if (intent == null) return
         intent.parsePushDestination()?.let { pendingPush = it }
         intent.readPushAlarmId()?.let { alarmId ->
-            lifecycleScope.launch { alarmRepository.confirmAlarm(alarmId) }
+            lifecycleScope.launch {
+                alarmRepository.confirmAlarm(alarmId).onFailure { error ->
+                    val message = error.message?.takeIf { it.isNotBlank() }
+                        ?: "알림 확인에 실패했습니다."
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
         intent.clearPushExtras()
     }
