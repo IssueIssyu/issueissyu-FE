@@ -10,7 +10,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.issueissyu.fe.core.notification.PushDestination
 import com.issueissyu.fe.core.notification.clearPushExtras
@@ -55,14 +54,9 @@ class MainActivity : FragmentActivity() {
     private fun handlePushIntent(intent: Intent?) {
         if (intent == null) return
         intent.parsePushDestination()?.let { pendingPush = it }
-        if (shouldConfirmPushOnTap()) {
-            intent.readPushAlarmId()?.let { alarmId ->
-                lifecycleScope.launch { alarmRepository.confirmAlarm(alarmId) }
-            }
+        intent.readPushAlarmId()?.let { alarmId ->
+            lifecycleScope.launch { alarmRepository.confirmAlarm(alarmId) }
         }
         intent.clearPushExtras()
     }
-
-    private fun shouldConfirmPushOnTap(): Boolean =
-        !lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
 }

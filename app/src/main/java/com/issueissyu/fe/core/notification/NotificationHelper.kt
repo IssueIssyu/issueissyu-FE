@@ -16,9 +16,8 @@ enum class PushType(
     val serverCode: String,
     val channelId: String,
     val channelName: String,
-    private val fixedNotificationId: Int? = null,
 ) {
-    PIN_LIKED("PIN_LIKED", "channel_like", "내 핀 좋아요", 1001),
+    PIN_LIKED("PIN_LIKED", "channel_like", "내 핀 좋아요"),
     PIN_EVENT("PIN_EVENT", "channel_event", "이벤트"),
     PIN_POPULAR("PIN_POPULAR", "channel_popular", "인기 게시글"),
     PIN_STORE_AD("PIN_STORE_AD", "channel_store_ad", "가게 홍보"),
@@ -27,15 +26,28 @@ enum class PushType(
     fun resolveDestination(pinId: String?, communityId: String?): PushDestination? = when (this) {
         PIN_LIKED -> pinId?.takeIf { it.isNotBlank() }?.let { PushDestination.PinDetail(it) }
         PIN_EVENT, PIN_STORE_AD -> communityId?.toLongOrNull()?.let { PushDestination.CommunityDetail(it) }
+        // TODO(백엔드 HOT 딥링크 구현 후): communityId → CommunityDetail 연결
+        // FCM data: type=PIN_POPULAR, hotAlarmId, communityId
         PIN_POPULAR -> null
     }
 
-    fun notificationId(): Int =
-        fixedNotificationId ?: (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
+    fun notificationId(pinId: String?, alarmId: String?): Int {
+        alarmId?.toLongOrNull()?.let { return stableId("$serverCode:$it") }
+        if (this == PIN_LIKED) {
+            pinId?.takeIf { it.isNotBlank() }?.let { return stableId("$serverCode:$it") }
+        }
+        return randomId()
+    }
 
     companion object {
         fun fromServer(value: String?): PushType? =
             entries.find { it.serverCode.equals(value, ignoreCase = true) }
+
+        private fun stableId(key: String): Int =
+            key.hashCode() and 0x7FFFFFFF
+
+        private fun randomId(): Int =
+            (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
     }
 }
 
@@ -65,6 +77,10 @@ object NotificationHelper {
         alarmId: String? = null,
     ) {
         val pushType = PushType.fromServer(type) ?: return
+        val notificationId = pushType.notificationId(
+            pinId = pinId,
+            alarmId = alarmId,
+        )
 
         val intent = Intent(context, MainActivity::class.java).apply {
             putExtra(EXTRA_TYPE, pushType.serverCode)
@@ -77,8 +93,10 @@ object NotificationHelper {
         }
 
         val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            context,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
         val notification = NotificationCompat.Builder(context, pushType.channelId)
@@ -95,7 +113,7 @@ object NotificationHelper {
             ) != PackageManager.PERMISSION_GRANTED
         ) return
 
-        NotificationManagerCompat.from(context).notify(pushType.notificationId(), notification)
+        NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
 }
 
@@ -115,10 +133,24 @@ fun Intent?.parsePushDestination(): PushDestination? {
 
 fun Intent?.readPushAlarmId(): Long? {
     if (this == null) return null
-    return (
-        getStringExtra(NotificationHelper.EXTRA_ALARM_ID)
-            ?: getStringExtra("alarmId")
-        )?.toLongOrNull()
+    val knownAlarmId = listOf(
+        NotificationHelper.EXTRA_ALARM_ID,
+        "alarmId",
+        "likeAlarmId",
+        "eventAlarmId",
+        "storeAlarmId",
+        "hotAlarmId",
+    ).firstNotNullOfOrNull { key ->
+        getStringExtra(key)?.takeIf { it.isNotBlank() }
+    }
+
+    val dynamicAlarmId = knownAlarmId ?: extras
+        ?.keySet()
+        ?.firstOrNull { key -> key.endsWith("AlarmId", ignoreCase = true) }
+        ?.let { key -> extras?.get(key)?.toString() }
+        ?.takeIf { it.isNotBlank() }
+
+    return dynamicAlarmId?.toLongOrNull()
 }
 
 fun Intent.clearPushExtras() {
@@ -126,6 +158,11 @@ fun Intent.clearPushExtras() {
     removeExtra(NotificationHelper.EXTRA_PIN_ID)
     removeExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
     removeExtra(NotificationHelper.EXTRA_ALARM_ID)
+    removeExtra("alarmId")
+    removeExtra("likeAlarmId")
+    removeExtra("eventAlarmId")
+    removeExtra("storeAlarmId")
+    removeExtra("hotAlarmId")
 }
 
 private fun Intent.readPinId(): String? = (
