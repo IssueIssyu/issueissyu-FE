@@ -193,16 +193,6 @@ fun PinSummaryCard(
                                     onClick = { onSympathyClick(pin.id) },
                                     enabled = interactionsEnabled,
                                     modifier = Modifier.then(
-                                        if (highlight == PinSummaryCardHighlight.SYMPATHY) {
-                                            Modifier.border(
-                                                3.dp,
-                                                Orange,
-                                                RoundedCornerShape(12.dp),
-                                            )
-                                        } else {
-                                            Modifier
-                                        }
-                                    ).then(
                                         if (highlight == PinSummaryCardHighlight.SYMPATHY &&
                                             onHighlightBoundsChanged != null
                                         ) {
@@ -361,7 +351,6 @@ fun PinSummaryCard(
                         communityPostId = pin.communityPostId,
                         onCommunityClick = onCommunityClick,
                         enabled = interactionsEnabled,
-                        highlighted = highlight == PinSummaryCardHighlight.COMMUNITY,
                         onBoundsChanged = if (highlight == PinSummaryCardHighlight.COMMUNITY) {
                             onHighlightBoundsChanged
                         } else {
@@ -380,7 +369,6 @@ private fun CommunityLinkButton(
     onCommunityClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    highlighted: Boolean = false,
     onBoundsChanged: ((Rect) -> Unit)? = null,
 ) {
     Row(
@@ -388,13 +376,6 @@ private fun CommunityLinkButton(
             .height(32.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Orange)
-            .then(
-                if (highlighted) {
-                    Modifier.border(3.dp, BrandColor, RoundedCornerShape(16.dp))
-                } else {
-                    Modifier
-                }
-            )
             .then(
                 if (enabled) {
                     Modifier.clickable { onCommunityClick(communityPostId) }

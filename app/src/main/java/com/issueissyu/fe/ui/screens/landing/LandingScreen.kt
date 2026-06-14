@@ -1378,26 +1378,33 @@ private fun LandingDimOverlayWithCutout(
     cutoutBounds: Rect?,
     cornerRadius: androidx.compose.ui.unit.Dp,
 ) {
+    var overlayBounds by remember { mutableStateOf<Rect?>(null) }
+
     Canvas(
         modifier = Modifier
             .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                overlayBounds = coordinates.boundsInRoot()
+            }
             .graphicsLayer {
                 compositingStrategy = CompositingStrategy.Offscreen
             },
     ) {
         drawRect(Color.Black.copy(alpha = 0.18f))
-        cutoutBounds?.let { bounds ->
-            drawRoundRect(
-                color = Color.Transparent,
-                topLeft = bounds.topLeft,
-                size = bounds.size,
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                    x = cornerRadius.toPx(),
-                    y = cornerRadius.toPx(),
-                ),
-                blendMode = BlendMode.Clear,
-            )
-        }
+        cutoutBounds
+            ?.toLocalRect(overlayBounds)
+            ?.let { bounds ->
+                drawRoundRect(
+                    color = Color.Transparent,
+                    topLeft = bounds.topLeft,
+                    size = bounds.size,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                        x = cornerRadius.toPx(),
+                        y = cornerRadius.toPx(),
+                    ),
+                    blendMode = BlendMode.Clear,
+                )
+            }
     }
 }
 
@@ -2492,15 +2499,21 @@ private fun LandingIssueDetailGuidePage(
 private fun LandingIssueDetailHighlight(
     cutoutBounds: List<Rect>,
 ) {
+    var overlayBounds by remember { mutableStateOf<Rect?>(null) }
+
     Canvas(
         modifier = Modifier
             .fillMaxSize()
+            .onGloballyPositioned { coordinates ->
+                overlayBounds = coordinates.boundsInRoot()
+            }
             .graphicsLayer {
                 compositingStrategy = CompositingStrategy.Offscreen
             },
     ) {
         drawRect(Color.Black.copy(alpha = 0.22f))
-        cutoutBounds.forEach { bounds ->
+        cutoutBounds.forEach { rootBounds ->
+            val bounds = rootBounds.toLocalRect(overlayBounds) ?: return@forEach
             drawRoundRect(
                 color = Color.Transparent,
                 topLeft = bounds.topLeft,
@@ -2510,6 +2523,16 @@ private fun LandingIssueDetailHighlight(
             )
         }
     }
+}
+
+private fun Rect.toLocalRect(containerBounds: Rect?): Rect? {
+    containerBounds ?: return null
+    return Rect(
+        left = left - containerBounds.left,
+        top = top - containerBounds.top,
+        right = right - containerBounds.left,
+        bottom = bottom - containerBounds.top,
+    )
 }
 
 @Composable
