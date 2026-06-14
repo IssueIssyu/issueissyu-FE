@@ -57,7 +57,7 @@ class CommunityDetailViewModel @Inject constructor(
     private val communityId: Long = savedStateHandle.get<Long>("communityId") ?: 0L
     private var issueReliabilityJob: Job? = null
     private var observedReliabilityPinId: Long? = null
-    private var pendingBillingProductId: String? = null
+    private var observedBillingProductId = billingRepository.pendingBillingProductId.value
 
     private val _uiState = MutableStateFlow(CommunityDetailUiState())
     val uiState: StateFlow<CommunityDetailUiState> = _uiState.asStateFlow()
@@ -423,7 +423,7 @@ class CommunityDetailViewModel @Inject constructor(
     fun purchaseEmoji(activity: Activity?, emojiId: Long) {
         val candidate = _uiState.value.emojiPicker.candidates.firstOrNull { it.emojiId == emojiId }
             ?: return
-        if (candidate.canReact || pendingBillingProductId != null) return
+        if (candidate.canReact || billingRepository.pendingBillingProductId.value != null) return
         val productId = candidate.productId ?: run {
             _toastMessage.tryEmit("구매 정보를 찾을 수 없습니다.")
             return
@@ -432,11 +432,11 @@ class CommunityDetailViewModel @Inject constructor(
             _toastMessage.tryEmit("결제 화면을 열 수 없습니다.")
             return
         }
-        pendingBillingProductId = productId
+        observedBillingProductId = productId
         viewModelScope.launch {
             billingRepository.purchaseProduct(activity, productId)
                 .onFailure { error ->
-                    pendingBillingProductId = null
+                    observedBillingProductId = null
                     _toastMessage.emit(error.message ?: "결제창을 열지 못했습니다.")
                 }
         }
@@ -445,26 +445,31 @@ class CommunityDetailViewModel @Inject constructor(
     private fun observeBillingPurchaseEvents() {
         viewModelScope.launch {
             billingRepository.purchaseEvents.collect { event ->
-                if (event.productId != pendingBillingProductId) return@collect
+                if (event.productId != observedBillingProductId) return@collect
                 when (event) {
                     is BillingPurchaseEvent.Verified -> {
-                        pendingBillingProductId = null
                         refreshEmojiCandidates()
                         _toastMessage.emit("이모지를 구매했습니다.")
+                        finishBillingPurchase(event.productId)
                     }
                     is BillingPurchaseEvent.Pending -> {
                         _toastMessage.emit("결제가 대기 중입니다.")
                     }
                     is BillingPurchaseEvent.Canceled -> {
-                        pendingBillingProductId = null
+                        finishBillingPurchase(event.productId)
                     }
                     is BillingPurchaseEvent.Failed -> {
-                        pendingBillingProductId = null
                         _toastMessage.emit(event.message)
+                        finishBillingPurchase(event.productId)
                     }
                 }
             }
         }
+    }
+
+    private fun finishBillingPurchase(productId: String) {
+        observedBillingProductId = null
+        billingRepository.acknowledgePurchaseResult(productId)
     }
 
     private suspend fun refreshEmojiCandidates() {

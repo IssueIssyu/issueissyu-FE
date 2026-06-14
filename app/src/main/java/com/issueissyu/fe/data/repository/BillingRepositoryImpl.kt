@@ -10,12 +10,16 @@ import com.issueissyu.fe.domain.model.billing.BillingPurchaseEvent
 import com.issueissyu.fe.domain.model.billing.BillingVerificationException
 import com.issueissyu.fe.domain.repository.BillingRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
@@ -33,10 +37,14 @@ class BillingRepositoryImpl @Inject constructor(
     private val gson: Gson,
 ) : BillingRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val _purchaseEvents = MutableSharedFlow<BillingPurchaseEvent>(extraBufferCapacity = 8)
+    private val _purchaseEvents = MutableSharedFlow<BillingPurchaseEvent>(
+        replay = 1,
+        extraBufferCapacity = 8,
+    )
     override val purchaseEvents: SharedFlow<BillingPurchaseEvent> = _purchaseEvents.asSharedFlow()
-    @Volatile
-    private var activeProductId: String? = null
+    private val _pendingBillingProductId = MutableStateFlow<String?>(null)
+    override val pendingBillingProductId: StateFlow<String?> =
+        _pendingBillingProductId.asStateFlow()
     private val processingPurchaseTokens = mutableSetOf<String>()
     private val connectionMutex = Mutex()
 
@@ -62,8 +70,8 @@ class BillingRepositoryImpl @Inject constructor(
 
     override suspend fun purchaseProduct(activity: Activity, productId: String): Result<Unit> {
         return runCatching {
-            check(activeProductId == null) { "진행 중인 결제가 있습니다." }
-            activeProductId = productId
+            check(_pendingBillingProductId.value == null) { "진행 중인 결제가 있습니다." }
+            _pendingBillingProductId.value = productId
 
             awaitConnection().getOrThrow()
             val productDetails = queryProductDetails(productId).getOrThrow()
@@ -86,7 +94,7 @@ class BillingRepositoryImpl @Inject constructor(
                 launchResult.safeErrorMessage("결제창을 열지 못했습니다.")
             }
         }.onFailure {
-            activeProductId = null
+            clearPendingProduct(productId)
         }
     }
 
@@ -128,6 +136,12 @@ class BillingRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun acknowledgePurchaseResult(productId: String) {
+        clearPendingProduct(productId)
+        _purchaseEvents.resetReplayCache()
     }
 
     private data class BillingVerificationErrorEnvelope(
@@ -221,34 +235,29 @@ class BillingRepositoryImpl @Inject constructor(
         when (billingResult.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
                 if (purchases.isEmpty()) {
-                    activeProductId?.let { productId ->
+                    _pendingBillingProductId.value?.let { productId ->
                         emitFailed(productId, "결제 결과를 확인하지 못했습니다.")
                     }
-                    activeProductId = null
                 } else {
                     purchases.forEach(::handlePurchase)
                 }
             }
             BillingClient.BillingResponseCode.USER_CANCELED -> {
-                activeProductId?.let { productId ->
+                _pendingBillingProductId.value?.let { productId ->
                     _purchaseEvents.tryEmit(BillingPurchaseEvent.Canceled(productId))
                 }
-                activeProductId = null
             }
             else -> {
-                activeProductId?.let { productId ->
+                _pendingBillingProductId.value?.let { productId ->
                     emitFailed(productId, billingResult.safeErrorMessage("결제에 실패했습니다."))
                 }
-                activeProductId = null
             }
         }
     }
 
     private fun handlePurchase(purchase: Purchase) {
-        val productId = purchase.products.firstOrNull() ?: activeProductId ?: return
-        if (activeProductId == productId) {
-            activeProductId = null
-        }
+        val productId = purchase.products.firstOrNull() ?: _pendingBillingProductId.value ?: return
+        val isUserInitiatedPurchase = _pendingBillingProductId.value == productId
         when (purchase.purchaseState) {
             Purchase.PurchaseState.PURCHASED -> {
                 val shouldProcess = synchronized(processingPurchaseTokens) {
@@ -259,19 +268,30 @@ class BillingRepositoryImpl @Inject constructor(
                     try {
                         verifyPurchase(productId, purchase.purchaseToken)
                             .onSuccess { emojiId ->
-                                _purchaseEvents.emit(BillingPurchaseEvent.Verified(productId, emojiId))
+                                if (isUserInitiatedPurchase) {
+                                    _purchaseEvents.emit(
+                                        BillingPurchaseEvent.Verified(productId, emojiId)
+                                    )
+                                }
                             }
                             .onFailure { error ->
-                                if (error is BillingVerificationException && error.isAlreadyProcessed) {
-                                    _purchaseEvents.emit(BillingPurchaseEvent.Verified(productId, emojiId = null))
-                                } else {
-                                    _purchaseEvents.emit(
-                                        BillingPurchaseEvent.Failed(
-                                            productId = productId,
-                                            message = error.message?.takeIf { it.isNotBlank() }
-                                                ?: "결제 검증에 실패했습니다.",
+                                if (isUserInitiatedPurchase) {
+                                    if (error is BillingVerificationException && error.isAlreadyProcessed) {
+                                        _purchaseEvents.emit(
+                                            BillingPurchaseEvent.Verified(
+                                                productId,
+                                                emojiId = null,
+                                            )
                                         )
-                                    )
+                                    } else {
+                                        _purchaseEvents.emit(
+                                            BillingPurchaseEvent.Failed(
+                                                productId = productId,
+                                                message = error.message?.takeIf { it.isNotBlank() }
+                                                    ?: "결제 검증에 실패했습니다.",
+                                            )
+                                        )
+                                    }
                                 }
                             }
                     } finally {
@@ -282,12 +302,20 @@ class BillingRepositoryImpl @Inject constructor(
                 }
             }
             Purchase.PurchaseState.PENDING -> {
-                _purchaseEvents.tryEmit(BillingPurchaseEvent.Pending(productId))
+                if (isUserInitiatedPurchase) {
+                    _purchaseEvents.tryEmit(BillingPurchaseEvent.Pending(productId))
+                }
             }
             else -> {
-                emitFailed(productId, "결제 상태를 확인하지 못했습니다.")
+                if (isUserInitiatedPurchase) {
+                    emitFailed(productId, "결제 상태를 확인하지 못했습니다.")
+                }
             }
         }
+    }
+
+    private fun clearPendingProduct(productId: String) {
+        _pendingBillingProductId.compareAndSet(productId, null)
     }
 
     private fun emitFailed(productId: String, message: String) {
