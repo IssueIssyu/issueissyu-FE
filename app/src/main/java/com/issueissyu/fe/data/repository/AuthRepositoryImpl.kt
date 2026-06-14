@@ -19,7 +19,7 @@ import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
 import com.issueissyu.fe.domain.auth.RefreshTokenUnauthorizedException
 import com.issueissyu.fe.domain.model.auth.AuthUser
 import com.issueissyu.fe.domain.model.auth.OnboardingProfile
-import com.issueissyu.fe.domain.model.TermsAgreementResult
+import com.issueissyu.fe.domain.model.notification.AlarmToggleState
 import com.issueissyu.fe.domain.repository.AuthRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -454,7 +454,7 @@ class AuthRepositoryImpl @Inject constructor(
         privacyTerm: Boolean,
         locationTerm: Boolean,
         marketingTerm: Boolean,
-    ): Result<TermsAgreementResult> {
+    ): Result<AlarmToggleState> {
         return try {
             val response = authApi.termAgree(
                 TermRequest(
@@ -471,7 +471,7 @@ class AuthRepositoryImpl @Inject constructor(
                             Exception(response.message.ifBlank { "약관 동의 응답이 올바르지 않습니다." }),
                         )
                     Result.success(
-                        TermsAgreementResult(
+                        AlarmToggleState(
                             eventAlarmActive = r.eventAlarmActive,
                             likeAlarmActive = r.likeAlarmActive,
                             hotAlarmActive = r.hotAlarmActive,
@@ -487,7 +487,7 @@ class AuthRepositoryImpl @Inject constructor(
                     if (response.isSuccess && response.result != null) {
                         val r = response.result
                         Result.success(
-                            TermsAgreementResult(
+                            AlarmToggleState(
                                 eventAlarmActive = r.eventAlarmActive,
                                 likeAlarmActive = r.likeAlarmActive,
                                 hotAlarmActive = r.hotAlarmActive,

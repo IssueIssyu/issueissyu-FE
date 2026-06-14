@@ -4,8 +4,8 @@ import com.issueissyu.fe.data.remote.api.AlarmApi
 import com.issueissyu.fe.data.remote.dto.request.alarm.StoreTokenRequest
 import com.issueissyu.fe.data.remote.dto.response.alarm.activeFor
 import com.issueissyu.fe.data.remote.dto.response.alarm.toNotificationPage
-import com.issueissyu.fe.data.remote.dto.response.alarm.toTermsAgreementResult
-import com.issueissyu.fe.domain.model.TermsAgreementResult
+import com.issueissyu.fe.data.remote.dto.response.alarm.toAlarmToggleState
+import com.issueissyu.fe.domain.model.notification.AlarmToggleState
 import com.issueissyu.fe.domain.model.notification.NotificationPage
 import com.issueissyu.fe.domain.model.notification.NotificationType
 import com.issueissyu.fe.domain.repository.AlarmRepository
@@ -88,7 +88,7 @@ class AlarmRepositoryImpl @Inject constructor(
         Result.failure(e)
     }
 
-    override suspend fun getAlarmToggleState(): Result<TermsAgreementResult> = try {
+    override suspend fun getAlarmToggleState(): Result<AlarmToggleState> = try {
         val response = alarmApi.getAlarmToggle()
         when (response.code) {
             "ALARM_STATE_200" -> {
@@ -98,10 +98,10 @@ class AlarmRepositoryImpl @Inject constructor(
                             response.message.ifBlank { "알림 설정 응답이 올바르지 않습니다." },
                         ),
                     )
-                Result.success(result.toTermsAgreementResult())
+                Result.success(result.toAlarmToggleState())
             }
             else -> if (response.isSuccess && response.result != null) {
-                Result.success(response.result.toTermsAgreementResult())
+                Result.success(response.result.toAlarmToggleState())
             } else {
                 Result.failure(
                     Exception(

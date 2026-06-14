@@ -22,7 +22,7 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         val type = message.data["type"]
         val pinId = message.data["pinId"]
         val communityId = message.data["communityId"]
-        val alarmId = message.readAlarmId()
+        val alarmId = PushAlarmIdParser.parseRaw(message.data)
         val title = message.data["title"] ?: message.notification?.title ?: "이슈이슈 알림"
         val body = message.data["body"] ?: message.notification?.body ?: ""
 
@@ -36,22 +36,4 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             alarmId = alarmId,
         )
     }
-}
-
-private fun RemoteMessage.readAlarmId(): String? {
-    val knownAlarmId = listOf(
-        "alarmId",
-        "likeAlarmId",
-        "eventAlarmId",
-        "storeAlarmId",
-        "hotAlarmId",
-    ).firstNotNullOfOrNull { key ->
-        data[key]?.takeIf { it.isNotBlank() }
-    }
-    if (knownAlarmId != null) return knownAlarmId
-    return data.entries
-        .firstOrNull { (key, value) ->
-            key.endsWith("AlarmId", ignoreCase = true) && value.isNotBlank()
-        }
-        ?.value
 }

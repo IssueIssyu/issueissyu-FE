@@ -2,7 +2,7 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.domain.model.TermsAgreementResult
+import com.issueissyu.fe.domain.model.notification.AlarmToggleState
 import com.issueissyu.fe.domain.model.notification.NotificationType
 import com.issueissyu.fe.domain.repository.AlarmRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -104,7 +104,7 @@ class AlarmSettingsViewModel @Inject constructor(
         }
     }
 
-    private fun AlarmSettingsUiState.applyAlarmState(state: TermsAgreementResult): AlarmSettingsUiState {
+    private fun AlarmSettingsUiState.applyAlarmState(state: AlarmToggleState): AlarmSettingsUiState {
         return copy(
             pinLike = state.likeAlarmActive,
             event = state.eventAlarmActive,

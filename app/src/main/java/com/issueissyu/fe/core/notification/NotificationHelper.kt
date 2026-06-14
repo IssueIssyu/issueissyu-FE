@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -51,6 +52,8 @@ enum class PushType(
 
 object NotificationHelper {
 
+    private const val TAG = "NotificationHelper"
+
     const val EXTRA_TYPE = "type"
     const val EXTRA_PIN_ID = "pinId"
     const val EXTRA_COMMUNITY_ID = "communityId"
@@ -75,7 +78,10 @@ object NotificationHelper {
         body: String,
         alarmId: String? = null,
     ) {
-        val pushType = PushType.fromServer(type) ?: return
+        val pushType = PushType.fromServer(type) ?: run {
+            Log.w(TAG, "Unknown push type=$type — notification skipped")
+            return
+        }
         val notificationId = pushType.notificationId(
             pinId = pinId,
             alarmId = alarmId,
@@ -130,38 +136,13 @@ fun Intent?.parsePushDestination(): PushDestination? {
     return pushType.resolveDestination(readPinId(), readCommunityId())
 }
 
-fun Intent?.readPushAlarmId(): Long? {
-    if (this == null) return null
-    val knownAlarmId = listOf(
-        NotificationHelper.EXTRA_ALARM_ID,
-        "alarmId",
-        "likeAlarmId",
-        "eventAlarmId",
-        "storeAlarmId",
-        "hotAlarmId",
-    ).firstNotNullOfOrNull { key ->
-        getStringExtra(key)?.takeIf { it.isNotBlank() }
-    }
-
-    val dynamicAlarmId = knownAlarmId ?: extras
-        ?.keySet()
-        ?.firstOrNull { key -> key.endsWith("AlarmId", ignoreCase = true) }
-        ?.let { key -> extras?.get(key)?.toString() }
-        ?.takeIf { it.isNotBlank() }
-
-    return dynamicAlarmId?.toLongOrNull()
-}
+fun Intent?.readPushAlarmId(): Long? = PushAlarmIdParser.parseLong(this)
 
 fun Intent.clearPushExtras() {
     removeExtra(NotificationHelper.EXTRA_TYPE)
     removeExtra(NotificationHelper.EXTRA_PIN_ID)
     removeExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
-    removeExtra(NotificationHelper.EXTRA_ALARM_ID)
-    removeExtra("alarmId")
-    removeExtra("likeAlarmId")
-    removeExtra("eventAlarmId")
-    removeExtra("storeAlarmId")
-    removeExtra("hotAlarmId")
+    PushAlarmIdParser.clearFromIntent(this)
 }
 
 private fun Intent.readPinId(): String? = (

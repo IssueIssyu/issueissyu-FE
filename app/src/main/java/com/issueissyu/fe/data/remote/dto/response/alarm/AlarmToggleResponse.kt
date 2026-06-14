@@ -1,17 +1,17 @@
 package com.issueissyu.fe.data.remote.dto.response.alarm
 
-import com.issueissyu.fe.domain.model.TermsAgreementResult
+import com.issueissyu.fe.domain.model.notification.AlarmToggleState
 import com.issueissyu.fe.domain.model.notification.NotificationType
 
 data class AlarmToggleResponse(
-    val likeAlarmActive: Boolean,
-    val eventAlarmActive: Boolean,
-    val hotAlarmActive: Boolean,
-    val storeAlarmActive: Boolean,
+    val likeAlarmActive: Boolean = false,
+    val eventAlarmActive: Boolean = false,
+    val hotAlarmActive: Boolean = false,
+    val storeAlarmActive: Boolean = false,
 )
 
-fun AlarmToggleResponse.toTermsAgreementResult(): TermsAgreementResult {
-    return TermsAgreementResult(
+fun AlarmToggleResponse.toAlarmToggleState(): AlarmToggleState {
+    return AlarmToggleState(
         eventAlarmActive = eventAlarmActive,
         likeAlarmActive = likeAlarmActive,
         hotAlarmActive = hotAlarmActive,
