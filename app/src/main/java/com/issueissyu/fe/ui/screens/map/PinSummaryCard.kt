@@ -19,7 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -61,6 +64,7 @@ fun PinSummaryCard(
     modifier: Modifier = Modifier,
     interactionsEnabled: Boolean = true,
     highlight: PinSummaryCardHighlight = PinSummaryCardHighlight.NONE,
+    onHighlightBoundsChanged: ((Rect) -> Unit)? = null,
 ) {
     val cardBackgroundColor = when (pin.category) {
         PinCategory.ISSUE -> IssueContainer
@@ -195,6 +199,16 @@ fun PinSummaryCard(
                                                 Orange,
                                                 RoundedCornerShape(12.dp),
                                             )
+                                        } else {
+                                            Modifier
+                                        }
+                                    ).then(
+                                        if (highlight == PinSummaryCardHighlight.SYMPATHY &&
+                                            onHighlightBoundsChanged != null
+                                        ) {
+                                            Modifier.onGloballyPositioned { coordinates ->
+                                                onHighlightBoundsChanged(coordinates.boundsInRoot())
+                                            }
                                         } else {
                                             Modifier
                                         }
@@ -348,6 +362,11 @@ fun PinSummaryCard(
                         onCommunityClick = onCommunityClick,
                         enabled = interactionsEnabled,
                         highlighted = highlight == PinSummaryCardHighlight.COMMUNITY,
+                        onBoundsChanged = if (highlight == PinSummaryCardHighlight.COMMUNITY) {
+                            onHighlightBoundsChanged
+                        } else {
+                            null
+                        },
                     )
                 }
             }
@@ -362,6 +381,7 @@ private fun CommunityLinkButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     highlighted: Boolean = false,
+    onBoundsChanged: ((Rect) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -378,6 +398,15 @@ private fun CommunityLinkButton(
             .then(
                 if (enabled) {
                     Modifier.clickable { onCommunityClick(communityPostId) }
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (onBoundsChanged != null) {
+                    Modifier.onGloballyPositioned { coordinates ->
+                        onBoundsChanged(coordinates.boundsInRoot())
+                    }
                 } else {
                     Modifier
                 }

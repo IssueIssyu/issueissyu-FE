@@ -38,7 +38,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -50,10 +54,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +68,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
@@ -650,11 +658,11 @@ private fun LandingFestivalPinGuideOverlay(modifier: Modifier = Modifier) {
             contentScale = ContentScale.Fit,
         )
 
-        LandingFestivalGuideCard(
+        LandingPinShowcaseCard(
+            type = LandingPinShowcaseType.FESTIVAL,
             modifier = Modifier
-                .offset(x = 12.dp, y = 341.dp)
-                .width(387.dp)
-                .height(292.dp),
+                .offset(x = 13.dp, y = 346.dp)
+                .width(387.dp),
         )
     }
 }
@@ -830,11 +838,11 @@ private fun LandingShopPinGuideOverlay(modifier: Modifier = Modifier) {
             contentScale = ContentScale.Fit,
         )
 
-        LandingShopGuideCard(
+        LandingPinShowcaseCard(
+            type = LandingPinShowcaseType.SHOP,
             modifier = Modifier
                 .offset(x = 13.dp, y = 346.dp)
-                .width(387.dp)
-                .height(292.dp),
+                .width(387.dp),
         )
     }
 }
@@ -1067,11 +1075,11 @@ private fun LandingCommunicationPinGuideOverlay(modifier: Modifier = Modifier) {
             contentScale = ContentScale.Fit,
         )
 
-        LandingCommunicationGuideCard(
+        LandingPinShowcaseCard(
+            type = LandingPinShowcaseType.COMMUNICATION,
             modifier = Modifier
                 .offset(x = 13.dp, y = 346.dp)
-                .width(387.dp)
-                .height(292.dp),
+                .width(387.dp),
         )
 
         Image(
@@ -1273,25 +1281,51 @@ private fun LandingIssuePinGuideOverlay(
     highlightCommunity: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Box(modifier = modifier) {
-        if (highlightSympathy || highlightCommunity) {
-            LandingIssueGuideCard(
-                modifier = Modifier
-                    .offset(x = 13.dp, y = 338.dp)
-                    .width(387.dp)
-                    .height(292.dp),
-            )
-        }
+    var highlightBounds by remember(highlightSympathy, highlightCommunity) {
+        mutableStateOf<Rect?>(null)
+    }
 
-        if (highlightSympathy) {
-            LandingDimOverlayWithSympathyCutout()
-        } else if (highlightCommunity) {
-            LandingDimOverlayWithCommunityCutout()
-        } else {
+    Box(modifier = modifier) {
+        if (!highlightSympathy && !highlightCommunity) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.18f)),
+            )
+
+            Image(
+                painter = painterResource(R.drawable.ic_character_default),
+                contentDescription = null,
+                modifier = Modifier
+                    .offset(x = 272.dp, y = 262.dp)
+                    .width(90.dp)
+                    .height(139.dp),
+                contentScale = ContentScale.Fit,
+            )
+        }
+
+        LandingPinShowcaseCard(
+            type = LandingPinShowcaseType.ISSUE,
+            guideFocus = when {
+                highlightSympathy -> LandingPinGuideFocus.REACTIONS
+                highlightCommunity -> LandingPinGuideFocus.COMMUNITY_BUTTON
+                else -> LandingPinGuideFocus.NONE
+            },
+            onHighlightBoundsChanged = { highlightBounds = it },
+            modifier = Modifier
+                .offset(x = 13.dp, y = 338.dp)
+                .width(387.dp),
+        )
+
+        if (highlightSympathy) {
+            LandingDimOverlayWithCutout(
+                cutoutBounds = highlightBounds,
+                cornerRadius = 16.dp,
+            )
+        } else if (highlightCommunity) {
+            LandingDimOverlayWithCutout(
+                cutoutBounds = highlightBounds,
+                cornerRadius = 12.dp,
             )
         }
 
@@ -1336,83 +1370,34 @@ private fun LandingIssuePinGuideOverlay(
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
 
-        if (!highlightSympathy && !highlightCommunity) {
-            Image(
-                painter = painterResource(R.drawable.ic_character_default),
-                contentDescription = null,
-                modifier = Modifier
-                    .offset(x = 272.dp, y = 262.dp)
-                    .width(90.dp)
-                    .height(139.dp),
-                contentScale = ContentScale.Fit,
-            )
-
-            LandingIssueGuideCard(
-                modifier = Modifier
-                    .offset(x = 13.dp, y = 338.dp)
-                    .width(387.dp)
-                    .height(292.dp),
+@Composable
+private fun LandingDimOverlayWithCutout(
+    cutoutBounds: Rect?,
+    cornerRadius: androidx.compose.ui.unit.Dp,
+) {
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                compositingStrategy = CompositingStrategy.Offscreen
+            },
+    ) {
+        drawRect(Color.Black.copy(alpha = 0.18f))
+        cutoutBounds?.let { bounds ->
+            drawRoundRect(
+                color = Color.Transparent,
+                topLeft = bounds.topLeft,
+                size = bounds.size,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(
+                    x = cornerRadius.toPx(),
+                    y = cornerRadius.toPx(),
+                ),
+                blendMode = BlendMode.Clear,
             )
         }
-    }
-}
-
-@Composable
-private fun LandingDimOverlayWithSympathyCutout() {
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                compositingStrategy = CompositingStrategy.Offscreen
-            },
-    ) {
-        drawRect(Color.Black.copy(alpha = 0.18f))
-        drawRoundRect(
-            color = Color.Transparent,
-            topLeft = androidx.compose.ui.geometry.Offset(
-                x = 155.dp.toPx(),
-                y = 434.dp.toPx(),
-            ),
-            size = androidx.compose.ui.geometry.Size(
-                width = 58.dp.toPx(),
-                height = 32.dp.toPx(),
-            ),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                x = 16.dp.toPx(),
-                y = 16.dp.toPx(),
-            ),
-            blendMode = BlendMode.Clear,
-        )
-    }
-}
-
-@Composable
-private fun LandingDimOverlayWithCommunityCutout() {
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .graphicsLayer {
-                compositingStrategy = CompositingStrategy.Offscreen
-            },
-    ) {
-        drawRect(Color.Black.copy(alpha = 0.18f))
-        drawRoundRect(
-            color = Color.Transparent,
-            topLeft = androidx.compose.ui.geometry.Offset(
-                x = 309.dp.toPx(),
-                y = 569.dp.toPx(),
-            ),
-            size = androidx.compose.ui.geometry.Size(
-                width = 70.dp.toPx(),
-                height = 40.dp.toPx(),
-            ),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(
-                x = 12.dp.toPx(),
-                y = 12.dp.toPx(),
-            ),
-            blendMode = BlendMode.Clear,
-        )
     }
 }
 
@@ -1676,6 +1661,7 @@ private fun LandingPinTypeCard(
 private fun LandingPinShowcaseCard(
     type: LandingPinShowcaseType,
     guideFocus: LandingPinGuideFocus = LandingPinGuideFocus.NONE,
+    onHighlightBoundsChanged: ((Rect) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -1697,6 +1683,7 @@ private fun LandingPinShowcaseCard(
                 LandingPinGuideFocus.COMMUNITY_BUTTON -> PinSummaryCardHighlight.COMMUNITY
                 LandingPinGuideFocus.NONE -> PinSummaryCardHighlight.NONE
             },
+            onHighlightBoundsChanged = onHighlightBoundsChanged,
         )
     }
 }
@@ -1707,12 +1694,24 @@ private fun LandingPinShowcaseType.toSamplePin(): Pin {
     val writer = PinUser(
         id = SAMPLE_WRITER_ID,
         name = "이웃 A",
-        imageUrl = null,
+        imageUrl = landingDrawableUri(R.drawable.img_landing_communication_profile),
     )
     val commonReactions = listOf(
-        PinEmojiReaction(emojiId = "sad", count = 3),
-        PinEmojiReaction(emojiId = "angry", count = 1),
-        PinEmojiReaction(emojiId = "surprised", count = 1),
+        PinEmojiReaction(
+            emojiId = "sad",
+            count = 3,
+            emojiImageUrl = landingDrawableUri(R.drawable.img_landing_reaction_sad),
+        ),
+        PinEmojiReaction(
+            emojiId = "laugh",
+            count = 1,
+            emojiImageUrl = landingDrawableUri(R.drawable.img_landing_reaction_laugh),
+        ),
+        PinEmojiReaction(
+            emojiId = "angry",
+            count = 1,
+            emojiImageUrl = landingDrawableUri(R.drawable.img_landing_reaction_angry),
+        ),
     )
 
     return when (this) {
@@ -1725,6 +1724,8 @@ private fun LandingPinShowcaseType.toSamplePin(): Pin {
             locationName = "가상동 중앙공원",
             sympathyCount = 21,
             isSympathizedByMe = true,
+            isMine = true,
+            imageUrls = listOf(landingDrawableUri(R.drawable.img_landing_issue_trash)),
             emojiReactions = commonReactions,
             communityPostId = "landing-community",
             createdAt = "2025-01-01T00:00:00Z",
@@ -1741,6 +1742,7 @@ private fun LandingPinShowcaseType.toSamplePin(): Pin {
             address = "예시시 예시구 가상로 20",
             locationName = "가상동 주민광장",
             sympathyCount = 34,
+            imageUrls = listOf(landingDrawableUri(R.drawable.img_landing_festival_market)),
             communityPostId = "landing-festival-community",
             createdAt = "2025-01-01T00:00:00Z",
             detail = FestivalPinDetail(
@@ -1757,6 +1759,7 @@ private fun LandingPinShowcaseType.toSamplePin(): Pin {
             address = "예시시 예시구 가상로 30",
             locationName = "가상동 동네카페",
             sympathyCount = 6,
+            imageUrls = listOf(landingDrawableUri(R.drawable.img_landing_shop_coffee)),
             communityPostId = "landing-shop-community",
             createdAt = "2025-01-01T00:00:00Z",
             detail = ShopPinDetail(
@@ -1772,12 +1775,18 @@ private fun LandingPinShowcaseType.toSamplePin(): Pin {
             address = "예시시 예시구 가상로 12",
             locationName = "가상동 중앙공원",
             sympathyCount = 18,
+            isMine = true,
+            imageUrls = listOf(landingDrawableUri(R.drawable.img_landing_communication_pigeon)),
             emojiReactions = commonReactions,
             communityPostId = "landing-communication-community",
             createdAt = "2025-01-01T00:00:00Z",
             detail = CommunicationPinDetail(writer = writer),
         )
     }
+}
+
+private fun landingDrawableUri(resId: Int): String {
+    return "android.resource://${BuildConfig.APPLICATION_ID}/$resId"
 }
 
 @Composable
@@ -2271,6 +2280,11 @@ private fun LandingIssueDetailGuidePage(
     showActionGuide: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    var reactionBounds by remember { mutableStateOf<Rect?>(null) }
+    var commentBounds by remember { mutableStateOf<Rect?>(null) }
+    var goNowBounds by remember { mutableStateOf<Rect?>(null) }
+    var petitionBounds by remember { mutableStateOf<Rect?>(null) }
+
     Box(
         modifier = modifier
             .background(White)
@@ -2392,7 +2406,11 @@ private fun LandingIssueDetailGuidePage(
             )
 
             Spacer(modifier = Modifier.height(14.dp))
-            LandingStaticReactionSection()
+            LandingStaticReactionSection(
+                modifier = Modifier.onGloballyPositioned { coordinates ->
+                    reactionBounds = coordinates.boundsInRoot()
+                },
+            )
 
             Spacer(
                 modifier = Modifier.height(
@@ -2411,25 +2429,40 @@ private fun LandingIssueDetailGuidePage(
                     text = "🔥 지금 가요",
                     backgroundColor = Gray_1,
                     textColor = Issue,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onGloballyPositioned { coordinates ->
+                            goNowBounds = coordinates.boundsInRoot()
+                        },
                 )
                 LandingIssueActionButton(
                     text = "📣 청원 (0)",
                     backgroundColor = Color(0xFFFF6F35),
                     textColor = White,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .onGloballyPositioned { coordinates ->
+                            petitionBounds = coordinates.boundsInRoot()
+                        },
                 )
             }
 
             Spacer(modifier = Modifier.height(28.dp))
             LandingStaticCommentSection(
+                onCommentContentBoundsChanged = { commentBounds = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             )
         }
 
-        LandingIssueDetailHighlight(showActionGuide = showActionGuide)
+        LandingIssueDetailHighlight(
+            cutoutBounds = if (showActionGuide) {
+                listOfNotNull(goNowBounds, petitionBounds)
+            } else {
+                listOfNotNull(reactionBounds, commentBounds)
+            },
+        )
 
         if (showActionGuide) {
             LandingGuideCallout(
@@ -2457,7 +2490,7 @@ private fun LandingIssueDetailGuidePage(
 
 @Composable
 private fun LandingIssueDetailHighlight(
-    showActionGuide: Boolean,
+    cutoutBounds: List<Rect>,
 ) {
     Canvas(
         modifier = Modifier
@@ -2467,58 +2500,12 @@ private fun LandingIssueDetailHighlight(
             },
     ) {
         drawRect(Color.Black.copy(alpha = 0.22f))
-        if (showActionGuide) {
+        cutoutBounds.forEach { bounds ->
             drawRoundRect(
                 color = Color.Transparent,
-                topLeft = androidx.compose.ui.geometry.Offset(
-                    x = 24.dp.toPx(),
-                    y = 578.dp.toPx(),
-                ),
-                size = androidx.compose.ui.geometry.Size(
-                    width = 179.dp.toPx(),
-                    height = 64.dp.toPx(),
-                ),
+                topLeft = bounds.topLeft,
+                size = bounds.size,
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()),
-                blendMode = BlendMode.Clear,
-            )
-            drawRoundRect(
-                color = Color.Transparent,
-                topLeft = androidx.compose.ui.geometry.Offset(
-                    x = 207.dp.toPx(),
-                    y = 578.dp.toPx(),
-                ),
-                size = androidx.compose.ui.geometry.Size(
-                    width = 182.dp.toPx(),
-                    height = 64.dp.toPx(),
-                ),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()),
-                blendMode = BlendMode.Clear,
-            )
-        } else {
-            drawRoundRect(
-                color = Color.Transparent,
-                topLeft = androidx.compose.ui.geometry.Offset(
-                    x = 20.dp.toPx(),
-                    y = 430.dp.toPx(),
-                ),
-                size = androidx.compose.ui.geometry.Size(
-                    width = size.width - 40.dp.toPx(),
-                    height = 66.dp.toPx(),
-                ),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(15.dp.toPx()),
-                blendMode = BlendMode.Clear,
-            )
-            drawRoundRect(
-                color = Color.Transparent,
-                topLeft = androidx.compose.ui.geometry.Offset(
-                    x = 14.dp.toPx(),
-                    y = 600.dp.toPx(),
-                ),
-                size = androidx.compose.ui.geometry.Size(
-                    width = size.width - 28.dp.toPx(),
-                    height = 176.dp.toPx(),
-                ),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx()),
                 blendMode = BlendMode.Clear,
             )
         }
@@ -2526,9 +2513,11 @@ private fun LandingIssueDetailHighlight(
 }
 
 @Composable
-private fun LandingStaticReactionSection() {
+private fun LandingStaticReactionSection(
+    modifier: Modifier = Modifier,
+) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 4.dp),
     ) {
@@ -2581,6 +2570,7 @@ private fun LandingStaticReactionChip(
 @Composable
 private fun LandingStaticCommentSection(
     modifier: Modifier = Modifier,
+    onCommentContentBoundsChanged: (Rect) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -2592,9 +2582,15 @@ private fun LandingStaticCommentSection(
             style = IssueTypo.Bold18.copy(color = Title),
         )
         Spacer(modifier = Modifier.height(12.dp))
-        LandingStaticCommentItem("파이팅", "저건 좀 아니다,,")
-        Spacer(modifier = Modifier.height(10.dp))
-        LandingStaticCommentItem("파이팅", "저건 좀 아니다,,", showActions = true)
+        Column(
+            modifier = Modifier.onGloballyPositioned { coordinates ->
+                onCommentContentBoundsChanged(coordinates.boundsInRoot())
+            },
+        ) {
+            LandingStaticCommentItem("파이팅", "저건 좀 아니다,,")
+            Spacer(modifier = Modifier.height(10.dp))
+            LandingStaticCommentItem("파이팅", "저건 좀 아니다,,", showActions = true)
+        }
         Spacer(modifier = Modifier.weight(1f))
         Box(
             modifier = Modifier
