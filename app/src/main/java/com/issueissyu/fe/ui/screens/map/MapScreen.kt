@@ -508,16 +508,15 @@ fun MapScreen(
                         longitude = clickedLatLng.longitude
                     )
 
-                    val currentLatLng = naverMapInstance?.locationOverlay?.position
-                    if (currentLatLng == null) {
-                        // TODO: 현재 위치를 가져오지 못한 경우 안내 UI 표시
-                        return@IssueissyuNaverMap
-                    }
-
-                    val currentCoordinate = PinCoordinate(
-                        latitude = currentLatLng.latitude,
-                        longitude = currentLatLng.longitude
-                    )
+                    val currentCoordinate = naverMapInstance
+                        ?.locationOverlay
+                        ?.position
+                        ?.let { currentLatLng ->
+                            PinCoordinate(
+                                latitude = currentLatLng.latitude,
+                                longitude = currentLatLng.longitude
+                            )
+                        }
 
                     viewModel.onMapCoordinateSelected(
                         selectedCoordinate = selectedCoordinate,
