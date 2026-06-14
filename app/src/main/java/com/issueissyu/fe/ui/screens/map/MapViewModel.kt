@@ -260,6 +260,17 @@ class MapViewModel @Inject constructor(
                     val remainingPins = selectedPins.filterNot { it.id == pinId }
 
                     _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
+                    _mapClusters.value = _mapClusters.value.mapNotNull { cluster ->
+                        val remainingClusterPins = cluster.pins.filterNot { it.pinId == pinId }
+                        if (remainingClusterPins.isEmpty()) {
+                            null
+                        } else {
+                            cluster.copy(
+                                pinCount = remainingClusterPins.size,
+                                pins = remainingClusterPins,
+                            )
+                        }
+                    }
                     _selectedPins.value = remainingPins
 
                     if (_selectedPin.value?.id == pinId) {
