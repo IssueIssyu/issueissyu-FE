@@ -288,7 +288,21 @@ fun MapScreen(
         selectedCategory == null -> mapPins
         else -> mapPins.filter { it.category == selectedCategory }
     }
-    val visibleMapClusters = if (isLocationSelectionMode) emptyList() else mapClusters
+    val visibleMapClusters = when {
+        isLocationSelectionMode -> emptyList()
+        selectedCategory == null -> mapClusters
+        else -> mapClusters.mapNotNull { cluster ->
+            val categoryPins = cluster.pins.filter { it.category == selectedCategory }
+            if (categoryPins.isEmpty()) {
+                null
+            } else {
+                cluster.copy(
+                    pinCount = categoryPins.size,
+                    pins = categoryPins,
+                )
+            }
+        }
+    }
 
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
 
