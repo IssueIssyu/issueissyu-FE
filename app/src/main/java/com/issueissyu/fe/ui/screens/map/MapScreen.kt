@@ -463,7 +463,7 @@ fun MapScreen(
             viewModel.refreshMapImmediately()
             val createdPinId = savedStateHandle.get<String>(PIN_CREATE_FOCUS_PIN_ID_KEY).orEmpty()
             if (createdPinId.isNotBlank()) {
-                viewModel.selectPinById(createdPinId)
+                viewModel.focusPinById(createdPinId)
             }
             savedStateHandle[PIN_CREATE_MAP_REFRESH_KEY] = false
             savedStateHandle[PIN_CREATE_FOCUS_PIN_ID_KEY] = ""
