@@ -26,8 +26,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +42,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -54,6 +61,9 @@ fun AlarmSettingScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    // 권한이 없어 설정 앱으로 보낸 토글 동작을 보관했다가 복귀 후 권한이 허용되면 이어서 처리
+    var pendingEnable by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.event.collect { event ->
@@ -84,10 +94,26 @@ fun AlarmSettingScreen(
     // 토글 켤 때 권한 체크
     fun onToggle(current: Boolean, update: (Boolean) -> Unit) {
         if (!current && !hasNotificationPermission()) {
+            pendingEnable = { update(true) }  // 복귀 후 권한 허용되면 이어서 켜기
             openAppSettings()  // 권한 없으면 설정으로
         } else {
             update(!current)
         }
+    }
+
+    // 설정 앱에서 권한을 허용하고 돌아온 경우, 보류해둔 토글을 자동으로 처리
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val action = pendingEnable
+                pendingEnable = null
+                if (action != null && hasNotificationPermission()) {
+                    action()
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     Column(
