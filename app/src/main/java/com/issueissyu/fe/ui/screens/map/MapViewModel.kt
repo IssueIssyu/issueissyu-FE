@@ -16,6 +16,8 @@ import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -64,6 +66,9 @@ class MapViewModel @Inject constructor(
     private val _showResearchButton = MutableStateFlow(false)
     val showResearchButton: StateFlow<Boolean> = _showResearchButton.asStateFlow()
 
+    private val _isMapRefreshing = MutableStateFlow(false)
+    val isMapRefreshing: StateFlow<Boolean> = _isMapRefreshing.asStateFlow()
+
     private val _showPinTypeSelector = MutableStateFlow(false)
     val showPinTypeSelector: StateFlow<Boolean> = _showPinTypeSelector.asStateFlow()
 
@@ -71,6 +76,8 @@ class MapViewModel @Inject constructor(
     @Suppress("unused") // TODO: UI에서 bounds를 관찰할 계획이면 유지하되 @Suppress("unused")를 붙여도 됩니다.
     val currentBounds: StateFlow<MapBounds?> = _currentBounds.asStateFlow()
     private var currentZoomLevel: Int = DEFAULT_MAP_ZOOM_LEVEL
+    private var autoRefreshJob: Job? = null
+    private var refreshRequestId: Long = 0
 
     private val _isLocationSelectionMode = MutableStateFlow(false)
     val isLocationSelectionMode: StateFlow<Boolean> = _isLocationSelectionMode.asStateFlow()
@@ -115,7 +122,7 @@ class MapViewModel @Inject constructor(
             "축제" -> PinCategory.FESTIVAL
             else -> null
         }
-        fetchPinsInBounds()
+        refreshMapImmediately()
     }
 
     fun openPinTypeSelector() {
@@ -126,11 +133,11 @@ class MapViewModel @Inject constructor(
         _showPinTypeSelector.value = false
     }
 
-    fun showResearchAreaButton() {
+    private fun showResearchAreaButton() {
         _showResearchButton.value = true
     }
 
-    fun hideResearchAreaButton() {
+    private fun hideResearchAreaButton() {
         _showResearchButton.value = false
     }
 
@@ -139,26 +146,51 @@ class MapViewModel @Inject constructor(
         _currentBounds.value = bounds
         currentZoomLevel = zoomLevel
         if (isInitialBounds) {
-            fetchPinsInBounds()
+            refreshMapImmediately()
         } else {
             showResearchAreaButton()
+            scheduleAutomaticRefresh()
         }
     }
 
-    fun fetchPinsInBounds() {
+    fun refreshMapImmediately() {
+        autoRefreshJob?.cancel()
+        refreshMap()
+    }
+
+    private fun scheduleAutomaticRefresh() {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = viewModelScope.launch {
+            delay(MAP_AUTO_REFRESH_DEBOUNCE_MILLIS)
+            refreshMap()
+        }
+    }
+
+    private fun refreshMap() {
         val bounds = _currentBounds.value ?: return
+        val zoomLevel = currentZoomLevel
+        val category = _selectedCategory.value
+        val requestId = ++refreshRequestId
 
         viewModelScope.launch {
+            _isMapRefreshing.value = true
             mapRepository.getMapPinsInBounds(
                 bounds = bounds,
-                zoomLevel = currentZoomLevel,
-                category = _selectedCategory.value,
+                zoomLevel = zoomLevel,
+                category = category,
             ).onSuccess { result ->
+                if (requestId != refreshRequestId) return@onSuccess
                 _mapPins.value = result.pins
                 _mapClusters.value = result.clusters
+                hideResearchAreaButton()
+            }.onFailure {
+                if (requestId != refreshRequestId) return@onFailure
+                showResearchAreaButton()
             }
 
-            hideResearchAreaButton()
+            if (requestId == refreshRequestId) {
+                _isMapRefreshing.value = false
+            }
         }
     }
 
@@ -291,5 +323,6 @@ class MapViewModel @Inject constructor(
 
     private companion object {
         const val DEFAULT_MAP_ZOOM_LEVEL = 11
+        const val MAP_AUTO_REFRESH_DEBOUNCE_MILLIS = 400L
     }
 }

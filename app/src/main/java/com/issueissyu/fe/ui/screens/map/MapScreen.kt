@@ -113,6 +113,7 @@ fun MapScreen(
     viewModel: MapViewModel = hiltViewModel()
 ) {
     val showResearchButton by viewModel.showResearchButton.collectAsStateWithLifecycle()
+    val isMapRefreshing by viewModel.isMapRefreshing.collectAsStateWithLifecycle()
     val showPinTypeSelector by viewModel.showPinTypeSelector.collectAsStateWithLifecycle()
     val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
@@ -278,7 +279,7 @@ fun MapScreen(
     LaunchedEffect(savedStateHandle) {
         savedStateHandle.getStateFlow(PIN_CREATE_MAP_REFRESH_KEY, false).collectLatest { shouldRefresh ->
             if (!shouldRefresh) return@collectLatest
-            viewModel.fetchPinsInBounds()
+            viewModel.refreshMapImmediately()
             val createdPinId = savedStateHandle.get<String>(PIN_CREATE_FOCUS_PIN_ID_KEY).orEmpty()
             if (createdPinId.isNotBlank()) {
                 viewModel.selectPinById(createdPinId)
@@ -468,8 +469,9 @@ fun MapScreen(
         if (showResearchButton && !isLocationSelectionMode) {
             Button(
                 onClick = {
-                    viewModel.fetchPinsInBounds()
+                    viewModel.refreshMapImmediately()
                 },
+                enabled = !isMapRefreshing,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = 192.dp)
@@ -491,7 +493,7 @@ fun MapScreen(
                 Spacer(modifier = Modifier.width(4.dp))
 
                 Text(
-                    text = "이 지역 내 재탐색",
+                    text = if (isMapRefreshing) "불러오는 중" else "이 지역 내 재탐색",
                     style = IssueTypo.Bold12.copy(color = White)
                 )
             }
