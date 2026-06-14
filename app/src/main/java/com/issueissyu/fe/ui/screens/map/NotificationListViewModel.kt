@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.notification.Notification
 import com.issueissyu.fe.domain.repository.AlarmRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -28,6 +30,13 @@ class NotificationListViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(NotificationListUiState(isLoading = true))
     val uiState: StateFlow<NotificationListUiState> = _uiState.asStateFlow()
+
+    private val _event = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
+    val event = _event.asSharedFlow()
+
+    sealed interface UiEvent {
+        data class ShowError(val message: String) : UiEvent
+    }
 
     init {
         loadNotifications()
@@ -129,14 +138,14 @@ class NotificationListViewModel @Inject constructor(
                         )
                     }
                 },
-                onFailure = {
-                    _uiState.update {
-                        it.copy(
-                            isLoadingMore = false,
-                            hasNext = false,
-                            nextCursor = null,
-                        )
-                    }
+                onFailure = { error ->
+                    _uiState.update { it.copy(isLoadingMore = false) }
+                    _event.emit(
+                        UiEvent.ShowError(
+                            error.message?.takeIf { it.isNotBlank() }
+                                ?: "알림을 더 불러오지 못했습니다.",
+                        ),
+                    )
                 },
             )
         }
