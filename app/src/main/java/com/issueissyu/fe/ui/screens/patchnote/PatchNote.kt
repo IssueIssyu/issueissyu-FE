@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -26,14 +24,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
@@ -44,8 +41,6 @@ import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.Gray_6
 import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.Title
-import com.issueissyu.fe.ui.theme.Gray_3
-import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 
@@ -177,24 +172,12 @@ fun PatchNoteCard(
                     horizontalArrangement = Arrangement.End,
                     modifier = Modifier.widthIn(max = 168.dp)
                 ) {
-                    if (!patchNote.writerImageUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = patchNote.writerImageUrl,
-                            contentDescription = "Writer Profile",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Gray_3)
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Filled.Person,
-                            contentDescription = "Writer Profile",
-                            modifier = Modifier.size(32.dp),
-                            tint = Gray_5
-                        )
-                    }
+                    ProfileImageFrame(
+                        size = 32.dp,
+                        imageUrl = patchNote.writerImageUrl,
+                        contentDescription = "작성자 프로필",
+                        borderWidth = 1.dp,
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = patchNote.writerName,

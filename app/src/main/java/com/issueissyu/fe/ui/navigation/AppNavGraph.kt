@@ -257,9 +257,6 @@ fun AppNavGraph(
                 removeTopPadding = true
             ) {
                 CommunityScreen(
-                    onBackClick = {
-                        navController.navigateUp()
-                    },
                     onCommunityClick = { communityId ->
                         navController.navigate(AppDestinations.communityDetailRoute(communityId))
                     }

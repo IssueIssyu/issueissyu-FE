@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -79,14 +78,12 @@ import androidx.compose.material3.TextButton
 @Composable
 fun CommunityScreen(
     viewModel: CommunityViewModel = hiltViewModel(),
-    onBackClick: (() -> Unit)? = null,
     onCommunityClick: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     CommunityScreenContent(
         uiState = uiState,
-        onBackClick = onBackClick,
         onCommunityClick = onCommunityClick,
         onCategorySelected = viewModel::onCategorySelected,
         onRefresh = viewModel::onRefresh,
@@ -98,7 +95,6 @@ fun CommunityScreen(
 @Composable
 fun CommunityScreenContent(
     uiState: CommunityUiState,
-    onBackClick: (() -> Unit)? = null,
     onCommunityClick: (Long) -> Unit = {},
     onCategorySelected: (CommunityTab) -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -194,24 +190,13 @@ fun CommunityScreenContent(
                     }
                 )
 
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(52.dp)
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    contentAlignment = Alignment.CenterEnd,
                 ) {
-                    if (onBackClick != null) {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "뒤로가기",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
                     RegionDropdownPill(
                         region = uiState.region.toRegionDisplayName(),
                         onClick = { showRegionSelector = true }
@@ -872,7 +857,6 @@ fun PreviewCommunityScreenHome() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -886,7 +870,6 @@ fun PreviewCommunityScreenHot() {
             selectedCategory = CommunityTab.HOT,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -900,7 +883,6 @@ fun PreviewCommunityScreenIssue() {
             selectedCategory = CommunityTab.ISSUE,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -914,7 +896,6 @@ fun PreviewCommunityScreenEmpty() {
             selectedCategory = CommunityTab.ALL,
             region = "서대문구"
         ),
-        onBackClick = {},
         onCommunityClick = {}
     )
 }
@@ -929,7 +910,6 @@ fun PreviewCommunityScreenLoading() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
         onCommunityClick = {}
     )
 }
@@ -944,7 +924,6 @@ fun PreviewCommunityScreenError() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
         onCommunityClick = {},
         onRegionSelected = {}
     )
