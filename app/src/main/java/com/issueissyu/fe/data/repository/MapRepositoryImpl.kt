@@ -4,12 +4,15 @@ import com.issueissyu.fe.core.text.decodePinContentNewlines
 import com.issueissyu.fe.data.remote.api.MapApi
 import com.issueissyu.fe.data.remote.dto.response.map.MapNoticeItemResponse
 import com.issueissyu.fe.data.remote.dto.response.map.MapPinCardResponse
+import com.issueissyu.fe.data.remote.dto.response.map.MapPinClusterResponse
 import com.issueissyu.fe.data.remote.dto.response.map.MapPinItemResponse
 import com.issueissyu.fe.data.remote.dto.response.map.PatchNotePinItemResponse
 import com.issueissyu.fe.data.remote.dto.response.map.PatchNoteResponse
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.MapNotice
+import com.issueissyu.fe.domain.model.MapPinCluster
 import com.issueissyu.fe.domain.model.MapPinMarker
+import com.issueissyu.fe.domain.model.MapPinQueryResult
 import com.issueissyu.fe.domain.model.PatchNote
 import com.issueissyu.fe.domain.model.PatchNotePage
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
@@ -33,19 +36,27 @@ class MapRepositoryImpl @Inject constructor(
 
     override suspend fun getMapPinsInBounds(
         bounds: MapBounds,
+        zoomLevel: Int,
         category: PinCategory?,
-    ): Result<List<MapPinMarker>> {
+    ): Result<MapPinQueryResult> {
         return try {
             val response = mapApi.getPinsInScreen(
                 swLat = bounds.swLat,
                 swLng = bounds.swLng,
                 neLat = bounds.neLat,
                 neLng = bounds.neLng,
+                zoomLevel = zoomLevel,
                 category = category?.toApiCategory(),
             )
 
             if (response.isSuccess) {
-                Result.success(response.result?.pins.orEmpty().mapNotNull { it.toMapPinMarker() })
+                val result = response.result
+                Result.success(
+                    MapPinQueryResult(
+                        pins = result?.pins.orEmpty().mapNotNull { it.toMapPinMarker() },
+                        clusters = result?.clusters.orEmpty().mapNotNull { it.toMapPinCluster() },
+                    )
+                )
             } else {
                 Result.failure(Exception(response.message.ifBlank { "지도 핀 목록 조회에 실패했습니다." }))
             }
@@ -116,6 +127,20 @@ class MapRepositoryImpl @Inject constructor(
             coordinate = PinCoordinate(latitude = lat, longitude = lng),
             address = pinDetailAddress.orEmpty(),
             locationName = pinLocation?.takeIf { it.isNotBlank() } ?: pinDetailAddress.orEmpty(),
+        )
+    }
+
+    private fun MapPinClusterResponse.toMapPinCluster(): MapPinCluster? {
+        val id = clusterId?.toString() ?: return null
+        val lat = clusterLatitude ?: return null
+        val lng = clusterLongitude ?: return null
+        val mappedPins = pins.orEmpty().mapNotNull { it.toMapPinMarker() }
+
+        return MapPinCluster(
+            clusterId = id,
+            coordinate = PinCoordinate(latitude = lat, longitude = lng),
+            pinCount = pinCount ?: mappedPins.size,
+            pins = mappedPins,
         )
     }
 

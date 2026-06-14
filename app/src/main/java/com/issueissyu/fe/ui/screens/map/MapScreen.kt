@@ -308,13 +308,14 @@ fun MapScreen(
             },
             onCameraIdle = { map ->
                 map.contentBounds.let { bounds ->
-                    viewModel.updateMapBounds(
-                        MapBounds(
+                    viewModel.updateMapViewport(
+                        bounds = MapBounds(
                             swLat = bounds.southWest.latitude,
                             swLng = bounds.southWest.longitude,
                             neLat = bounds.northEast.latitude,
                             neLng = bounds.northEast.longitude
-                        )
+                        ),
+                        zoomLevel = map.cameraPosition.zoom.toInt(),
                     )
                 }
             },

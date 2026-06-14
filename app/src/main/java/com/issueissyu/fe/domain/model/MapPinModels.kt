@@ -10,3 +10,15 @@ data class MapPinMarker(
     val address: String,
     val locationName: String
 )
+
+data class MapPinCluster(
+    val clusterId: String,
+    val coordinate: PinCoordinate,
+    val pinCount: Int,
+    val pins: List<MapPinMarker>,
+)
+
+data class MapPinQueryResult(
+    val pins: List<MapPinMarker>,
+    val clusters: List<MapPinCluster>,
+)

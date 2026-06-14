@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.MapPinCluster
 import com.issueissyu.fe.domain.model.MapNotice
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
@@ -45,6 +46,9 @@ class MapViewModel @Inject constructor(
     private val _mapPins = MutableStateFlow<List<MapPinMarker>>(emptyList())
     val mapPins: StateFlow<List<MapPinMarker>> = _mapPins.asStateFlow()
 
+    private val _mapClusters = MutableStateFlow<List<MapPinCluster>>(emptyList())
+    val mapClusters: StateFlow<List<MapPinCluster>> = _mapClusters.asStateFlow()
+
     private val _selectedPin = MutableStateFlow<Pin?>(null)
     val selectedPin: StateFlow<Pin?> = _selectedPin.asStateFlow()
 
@@ -66,6 +70,7 @@ class MapViewModel @Inject constructor(
     private val _currentBounds = MutableStateFlow<MapBounds?>(null)
     @Suppress("unused") // TODO: UI에서 bounds를 관찰할 계획이면 유지하되 @Suppress("unused")를 붙여도 됩니다.
     val currentBounds: StateFlow<MapBounds?> = _currentBounds.asStateFlow()
+    private var currentZoomLevel: Int = DEFAULT_MAP_ZOOM_LEVEL
 
     private val _isLocationSelectionMode = MutableStateFlow(false)
     val isLocationSelectionMode: StateFlow<Boolean> = _isLocationSelectionMode.asStateFlow()
@@ -129,9 +134,10 @@ class MapViewModel @Inject constructor(
         _showResearchButton.value = false
     }
 
-    fun updateMapBounds(bounds: MapBounds) {
+    fun updateMapViewport(bounds: MapBounds, zoomLevel: Int) {
         val isInitialBounds = _currentBounds.value == null
         _currentBounds.value = bounds
+        currentZoomLevel = zoomLevel
         if (isInitialBounds) {
             fetchPinsInBounds()
         } else {
@@ -143,8 +149,14 @@ class MapViewModel @Inject constructor(
         val bounds = _currentBounds.value ?: return
 
         viewModelScope.launch {
-            mapRepository.getMapPinsInBounds(bounds, _selectedCategory.value)
-                .onSuccess { _mapPins.value = it }
+            mapRepository.getMapPinsInBounds(
+                bounds = bounds,
+                zoomLevel = currentZoomLevel,
+                category = _selectedCategory.value,
+            ).onSuccess { result ->
+                _mapPins.value = result.pins
+                _mapClusters.value = result.clusters
+            }
 
             hideResearchAreaButton()
         }
@@ -275,5 +287,9 @@ class MapViewModel @Inject constructor(
 
     fun updateCurrentLocation(latLng: LatLng) {
         _currentLocation.value = PinCoordinate(latitude = latLng.latitude, longitude = latLng.longitude)
+    }
+
+    private companion object {
+        const val DEFAULT_MAP_ZOOM_LEVEL = 11
     }
 }

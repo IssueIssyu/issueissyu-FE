@@ -16,6 +16,7 @@ interface MapApi {
         @Query("swLng") swLng: Double,
         @Query("neLat") neLat: Double,
         @Query("neLng") neLng: Double,
+        @Query("zoomLevel") zoomLevel: Int,
         @Query("category") category: String? = null,
     ): BaseResponse<MapPinResponse?>
 
