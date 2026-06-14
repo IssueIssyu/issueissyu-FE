@@ -16,8 +16,17 @@ interface MapApi {
         @Query("swLng") swLng: Double,
         @Query("neLat") neLat: Double,
         @Query("neLng") neLng: Double,
-        @Query("zoomLevel") zoomLevel: Int,
         @Query("category") category: String? = null,
+    ): BaseResponse<MapPinResponse?>
+
+    @GET("api/map/clustering/pins")
+    suspend fun getClusteredPinsInScreen(
+        @Query("swLat") swLat: Double,
+        @Query("swLng") swLng: Double,
+        @Query("neLat") neLat: Double,
+        @Query("neLng") neLng: Double,
+        @Query("category") category: String? = null,
+        @Query("zoomLevel") zoomLevel: Int,
     ): BaseResponse<MapPinResponse?>
 
     @GET("api/map/{pinId}/card")

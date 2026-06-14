@@ -5,6 +5,11 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.PointF
+import android.graphics.RectF
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -56,6 +62,8 @@ import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.collectLatest
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.MapBounds
+import com.issueissyu.fe.domain.model.MapPinCluster
+import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.ui.components.CategoryButtons
@@ -85,8 +93,116 @@ private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
 private const val DEFAULT_MARKER_SCALE = 1.5f
 private const val SELECTED_MARKER_SCALE = 2f
 private const val SELECTED_MARKER_Z_INDEX = 1
+private const val CLUSTER_MARKER_Z_INDEX = 2
+private const val CLUSTER_ZOOM_INCREMENT = 2.0
+private const val MAX_CLUSTER_CLICK_ZOOM = 16.0
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
+
+private fun createSinglePinClusterMarker(
+    context: Context,
+    cluster: MapPinCluster,
+    pin: MapPinMarker,
+    naverMap: NaverMap,
+    onClick: () -> Unit,
+): Marker {
+    val iconRes = pin.category.toMarkerIconRes()
+    return Marker().apply {
+        position = cluster.coordinate.toLatLng()
+        icon = OverlayImage.fromResource(iconRes)
+        ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
+            width = (drawable.intrinsicWidth * DEFAULT_MARKER_SCALE).toInt()
+            height = (drawable.intrinsicHeight * DEFAULT_MARKER_SCALE).toInt()
+        }
+        map = naverMap
+        setOnClickListener {
+            onClick()
+            true
+        }
+    }
+}
+
+private fun createCountClusterMarker(
+    context: Context,
+    cluster: MapPinCluster,
+    naverMap: NaverMap,
+    onClick: () -> Unit,
+): Marker {
+    return Marker().apply {
+        position = cluster.coordinate.toLatLng()
+        icon = OverlayImage.fromBitmap(createClusterBitmap(context, cluster))
+        anchor = PointF(0.5f, 0.5f)
+        zIndex = CLUSTER_MARKER_Z_INDEX
+        map = naverMap
+        setOnClickListener {
+            onClick()
+            true
+        }
+    }
+}
+
+private fun createClusterBitmap(context: Context, cluster: MapPinCluster): Bitmap {
+    val density = context.resources.displayMetrics.density
+    val markerSize = (52 * density).toInt()
+    val bitmap = Bitmap.createBitmap(markerSize, markerSize, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val center = markerSize / 2f
+
+    val circlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.rgb(72, 119, 255)
+        style = Paint.Style.FILL
+        setShadowLayer(4 * density, 0f, 2 * density, android.graphics.Color.argb(70, 0, 0, 0))
+    }
+    val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 4 * density
+        strokeCap = Paint.Cap.BUTT
+    }
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        textAlign = Paint.Align.CENTER
+        textSize = 17 * density
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+
+    val radius = center - 5 * density
+    canvas.drawCircle(center, center, radius, circlePaint)
+    val categoryCounts = cluster.pins
+        .groupingBy { it.category }
+        .eachCount()
+        .toSortedMap(compareBy(PinCategory::ordinal))
+    val totalCategoryPins = categoryCounts.values.sum()
+    val borderBounds = RectF(
+        center - radius,
+        center - radius,
+        center + radius,
+        center + radius,
+    )
+    if (totalCategoryPins == 0) {
+        borderPaint.color = android.graphics.Color.WHITE
+        canvas.drawCircle(center, center, radius, borderPaint)
+    } else {
+        var startAngle = -90f
+        categoryCounts.forEach { (category, count) ->
+            val sweepAngle = 360f * count / totalCategoryPins
+            borderPaint.color = category.toClusterBorderColor()
+            canvas.drawArc(borderBounds, startAngle, sweepAngle, false, borderPaint)
+            startAngle += sweepAngle
+        }
+    }
+    val textY = center - (textPaint.ascent() + textPaint.descent()) / 2f
+    canvas.drawText(cluster.pinCount.toString(), center, textY, textPaint)
+    return bitmap
+}
+
+private fun PinCategory.toClusterBorderColor(): Int {
+    return when (this) {
+        PinCategory.ISSUE -> Issue.toArgb()
+        PinCategory.COMMUNICATION -> Communication.toArgb()
+        PinCategory.SHOP -> Shop.toArgb()
+        PinCategory.FESTIVAL -> Festival.toArgb()
+    }
+}
 
 // Context에서 Activity를 찾는 헬퍼 함수
 private fun Context.findActivity(): Activity? {
@@ -116,6 +232,7 @@ fun MapScreen(
     val isMapRefreshing by viewModel.isMapRefreshing.collectAsStateWithLifecycle()
     val showPinTypeSelector by viewModel.showPinTypeSelector.collectAsStateWithLifecycle()
     val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
+    val mapClusters by viewModel.mapClusters.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val notices by viewModel.notices.collectAsStateWithLifecycle()
@@ -140,6 +257,7 @@ fun MapScreen(
         selectedCategory == null -> mapPins
         else -> mapPins.filter { it.category == selectedCategory }
     }
+    val visibleMapClusters = if (isLocationSelectionMode) emptyList() else mapClusters
 
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
 
@@ -220,7 +338,7 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(naverMapInstance, visibleMapPins, selectedPin?.id) {
+    LaunchedEffect(naverMapInstance, visibleMapPins, visibleMapClusters, selectedPin?.id) {
         val naverMap = naverMapInstance ?: return@LaunchedEffect
 
         mapMarkers.forEach { it.map = null }
@@ -250,6 +368,44 @@ fun MapScreen(
                     )
                     true
                 }
+            }
+            mapMarkers.add(marker)
+        }
+
+        visibleMapClusters.forEach { cluster ->
+            val singlePin = cluster.pins.singleOrNull()
+                ?.takeIf { cluster.pinCount == 1 }
+            val marker = if (singlePin != null) {
+                createSinglePinClusterMarker(
+                    context = context,
+                    cluster = cluster,
+                    pin = singlePin,
+                    naverMap = naverMap,
+                    onClick = {
+                        viewModel.selectPinById(singlePin.pinId)
+                        naverMap.moveCamera(
+                            CameraUpdate
+                                .scrollTo(singlePin.coordinate.toLatLng())
+                                .animate(CameraAnimation.Easing)
+                        )
+                    },
+                )
+            } else {
+                createCountClusterMarker(
+                    context = context,
+                    cluster = cluster,
+                    naverMap = naverMap,
+                    onClick = {
+                        viewModel.clearSelectedPin()
+                        val nextZoom = (naverMap.cameraPosition.zoom + CLUSTER_ZOOM_INCREMENT)
+                            .coerceAtMost(MAX_CLUSTER_CLICK_ZOOM)
+                        naverMap.moveCamera(
+                            CameraUpdate
+                                .scrollAndZoomTo(cluster.coordinate.toLatLng(), nextZoom)
+                                .animate(CameraAnimation.Easing)
+                        )
+                    },
+                )
             }
             mapMarkers.add(marker)
         }

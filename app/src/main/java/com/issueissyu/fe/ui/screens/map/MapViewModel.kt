@@ -183,9 +183,13 @@ class MapViewModel @Inject constructor(
                 _mapPins.value = result.pins
                 _mapClusters.value = result.clusters
                 hideResearchAreaButton()
-            }.onFailure {
+            }.onFailure { error ->
                 if (requestId != refreshRequestId) return@onFailure
                 showResearchAreaButton()
+                _messageEvents.emit(
+                    error.message?.takeIf { it.isNotBlank() }
+                        ?: "지도 핀을 불러오지 못했습니다."
+                )
             }
 
             if (requestId == refreshRequestId) {

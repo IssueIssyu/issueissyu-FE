@@ -40,14 +40,25 @@ class MapRepositoryImpl @Inject constructor(
         category: PinCategory?,
     ): Result<MapPinQueryResult> {
         return try {
-            val response = mapApi.getPinsInScreen(
-                swLat = bounds.swLat,
-                swLng = bounds.swLng,
-                neLat = bounds.neLat,
-                neLng = bounds.neLng,
-                zoomLevel = zoomLevel,
-                category = category?.toApiCategory(),
-            )
+            val apiCategory = category?.toApiCategory()
+            val response = if (zoomLevel <= CLUSTERING_MAX_ZOOM_LEVEL) {
+                mapApi.getClusteredPinsInScreen(
+                    swLat = bounds.swLat,
+                    swLng = bounds.swLng,
+                    neLat = bounds.neLat,
+                    neLng = bounds.neLng,
+                    category = apiCategory,
+                    zoomLevel = zoomLevel,
+                )
+            } else {
+                mapApi.getPinsInScreen(
+                    swLat = bounds.swLat,
+                    swLng = bounds.swLng,
+                    neLat = bounds.neLat,
+                    neLng = bounds.neLng,
+                    category = apiCategory,
+                )
+            }
 
             if (response.isSuccess) {
                 val result = response.result
@@ -227,10 +238,10 @@ class MapRepositoryImpl @Inject constructor(
 
     private fun PinCategory.toApiCategory(): String {
         return when (this) {
-            PinCategory.ISSUE -> "ISSUE"
-            PinCategory.COMMUNICATION -> "COMMUNICATION"
-            PinCategory.SHOP -> "STORE"
-            PinCategory.FESTIVAL -> "FESTIVAL"
+            PinCategory.ISSUE -> "issue"
+            PinCategory.COMMUNICATION -> "communication"
+            PinCategory.SHOP -> "store"
+            PinCategory.FESTIVAL -> "festival"
         }
     }
 
@@ -240,5 +251,9 @@ class MapRepositoryImpl @Inject constructor(
             "RESOLVED", "DONE" -> ResolutionStatus.RESOLVED
             else -> ResolutionStatus.BEFORE_RESOLUTION
         }
+    }
+
+    private companion object {
+        const val CLUSTERING_MAX_ZOOM_LEVEL = 10
     }
 }
