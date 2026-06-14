@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.remote.dto.response.alarm
 
+import android.util.Log
 import com.issueissyu.fe.core.time.formatAlarmTimeAgo
 import com.issueissyu.fe.domain.model.notification.Notification
 import com.issueissyu.fe.domain.model.notification.NotificationPage
@@ -36,7 +37,11 @@ fun AlarmListResponse.toNotificationPage(): NotificationPage {
 }
 
 fun Alarm.toNotification(): Notification? {
-    val type = NotificationType.fromServer(alarmType) ?: return null
+    val type = NotificationType.fromServer(alarmType)
+    if (type == null) {
+        Log.w(TAG, "Unknown alarmType=$alarmType alarmId=$alarmId — item skipped")
+        return null
+    }
     return Notification(
         alarmId = alarmId,
         type = type,
@@ -48,3 +53,5 @@ fun Alarm.toNotification(): Notification? {
         communityId = communityId,
     )
 }
+
+private const val TAG = "AlarmListResponse"

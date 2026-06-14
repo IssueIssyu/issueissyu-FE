@@ -9,10 +9,10 @@ enum class NotificationType {
 
     companion object {
         fun fromServer(value: String?): NotificationType? = when (value?.uppercase()) {
-            "LIKE" -> LIKE
-            "EVENT" -> EVENT
-            "HOT" -> HOT
-            "STORE" -> STORE
+            "LIKE", "PIN_LIKED" -> LIKE
+            "EVENT", "PIN_EVENT" -> EVENT
+            "HOT", "PIN_POPULAR" -> HOT
+            "STORE", "PIN_STORE_AD" -> STORE
             else -> null
         }
     }

@@ -25,10 +25,8 @@ enum class PushType(
 
     fun resolveDestination(pinId: String?, communityId: String?): PushDestination? = when (this) {
         PIN_LIKED -> pinId?.takeIf { it.isNotBlank() }?.let { PushDestination.PinDetail(it) }
-        PIN_EVENT, PIN_STORE_AD -> communityId?.toLongOrNull()?.let { PushDestination.CommunityDetail(it) }
-        // TODO(백엔드 HOT 딥링크 구현 후): communityId → CommunityDetail 연결
-        // FCM data: type=PIN_POPULAR, hotAlarmId, communityId
-        PIN_POPULAR -> null
+        PIN_EVENT, PIN_STORE_AD, PIN_POPULAR ->
+            communityId?.toLongOrNull()?.let { PushDestination.CommunityDetail(it) }
     }
 
     fun notificationId(pinId: String?, alarmId: String?): Int {
