@@ -57,6 +57,7 @@ object NotificationHelper {
     const val EXTRA_PIN_ID = "pinId"
     const val EXTRA_COMMUNITY_ID = "communityId"
     const val EXTRA_ALARM_ID = "alarmId"
+    private val defaultSmallIcon = R.mipmap.ic_launcher
 
     fun createChannel(context: Context) {
         val manager = context.getSystemService(NotificationManager::class.java)
@@ -102,7 +103,7 @@ object NotificationHelper {
         val notification = NotificationCompat.Builder(context, pushType.channelId)
             .setContentTitle(title)
             .setContentText(body)
-            .setSmallIcon(R.drawable.ic_report) // 나중에 아이콘 교체
+            .setSmallIcon(defaultSmallIcon)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
