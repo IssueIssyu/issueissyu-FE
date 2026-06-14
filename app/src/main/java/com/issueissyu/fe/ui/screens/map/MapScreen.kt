@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -46,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +63,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.MapPinCluster
@@ -79,6 +84,7 @@ import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Shop
+import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.LocationTrackingMode
 import com.naver.maps.map.NaverMap
 import com.naver.maps.map.CameraAnimation
@@ -87,6 +93,7 @@ import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
 import com.naver.maps.map.util.FusedLocationSource
 import com.issueissyu.fe.ui.theme.White
+import kotlin.math.roundToInt
 
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
@@ -94,10 +101,33 @@ private const val DEFAULT_MARKER_SCALE = 1.5f
 private const val SELECTED_MARKER_SCALE = 2f
 private const val SELECTED_MARKER_Z_INDEX = 1
 private const val CLUSTER_MARKER_Z_INDEX = 2
-private const val CLUSTER_ZOOM_INCREMENT = 2.0
-private const val MAX_CLUSTER_CLICK_ZOOM = 16.0
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
+
+private fun NaverMap.moveToClusterBounds(
+    context: Context,
+    cluster: MapPinCluster,
+) {
+    val bounds = LatLngBounds.Builder()
+        .include(cluster.pins.map { it.coordinate.toLatLng() })
+        .build()
+    val density = context.resources.displayMetrics.density
+    val horizontalPadding = (48 * density).roundToInt()
+    val topPadding = (72 * density).roundToInt()
+    val bottomPadding = (320 * density).roundToInt()
+
+    moveCamera(
+        CameraUpdate
+            .fitBounds(
+                bounds,
+                horizontalPadding,
+                topPadding,
+                horizontalPadding,
+                bottomPadding,
+            )
+            .animate(CameraAnimation.Easing)
+    )
+}
 
 private fun createSinglePinClusterMarker(
     context: Context,
@@ -234,6 +264,7 @@ fun MapScreen(
     val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
     val mapClusters by viewModel.mapClusters.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
+    val selectedPins by viewModel.selectedPins.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
@@ -396,14 +427,8 @@ fun MapScreen(
                     cluster = cluster,
                     naverMap = naverMap,
                     onClick = {
-                        viewModel.clearSelectedPin()
-                        val nextZoom = (naverMap.cameraPosition.zoom + CLUSTER_ZOOM_INCREMENT)
-                            .coerceAtMost(MAX_CLUSTER_CLICK_ZOOM)
-                        naverMap.moveCamera(
-                            CameraUpdate
-                                .scrollAndZoomTo(cluster.coordinate.toLatLng(), nextZoom)
-                                .animate(CameraAnimation.Easing)
-                        )
+                        viewModel.selectClusterPins(cluster.pins.map { it.pinId })
+                        naverMap.moveToClusterBounds(context, cluster)
                     },
                 )
             }
@@ -699,33 +724,57 @@ fun MapScreen(
             }
         }
 
-        selectedPin?.takeUnless { isLocationSelectionMode }?.let { pin ->
-            PinSummaryCard(
-                pin = pin,
-                currentUserId = currentUserId,
-                onDetailClick = { pinId ->
-                    viewModel.clearSelectedPin()
-                    navController.navigateToPinDetail(pinId)
-                },
-                onCommunityClick = { communityId ->
-                    val numericCommunityId = communityId.toLongOrNull() ?: return@PinSummaryCard
-                    viewModel.clearSelectedPin()
-                    navController.navigate(AppDestinations.communityDetailRoute(numericCommunityId))
-                },
-                onEditClick = { _ ->
-                },
-                onDeleteClick = { pinId ->
-                    viewModel.deletePin(pinId)
-                },
-                onSympathyClick = { pinId ->
-                    viewModel.toggleSympathy(pinId)
-                },
-                onEmojiClick = {},
+        if (selectedPins.isNotEmpty() && !isLocationSelectionMode) {
+            val pagerState = rememberPagerState(pageCount = { selectedPins.size })
+
+            LaunchedEffect(pagerState, selectedPins.map { it.id }) {
+                snapshotFlow { pagerState.currentPage }
+                    .distinctUntilChanged()
+                    .drop(1)
+                    .collectLatest { page ->
+                        val pin = selectedPins.getOrNull(page) ?: return@collectLatest
+                        viewModel.selectPinPage(page)
+                        naverMapInstance?.moveCamera(
+                            CameraUpdate
+                                .scrollTo(pin.coordinate.toLatLng())
+                                .animate(CameraAnimation.Easing)
+                        )
+                    }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                contentPadding = PaddingValues(horizontal = 12.dp),
+                pageSpacing = 8.dp,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-            )
+                    .padding(bottom = 12.dp),
+                key = { page -> selectedPins[page].id },
+            ) { page ->
+                val pin = selectedPins[page]
+                PinSummaryCard(
+                    pin = pin,
+                    currentUserId = currentUserId,
+                    onDetailClick = { pinId ->
+                        viewModel.clearSelectedPin()
+                        navController.navigateToPinDetail(pinId)
+                    },
+                    onCommunityClick = { communityId ->
+                        val numericCommunityId = communityId.toLongOrNull()
+                            ?: return@PinSummaryCard
+                        viewModel.clearSelectedPin()
+                        navController.navigate(
+                            AppDestinations.communityDetailRoute(numericCommunityId)
+                        )
+                    },
+                    onEditClick = {},
+                    onDeleteClick = viewModel::deletePin,
+                    onSympathyClick = viewModel::toggleSympathy,
+                    onEmojiClick = {},
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         if (showPinTypeSelector && !isLocationSelectionMode) {
@@ -757,7 +806,7 @@ fun MapScreen(
                 .padding(
                     start = 16.dp,
                     end = 16.dp,
-                    bottom = if (selectedPin != null) 288.dp else 24.dp
+                    bottom = if (selectedPins.isNotEmpty()) 288.dp else 24.dp
                 )
         )
     }

@@ -17,6 +17,9 @@ import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,6 +56,9 @@ class MapViewModel @Inject constructor(
 
     private val _selectedPin = MutableStateFlow<Pin?>(null)
     val selectedPin: StateFlow<Pin?> = _selectedPin.asStateFlow()
+
+    private val _selectedPins = MutableStateFlow<List<Pin>>(emptyList())
+    val selectedPins: StateFlow<List<Pin>> = _selectedPins.asStateFlow()
 
     private val _focusPin = MutableSharedFlow<Pin>(extraBufferCapacity = 1)
     val focusPin = _focusPin.asSharedFlow()
@@ -111,6 +117,7 @@ class MapViewModel @Inject constructor(
 
     fun clearSelectedPin() {
         _selectedPin.value = null
+        _selectedPins.value = emptyList()
     }
 
     fun onCategorySelected(categoryName: String?) {
@@ -207,10 +214,14 @@ class MapViewModel @Inject constructor(
             pinRepository.likePin(numericPinId)
                 .onSuccess { like ->
                     val currentPin = _selectedPin.value?.takeIf { it.id == pinId } ?: return@onSuccess
-                    _selectedPin.value = currentPin.copy(
+                    val updatedPin = currentPin.copy(
                         isSympathizedByMe = like.isLike,
                         sympathyCount = like.pinLikeCount,
                     )
+                    _selectedPin.value = updatedPin
+                    _selectedPins.value = _selectedPins.value.map { pin ->
+                        if (pin.id == pinId) updatedPin else pin
+                    }
                 }
                 .onFailure { e ->
                     _messageEvents.emit(e.message?.takeIf { it.isNotBlank() } ?: "핀 공감에 실패했습니다.")
@@ -225,9 +236,10 @@ class MapViewModel @Inject constructor(
             pinRepository.deletePin(numericPinId)
                 .onSuccess {
                     _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
+                    _selectedPins.value = _selectedPins.value.filterNot { it.id == pinId }
 
                     if (_selectedPin.value?.id == pinId) {
-                        _selectedPin.value = null
+                        _selectedPin.value = _selectedPins.value.firstOrNull()
                     }
                 }
                 .onFailure { e ->
@@ -240,7 +252,38 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val pin = mapRepository.getPinCard(pinId).getOrNull() ?: return@launch
             _selectedPin.value = pin
+            _selectedPins.value = listOf(pin)
             loadPinEmojis(pinId)
+        }
+    }
+
+    fun selectClusterPins(pinIds: List<String>) {
+        val distinctPinIds = pinIds.distinct()
+        if (distinctPinIds.isEmpty()) return
+
+        viewModelScope.launch {
+            val pins = coroutineScope {
+                distinctPinIds.map { pinId ->
+                    async { mapRepository.getPinCard(pinId).getOrNull() }
+                }.awaitAll().filterNotNull()
+            }
+            if (pins.isEmpty()) {
+                _messageEvents.emit("클러스터의 핀 정보를 불러오지 못했습니다.")
+                return@launch
+            }
+
+            _selectedPins.value = pins
+            _selectedPin.value = pins.first()
+            loadPinEmojis(pins.first().id)
+        }
+    }
+
+    fun selectPinPage(index: Int) {
+        val pin = _selectedPins.value.getOrNull(index) ?: return
+        if (_selectedPin.value?.id == pin.id) return
+        _selectedPin.value = pin
+        viewModelScope.launch {
+            loadPinEmojis(pin.id)
         }
     }
 
@@ -248,6 +291,7 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val pin = mapRepository.getPinCard(pinId).getOrNull() ?: return@launch
             _selectedPin.value = pin
+            _selectedPins.value = listOf(pin)
             _focusPin.emit(pin)
             loadPinEmojis(pinId)
         }
@@ -258,9 +302,13 @@ class MapViewModel @Inject constructor(
         pinRepository.getPinEmojis(numericPinId)
             .onSuccess { pinEmojis ->
                 val currentPin = _selectedPin.value?.takeIf { it.id == pinId } ?: return@onSuccess
-                _selectedPin.value = currentPin.copy(
+                val updatedPin = currentPin.copy(
                     emojiReactions = pinEmojis.toEmojiReactions()
                 )
+                _selectedPin.value = updatedPin
+                _selectedPins.value = _selectedPins.value.map { pin ->
+                    if (pin.id == pinId) updatedPin else pin
+                }
             }
     }
 
@@ -282,6 +330,7 @@ class MapViewModel @Inject constructor(
         _selectedPinCategory.value = category
         _selectedPinCoordinate.value = null
         _selectedPin.value = null
+        _selectedPins.value = emptyList()
     }
 
     fun exitLocationSelectionMode() {
