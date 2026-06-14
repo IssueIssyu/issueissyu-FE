@@ -255,11 +255,16 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             pinRepository.deletePin(numericPinId)
                 .onSuccess {
+                    val selectedPins = _selectedPins.value
+                    val deletedPinIndex = selectedPins.indexOfFirst { it.id == pinId }
+                    val remainingPins = selectedPins.filterNot { it.id == pinId }
+
                     _mapPins.value = _mapPins.value.filterNot { it.pinId == pinId }
-                    _selectedPins.value = _selectedPins.value.filterNot { it.id == pinId }
+                    _selectedPins.value = remainingPins
 
                     if (_selectedPin.value?.id == pinId) {
-                        _selectedPin.value = _selectedPins.value.firstOrNull()
+                        val nextIndex = deletedPinIndex.coerceAtMost(remainingPins.lastIndex)
+                        _selectedPin.value = remainingPins.getOrNull(nextIndex)
                     }
                 }
                 .onFailure { e ->

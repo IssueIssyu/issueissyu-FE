@@ -727,6 +727,22 @@ fun MapScreen(
         if (selectedPins.isNotEmpty() && !isLocationSelectionMode) {
             val pagerState = rememberPagerState(pageCount = { selectedPins.size })
 
+            LaunchedEffect(selectedPin?.id, selectedPins.map { it.id }) {
+                val selectedPage = selectedPins.indexOfFirst { it.id == selectedPin?.id }
+                if (selectedPage < 0 || pagerState.currentPage == selectedPage) {
+                    return@LaunchedEffect
+                }
+
+                pagerState.scrollToPage(selectedPage)
+                selectedPins.getOrNull(selectedPage)?.let { pin ->
+                    naverMapInstance?.moveCamera(
+                        CameraUpdate
+                            .scrollTo(pin.coordinate.toLatLng())
+                            .animate(CameraAnimation.Easing)
+                    )
+                }
+            }
+
             LaunchedEffect(pagerState, selectedPins.map { it.id }) {
                 snapshotFlow { pagerState.currentPage }
                     .distinctUntilChanged()
