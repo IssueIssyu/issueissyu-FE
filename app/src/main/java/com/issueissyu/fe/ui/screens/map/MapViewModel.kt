@@ -177,6 +177,7 @@ class MapViewModel @Inject constructor(
         val bounds = _currentBounds.value ?: return
         val zoomLevel = currentZoomLevel
         val category = _selectedCategory.value
+        val selectedPinIdAtRequest = _selectedPin.value?.id
         val requestId = ++refreshRequestId
 
         viewModelScope.launch {
@@ -189,6 +190,15 @@ class MapViewModel @Inject constructor(
                 if (requestId != refreshRequestId) return@onSuccess
                 _mapPins.value = result.pins
                 _mapClusters.value = result.clusters
+                clearSelectionIfOutsideResult(
+                    selectedPinIdAtRequest = selectedPinIdAtRequest,
+                    resultPinIds = buildSet {
+                        result.pins.forEach { add(it.pinId) }
+                        result.clusters.forEach { cluster ->
+                            cluster.pins.forEach { add(it.pinId) }
+                        }
+                    },
+                )
                 hideResearchAreaButton()
             }.onFailure { error ->
                 if (requestId != refreshRequestId) return@onFailure
@@ -203,6 +213,16 @@ class MapViewModel @Inject constructor(
                 _isMapRefreshing.value = false
             }
         }
+    }
+
+    private fun clearSelectionIfOutsideResult(
+        selectedPinIdAtRequest: String?,
+        resultPinIds: Set<String>,
+    ) {
+        if (selectedPinIdAtRequest == null) return
+        if (_selectedPin.value?.id != selectedPinIdAtRequest) return
+        if (selectedPinIdAtRequest in resultPinIds) return
+        clearSelectedPin()
     }
 
     fun toggleSympathy(pinId: String) {
