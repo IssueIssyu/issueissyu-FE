@@ -49,6 +49,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
+import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.core.time.formatPinHomeCreatedAt
 import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
@@ -94,6 +95,7 @@ fun CommunityDetailScreen(
         ?.collectAsState()
         ?: remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val activity = context.findActivity()
 
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh) {
@@ -131,6 +133,7 @@ fun CommunityDetailScreen(
         onEmojiAddClick = viewModel::openEmojiPicker,
         onEmojiPickerDismiss = viewModel::closeEmojiPicker,
         onEmojiCandidateClick = viewModel::selectEmojiCandidate,
+        onLockedEmojiCandidateClick = { emojiId -> viewModel.purchaseEmoji(activity, emojiId) },
         onEmojiApplyClick = viewModel::applySelectedEmoji,
     )
 }
@@ -153,6 +156,7 @@ fun CommunityDetailScreenContent(
     onEmojiAddClick: () -> Unit = {},
     onEmojiPickerDismiss: () -> Unit = {},
     onEmojiCandidateClick: (Long) -> Unit = {},
+    onLockedEmojiCandidateClick: (Long) -> Unit = {},
     onEmojiApplyClick: () -> Unit = {},
 ) {
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
@@ -176,7 +180,9 @@ fun CommunityDetailScreenContent(
             errorMessage = uiState.emojiPicker.errorMessage,
             onDismiss = onEmojiPickerDismiss,
             onEmojiClick = onEmojiCandidateClick,
+            onLockedEmojiClick = onLockedEmojiCandidateClick,
             onApplyClick = onEmojiApplyClick,
+            allowApplyWithoutSelection = true,
         )
     }
 

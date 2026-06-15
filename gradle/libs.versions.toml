@@ -26,7 +26,7 @@ firebaseBom = "34.11.0"
 securityCrypto = "1.1.0"
 
 playServicesLocation = "21.0.1"
-billing = "7.1.1"
+billing = "8.0.0"
 
 [libraries]
 naver-map-sdk = { group = "com.naver.maps", name = "map-sdk", version.ref = "navermaps" }

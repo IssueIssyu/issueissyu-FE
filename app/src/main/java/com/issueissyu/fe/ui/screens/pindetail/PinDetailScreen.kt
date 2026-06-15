@@ -45,6 +45,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.data.sample.PinSamples
+import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
@@ -76,6 +77,7 @@ fun PinDetailScreen(
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId.orEmpty()
     val context = LocalContext.current
+    val activity = context.findActivity()
     var pendingResolutionProofUri by remember { mutableStateOf<String?>(null) }
 
     val resolutionProofPhotoPicker = rememberPhotoSourcePicker(
@@ -179,6 +181,7 @@ fun PinDetailScreen(
                                 }
                             },
                             onEmojiClick = viewModel::pickEmojiInPicker,
+                            onLockedEmojiClick = { emojiId -> viewModel.purchaseEmoji(activity, emojiId) },
                             onApplyClick = viewModel::submitPickedEmoji,
                             allowApplyWithoutSelection = true,
                         )
