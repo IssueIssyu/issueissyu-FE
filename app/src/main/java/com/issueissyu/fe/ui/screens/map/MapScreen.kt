@@ -46,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -715,31 +716,25 @@ fun MapScreen(
 
         if (selectedPins.isNotEmpty() && !isLocationSelectionMode) {
             val pagerState = rememberPagerState(pageCount = { selectedPins.size })
+            val latestSelectedPins by rememberUpdatedState(selectedPins)
+            val latestNaverMap by rememberUpdatedState(naverMapInstance)
 
             LaunchedEffect(selectedPin?.id, selectedPins.map { it.id }) {
                 val selectedPage = selectedPins.indexOfFirst { it.id == selectedPin?.id }
-                if (selectedPage < 0 || pagerState.currentPage == selectedPage) {
+                if (selectedPage < 0 || pagerState.settledPage == selectedPage) {
                     return@LaunchedEffect
                 }
 
                 pagerState.scrollToPage(selectedPage)
-                selectedPins.getOrNull(selectedPage)?.let { pin ->
-                    naverMapInstance?.moveCamera(
-                        CameraUpdate
-                            .scrollTo(pin.coordinate.toLatLng())
-                            .animate(CameraAnimation.Easing)
-                    )
-                }
             }
 
-            LaunchedEffect(pagerState, selectedPins.map { it.id }) {
-                snapshotFlow { pagerState.currentPage }
+            LaunchedEffect(pagerState) {
+                snapshotFlow { pagerState.settledPage }
                     .distinctUntilChanged()
-                    .drop(1)
                     .collectLatest { page ->
-                        val pin = selectedPins.getOrNull(page) ?: return@collectLatest
+                        val pin = latestSelectedPins.getOrNull(page) ?: return@collectLatest
                         viewModel.selectPinPage(page)
-                        naverMapInstance?.moveCamera(
+                        latestNaverMap?.moveCamera(
                             CameraUpdate
                                 .scrollTo(pin.coordinate.toLatLng())
                                 .animate(CameraAnimation.Easing)
