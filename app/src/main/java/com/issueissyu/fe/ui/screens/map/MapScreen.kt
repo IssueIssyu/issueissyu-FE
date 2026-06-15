@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
@@ -51,6 +52,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -255,7 +257,7 @@ fun MapScreen(
     val visibleMapPins by viewModel.visibleMapPins.collectAsStateWithLifecycle()
     val visibleMapClusters by viewModel.visibleMapClusters.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
-    val selectedPins by viewModel.selectedPins.collectAsStateWithLifecycle()
+    val selectedPinPages by viewModel.selectedPinPages.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
     val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
@@ -714,13 +716,13 @@ fun MapScreen(
             }
         }
 
-        if (selectedPins.isNotEmpty() && !isLocationSelectionMode) {
-            val pagerState = rememberPagerState(pageCount = { selectedPins.size })
-            val latestSelectedPins by rememberUpdatedState(selectedPins)
+        if (selectedPinPages.isNotEmpty() && !isLocationSelectionMode) {
+            val pagerState = rememberPagerState(pageCount = { selectedPinPages.size })
+            val latestSelectedPinPages by rememberUpdatedState(selectedPinPages)
             val latestNaverMap by rememberUpdatedState(naverMapInstance)
 
-            LaunchedEffect(selectedPin?.id, selectedPins.map { it.id }) {
-                val selectedPage = selectedPins.indexOfFirst { it.id == selectedPin?.id }
+            LaunchedEffect(selectedPin?.id, selectedPinPages.map { it.pinId }) {
+                val selectedPage = selectedPinPages.indexOfFirst { it.pinId == selectedPin?.id }
                 if (selectedPage < 0 || pagerState.settledPage == selectedPage) {
                     return@LaunchedEffect
                 }
@@ -732,8 +734,10 @@ fun MapScreen(
                 snapshotFlow { pagerState.settledPage }
                     .distinctUntilChanged()
                     .collectLatest { page ->
-                        val pin = latestSelectedPins.getOrNull(page) ?: return@collectLatest
                         viewModel.selectPinPage(page)
+                        val pin = viewModel.selectedPin.value
+                            ?: latestSelectedPinPages.getOrNull(page)?.pin
+                            ?: return@collectLatest
                         latestNaverMap?.moveCamera(
                             CameraUpdate
                                 .scrollTo(pin.coordinate.toLatLng())
@@ -750,30 +754,44 @@ fun MapScreen(
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
-                key = { page -> selectedPins[page].id },
+                key = { page -> selectedPinPages[page].pinId },
             ) { page ->
-                val pin = selectedPins[page]
-                PinSummaryCard(
-                    pin = pin,
-                    currentUserId = currentUserId,
-                    onDetailClick = { pinId ->
-                        viewModel.clearSelectedPin()
-                        navController.navigateToPinDetail(pinId)
-                    },
-                    onCommunityClick = { communityId ->
-                        val numericCommunityId = communityId.toLongOrNull()
-                            ?: return@PinSummaryCard
-                        viewModel.clearSelectedPin()
-                        navController.navigate(
-                            AppDestinations.communityDetailRoute(numericCommunityId)
-                        )
-                    },
-                    onEditClick = {},
-                    onDeleteClick = viewModel::deletePin,
-                    onSympathyClick = viewModel::toggleSympathy,
-                    onEmojiClick = viewModel::openEmojiPicker,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                val pinPage = selectedPinPages[page]
+                val pin = pinPage.pin
+                if (pin != null) {
+                    PinSummaryCard(
+                        pin = pin,
+                        currentUserId = currentUserId,
+                        onDetailClick = { pinId ->
+                            viewModel.clearSelectedPin()
+                            navController.navigateToPinDetail(pinId)
+                        },
+                        onCommunityClick = { communityId ->
+                            val numericCommunityId = communityId.toLongOrNull()
+                                ?: return@PinSummaryCard
+                            viewModel.clearSelectedPin()
+                            navController.navigate(
+                                AppDestinations.communityDetailRoute(numericCommunityId)
+                            )
+                        },
+                        onEditClick = {},
+                        onDeleteClick = viewModel::deletePin,
+                        onSympathyClick = viewModel::toggleSympathy,
+                        onEmojiClick = viewModel::openEmojiPicker,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(160.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surface),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
         }
 
@@ -806,7 +824,7 @@ fun MapScreen(
                 .padding(
                     start = 16.dp,
                     end = 16.dp,
-                    bottom = if (selectedPins.isNotEmpty()) 288.dp else 24.dp
+                    bottom = if (selectedPinPages.isNotEmpty()) 288.dp else 24.dp
                 )
         )
     }
