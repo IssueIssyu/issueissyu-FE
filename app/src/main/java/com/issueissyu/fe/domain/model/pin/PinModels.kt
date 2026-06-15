@@ -343,6 +343,17 @@ data class CreatePinRequest(
     val tone: String = "없음",
 )
 
+data class UpdatePinRequest(
+    val title: String,
+    val description: String,
+    val coordinate: PinCoordinate,
+    val address: String,
+    val locationName: String? = null,
+    val neighborhoodId: String? = null,
+    val neighborhoodName: String? = null,
+    val imageUrls: List<String> = emptyList()
+)
+
 fun Pin.canEditBy(userId: String? = null): Boolean {
     if (communityPostId != null) return false
     return isMine==true
