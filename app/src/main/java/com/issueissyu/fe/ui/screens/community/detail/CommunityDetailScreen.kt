@@ -846,23 +846,59 @@ private fun CommunityCardNewsImageSection(
     imageUrls: List<String>,
     onImageClick: (Int) -> Unit,
 ) {
+    if (imageUrls.isEmpty()) return
+
+    val pagerState = rememberPagerState(pageCount = { imageUrls.size })
+
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        imageUrls.forEachIndexed { index, imageUrl ->
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.78f),
+        ) { page ->
             AsyncImage(
-                model = imageUrl,
+                model = imageUrls[page],
                 contentDescription = "카드뉴스 이미지",
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.72f)
-                    .clip(RoundedCornerShape(6.dp))
+                    .fillMaxSize()
                     .background(Gray_2)
-                    .clickable { onImageClick(index) },
-                contentScale = ContentScale.Fit,
+                    .clickable { onImageClick(page) },
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        if (imageUrls.size > 1) {
+            CardNewsPagerIndicator(
+                pageCount = imageUrls.size,
+                currentPage = pagerState.settledPage,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CardNewsPagerIndicator(
+    pageCount: Int,
+    currentPage: Int,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(pageCount) { index ->
+            val isSelected = index == currentPage
+            Box(
+                modifier = Modifier
+                    .size(if (isSelected) 7.dp else 6.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) BrandColor else Gray_3),
             )
         }
     }

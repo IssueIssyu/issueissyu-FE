@@ -3,6 +3,8 @@ package com.issueissyu.fe.ui.screens.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.LocationRegionItem
+import com.issueissyu.fe.domain.model.community.CommunityFeedItem
+import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.community.CommunityTab
 import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityFeedUseCase
@@ -92,9 +94,9 @@ class CommunityViewModel @Inject constructor(
                     _uiState.update {
                         if (it.selectedCategory == CommunityTab.ALL) {
                             it.copy(
-                                storePromotions = feed.storePromotions,
-                                hotPreviews = feed.hotPreviews,
-                                recentNews = feed.recentNews,
+                                storePromotions = feed.storePromotions.withoutCardNews(),
+                                hotPreviews = feed.hotPreviews.withoutCardNews(),
+                                recentNews = feed.recentNews.withoutCardNews(),
                                 feedItems = emptyList(),
                                 region = feed.region.ifBlank { it.region },
                                 nextCursor = feed.nextCursor,
@@ -188,4 +190,8 @@ class CommunityViewModel @Inject constructor(
                 }
         }
     }
+}
+
+private fun List<CommunityFeedItem>.withoutCardNews(): List<CommunityFeedItem> {
+    return filter { it.kind != CommunityItemKind.CARDNEWS }
 }
