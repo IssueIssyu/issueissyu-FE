@@ -1,6 +1,7 @@
 package com.issueissyu.fe.ui.screens.map
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -18,7 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,7 +42,14 @@ import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.ui.components.CompactSympathyButton
+import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.*
+
+enum class PinSummaryCardHighlight {
+    NONE,
+    SYMPATHY,
+    COMMUNITY,
+}
 
 @Composable
 fun PinSummaryCard(
@@ -50,7 +61,10 @@ fun PinSummaryCard(
     onDeleteClick: (String) -> Unit,
     onSympathyClick: (String) -> Unit,
     onEmojiClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    interactionsEnabled: Boolean = true,
+    highlight: PinSummaryCardHighlight = PinSummaryCardHighlight.NONE,
+    onHighlightBoundsChanged: ((Rect) -> Unit)? = null,
 ) {
     val cardBackgroundColor = when (pin.category) {
         PinCategory.ISSUE -> IssueContainer
@@ -60,13 +74,25 @@ fun PinSummaryCard(
     }
 
     val canEdit = pin.canEditBy(currentUserId)
+    val hasCategoryInfo = when (val detail = pin.detail) {
+        is ShopPinDetail -> !detail.currentNews.isNullOrBlank()
+        is FestivalPinDetail -> detail.startDate != null || detail.endDate != null
+        is IssuePinDetail,
+        is CommunicationPinDetail -> false
+    }
 
     Box(
         modifier = modifier
             .height(260.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(cardBackgroundColor)
-            .clickable { onDetailClick(pin.id) }
+            .then(
+                if (interactionsEnabled) {
+                    Modifier.clickable { onDetailClick(pin.id) }
+                } else {
+                    Modifier
+                }
+            )
             .padding(16.dp)
     ) {
         Column {
@@ -90,6 +116,7 @@ fun PinSummaryCard(
 
                     // 2. 장소 + 해결 상태
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
@@ -100,11 +127,11 @@ fun PinSummaryCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = pin.locationName ?: pin.address,
+                            text = (pin.locationName ?: pin.address).toSummaryAddress(),
                             style = IssueTypo.Regular12.copy(color = Gray_7),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 190.dp)
+                            modifier = Modifier.weight(1f)
                         )
 
                         val issueDetail = pin.detail as? IssuePinDetail
@@ -124,11 +151,10 @@ fun PinSummaryCard(
                     ) {
                         when (val detail = pin.detail) {
                             is IssuePinDetail -> {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .background(Gray_3)
+                                ProfileImageFrame(
+                                    size = 24.dp,
+                                    imageUrl = detail.writer.imageUrl,
+                                    borderWidth = 1.dp,
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
@@ -145,6 +171,7 @@ fun PinSummaryCard(
                                     CompactCircleIconButton(
                                         imageVector = Icons.Filled.Edit,
                                         contentDescription = "수정",
+                                        enabled = interactionsEnabled,
                                         onClick = { onEditClick(pin.id) }
                                     )
 
@@ -153,6 +180,7 @@ fun PinSummaryCard(
                                     CompactCircleIconButton(
                                         imageVector = Icons.Filled.Delete,
                                         contentDescription = "삭제",
+                                        enabled = interactionsEnabled,
                                         onClick = { onDeleteClick(pin.id) }
                                     )
 
@@ -163,14 +191,25 @@ fun PinSummaryCard(
                                     sympathyCount = pin.sympathyCount,
                                     isSympathizedByMe = pin.isSympathizedByMe,
                                     onClick = { onSympathyClick(pin.id) },
+                                    enabled = interactionsEnabled,
+                                    modifier = Modifier.then(
+                                        if (highlight == PinSummaryCardHighlight.SYMPATHY &&
+                                            onHighlightBoundsChanged != null
+                                        ) {
+                                            Modifier.onGloballyPositioned { coordinates ->
+                                                onHighlightBoundsChanged(coordinates.boundsInRoot())
+                                            }
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
                                 )
                             }
                             is CommunicationPinDetail -> {
-                                Box(
-                                    modifier = Modifier
-                                        .size(24.dp)
-                                        .clip(CircleShape)
-                                        .background(Gray_3)
+                                ProfileImageFrame(
+                                    size = 24.dp,
+                                    imageUrl = detail.writer.imageUrl,
+                                    borderWidth = 1.dp,
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
@@ -187,6 +226,7 @@ fun PinSummaryCard(
                                     CompactCircleIconButton(
                                         imageVector = Icons.Filled.Edit,
                                         contentDescription = "수정",
+                                        enabled = interactionsEnabled,
                                         onClick = { onEditClick(pin.id) }
                                     )
 
@@ -195,6 +235,7 @@ fun PinSummaryCard(
                                     CompactCircleIconButton(
                                         imageVector = Icons.Filled.Delete,
                                         contentDescription = "삭제",
+                                        enabled = interactionsEnabled,
                                         onClick = { onDeleteClick(pin.id) }
                                     )
 
@@ -205,6 +246,7 @@ fun PinSummaryCard(
                                     sympathyCount = pin.sympathyCount,
                                     isSympathizedByMe = pin.isSympathizedByMe,
                                     onClick = { onSympathyClick(pin.id) },
+                                    enabled = interactionsEnabled,
                                 )
                             }
                             is ShopPinDetail, is FestivalPinDetail -> {
@@ -213,6 +255,7 @@ fun PinSummaryCard(
                                     sympathyCount = pin.sympathyCount,
                                     isSympathizedByMe = pin.isSympathizedByMe,
                                     onClick = { onSympathyClick(pin.id) },
+                                    enabled = interactionsEnabled,
                                 )
                             }
                         }
@@ -237,12 +280,12 @@ fun PinSummaryCard(
             // 3) CategoryInfoRow 또는 CategoryInfoBox
             when (val detail = pin.detail) {
                 is ShopPinDetail -> {
-                    detail.currentNews?.let { news ->
+                    detail.currentNews?.takeIf { it.isNotBlank() }?.let { news ->
                         CategoryInfoBox(
                             text = "최신 소식: $news",
                             modifier = Modifier.padding(horizontal = 0.dp)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                     }
                 }
                 is FestivalPinDetail -> {
@@ -254,7 +297,7 @@ fun PinSummaryCard(
                             text = "기간: ${startDateText ?: "시작일 미정"} ~ ${endDateText ?: "종료일 미정"}",
                             modifier = Modifier.padding(horizontal = 0.dp)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                     }
                 }
 
@@ -269,19 +312,22 @@ fun PinSummaryCard(
                 Text(
                     text = pin.description,
                     style = IssueTypo.Regular15.copy(color = Text),
-                    maxLines = 2,
+                    maxLines = if (hasCategoryInfo) 1 else 2,
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "더보기",
                     style = IssueTypo.Bold12.copy(color = BrandColor),
-                    modifier = Modifier.clickable { onDetailClick(pin.id) }
+                    modifier = if (interactionsEnabled) {
+                        Modifier.clickable { onDetailClick(pin.id) }
+                    } else {
+                        Modifier
+                    },
                 )
             }
 
-            // 기존 카테고리별 추가 박스 제거되었으므로 Spacer 유지
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
             // 6) BottomActionRow: 이모지/반응 영역 + 커뮤니티 버튼
             Row(
@@ -293,6 +339,7 @@ fun PinSummaryCard(
                 EmojiReactionRow(
                     pin = pin,
                     onEmojiClick = onEmojiClick,
+                    enabled = interactionsEnabled,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -302,7 +349,13 @@ fun PinSummaryCard(
                 if (pin.communityPostId != null) {
                     CommunityLinkButton(
                         communityPostId = pin.communityPostId,
-                        onCommunityClick = onCommunityClick
+                        onCommunityClick = onCommunityClick,
+                        enabled = interactionsEnabled,
+                        onBoundsChanged = if (highlight == PinSummaryCardHighlight.COMMUNITY) {
+                            onHighlightBoundsChanged
+                        } else {
+                            null
+                        },
                     )
                 }
             }
@@ -314,14 +367,31 @@ fun PinSummaryCard(
 private fun CommunityLinkButton(
     communityPostId: String,
     onCommunityClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onBoundsChanged: ((Rect) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
             .height(32.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Orange)
-            .clickable { onCommunityClick(communityPostId) }
+            .then(
+                if (enabled) {
+                    Modifier.clickable { onCommunityClick(communityPostId) }
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (onBoundsChanged != null) {
+                    Modifier.onGloballyPositioned { coordinates ->
+                        onBoundsChanged(coordinates.boundsInRoot())
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .padding(start = 12.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -346,14 +416,15 @@ private fun CompactCircleIconButton(
     imageVector: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = modifier
             .size(24.dp)
             .clip(CircleShape)
             .background(White)
-            .clickable(onClick = onClick),
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -388,7 +459,8 @@ private fun ResolutionStatusPill(
 private fun EmojiReactionRow(
     pin: Pin,
     onEmojiClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = modifier,
@@ -400,7 +472,13 @@ private fun EmojiReactionRow(
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .clickable { onEmojiClick(pin.id) },
+                .then(
+                    if (enabled) {
+                        Modifier.clickable { onEmojiClick(pin.id) }
+                    } else {
+                        Modifier
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -494,6 +572,11 @@ private fun ResolutionStatus.toDisplayText(): String {
         ResolutionStatus.IN_PROGRESS -> "해결 중"
         ResolutionStatus.RESOLVED -> "해결 완료"
     }
+}
+
+private fun String.toSummaryAddress(): String {
+    val addressParts = trim().split(Regex("\\s+"))
+    return addressParts.drop(2).joinToString(" ").ifBlank { trim() }
 }
 
 @Composable

@@ -74,6 +74,7 @@ sealed class MyPageEvent {
     data object NavigateToIssue: MyPageEvent()
     data object NavigateToSettingAlarm: MyPageEvent()
     data object NavigateToLanding: MyPageEvent()
+    data object NavigateToLogin: MyPageEvent()
     data object NavigateToTerm: MyPageEvent()
 }
 
@@ -94,7 +95,7 @@ fun MyPageScreen(
 
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh) {
-            viewModel.loadCollections()
+            viewModel.loadCollections(force = true)
             savedStateHandle?.set(MYPAGE_REFRESH_KEY, false)
         }
     }
@@ -279,7 +280,7 @@ private fun MyPageContent(
             NavBar(
                 icon = Icons.Outlined.MenuBook,
                 title = "도움말",
-                onNavClick = {},    //TODO: 랜딩페이지 연결
+                onNavClick = { onEvent(MyPageEvent.NavigateToLanding) },
             )
             NavBar(
                 icon = Icons.Outlined.Assignment,

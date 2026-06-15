@@ -8,6 +8,7 @@ import com.issueissyu.fe.core.network.AuthInterceptor
 import com.issueissyu.fe.core.network.TokenAuthenticator
 import com.issueissyu.fe.data.remote.api.AiIssueApiService
 import com.issueissyu.fe.data.remote.api.AlarmApi
+import com.issueissyu.fe.data.remote.api.BillingApi
 import com.issueissyu.fe.data.remote.api.CollectionApi
 import com.issueissyu.fe.data.remote.api.CommunityApi
 import com.issueissyu.fe.data.remote.api.IssueApiService
@@ -153,6 +154,12 @@ object NetworkModule {
     @Singleton
     fun provideCommunityApi(retrofit: Retrofit): CommunityApi {
         return retrofit.create(CommunityApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBillingApi(retrofit: Retrofit): BillingApi {
+        return retrofit.create(BillingApi::class.java)
     }
 
     @Provides

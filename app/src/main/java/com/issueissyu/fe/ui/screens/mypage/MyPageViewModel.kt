@@ -2,8 +2,9 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.issueissyu.fe.domain.model.collection.CollectionPageSummary
 import com.issueissyu.fe.domain.repository.AuthRepository
-import com.issueissyu.fe.domain.repository.CollectionRepository
+import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +30,7 @@ data class MyPageUiState(
 
 @HiltViewModel
 class MyPageViewModel @Inject constructor(
-    private val collectionRepository: CollectionRepository,
+    private val userCollectionsStore: UserCollectionsStore,
     private val authRepository: AuthRepository,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyPageUiState())
@@ -41,13 +42,18 @@ class MyPageViewModel @Inject constructor(
     private var loadCollectionsJob: Job? = null
 
     init {
-        loadCollections()
+        viewModelScope.launch {
+            userCollectionsStore.snapshot.collect { summary ->
+                summary?.let { applySummary(it) }
+            }
+        }
+        loadCollections(force = false)
     }
 
-    fun loadCollections() {
+    fun loadCollections(force: Boolean = true) {
         loadCollectionsJob?.cancel()
         loadCollectionsJob = viewModelScope.launch {
-            val hasCachedData = _uiState.value.nickname.isNotBlank()
+            val hasCachedData = userCollectionsStore.snapshot.value != null
             _uiState.update {
                 it.copy(
                     isLoading = !hasCachedData,
@@ -55,24 +61,7 @@ class MyPageViewModel @Inject constructor(
                 )
             }
 
-            collectionRepository.getCollections(checkUnlock = false)
-                .onSuccess { summary ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = null,
-                            nickname = summary.nickname,
-                            profileImageUrl = summary.profileImageUrl,
-                            bookmarkedPins = summary.bookmarkedCollections.map { item ->
-                                Pin(
-                                    id = item.collectionId.toString(),
-                                    name = item.name,
-                                    imageUrl = item.imageUrl,
-                                )
-                            },
-                        )
-                    }
-                }
+            userCollectionsStore.refreshForMyPage(force = force)
                 .onFailure { error ->
                     _uiState.update {
                         it.copy(
@@ -81,6 +70,24 @@ class MyPageViewModel @Inject constructor(
                         )
                     }
                 }
+        }
+    }
+
+    private fun applySummary(summary: CollectionPageSummary) {
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                errorMessage = null,
+                nickname = summary.nickname,
+                profileImageUrl = summary.profileImageUrl,
+                bookmarkedPins = summary.bookmarkedCollections.map { item ->
+                    Pin(
+                        id = item.collectionId.toString(),
+                        name = item.name,
+                        imageUrl = item.imageUrl,
+                    )
+                },
+            )
         }
     }
 

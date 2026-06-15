@@ -49,6 +49,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
+import com.issueissyu.fe.core.extensions.findActivity
+import com.issueissyu.fe.core.time.formatPinHomeCreatedAt
 import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
@@ -73,11 +75,6 @@ import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 private val COMMUNITY_DETAIL_ACTION_TOUCH_SIZE = 48.dp
 private val COMMUNITY_DETAIL_ACTION_BUTTON_SIZE = 30.dp
@@ -98,6 +95,7 @@ fun CommunityDetailScreen(
         ?.collectAsState()
         ?: remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val activity = context.findActivity()
 
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh) {
@@ -135,6 +133,7 @@ fun CommunityDetailScreen(
         onEmojiAddClick = viewModel::openEmojiPicker,
         onEmojiPickerDismiss = viewModel::closeEmojiPicker,
         onEmojiCandidateClick = viewModel::selectEmojiCandidate,
+        onLockedEmojiCandidateClick = { emojiId -> viewModel.purchaseEmoji(activity, emojiId) },
         onEmojiApplyClick = viewModel::applySelectedEmoji,
     )
 }
@@ -157,6 +156,7 @@ fun CommunityDetailScreenContent(
     onEmojiAddClick: () -> Unit = {},
     onEmojiPickerDismiss: () -> Unit = {},
     onEmojiCandidateClick: (Long) -> Unit = {},
+    onLockedEmojiCandidateClick: (Long) -> Unit = {},
     onEmojiApplyClick: () -> Unit = {},
 ) {
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
@@ -180,7 +180,9 @@ fun CommunityDetailScreenContent(
             errorMessage = uiState.emojiPicker.errorMessage,
             onDismiss = onEmojiPickerDismiss,
             onEmojiClick = onEmojiCandidateClick,
+            onLockedEmojiClick = onLockedEmojiCandidateClick,
             onApplyClick = onEmojiApplyClick,
+            allowApplyWithoutSelection = true,
         )
     }
 
@@ -1328,21 +1330,8 @@ private fun getKindDisplayName(kind: CommunityItemKind): String = when (kind) {
 }
 
 private fun formatTimestamp(raw: String?): String {
-    if (raw == null) return ""
-    val pattern = DateTimeFormatter.ofPattern("MM.dd HH:mm")
-    return runCatching {
-        OffsetDateTime.parse(raw).format(pattern)
-    }.getOrElse {
-        runCatching {
-            Instant.parse(raw)
-                .atZone(ZoneId.systemDefault())
-                .format(pattern)
-        }.getOrElse {
-            runCatching {
-                LocalDateTime.parse(raw).format(pattern)
-            }.getOrDefault(raw)
-        }
-    }
+    if (raw.isNullOrBlank()) return ""
+    return formatPinHomeCreatedAt(raw)
 }
 
 @Preview(name = "ISSUE 상세 (비작성자)", showBackground = true, heightDp = 1200)

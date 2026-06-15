@@ -2,7 +2,8 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.domain.repository.CollectionRepository
+import com.issueissyu.fe.domain.model.collection.CollectionPageSummary
+import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -15,7 +16,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileChangeViewModel @Inject constructor(
-    private val collectionRepository: CollectionRepository,
+    private val userCollectionsStore: UserCollectionsStore,
     private val userRepository: UserRepository,
 ) : ViewModel() {
 
@@ -67,16 +68,8 @@ class ProfileChangeViewModel @Inject constructor(
             _isLoadingProfile.value = !hasCachedData
             _profileLoadErrorMessage.value = null
 
-            collectionRepository.getCollections(checkUnlock = false)
-                .onSuccess { summary ->
-                    _currentNickname.value = summary.nickname
-                    _inputNickname.value = summary.nickname
-                    _profileImageUrl.value = summary.profileImageUrl
-                    _isLoadingProfile.value = false
-                    _profileLoadErrorMessage.value = null
-                    _isNicknameAvailable.value = null
-                    updateCompleteButtonState()
-                }
+            userCollectionsStore.refreshForMyPage(force = false)
+                .onSuccess { summary -> applyProfileFromSummary(summary) }
                 .onFailure { error ->
                     _isLoadingProfile.value = false
                     _profileLoadErrorMessage.value =
@@ -92,35 +85,46 @@ class ProfileChangeViewModel @Inject constructor(
     fun onScreenResume() {
         if (!shouldRefreshFromCollection) return
         shouldRefreshFromCollection = false
-        refreshProfileAfterCollection()
+        syncProfileFromStore()
     }
 
-    private fun refreshProfileAfterCollection() {
-        val previousProfileImageUrl = _profileImageUrl.value
-        val previousNickname = _currentNickname.value
+    private fun syncProfileFromStore() {
+        val summary = userCollectionsStore.snapshot.value
+        if (summary != null) {
+            applyProfileFromSummary(summary, trackImageChange = true)
+            return
+        }
 
         loadProfileJob?.cancel()
         loadProfileJob = viewModelScope.launch {
-            collectionRepository.getCollections(checkUnlock = false)
-                .onSuccess { summary ->
-                    _currentNickname.value = summary.nickname
-                    if (_inputNickname.value == previousNickname) {
-                        _inputNickname.value = summary.nickname
-                    }
-                    _profileImageUrl.value = summary.profileImageUrl
-                    _isLoadingProfile.value = false
-                    _profileLoadErrorMessage.value = null
-                    if (summary.profileImageUrl != previousProfileImageUrl) {
-                        myPageRefreshPending = true
-                    }
-                    updateCompleteButtonState()
-                }
+            userCollectionsStore.refreshForMyPage(force = true)
+                .onSuccess { applyProfileFromSummary(it, trackImageChange = true) }
                 .onFailure { error ->
-                    _showToast.emit(
-                        error.message ?: LOAD_PROFILE_ERROR_MESSAGE,
-                    )
+                    _showToast.emit(error.message ?: LOAD_PROFILE_ERROR_MESSAGE)
                 }
         }
+    }
+
+    private fun applyProfileFromSummary(
+        summary: CollectionPageSummary,
+        trackImageChange: Boolean = false,
+    ) {
+        val previousProfileImageUrl = _profileImageUrl.value
+        val previousNickname = _currentNickname.value
+
+        _currentNickname.value = summary.nickname
+        if (_inputNickname.value == previousNickname || _inputNickname.value.isBlank()) {
+            _inputNickname.value = summary.nickname
+        }
+        _profileImageUrl.value = summary.profileImageUrl
+        _isLoadingProfile.value = false
+        _profileLoadErrorMessage.value = null
+        _isNicknameAvailable.value = null
+
+        if (trackImageChange && summary.profileImageUrl != previousProfileImageUrl) {
+            myPageRefreshPending = true
+        }
+        updateCompleteButtonState()
     }
 
     fun consumeMyPageRefreshPending(): Boolean {
@@ -169,6 +173,8 @@ class ProfileChangeViewModel @Inject constructor(
             try {
                 userRepository.updateNickname(_inputNickname.value)
                 _currentNickname.value = _inputNickname.value
+                userCollectionsStore.patchNickname(_inputNickname.value)
+                myPageRefreshPending = true
                 onSuccess()
             } catch (e: Exception) {
                 _showToast.emit(e.message ?: "프로필 변경에 실패했습니다")

@@ -1,17 +1,21 @@
 package com.issueissyu.fe.ui.screens.map
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.data.local.TokenManager
+import com.issueissyu.fe.domain.model.billing.BillingPurchaseEvent
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.MapNotice
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.repository.LocationRepository
+import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,10 +35,23 @@ data class PinCreationNavigationEvent(
     val address: String,
 )
 
+data class MapEmojiPickerUiState(
+    val targetPinId: Long? = null,
+    val candidates: List<PinEmojiCandidate> = emptyList(),
+    val selectedEmojiId: Long? = null,
+    val isLoading: Boolean = false,
+    val isSubmitting: Boolean = false,
+    val errorMessage: String? = null,
+) {
+    val isVisible: Boolean
+        get() = targetPinId != null
+}
+
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val mapRepository: MapRepository,
     private val pinRepository: PinRepository,
+    private val billingRepository: BillingRepository,
     private val locationRepository: LocationRepository,
     private val tokenManager: TokenManager,
 ) : ViewModel() {
@@ -85,8 +102,13 @@ class MapViewModel @Inject constructor(
     private val _messageEvents = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val messageEvents = _messageEvents.asSharedFlow()
 
+    private val _emojiPickerUiState = MutableStateFlow(MapEmojiPickerUiState())
+    val emojiPickerUiState: StateFlow<MapEmojiPickerUiState> = _emojiPickerUiState.asStateFlow()
+    private var observedBillingProductId = billingRepository.pendingBillingProductId.value
+
     init {
         loadNotices()
+        observeBillingPurchaseEvents()
     }
 
     private fun loadNotices() {
@@ -227,6 +249,133 @@ class MapViewModel @Inject constructor(
                     emojiImageUrl = emoji.emojiImageUrl,
                 )
             }
+    }
+
+    fun openEmojiPicker(pinId: String) {
+        val numericPinId = pinId.toLongOrNull() ?: return
+        val selectedEmojiId = _selectedPin.value
+            ?.takeIf { it.id == pinId }
+            ?.emojiReactions
+            ?.firstOrNull { it.reactedByMe }
+            ?.emojiId
+            ?.toLongOrNull()
+
+        _emojiPickerUiState.value = MapEmojiPickerUiState(
+            targetPinId = numericPinId,
+            selectedEmojiId = selectedEmojiId,
+            isLoading = true,
+        )
+
+        viewModelScope.launch {
+            refreshEmojiCandidates()
+        }
+    }
+
+    fun closeEmojiPicker() {
+        _emojiPickerUiState.value = MapEmojiPickerUiState()
+    }
+
+    fun selectEmojiCandidate(emojiId: Long) {
+        val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
+            ?: return
+        if (!candidate.canReact) return
+        val nextSelection = if (_emojiPickerUiState.value.selectedEmojiId == emojiId) null else emojiId
+        _emojiPickerUiState.value = _emojiPickerUiState.value.copy(selectedEmojiId = nextSelection)
+    }
+
+    fun purchaseEmoji(activity: Activity?, emojiId: Long) {
+        val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
+            ?: return
+        if (candidate.canReact || billingRepository.pendingBillingProductId.value != null) return
+        val productId = candidate.productId ?: run {
+            _messageEvents.tryEmit("구매 정보를 찾을 수 없습니다.")
+            return
+        }
+        if (activity == null) {
+            _messageEvents.tryEmit("결제 화면을 열 수 없습니다.")
+            return
+        }
+        observedBillingProductId = productId
+        viewModelScope.launch {
+            billingRepository.purchaseProduct(activity, productId)
+                .onFailure { error ->
+                    observedBillingProductId = null
+                    _messageEvents.emit(error.message ?: "결제창을 열지 못했습니다.")
+                }
+        }
+    }
+
+    private fun observeBillingPurchaseEvents() {
+        viewModelScope.launch {
+            billingRepository.purchaseEvents.collect { event ->
+                if (event.productId != observedBillingProductId) return@collect
+                when (event) {
+                    is BillingPurchaseEvent.Verified -> {
+                        refreshEmojiCandidates()
+                        _messageEvents.emit("이모지를 구매했습니다.")
+                        finishBillingPurchase(event.productId)
+                    }
+                    is BillingPurchaseEvent.Pending -> {
+                        _messageEvents.emit("결제가 대기 중입니다.")
+                    }
+                    is BillingPurchaseEvent.Canceled -> {
+                        finishBillingPurchase(event.productId)
+                    }
+                    is BillingPurchaseEvent.Failed -> {
+                        _messageEvents.emit(event.message)
+                        finishBillingPurchase(event.productId)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun finishBillingPurchase(productId: String) {
+        observedBillingProductId = null
+        billingRepository.acknowledgePurchaseResult(productId)
+    }
+
+    private suspend fun refreshEmojiCandidates() {
+        pinRepository.getEmojiCandidates()
+            .onSuccess { candidates ->
+                _emojiPickerUiState.value = _emojiPickerUiState.value.copy(
+                    candidates = candidates,
+                    isLoading = false,
+                    errorMessage = null,
+                )
+            }
+            .onFailure { error ->
+                _emojiPickerUiState.value = _emojiPickerUiState.value.copy(
+                    isLoading = false,
+                    errorMessage = error.message?.takeIf { it.isNotBlank() }
+                        ?: "이모지 목록을 불러오지 못했습니다.",
+                )
+            }
+    }
+
+    fun applySelectedEmoji() {
+        val picker = _emojiPickerUiState.value
+        val pinId = picker.targetPinId ?: return
+        val selectedEmojiId = picker.selectedEmojiId
+        val selectedCandidate = selectedEmojiId?.let { emojiId ->
+            picker.candidates.firstOrNull { it.emojiId == emojiId }
+        }
+        if (selectedCandidate?.canReact == false || picker.isSubmitting) return
+
+        viewModelScope.launch {
+            _emojiPickerUiState.value = _emojiPickerUiState.value.copy(isSubmitting = true)
+            pinRepository.applyPinEmojiFromPicker(pinId, selectedEmojiId)
+                .onSuccess {
+                    loadPinEmojis(pinId.toString())
+                    closeEmojiPicker()
+                }
+                .onFailure { error ->
+                    _emojiPickerUiState.value = _emojiPickerUiState.value.copy(isSubmitting = false)
+                    _messageEvents.emit(
+                        error.message?.takeIf { it.isNotBlank() } ?: "이모지 반응 등록에 실패했습니다.",
+                    )
+                }
+        }
     }
 
     fun enterLocationSelectionMode(category: PinCategory) {

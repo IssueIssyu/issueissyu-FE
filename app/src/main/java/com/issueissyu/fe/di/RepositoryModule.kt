@@ -12,11 +12,15 @@ import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.LocationRepository
 
 import com.issueissyu.fe.data.repository.CommunityRepositoryImpl
+import com.issueissyu.fe.data.repository.BillingRepositoryImpl
 import com.issueissyu.fe.data.repository.MapRepositoryImpl
 import com.issueissyu.fe.data.repository.PinRepositoryImpl
 import com.issueissyu.fe.domain.repository.AlarmRepository
+import com.issueissyu.fe.data.repository.UserCollectionsStoreImpl
 import com.issueissyu.fe.domain.repository.CollectionRepository
+import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import com.issueissyu.fe.domain.repository.CommunityRepository
+import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.Binds
@@ -74,6 +78,12 @@ abstract class RepositoryModule {
 
     @Binds
     @Singleton
+    abstract fun bindBillingRepository(
+        impl: BillingRepositoryImpl
+    ): BillingRepository
+
+    @Binds
+    @Singleton
     abstract fun bindCollectionRepository(
         impl: CollectionRepositoryImpl
     ): CollectionRepository
@@ -83,4 +93,7 @@ abstract class RepositoryModule {
     abstract fun bindAlarmRepository(
         impl: AlarmRepositoryImpl
     ): AlarmRepository
+    abstract fun bindUserCollectionsStore(
+        impl: UserCollectionsStoreImpl
+    ): UserCollectionsStore
 }

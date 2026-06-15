@@ -42,7 +42,7 @@ fun CompactSympathyButton(
             .height(height)
             .clip(RoundedCornerShape(height / 2))
             .background(backgroundColor)
-            .clickable(enabled = enabled, onClick = onClick)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = horizontalPadding),
         verticalAlignment = Alignment.CenterVertically
     ) {
