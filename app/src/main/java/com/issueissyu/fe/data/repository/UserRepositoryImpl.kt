@@ -4,11 +4,8 @@ import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.api.MyPageApi
 import com.issueissyu.fe.data.remote.dto.mypage.toMyIssuePage
 import com.issueissyu.fe.data.remote.dto.request.mypage.ChangeNickNameRequest
-import com.issueissyu.fe.domain.model.User
 import com.issueissyu.fe.domain.model.mypage.MyIssuePage
 import com.issueissyu.fe.domain.repository.UserRepository
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,10 +14,6 @@ class UserRepositoryImpl @Inject constructor(
     private val myPageApi: MyPageApi,
     private val authApi: AuthApi,
 ) : UserRepository {
-    //TODO: API 연동 시 교체 / 더미 데이터
-    private val _user = MutableStateFlow(User(nickname = "뱌삐우소로소1세"))
-
-    override fun getProfile(): Flow<User> = _user
 
     override suspend fun updateNickname(nickname: String) {
         val response = myPageApi.changeNickName(
@@ -28,9 +21,7 @@ class UserRepositoryImpl @Inject constructor(
         )
 
         when (response.code) {
-            "USER_NICKNAME_200" -> {
-                _user.value = _user.value.copy(nickname = nickname)
-            }
+            "USER_NICKNAME_200" -> Unit
 
             else -> {
                 throw IllegalStateException(
@@ -110,10 +101,6 @@ class UserRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
-    }
-
-    override suspend fun updateProfileImage(imageUrl: String) {
-        _user.value = _user.value.copy(profileImageUrl = imageUrl)
     }
 
     override suspend fun checkNicknameDuplicate(nickname: String): Boolean {
