@@ -290,6 +290,12 @@ fun CommunityScreenContent(
                 }
 
                 else -> {
+                    if (uiState.selectedCategory == CommunityTab.CARDNEWS) {
+                        CardNewsFeedGrid(
+                            items = uiState.feedItems,
+                            onItemClick = { onCommunityClick(it.communityId) },
+                        )
+                    } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 24.dp)
@@ -388,6 +394,7 @@ fun CommunityScreenContent(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
