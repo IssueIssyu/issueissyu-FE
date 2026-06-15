@@ -82,8 +82,6 @@ class MapViewModel @Inject constructor(
     val showPinTypeSelector: StateFlow<Boolean> = _showPinTypeSelector.asStateFlow()
 
     private val _currentBounds = MutableStateFlow<MapBounds?>(null)
-    @Suppress("unused") // TODO: UI에서 bounds를 관찰할 계획이면 유지하되 @Suppress("unused")를 붙여도 됩니다.
-    val currentBounds: StateFlow<MapBounds?> = _currentBounds.asStateFlow()
     private var currentZoomLevel: Int = DEFAULT_MAP_ZOOM_LEVEL
     private var autoRefreshJob: Job? = null
     private var refreshRequestId: Long = 0
