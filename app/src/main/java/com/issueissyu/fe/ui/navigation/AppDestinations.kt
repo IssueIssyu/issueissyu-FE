@@ -12,6 +12,7 @@ object AppDestinations {
         const val USER_VERIFICATION_ROUTE = "user_verification_route"
         const val LOCAL_VERIFICATION_ROUTE = "local_verification_route"
         const val COMPLETE_ROUTE = "onboarding_complete_route"
+        const val LANDING_ROUTE = "landing_route"
 
         fun termDetailRoute(termsType: String): String {
             return "term_detail_route/$termsType"

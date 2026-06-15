@@ -26,6 +26,7 @@ import androidx.navigation.navArgument
 import com.issueissyu.fe.core.auth.AuthSessionState
 import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
 import com.issueissyu.fe.ui.screens.map.MapScreen
+import com.issueissyu.fe.ui.screens.landing.LandingScreen
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
 import com.issueissyu.fe.ui.screens.onboarding.LocalVerificationScreen
 import com.issueissyu.fe.ui.screens.onboarding.LoginScreen
@@ -217,9 +218,32 @@ fun AppNavGraph(
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onNavigateToLanding = {}
+                onNavigateToLanding = {
+                    navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                },
             )
         }
+
+        composable(AppDestinations.Onboarding.LANDING_ROUTE) {
+            val previousRoute =
+                navController.previousBackStackEntry?.destination?.route
+            if (previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE) {
+                OnboardingBackDisabledHandler()
+            }
+
+            LandingScreen(
+                onComplete = {
+                    if (previousRoute == AppDestinations.MyPage.MYPAGE_ROUTE) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(AppDestinations.TOWN_ROUTE) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+            )
+        }
+
         composable(AppDestinations.COLLECTION_ROUTE) {
             NavScreenWrapper(paddingValues = paddingValues) {
                 CollectionScreen(
@@ -344,6 +368,9 @@ fun AppNavGraph(
                                 navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
                             }
                             MyPageEvent.NavigateToLanding -> {
+                                navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLogin -> {
                                 navController.navigateToLoginClearingBackStack()
                             }
                             MyPageEvent.NavigateToTerm -> {
