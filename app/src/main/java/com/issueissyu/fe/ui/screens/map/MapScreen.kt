@@ -261,8 +261,8 @@ fun MapScreen(
     val showResearchButton by viewModel.showResearchButton.collectAsStateWithLifecycle()
     val isMapRefreshing by viewModel.isMapRefreshing.collectAsStateWithLifecycle()
     val showPinTypeSelector by viewModel.showPinTypeSelector.collectAsStateWithLifecycle()
-    val mapPins by viewModel.mapPins.collectAsStateWithLifecycle()
-    val mapClusters by viewModel.mapClusters.collectAsStateWithLifecycle()
+    val visibleMapPins by viewModel.visibleMapPins.collectAsStateWithLifecycle()
+    val visibleMapClusters by viewModel.visibleMapClusters.collectAsStateWithLifecycle()
     val selectedPin by viewModel.selectedPin.collectAsStateWithLifecycle()
     val selectedPins by viewModel.selectedPins.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
@@ -278,29 +278,6 @@ fun MapScreen(
     DisposableEffect(Unit) {
         onDispose {
             onLocationSelectionModeChanged(false)
-        }
-    }
-
-    // TODO: ViewModel에서 combine(_mapPins, _selectedCategory)로 visibleMapPins StateFlow를 노출하고, UI는 collect만 하도록 정리
-
-    val visibleMapPins = when {
-        isLocationSelectionMode -> emptyList()
-        selectedCategory == null -> mapPins
-        else -> mapPins.filter { it.category == selectedCategory }
-    }
-    val visibleMapClusters = when {
-        isLocationSelectionMode -> emptyList()
-        selectedCategory == null -> mapClusters
-        else -> mapClusters.mapNotNull { cluster ->
-            val categoryPins = cluster.pins.filter { it.category == selectedCategory }
-            if (categoryPins.isEmpty()) {
-                null
-            } else {
-                cluster.copy(
-                    pinCount = categoryPins.size,
-                    pins = categoryPins,
-                )
-            }
         }
     }
 

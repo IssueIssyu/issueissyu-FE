@@ -25,7 +25,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.naver.maps.geometry.LatLng
 import javax.inject.Inject
@@ -87,6 +90,42 @@ class MapViewModel @Inject constructor(
 
     private val _isLocationSelectionMode = MutableStateFlow(false)
     val isLocationSelectionMode: StateFlow<Boolean> = _isLocationSelectionMode.asStateFlow()
+
+    val visibleMapPins: StateFlow<List<MapPinMarker>> =
+        combine(_mapPins, _selectedCategory, _isLocationSelectionMode) { pins, category, isSelectingLocation ->
+            when {
+                isSelectingLocation -> emptyList()
+                category == null -> pins
+                else -> pins.filter { it.category == category }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
+
+    val visibleMapClusters: StateFlow<List<MapPinCluster>> =
+        combine(_mapClusters, _selectedCategory, _isLocationSelectionMode) { clusters, category, isSelectingLocation ->
+            when {
+                isSelectingLocation -> emptyList()
+                category == null -> clusters
+                else -> clusters.mapNotNull { cluster ->
+                    val categoryPins = cluster.pins.filter { it.category == category }
+                    if (categoryPins.isEmpty()) {
+                        null
+                    } else {
+                        cluster.copy(
+                            pinCount = categoryPins.size,
+                            pins = categoryPins,
+                        )
+                    }
+                }
+            }
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList(),
+        )
 
     private val _selectedPinCategory = MutableStateFlow<PinCategory?>(null)
     val selectedPinCategory: StateFlow<PinCategory?> = _selectedPinCategory.asStateFlow()
