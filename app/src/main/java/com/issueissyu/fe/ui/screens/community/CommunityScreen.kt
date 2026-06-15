@@ -109,6 +109,7 @@ fun CommunityScreenContent(
         CommunityTab.visibleTabs.map { tab ->
             when (tab) {
                 CommunityTab.HOT -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_fire,
                     Issue,
@@ -116,6 +117,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.ISSUE -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.issue,
                     Issue,
@@ -123,6 +125,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.STORE -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.shop,
                     Shop,
@@ -130,6 +133,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.FESTIVAL -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.festival,
                     Festival,
@@ -137,6 +141,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.POLICY -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_policy,
                     Gray_5,
@@ -144,6 +149,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.CONTEST -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_award,
                     Shop,
@@ -151,6 +157,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.CARDNEWS -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_cardnews,
                     Lime,
@@ -158,6 +165,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.ALL -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_all,
                     Title,
@@ -166,6 +174,7 @@ fun CommunityScreenContent(
                 )
 
                 else -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.communicate,
                     Communication,
@@ -184,9 +193,9 @@ fun CommunityScreenContent(
             ) {
                 CategoryButtons(
                     categories = categories,
-                    selectedCategory = uiState.selectedCategory.displayName,
-                    onCategorySelected = { name ->
-                        onCategorySelected(name.toCommunityTab())
+                    selectedCategory = uiState.selectedCategory,
+                    onCategorySelected = { category ->
+                        onCategorySelected(category ?: CommunityTab.ALL)
                     }
                 )
 

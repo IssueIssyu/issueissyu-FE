@@ -589,27 +589,17 @@ fun MapScreen(
                     tertiaryContainer
                 ) {
                     listOf(
-                        CategoryItem("이슈", R.drawable.issue, Issue, errorContainer),
-                        CategoryItem("소통", R.drawable.communicate, Communication, secondaryContainer),
-                        CategoryItem("가게", R.drawable.shop, Shop, primaryContainer),
-                        CategoryItem("축제", R.drawable.festival, Festival, tertiaryContainer)
+                        CategoryItem(PinCategory.ISSUE, "이슈", R.drawable.issue, Issue, errorContainer),
+                        CategoryItem(PinCategory.COMMUNICATION, "소통", R.drawable.communicate, Communication, secondaryContainer),
+                        CategoryItem(PinCategory.SHOP, "가게", R.drawable.shop, Shop, primaryContainer),
+                        CategoryItem(PinCategory.FESTIVAL, "축제", R.drawable.festival, Festival, tertiaryContainer)
                     )
-                }
-
-                val selectedCategoryLabel = when (selectedCategory) {
-                    PinCategory.ISSUE -> "이슈"
-                    PinCategory.COMMUNICATION -> "소통"
-                    PinCategory.SHOP -> "가게"
-                    PinCategory.FESTIVAL -> "축제"
-                    null -> null
                 }
 
                 CategoryButtons(
                     categories = sampleCategories,
-                    selectedCategory = selectedCategoryLabel,
-                    onCategorySelected = { category ->
-                        viewModel.onCategorySelected(category)
-                    },
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = viewModel::onCategorySelected,
                     onNotificationClick = {
                         // TODO: 알림 목록 UI 또는 알림 화면 연결
                     },

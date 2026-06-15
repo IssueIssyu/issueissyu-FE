@@ -159,17 +159,9 @@ class MapViewModel @Inject constructor(
         _selectedPins.value = emptyList()
     }
 
-    fun onCategorySelected(categoryName: String?) {
-        // TODO: 추후 CategoryButtons에서 PinCategory를 직접 전달하도록 변경
-        val newCategory = when (categoryName) {
-            "이슈" -> PinCategory.ISSUE
-            "소통" -> PinCategory.COMMUNICATION
-            "가게" -> PinCategory.SHOP
-            "축제" -> PinCategory.FESTIVAL
-            else -> null
-        }
-        _selectedCategory.value = newCategory
-        if (newCategory != null && _selectedPin.value?.category != newCategory) {
+    fun onCategorySelected(category: PinCategory?) {
+        _selectedCategory.value = category
+        if (category != null && _selectedPin.value?.category != category) {
             clearSelectedPin()
         }
         refreshMapImmediately()
