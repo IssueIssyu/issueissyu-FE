@@ -30,8 +30,10 @@ class MainActivity : FragmentActivity() {
     @Inject
     lateinit var alarmRepository: AlarmRepository
 
-    private var pendingPush by mutableStateOf<PushDestination?>(null)
+    @Inject
     lateinit var billingRepository: BillingRepository
+
+    private var pendingPush by mutableStateOf<PushDestination?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
