@@ -758,7 +758,26 @@ private fun CommunityDetailImageSection(
     onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    
+    val scrollProgress by remember(imageUrls.size) {
+        derivedStateOf {
+            when {
+                !listState.canScrollBackward -> 0f
+                !listState.canScrollForward -> 1f
+                else -> {
+                    val firstVisibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+                    if (firstVisibleItem == null) {
+                        0f
+                    } else {
+                        val itemProgress =
+                            (-firstVisibleItem.offset).toFloat() / firstVisibleItem.size.coerceAtLeast(1)
+                        ((firstVisibleItem.index + itemProgress) / imageUrls.lastIndex.coerceAtLeast(1))
+                            .coerceIn(0f, 1f)
+                    }
+                }
+            }
+        }
+    }
+
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         LazyRow(
             state = listState,
@@ -783,7 +802,7 @@ private fun CommunityDetailImageSection(
         
         if (imageUrls.size > 1) {
             Spacer(modifier = Modifier.height(12.dp))
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .width(40.dp)
                     .height(4.dp)
@@ -791,10 +810,11 @@ private fun CommunityDetailImageSection(
                     .clip(RoundedCornerShape(2.dp))
                     .background(Gray_3)
             ) {
-                // TODO: 실제 스크롤 위치에 연동된 인디케이터 구현 필요
+                val indicatorWidth = 12.dp
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.3f)
+                        .offset(x = (maxWidth - indicatorWidth) * scrollProgress)
+                        .width(indicatorWidth)
                         .fillMaxHeight()
                         .background(BrandColor)
                 )
