@@ -84,6 +84,7 @@ fun PinHomeTab(
     editNewImageUris: List<String> = emptyList(),
     editMainImageKey: String? = null,
     isSubmittingEdit: Boolean = false,
+    showEditCancel: Boolean = true,
     onEditTitleChange: (String) -> Unit = {},
     onEditDescriptionChange: (String) -> Unit = {},
     onEditCancelClick: () -> Unit = {},
@@ -134,6 +135,7 @@ fun PinHomeTab(
                 if (isEditing) {
                     PinHomeEditActionButtons(
                         isSubmitting = isSubmittingEdit,
+                        showCancel = showEditCancel,
                         onCancelClick = onEditCancelClick,
                         onSubmitClick = onEditSubmitClick,
                     )
@@ -434,6 +436,7 @@ private fun PinHomeEditPhotoBox(
 @Composable
 private fun PinHomeEditActionButtons(
     isSubmitting: Boolean,
+    showCancel: Boolean,
     onCancelClick: () -> Unit,
     onSubmitClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -442,13 +445,15 @@ private fun PinHomeEditActionButtons(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        CircleActionIcon(
-            iconRes = R.drawable.ic_cancel,
-            contentDescription = "취소",
-            onClick = onCancelClick,
-            enabled = !isSubmitting,
-            iconTint = Gray_6,
-        )
+        if (showCancel) {
+            CircleActionIcon(
+                iconRes = R.drawable.ic_cancel,
+                contentDescription = "취소",
+                onClick = onCancelClick,
+                enabled = !isSubmitting,
+                iconTint = Gray_6,
+            )
+        }
         CircleActionIcon(
             iconRes = R.drawable.ic_edit_complete,
             contentDescription = "수정 완료",

@@ -49,11 +49,13 @@ import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinImageRef
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
 import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.Dialog as IssueDialog
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -186,10 +188,11 @@ fun PinDetailScreen(
                         homeEditNewImageUris = uiState.homeEditNewImageUris,
                         homeEditMainImageKey = uiState.homeEditMainImageKey,
                         isSubmittingHomeEdit = uiState.isSubmittingHomeEdit,
+                        homeEditSubmitFailed = uiState.homeEditSubmitFailed,
                         onHomeEditTitleChange = viewModel::onHomeEditTitleChange,
                         onHomeEditDescriptionChange = viewModel::onHomeEditDescriptionChange,
                         onHomeEditCancel = viewModel::cancelHomeEdit,
-                        onHomeEditSubmit = viewModel::submitHomeEdit,
+                        onHomeEditSubmit = viewModel::requestHomeEditSubmit,
                         onHomeEditPhotoAddClick = homeEditPhotoPicker.showSourceSheet,
                         onHomeEditExistingImageRemove = viewModel::removeHomeEditExistingImage,
                         onHomeEditNewImageRemove = viewModel::removeHomeEditNewImageUri,
@@ -227,6 +230,18 @@ fun PinDetailScreen(
                                     onSuccess = { pendingResolutionProofUri = null }
                                 )
                             }
+                        )
+                    }
+
+                    if (uiState.showHomeEditConfirmDialog) {
+                        IssueDialog(
+                            title = "이슈 핀 수정",
+                            message = uiState.homeEditRateLimitQuota.toHomeEditConfirmMessage(),
+                            confirmText = "수정",
+                            dismissText = "취소",
+                            isWarning = true,
+                            onDismiss = viewModel::dismissHomeEditConfirmDialog,
+                            onConfirm = viewModel::confirmHomeEditSubmit,
                         )
                     }
                 }
@@ -270,6 +285,7 @@ private fun PinDetailContent(
     homeEditNewImageUris: List<String> = emptyList(),
     homeEditMainImageKey: String? = null,
     isSubmittingHomeEdit: Boolean = false,
+    homeEditSubmitFailed: Boolean = false,
     onHomeEditTitleChange: (String) -> Unit = {},
     onHomeEditDescriptionChange: (String) -> Unit = {},
     onHomeEditCancel: () -> Unit = {},
@@ -312,6 +328,7 @@ private fun PinDetailContent(
                 editNewImageUris = homeEditNewImageUris,
                 editMainImageKey = homeEditMainImageKey,
                 isSubmittingEdit = isSubmittingHomeEdit,
+                showEditCancel = !homeEditSubmitFailed,
                 onEditTitleChange = onHomeEditTitleChange,
                 onEditDescriptionChange = onHomeEditDescriptionChange,
                 onEditCancelClick = onHomeEditCancel,
@@ -549,6 +566,22 @@ private fun PinDetailTab.label(): String = when (this) {
     PinDetailTab.HOME -> "홈"
     PinDetailTab.POST -> "포스트"
     PinDetailTab.RESOLUTION -> "해결하기"
+}
+
+private fun PinEditRateLimitQuota?.toHomeEditConfirmMessage(): String {
+    if (this == null) {
+        return buildString {
+            appendLine("이슈 핀은 하루에 제한된 횟수만 수정할 수 있습니다.")
+            appendLine()
+            append("이대로 수정하시겠습니까?")
+        }
+    }
+    return buildString {
+        appendLine("하루 최대 ${dailyLimit}회까지 수정할 수 있습니다.")
+        appendLine("오늘 남은 수정 횟수는 ${remainingCount}회입니다.")
+        appendLine()
+        append("이대로 수정하시겠습니까?")
+    }
 }
 
 @Preview(showBackground = true, heightDp = 900)

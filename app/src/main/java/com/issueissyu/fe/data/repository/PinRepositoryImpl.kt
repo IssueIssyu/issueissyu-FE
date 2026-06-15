@@ -10,6 +10,7 @@ import com.issueissyu.fe.data.remote.dto.pin.toPinSolveInfo
 import com.issueissyu.fe.data.remote.dto.pin.toPetitionJoinInfo
 import com.issueissyu.fe.data.remote.dto.pin.toPetitionStatusInfo
 import com.issueissyu.fe.data.remote.dto.pin.toIssuePinEditResult
+import com.issueissyu.fe.data.remote.dto.pin.toPinEditRateLimitQuota
 import com.issueissyu.fe.data.remote.dto.pin.toPinOrNull
 import com.issueissyu.fe.data.remote.dto.pin.toPinComment
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojiCandidate
@@ -59,6 +60,7 @@ import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinEditResult
+import com.issueissyu.fe.domain.model.pin.PinDetailHomeResult
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PetitionSubmit
@@ -456,7 +458,7 @@ class PinRepositoryImpl @Inject constructor(
         val pinImages = newImageUris.takeIf { it.isNotEmpty() }?.map { uri ->
             PinImageItemRequest(isMain = uri == mainNewUri)
         }
-        val pinImageUrls = existingImages.takeIf { it.isNotEmpty() }?.map { image ->
+        val pinImageUrls = existingImages.map { image ->
             IssuePinEditExistingImageRequest(
                 pinImageUrl = image.imageUrl,
                 isMain = image.isMain,
@@ -487,7 +489,7 @@ class PinRepositoryImpl @Inject constructor(
             }
     }
 
-    override suspend fun getPinDetailHome(pinId: Long): Result<Pin> {
+    override suspend fun getPinDetailHome(pinId: Long): Result<PinDetailHomeResult> {
         return try {
             val response = pinApi.pinHome(pinId)
             if (response.isSuccess) {
@@ -499,7 +501,12 @@ class PinRepositoryImpl @Inject constructor(
                     )
                 val pin = result.toPinOrNull()
                     ?: return Result.failure(Exception(result.pinType.toUnsupportedPinTypeMessage()))
-                Result.success(pin)
+                Result.success(
+                    PinDetailHomeResult(
+                        pin = pin,
+                        editRateLimitQuota = result.rateLimitQuota?.toPinEditRateLimitQuota(),
+                    ),
+                )
             } else {
                 when (response.code) {
                     "PIN_HOME_404" ->

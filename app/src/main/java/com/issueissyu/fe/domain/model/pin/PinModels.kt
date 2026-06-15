@@ -378,6 +378,11 @@ data class IssuePinEditResult(
     val rateLimitQuota: PinEditRateLimitQuota?,
 )
 
+data class PinDetailHomeResult(
+    val pin: Pin,
+    val editRateLimitQuota: PinEditRateLimitQuota?,
+)
+
 fun Pin.canEditBy(userId: String? = null): Boolean {
     if (communityPostId != null) return false
     return isMine==true

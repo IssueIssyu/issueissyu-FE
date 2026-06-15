@@ -23,6 +23,7 @@ import com.issueissyu.fe.domain.model.issue.IssueReliability
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.UpdateIssuePinRequest
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.withHomeFallback
@@ -76,6 +77,9 @@ data class PinDetailUiState(
     val homeEditNewImageUris: List<String> = emptyList(),
     val homeEditMainImageKey: String? = null,
     val isSubmittingHomeEdit: Boolean = false,
+    val showHomeEditConfirmDialog: Boolean = false,
+    val homeEditRateLimitQuota: PinEditRateLimitQuota? = null,
+    val homeEditSubmitFailed: Boolean = false,
 )
 
 data class PinDetailEmojiPickerUiState(
@@ -113,6 +117,7 @@ class PinDetailViewModel @Inject constructor(
     private var issueReliabilityJob: Job? = null
     private var observedReliabilityPinId: Long? = null
     private var observedBillingProductId = billingRepository.pendingBillingProductId.value
+    private val homeEditQuotaByPinId = mutableMapOf<Long, PinEditRateLimitQuota>()
 
     init {
         observeBillingPurchaseEvents()
@@ -154,20 +159,26 @@ class PinDetailViewModel @Inject constructor(
                     homeEditNewImageUris = emptyList(),
                     homeEditMainImageKey = null,
                     isSubmittingHomeEdit = false,
+                    showHomeEditConfirmDialog = false,
+                    homeEditRateLimitQuota = null,
+                    homeEditSubmitFailed = false,
                 )
             }
 
             pinRepository.getPinDetailHome(id)
-                .onSuccess { pin ->
+                .onSuccess { homeResult ->
+                    homeResult.editRateLimitQuota?.let { quota ->
+                        homeEditQuotaByPinId[id] = quota
+                    }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            pin = pin,
-                            postSympathy = pin.toPostSympathyContent(),
+                            pin = homeResult.pin,
+                            postSympathy = homeResult.pin.toPostSympathyContent(),
                         )
                     }
                     loadPostTab(id)
-                    if (pin.detail is IssuePinDetail) {
+                    if (homeResult.pin.detail is IssuePinDetail) {
                         startIssueReliabilityObservation(id)
                         viewModelScope.launch {
                             refreshResolutionTab(id, currentUserId)
@@ -612,6 +623,7 @@ class PinDetailViewModel @Inject constructor(
     fun startHomeEdit() {
         val pin = _uiState.value.pin ?: return
         if (!pin.canEditBy(currentUserId) || pin.category != PinCategory.ISSUE) return
+        val pinId = resolvePinId() ?: return
 
         val attachments = pin.imageAttachments.takeIf { it.isNotEmpty() }
             ?: pin.imageUrls.mapIndexed { index, url ->
@@ -633,12 +645,16 @@ class PinDetailViewModel @Inject constructor(
                 homeEditNewImageUris = emptyList(),
                 homeEditMainImageKey = mainKey,
                 isSubmittingHomeEdit = false,
+                showHomeEditConfirmDialog = false,
+                homeEditRateLimitQuota = homeEditQuotaByPinId[pinId],
+                homeEditSubmitFailed = false,
                 selectedTab = PinDetailTab.HOME,
             )
         }
     }
 
     fun cancelHomeEdit() {
+        if (_uiState.value.homeEditSubmitFailed) return
         _uiState.update {
             it.copy(
                 isHomeEditing = false,
@@ -648,8 +664,16 @@ class PinDetailViewModel @Inject constructor(
                 homeEditNewImageUris = emptyList(),
                 homeEditMainImageKey = null,
                 isSubmittingHomeEdit = false,
+                showHomeEditConfirmDialog = false,
+                homeEditRateLimitQuota = null,
+                homeEditSubmitFailed = false,
             )
         }
+    }
+
+    fun dismissHomeEditConfirmDialog() {
+        if (_uiState.value.isSubmittingHomeEdit) return
+        _uiState.update { it.copy(showHomeEditConfirmDialog = false) }
     }
 
     fun onHomeEditTitleChange(value: String) {
@@ -716,10 +740,9 @@ class PinDetailViewModel @Inject constructor(
         _uiState.update { it.copy(homeEditMainImageKey = key) }
     }
 
-    fun submitHomeEdit() {
+    fun requestHomeEditSubmit() {
         val state = _uiState.value
         if (!state.isHomeEditing || state.isSubmittingHomeEdit) return
-        val pinId = resolvePinId() ?: return
 
         val title = state.homeEditTitle.trim()
         val description = state.homeEditDescription.trim()
@@ -732,6 +755,16 @@ class PinDetailViewModel @Inject constructor(
             return
         }
 
+        openHomeEditConfirmDialog()
+    }
+
+    fun confirmHomeEditSubmit() {
+        val state = _uiState.value
+        if (!state.isHomeEditing || state.isSubmittingHomeEdit) return
+        val pinId = resolvePinId() ?: return
+
+        val title = state.homeEditTitle.trim()
+        val description = state.homeEditDescription.trim()
         val mainKey = state.homeEditMainImageKey
         val existingImages = state.homeEditExistingImages.map { image ->
             image.copy(isMain = image.imageUrl == mainKey)
@@ -739,7 +772,12 @@ class PinDetailViewModel @Inject constructor(
         val mainNewUri = state.homeEditNewImageUris.firstOrNull { it == mainKey }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmittingHomeEdit = true) }
+            _uiState.update {
+                it.copy(
+                    isSubmittingHomeEdit = true,
+                    showHomeEditConfirmDialog = false,
+                )
+            }
             pinRepository.updateIssuePin(
                 pinId = pinId,
                 request = UpdateIssuePinRequest(
@@ -750,6 +788,8 @@ class PinDetailViewModel @Inject constructor(
                     mainNewImageUri = mainNewUri,
                 ),
             ).onSuccess { result ->
+                val quota = result.rateLimitQuota
+                quota?.let { homeEditQuotaByPinId[pinId] = it }
                 _uiState.update {
                     it.copy(
                         isHomeEditing = false,
@@ -759,16 +799,64 @@ class PinDetailViewModel @Inject constructor(
                         homeEditExistingImages = emptyList(),
                         homeEditNewImageUris = emptyList(),
                         homeEditMainImageKey = null,
-                        pin = result.pin,
-                        postSympathy = result.pin.toPostSympathyContent(),
+                        showHomeEditConfirmDialog = false,
+                        homeEditRateLimitQuota = quota,
+                        homeEditSubmitFailed = false,
                     )
                 }
+                refreshPinDetail(pinId)
                 showToast("이슈 핀이 수정되었습니다.")
             }.onFailure { error ->
-                _uiState.update { it.copy(isSubmittingHomeEdit = false) }
+                _uiState.update {
+                    it.copy(
+                        isSubmittingHomeEdit = false,
+                        showHomeEditConfirmDialog = false,
+                        homeEditSubmitFailed = true,
+                    )
+                }
                 showToast(error.message ?: "이슈 핀 수정에 실패했습니다.")
             }
         }
+    }
+
+    private fun openHomeEditConfirmDialog() {
+        val quota = _uiState.value.homeEditRateLimitQuota
+        if (quota?.enabled == true && quota.remainingCount <= 0) {
+            showToast("이 핀의 일일 수정 횟수를 초과했습니다.")
+            return
+        }
+        _uiState.update { it.copy(showHomeEditConfirmDialog = true) }
+    }
+
+    private fun refreshPinDetail(pinId: Long) {
+        viewModelScope.launch {
+            pinRepository.getPinDetailHome(pinId)
+                .onSuccess { homeResult ->
+                    homeResult.editRateLimitQuota?.let { quota ->
+                        homeEditQuotaByPinId[pinId] = quota
+                    }
+                    _uiState.update {
+                        it.copy(
+                            pin = homeResult.pin,
+                            postSympathy = homeResult.pin.toPostSympathyContent(),
+                        )
+                    }
+                    loadPostTab(pinId)
+                    if (homeResult.pin.detail is IssuePinDetail) {
+                        startIssueReliabilityObservation(pinId, resetUi = false)
+                        viewModelScope.launch {
+                            refreshResolutionTab(pinId, currentUserId)
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    showToast(error.message ?: "핀 정보를 다시 불러오지 못했습니다.")
+                }
+        }
+    }
+
+    fun submitHomeEdit() {
+        requestHomeEditSubmit()
     }
 
     fun deletePin(pinId: String, onSuccess: () -> Unit) {

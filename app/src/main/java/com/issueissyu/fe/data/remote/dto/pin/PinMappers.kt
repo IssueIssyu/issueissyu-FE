@@ -382,7 +382,7 @@ private fun String?.toResolutionStatus(): ResolutionStatus? {
     }
 }
 
-private fun RateLimitQuotaResponse.toDomain(): PinEditRateLimitQuota {
+fun RateLimitQuotaResponse.toPinEditRateLimitQuota(): PinEditRateLimitQuota {
     return PinEditRateLimitQuota(
         enabled = enabled,
         dailyLimit = dailyLimit,
@@ -391,6 +391,8 @@ private fun RateLimitQuotaResponse.toDomain(): PinEditRateLimitQuota {
         resetAt = resetAt,
     )
 }
+
+private fun RateLimitQuotaResponse.toDomain(): PinEditRateLimitQuota = toPinEditRateLimitQuota()
 
 private fun PinEmojiDto.toPinEmoji(): PinEmoji? {
     if (emojiId == 0L || emojiImageUrl.isBlank()) return null

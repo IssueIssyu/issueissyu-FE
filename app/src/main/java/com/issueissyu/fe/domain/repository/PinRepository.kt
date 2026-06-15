@@ -9,6 +9,7 @@ import com.issueissyu.fe.domain.model.pin.PetitionSubmit
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import com.issueissyu.fe.domain.model.pin.UpdateIssuePinRequest
 import com.issueissyu.fe.domain.model.pin.IssuePinEditResult
+import com.issueissyu.fe.domain.model.pin.PinDetailHomeResult
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
@@ -36,7 +37,7 @@ interface PinRepository {
 
     suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker>
 
-    suspend fun getPinDetailHome(pinId: Long): Result<Pin>
+    suspend fun getPinDetailHome(pinId: Long): Result<PinDetailHomeResult>
 
     suspend fun getPinDetailPost(pinId: Long): Result<PinPostSympathyContent?>
 
