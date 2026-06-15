@@ -140,23 +140,9 @@ fun SignUpContent(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "이메일(아이디) 입력 후 [중복 확인]을 눌러주세요. 서버에서 형식·중복을 검사합니다.",
-                                    style = IssueTypo.Regular12.copy(
-                                        color = if (uiState.userIdError != null) Issue else Gray_5,
-                                    ),
-                                )
-
-                                Spacer(modifier = Modifier.height(5.dp))
-
-                                if (uiState.userIdError != null) {
+                                uiState.userIdError?.let { error ->
                                     Text(
-                                        text = uiState.userIdError,
-                                        style = IssueTypo.Regular12.copy(color = Issue),
-                                    )
-                                } else if (!uiState.isIdChecked && uiState.userId.isNotEmpty()) {
-                                    Text(
-                                        text = "아이디 중복을 확인해주세요",
+                                        text = error,
                                         style = IssueTypo.Regular12.copy(color = Issue),
                                     )
                                 }
@@ -200,18 +186,8 @@ fun SignUpContent(
                             isPassword = true
                         )
 
-                        Spacer(modifier = Modifier.height(13.dp))
-
-                        //비번 설명
-                        Text(
-                            text = "8~20자, 영문(대소문 무관)·숫자·특수문자를 각각 1자 이상 포함해주세요.",
-                            modifier = Modifier
-                                .padding(horizontal = 5.dp),
-                            style = IssueTypo.Regular12.copy(
-                                color = if (uiState.userPwError != null) Issue else Gray_5
-                            )
-                        )
                         uiState.userPwError?.let { err ->
+                            Spacer(modifier = Modifier.height(13.dp))
                             Text(
                                 text = err,
                                 modifier = Modifier.padding(horizontal = 5.dp),

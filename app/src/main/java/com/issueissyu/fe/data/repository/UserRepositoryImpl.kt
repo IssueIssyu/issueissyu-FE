@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.api.MyPageApi
 import com.issueissyu.fe.data.remote.dto.mypage.toMyIssuePage
@@ -13,21 +14,28 @@ import javax.inject.Singleton
 class UserRepositoryImpl @Inject constructor(
     private val myPageApi: MyPageApi,
     private val authApi: AuthApi,
+    private val apiErrorMapper: ApiErrorMapper,
 ) : UserRepository {
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+        Result.failure(apiErrorMapper.toException(e, fallback))
 
     override suspend fun updateNickname(nickname: String) {
-        val response = myPageApi.changeNickName(
-            request = ChangeNickNameRequest(nickname = nickname),
-        )
+        try {
+            val response = myPageApi.changeNickName(
+                request = ChangeNickNameRequest(nickname = nickname),
+            )
 
-        when (response.code) {
-            "USER_NICKNAME_200" -> Unit
+            when (response.code) {
+                "USER_NICKNAME_200" -> Unit
 
-            else -> {
-                throw IllegalStateException(
-                    response.message.ifBlank { "닉네임 변경에 실패했습니다." },
-                )
+                else -> {
+                    throw IllegalStateException(
+                        response.message.ifBlank { "닉네임 변경에 실패했습니다." },
+                    )
+                }
             }
+        } catch (e: Exception) {
+            throw apiErrorMapper.toException(e, "닉네임 변경에 실패했습니다.")
         }
     }
 
@@ -99,25 +107,29 @@ class UserRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "동네 변경에 실패했습니다.")
         }
     }
 
     override suspend fun checkNicknameDuplicate(nickname: String): Boolean {
-        val response = authApi.checkNickname(nickname)
+        try {
+            val response = authApi.checkNickname(nickname)
 
-        return when (response.code) {
-            "NICKNAME_200" -> response.result?.isAvailableNickname == true
-            "NICKNAME_409" -> false
-            else -> {
-                if (response.isSuccess) {
-                    response.result?.isAvailableNickname == true
-                } else {
-                    throw IllegalStateException(
-                        response.message.ifBlank { "닉네임 중복 확인에 실패했습니다." },
-                    )
+            return when (response.code) {
+                "NICKNAME_200" -> response.result?.isAvailableNickname == true
+                "NICKNAME_409" -> false
+                else -> {
+                    if (response.isSuccess) {
+                        response.result?.isAvailableNickname == true
+                    } else {
+                        throw IllegalStateException(
+                            response.message.ifBlank { "닉네임 중복 확인에 실패했습니다." },
+                        )
+                    }
                 }
             }
+        } catch (e: Exception) {
+            throw apiErrorMapper.toException(e, "닉네임 중복 확인에 실패했습니다.")
         }
     }
 
@@ -144,7 +156,7 @@ class UserRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "내 이슈 조회에 실패했습니다.")
         }
     }
 }

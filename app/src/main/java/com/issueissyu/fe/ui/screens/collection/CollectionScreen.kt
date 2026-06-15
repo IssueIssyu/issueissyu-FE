@@ -1,6 +1,5 @@
 package com.issueissyu.fe.ui.screens.collection
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -42,8 +41,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import android.widget.Toast
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -94,17 +92,12 @@ fun CollectionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val snackbarHostState = remember { SnackbarHostState() }
 
-    // 일회성 이벤트
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 is CollectionEffect.ShowToast -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
-                }
-                is CollectionEffect.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(effect.message)
                 }
                 is CollectionEffect.NavigateToPinDetail -> {
                     onNavigateToPinDetail(effect.pinId)
@@ -161,13 +154,6 @@ fun CollectionScreen(
                 onDismiss = { viewModel.onEvent(CollectionEvent.DismissNewUnlockNotice) },
             )
         }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-        )
     }
 }
 

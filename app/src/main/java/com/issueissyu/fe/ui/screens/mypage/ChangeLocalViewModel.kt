@@ -3,6 +3,7 @@ package com.issueissyu.fe.ui.screens.mypage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.repository.LocationRepository
+import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ChangeLocalViewModel @Inject constructor(
     private val locationRepository: LocationRepository,
+    private val userRepository: UserRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
@@ -99,9 +101,14 @@ class ChangeLocalViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            locationRepository.certifyUserLocation(latitude, longitude).fold(
-                onSuccess = {
-                    _uiState.update { it.copy(isLoading = false) }
+            userRepository.updateUserAddress(latitude, longitude).fold(
+                onSuccess = { address ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            addressText = address.ifBlank { it.addressText },
+                        )
+                    }
                     _event.emit(UiEvent.Completed)
                 },
                 onFailure = { e ->

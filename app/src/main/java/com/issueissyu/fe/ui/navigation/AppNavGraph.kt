@@ -26,6 +26,7 @@ import androidx.navigation.navArgument
 import com.issueissyu.fe.core.auth.AuthSessionState
 import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
 import com.issueissyu.fe.ui.screens.map.MapScreen
+import com.issueissyu.fe.ui.screens.landing.LandingScreen
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
 import com.issueissyu.fe.ui.screens.onboarding.LocalVerificationScreen
 import com.issueissyu.fe.ui.screens.onboarding.LoginScreen
@@ -70,7 +71,7 @@ fun AppNavGraph(
 
     LaunchedEffect(sessionViewModel, navController, context) {
         sessionViewModel.sessionExpiredMessages.collect { message ->
-            if (navController.currentDestination?.route != LOGIN_ROUTE) {
+            if (!navController.currentDestination?.route.isLoginRoute()) {
                 navController.navigateToLoginClearingBackStack()
             }
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -90,7 +91,7 @@ fun AppNavGraph(
                     val route = navController.currentDestination?.route ?: return@collect
                     if (
                         route == AppDestinations.Onboarding.SPLASH_ROUTE ||
-                        route == LOGIN_ROUTE
+                        route.isLoginRoute()
                     ) {
                         return@collect
                     }
@@ -112,8 +113,8 @@ fun AppNavGraph(
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
                 },
-                onNavigateToLogin = {
-                    navController.navigateToLoginClearingBackStack()
+                onNavigateToLogin = { showStorageWarning ->
+                    navController.navigateToLoginClearingBackStack(showStorageWarning)
                 },
                 onNavigateToOnboarding = {
                     navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
@@ -123,8 +124,19 @@ fun AppNavGraph(
             )
         }
 
-        composable(LOGIN_ROUTE) {
+        composable(
+            route = AppDestinations.Onboarding.LOGIN_ROUTE_WITH_ARGS,
+            arguments = listOf(
+                navArgument("storageWarning") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { backStackEntry ->
+            val showStorageWarning =
+                backStackEntry.arguments?.getBoolean("storageWarning") ?: false
             LoginScreen(
+                showStorageWarning = showStorageWarning,
                 viewModel = hiltViewModel(),
                 onLoginSuccess = { isNewUser ->
                     if (isNewUser) {
@@ -217,9 +229,32 @@ fun AppNavGraph(
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onNavigateToLanding = {}
+                onNavigateToLanding = {
+                    navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                },
             )
         }
+
+        composable(AppDestinations.Onboarding.LANDING_ROUTE) {
+            val previousRoute =
+                navController.previousBackStackEntry?.destination?.route
+            if (previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE) {
+                OnboardingBackDisabledHandler()
+            }
+
+            LandingScreen(
+                onComplete = {
+                    if (previousRoute == AppDestinations.MyPage.MYPAGE_ROUTE) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(AppDestinations.TOWN_ROUTE) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+            )
+        }
+
         composable(AppDestinations.COLLECTION_ROUTE) {
             NavScreenWrapper(paddingValues = paddingValues) {
                 CollectionScreen(
@@ -341,6 +376,9 @@ fun AppNavGraph(
                                 navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
                             }
                             MyPageEvent.NavigateToLanding -> {
+                                navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLogin -> {
                                 navController.navigateToLoginClearingBackStack()
                             }
                             MyPageEvent.NavigateToTerm -> {
@@ -621,8 +659,13 @@ private fun OnboardingBackDisabledHandler() {
     BackHandler { }
 }
 
-private fun NavHostController.navigateToLoginClearingBackStack() {
-    navigate(LOGIN_ROUTE) {
+private fun String?.isLoginRoute(): Boolean =
+    this?.startsWith(LOGIN_ROUTE) == true
+
+private fun NavHostController.navigateToLoginClearingBackStack(
+    showStorageWarning: Boolean = false,
+) {
+    navigate(AppDestinations.Onboarding.loginRoute(showStorageWarning)) {
         popUpTo(0) { inclusive = true }
     }
 }

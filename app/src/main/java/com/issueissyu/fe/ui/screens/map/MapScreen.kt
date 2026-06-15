@@ -1,9 +1,7 @@
 package com.issueissyu.fe.ui.screens.map
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -66,6 +64,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import com.issueissyu.fe.R
+import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.MapPinCluster
 import com.issueissyu.fe.domain.model.MapPinMarker
@@ -73,6 +72,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.ui.components.CategoryButtons
 import com.issueissyu.fe.ui.components.CategoryItem
+import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.map.IssueissyuNaverMap
 import com.issueissyu.fe.ui.components.map.toLatLng
 import com.issueissyu.fe.ui.navigation.AppDestinations
@@ -234,16 +234,6 @@ private fun PinCategory.toClusterBorderColor(): Int {
     }
 }
 
-// Context에서 Activity를 찾는 헬퍼 함수
-private fun Context.findActivity(): Activity? {
-    var context = this
-    while (context is ContextWrapper) {
-        if (context is Activity) return context
-        context = context.baseContext
-    }
-    return null
-}
-
 // ==============================================================================================
 // 3. MapScreen Composable 함수
 //    - 지도 화면 전체의 UI 구성을 담당하는 메인 Composable
@@ -269,7 +259,10 @@ fun MapScreen(
     val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
+    val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId
+    val context = LocalContext.current
+    val activity = context.findActivity()
 
     LaunchedEffect(isLocationSelectionMode) {
         onLocationSelectionModeChanged(isLocationSelectionMode)
@@ -281,12 +274,28 @@ fun MapScreen(
         }
     }
 
+    if (emojiPickerUiState.isVisible) {
+        EmojiReactionBottomSheet(
+            candidates = emojiPickerUiState.candidates,
+            selectedEmojiId = emojiPickerUiState.selectedEmojiId,
+            isLoading = emojiPickerUiState.isLoading,
+            isSubmitting = emojiPickerUiState.isSubmitting,
+            errorMessage = emojiPickerUiState.errorMessage,
+            onDismiss = {
+                if (!emojiPickerUiState.isSubmitting) {
+                    viewModel.closeEmojiPicker()
+                }
+            },
+            onEmojiClick = viewModel::selectEmojiCandidate,
+            onLockedEmojiClick = { emojiId -> viewModel.purchaseEmoji(activity, emojiId) },
+            onApplyClick = viewModel::applySelectedEmoji,
+            allowApplyWithoutSelection = true,
+        )
+    }
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
 
-    val context = LocalContext.current
-    val activity = context.findActivity()
     val snackbarHostState = remember { SnackbarHostState() }
 
     val locationSource = remember(activity) {
@@ -767,7 +776,7 @@ fun MapScreen(
                     onEditClick = {},
                     onDeleteClick = viewModel::deletePin,
                     onSympathyClick = viewModel::toggleSympathy,
-                    onEmojiClick = {},
+                    onEmojiClick = viewModel::openEmojiPicker,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
