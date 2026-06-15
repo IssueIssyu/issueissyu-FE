@@ -84,14 +84,13 @@ class NotificationListViewModel @Inject constructor(
             alarmRepository.getAlarmList().fold(
                 onSuccess = { page ->
                     _uiState.update { state ->
-                        val mergedNotifications = if (state.notifications.size <= page.items.size) {
-                            page.items
-                        } else {
-                            val refreshedById = page.items.associateBy { it.alarmId }
-                            state.notifications.map { existing ->
-                                refreshedById[existing.alarmId] ?: existing
-                            }
+                        val existingIds = state.notifications.map { it.alarmId }.toSet()
+                        val newItems = page.items.filter { it.alarmId !in existingIds }
+                        val refreshedById = page.items.associateBy { it.alarmId }
+                        val updatedExisting = state.notifications.map { existing ->
+                            refreshedById[existing.alarmId] ?: existing
                         }
+                        val mergedNotifications = newItems + updatedExisting
                         state.copy(
                             hasNext = page.hasNext,
                             nextCursor = page.nextCursor,
