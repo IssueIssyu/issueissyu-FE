@@ -66,7 +66,7 @@ interface AuthApi {
         @Body request: AuthLocalRequest,
     ): BaseResponse<LoginResponse>
 
-    @POST("auth/logout")
+    @POST("api/auth/logout")
     suspend fun logout(): BaseResponse<PhoneAuthEmptyResult?>
 
     //약관 동의

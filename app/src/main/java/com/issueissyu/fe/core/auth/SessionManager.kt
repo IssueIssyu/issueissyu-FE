@@ -30,16 +30,20 @@ class SessionManager @Inject constructor(
         fcmTokenSyncManager.syncCurrentTokenIfNeeded()
     }
 
+    fun prepareLogout() {
+        fcmTokenSyncManager.cancelPendingSync()
+    }
+
     fun clearSession() {
         tokenManager.clearTokens()
-        fcmTokenSyncManager.clearLastSynced()
+        fcmTokenSyncManager.cancelPendingSync()
         _authState.value = AuthSessionState.Unauthenticated
     }
 
     fun expireSession(message: String = DEFAULT_SESSION_EXPIRED_MESSAGE) {
         val shouldNotify = _authState.value != AuthSessionState.Unauthenticated || tokenManager.hasTokens()
         tokenManager.clearTokens()
-        fcmTokenSyncManager.clearLastSynced()
+        fcmTokenSyncManager.cancelPendingSync()
         _authState.value = AuthSessionState.Unauthenticated
         if (shouldNotify) {
             notifyReloginRequired(message)

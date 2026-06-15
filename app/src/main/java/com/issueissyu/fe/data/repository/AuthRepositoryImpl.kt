@@ -369,23 +369,33 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun logout(): Result<Unit> {
         return try {
-            val response = runCatching { authApi.logout() }.getOrNull()
-            sessionManager.clearSession()
-            when (response?.code) {
-                "LOGOUT_200",
-                "LOGOUT_401",
-                -> Result.success(Unit)
-                null -> Result.success(Unit)
+            sessionManager.prepareLogout()
+            val response = authApi.logout()
+            when (response.code) {
+                "LOGOUT_200" -> {
+                    sessionManager.clearSession()
+                    Result.success(Unit)
+                }
+                "LOGOUT_401" -> {
+                    sessionManager.clearSession()
+                    Result.success(Unit)
+                }
                 else ->
                     if (response.isSuccess) {
+                        sessionManager.clearSession()
                         Result.success(Unit)
                     } else {
-                        Result.success(Unit)
+                        Result.failure(
+                            Exception(
+                                safeMessage(response.message, "로그아웃에 실패했습니다."),
+                            ),
+                        )
                     }
             }
         } catch (e: Exception) {
-            sessionManager.clearSession()
-            Result.success(Unit)
+            Result.failure(
+                Exception(safeMessage(e.message, "로그아웃에 실패했습니다.")),
+            )
         }
     }
 

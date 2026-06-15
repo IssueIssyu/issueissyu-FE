@@ -23,6 +23,8 @@ class FcmTokenSyncManager @Inject constructor(
 ) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile
+    private var syncGeneration = 0
 
     fun syncCurrentTokenIfNeeded() {
         if (!tokenManager.hasTokens()) return
@@ -35,15 +37,20 @@ class FcmTokenSyncManager @Inject constructor(
         scope.launch { syncTokenInternal(fcmToken) }
     }
 
-    fun clearLastSynced() {
+    fun cancelPendingSync() {
+        syncGeneration++
         prefs.edit().remove(KEY_LAST_SYNCED).apply()
     }
 
     private suspend fun syncTokenInternal(fcmToken: String) {
+        val generation = syncGeneration
         if (!tokenManager.hasTokens() || fcmToken.isBlank()) return
         if (prefs.getString(KEY_LAST_SYNCED, null) == fcmToken) return
 
         repeat(MAX_ATTEMPTS) { attempt ->
+            if (generation != syncGeneration) return
+            if (!tokenManager.hasTokens() || fcmToken.isBlank()) return
+
             val result = alarmRepository.get().storePushToken(fcmToken)
             if (result.isSuccess) {
                 prefs.edit().putString(KEY_LAST_SYNCED, fcmToken).apply()
