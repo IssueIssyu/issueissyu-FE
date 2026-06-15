@@ -380,16 +380,16 @@ class AuthRepositoryImpl @Inject constructor(
             val response = authApi.logout()
             when (response.code) {
                 "LOGOUT_200" -> {
-                    sessionManager.clearSession()
+                    clearUserSession()
                     Result.success(Unit)
                 }
                 "LOGOUT_401" -> {
-                    sessionManager.clearSession()
+                    clearUserSession()
                     Result.success(Unit)
                 }
                 else ->
                     if (response.isSuccess) {
-                        sessionManager.clearSession()
+                        clearUserSession()
                         Result.success(Unit)
                     } else {
                         Result.failure(

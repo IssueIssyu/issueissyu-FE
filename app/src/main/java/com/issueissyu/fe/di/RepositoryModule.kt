@@ -93,6 +93,9 @@ abstract class RepositoryModule {
     abstract fun bindAlarmRepository(
         impl: AlarmRepositoryImpl
     ): AlarmRepository
+
+    @Binds
+    @Singleton
     abstract fun bindUserCollectionsStore(
         impl: UserCollectionsStoreImpl
     ): UserCollectionsStore
