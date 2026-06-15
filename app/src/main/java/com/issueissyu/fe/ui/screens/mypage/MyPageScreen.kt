@@ -106,14 +106,10 @@ fun MyPageScreen(
     LaunchedEffect(authActionState) {
         when (val state = authActionState) {
             MyPageViewModel.AuthActionState.Success -> {
-                showLogoutDialog = false
-                showWithdrawDialog = false
-                onEvent(MyPageEvent.NavigateToLanding)
+                // 세션 해제 시 AppNavGraph가 로그인 화면으로 이동함
                 viewModel.resetAuthActionState()
             }
             is MyPageViewModel.AuthActionState.Error -> {
-                showLogoutDialog = false
-                showWithdrawDialog = false
                 actionErrorMessage = state.message
                 viewModel.resetAuthActionState()
             }
@@ -160,12 +156,9 @@ fun MyPageScreen(
             title = "로그아웃",
             message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
             confirmText = "로그아웃",
-            onDismiss = {
-                if (!isAuthActionLoading) {
-                    showLogoutDialog = false
-                }
-            },
+            onDismiss = { showLogoutDialog = false },
             onConfirm = {
+                showLogoutDialog = false
                 viewModel.logout()
             },
         )
@@ -177,12 +170,9 @@ fun MyPageScreen(
             message = "정말 탈퇴하시겠어요?\n그동안 모은 핀과 활동 기록이\n모두 삭제돼요",
             confirmText = "탈퇴하기",
             isWarning = true,
-            onDismiss = {
-                if (!isAuthActionLoading) {
-                    showWithdrawDialog = false
-                }
-            },
+            onDismiss = { showWithdrawDialog = false },
             onConfirm = {
+                showWithdrawDialog = false
                 viewModel.withdraw()
             },
         )
