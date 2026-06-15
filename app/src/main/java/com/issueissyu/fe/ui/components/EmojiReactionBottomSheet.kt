@@ -60,6 +60,7 @@ fun EmojiReactionBottomSheet(
     errorMessage: String?,
     onDismiss: () -> Unit,
     onEmojiClick: (Long) -> Unit,
+    onLockedEmojiClick: (Long) -> Unit = {},
     onApplyClick: () -> Unit,
     allowLockedEmojiSelection: Boolean = false,
     allowApplyWithoutSelection: Boolean = false,
@@ -86,6 +87,7 @@ fun EmojiReactionBottomSheet(
             errorMessage = errorMessage,
             onDismiss = onDismiss,
             onEmojiClick = onEmojiClick,
+            onLockedEmojiClick = onLockedEmojiClick,
             onApplyClick = onApplyClick,
             allowLockedEmojiSelection = allowLockedEmojiSelection,
             allowApplyWithoutSelection = allowApplyWithoutSelection,
@@ -102,6 +104,7 @@ fun EmojiReactionBottomSheetContent(
     errorMessage: String?,
     onDismiss: () -> Unit,
     onEmojiClick: (Long) -> Unit,
+    onLockedEmojiClick: (Long) -> Unit = {},
     onApplyClick: () -> Unit,
     allowLockedEmojiSelection: Boolean,
     allowApplyWithoutSelection: Boolean = false,
@@ -165,7 +168,8 @@ fun EmojiReactionBottomSheetContent(
                             candidate = candidate,
                             isSelected = candidate.emojiId == selectedEmojiId,
                             allowLockedEmojiSelection = allowLockedEmojiSelection,
-                            onClick = { onEmojiClick(candidate.emojiId) }
+                            onClick = { onEmojiClick(candidate.emojiId) },
+                            onLockedClick = { onLockedEmojiClick(candidate.emojiId) },
                         )
                     }
                 }
@@ -231,6 +235,7 @@ private fun EmojiCandidateButton(
     isSelected: Boolean,
     allowLockedEmojiSelection: Boolean,
     onClick: () -> Unit,
+    onLockedClick: () -> Unit,
 ) {
     val canTap = allowLockedEmojiSelection || candidate.canReact
     Box(
@@ -248,7 +253,13 @@ private fun EmojiCandidateButton(
                     color = if (isSelected) BrandColor else Color.Transparent,
                     shape = RoundedCornerShape(10.dp)
                 )
-                .clickable(enabled = canTap) { onClick() }
+                .clickable {
+                    if (canTap) {
+                        onClick()
+                    } else {
+                        onLockedClick()
+                    }
+                }
                 .alpha(if (canTap) 1f else 0.42f)
                 .padding(5.dp),
             contentAlignment = Alignment.Center

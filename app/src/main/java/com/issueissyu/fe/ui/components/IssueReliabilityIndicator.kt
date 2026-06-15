@@ -42,8 +42,6 @@ import com.issueissyu.fe.ui.theme.Success
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 
-private const val DEFAULT_REASON_VISIBLE_THRESHOLD = 70
-
 enum class IssueReliabilityStatus {
     PENDING,
     COMPLETED,
@@ -103,7 +101,6 @@ fun IssueReliabilityIndicator(
     } else {
         IssueReliabilityStatus.COMPLETED
     },
-    reasonVisibleThreshold: Int = DEFAULT_REASON_VISIBLE_THRESHOLD,
     reasonDisplayMode: IssueReliabilityReasonDisplayMode = IssueReliabilityReasonDisplayMode.INLINE,
 ) {
     val style = type.toStyle()
@@ -124,13 +121,10 @@ fun IssueReliabilityIndicator(
         IssueReliabilityStatus.FAILED -> 0f
         IssueReliabilityStatus.PENDING -> null
     }
-    val hasCompletedReason = status == IssueReliabilityStatus.COMPLETED &&
-        displayScore != null &&
-        !reason.isNullOrBlank()
-    val showInlineReason = hasCompletedReason &&
-        displayScore < reasonVisibleThreshold &&
+    val hasReason = !reason.isNullOrBlank()
+    val showInlineReason = hasReason &&
         reasonDisplayMode == IssueReliabilityReasonDisplayMode.INLINE
-    val isModalReasonEnabled = hasCompletedReason &&
+    val isModalReasonEnabled = hasReason &&
         reasonDisplayMode == IssueReliabilityReasonDisplayMode.MODAL
 
     Column(

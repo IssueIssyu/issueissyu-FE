@@ -6,6 +6,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -24,29 +26,51 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.math.PI
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.screens.map.AutoScrollingNotice
@@ -57,21 +81,20 @@ import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
-import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Text
+import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.White
-import kotlinx.coroutines.flow.collectLatest
 
-/// 컬렉션 화면
 @Composable
 fun CollectionScreen(
     viewModel: CollectionViewModel = hiltViewModel(),
     modifier: Modifier = Modifier,
-    onNavigateToNoticeDetail: (String) -> Unit = {}
+    onNavigateToPinDetail: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // 일회성 이벤트
     LaunchedEffect(Unit) {
@@ -80,31 +103,439 @@ fun CollectionScreen(
                 is CollectionEffect.ShowToast -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
-                is CollectionEffect.NavigateToNoticeDetail -> {
-                    onNavigateToNoticeDetail(effect.notice)
+                is CollectionEffect.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(effect.message)
                 }
-                is CollectionEffect.ProfileUpdatedSuccess -> {}
+                is CollectionEffect.NavigateToPinDetail -> {
+                    onNavigateToPinDetail(effect.pinId)
+                }
             }
         }
     }
 
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(White)
+        ) {
+            // 상단 바
+            IssueissyuTopAppBar(
+                titleText = "컬렉션",
+                modifier = Modifier.background(color = White)
+            )
+
+            when {
+                uiState.isLoading && uiState.pins.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                uiState.errorMessage != null && uiState.pins.isEmpty() -> {
+                    CollectionErrorState(
+                        message = uiState.errorMessage.orEmpty(),
+                        onRetry = { viewModel.onEvent(CollectionEvent.RetryLoad) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+
+                else -> {
+                    CollectionContent(
+                        uiState = uiState,
+                        onEvent = viewModel::onEvent,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+        }
+
+        if (uiState.newlyUnlocked.isNotEmpty()) {
+            NewUnlockCelebrationOverlay(
+                unlockedCharacters = uiState.newlyUnlocked,
+                onDismiss = { viewModel.onEvent(CollectionEvent.DismissNewUnlockNotice) },
+            )
+        }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+        )
+    }
+}
+
+private const val UNLOCK_LOCK_HOLD_MS = 650
+private const val UNLOCK_LOCK_FADE_DELAY_MS = 120
+
+// 열쇠 흔들림 효과 (잠금 해제 느낌)
+private val UnlockLockShakeAngles = listOf(10f, -10f, 7f, -5f, 0f)
+private val UnlockLockShakeDurationsMs = listOf(70, 70, 60, 60, 80)
+
+//새 캐릭터 해금
+@Composable
+private fun NewUnlockCelebrationOverlay(
+    unlockedCharacters: List<NewUnlockItem>,
+    onDismiss: () -> Unit,
+) {
+    if (unlockedCharacters.isEmpty()) return
+
+    val primary = unlockedCharacters.first()
+    val namesText = unlockedCharacters.joinToString(", ") { it.name }
+    val cardShape = RoundedCornerShape(24.dp)
+
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
+
+    // --- 카드 등장 애니메이션 ---
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (revealed) 1f else 0f,
+        animationSpec = tween(320),
+        label = "unlockCardAlpha",
+    )
+    val cardOffsetY by animateFloatAsState(
+        targetValue = if (revealed) 0f else 48f,
+        animationSpec = spring(dampingRatio = 0.62f, stiffness = 300f),
+        label = "unlockCardOffsetY",
+    )
+    val cardScale by animateFloatAsState(
+        targetValue = if (revealed) 1f else 0.82f,
+        animationSpec = spring(dampingRatio = 0.58f, stiffness = 280f),
+        label = "unlockCardScale",
+    )
+
+    // --- 테두리 펄스 ---
+    val borderPulse = rememberInfiniteTransition(label = "unlockBorderPulse")
+    val borderAlpha by borderPulse.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "borderAlpha",
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.42f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = {},
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .graphicsLayer {
+                    alpha = cardAlpha
+                    translationY = cardOffsetY
+                    scaleX = cardScale
+                    scaleY = cardScale
+                }
+                .clip(cardShape)
+                .border(
+                    width = 2.dp,
+                    color = BrandColor.copy(alpha = borderAlpha),
+                    shape = cardShape,
+                )
+                .background(White, cardShape)
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_bubble),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(30.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = "새로운 친구가 생겼어!",
+                        textAlign = TextAlign.Center,
+                        style = IssueTypo.Bold18.copy(color = Text),
+                    )
+                    Text(
+                        text = "\"$namesText\"",
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(top = 30.dp),
+                        style = IssueTypo.ExtraBold18.copy(
+                            color = BrandColor,
+                            fontSize = 22.sp,
+                        ),
+                    )
+                }
+            }
+
+            UnlockCharacterReveal(
+                name = primary.name,
+                imageUrl = primary.imageUrl,
+                revealed = revealed,
+            )
+
+            Text(
+                text = "${namesText}을(를) 만날 수 있게 되었어요!",
+                style = IssueTypo.Regular15.copy(color = Gray_5),
+                textAlign = TextAlign.Center,
+            )
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = BrandColor),
+                shape = RoundedCornerShape(20.dp),
+            ) {
+                Text(text = "확인", style = IssueTypo.Bold12, color = White)
+            }
+        }
+    }
+}
+
+@Composable
+private fun UnlockCharacterReveal(
+    name: String,
+    imageUrl: String,
+    revealed: Boolean,
+) {
+    var characterUnlocked by remember { mutableStateOf(false) }
+    val lockRotation = remember { Animatable(0f) }
+
+    LaunchedEffect(revealed) {
+        if (!revealed) return@LaunchedEffect
+        delay(UNLOCK_LOCK_HOLD_MS.toLong())
+        UnlockLockShakeAngles.zip(UnlockLockShakeDurationsMs).forEach { (angle, durationMs) ->
+            lockRotation.animateTo(angle, tween(durationMs))
+        }
+        delay(UNLOCK_LOCK_FADE_DELAY_MS.toLong())
+        characterUnlocked = true
+    }
+
+    // --- 해금 후 반복 이펙트 (글로우 · 펄스 · 스파클) ---
+    val infiniteTransition = rememberInfiniteTransition(label = "unlockReveal")
+    val softPulse by infiniteTransition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1_100),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "softPulse",
+    )
+    val innerGlowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 0.85f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1_200),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "innerGlowAlpha",
+    )
+    val outerGlowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 0.45f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1_400),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "outerGlowAlpha",
+    )
+    val sparkleTwinkle by infiniteTransition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "sparkleTwinkle",
+    )
+
+    // --- 캐릭터 등장 ---
+    val entryScale by animateFloatAsState(
+        targetValue = if (characterUnlocked) 1f else 0.88f,
+        animationSpec = spring(dampingRatio = 0.52f, stiffness = 260f),
+        label = "entryScale",
+    )
+    val characterAlpha by animateFloatAsState(
+        targetValue = if (characterUnlocked) 1f else 0.3f,
+        animationSpec = tween(durationMillis = 400),
+        label = "characterAlpha",
+    )
+
+    // --- 잠금 아이콘 ---
+    val lockAlpha by animateFloatAsState(
+        targetValue = if (characterUnlocked) 0f else 1f,
+        animationSpec = tween(durationMillis = 350),
+        label = "lockAlpha",
+    )
+    val lockScale by animateFloatAsState(
+        targetValue = if (characterUnlocked) 1.35f else 1f,
+        animationSpec = tween(durationMillis = 350),
+        label = "lockScale",
+    )
+    val lockOffsetY by animateFloatAsState(
+        targetValue = if (characterUnlocked) -28f else 0f,
+        animationSpec = tween(durationMillis = 350),
+        label = "lockOffsetY",
+    )
+
+    // --- 리플 이펙트 ---
+    val rippleScale by animateFloatAsState(
+        targetValue = if (characterUnlocked) 1.45f else 0.75f,
+        animationSpec = tween(durationMillis = 1_000),
+        label = "rippleScale",
+    )
+    val rippleAlpha by animateFloatAsState(
+        targetValue = if (characterUnlocked) 0f else 0.55f,
+        animationSpec = tween(durationMillis = 1_000),
+        label = "rippleAlpha",
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (characterUnlocked) {
+            Box(
+                modifier = Modifier
+                    .size(248.dp)
+                    .graphicsLayer {
+                        scaleX = rippleScale
+                        scaleY = rippleScale
+                        alpha = rippleAlpha
+                    }
+                    .border(width = 2.dp, color = BrandColor.copy(alpha = 0.6f), shape = CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .size(228.dp)
+                    .alpha(outerGlowAlpha)
+                    .background(BrandColor.copy(alpha = 0.18f), CircleShape),
+            )
+            Box(
+                modifier = Modifier
+                    .size(204.dp)
+                    .alpha(innerGlowAlpha)
+                    .background(CommunicationContainer, CircleShape),
+            )
+            UnlockSparkles(
+                twinkle = sparkleTwinkle,
+                modifier = Modifier.size(240.dp),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(204.dp)
+                    .background(Gray_3, CircleShape),
+            )
+        }
+
+        CollectionCharacterImage(
+            imageUrl = imageUrl,
+            contentDescription = name,
+            modifier = Modifier
+                .size(180.dp)
+                .align(Alignment.Center)
+                .alpha(characterAlpha)
+                .graphicsLayer {
+                    scaleX = entryScale * if (characterUnlocked) softPulse else 1f
+                    scaleY = entryScale * if (characterUnlocked) softPulse else 1f
+                },
+        )
+
+        if (!characterUnlocked || lockAlpha > 0f) {
+            Icon(
+                imageVector = Icons.Default.Lock,
+                contentDescription = "잠김",
+                tint = Gray_6,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .graphicsLayer {
+                        alpha = lockAlpha
+                        scaleX = lockScale
+                        scaleY = lockScale
+                        translationY = lockOffsetY
+                        rotationZ = lockRotation.value
+                    }
+                    .size(52.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun UnlockSparkles(
+    twinkle: Float,
+    modifier: Modifier = Modifier,
+) {
+    val sparkleAngles = listOf(0f, 55f, 110f, 165f, 220f, 275f, 330f)
+    val radiusDp = 108f
+
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        sparkleAngles.forEachIndexed { index, angleDeg ->
+            val phase = ((twinkle + index * 0.14f) % 1f).coerceIn(0f, 1f)
+            val alpha = 0.35f + phase * 0.65f
+            val angleRad = angleDeg * PI.toFloat() / 180f
+            val x = (cos(angleRad) * radiusDp).dp
+            val y = (sin(angleRad) * radiusDp).dp
+            Text(
+                text = "✦",
+                style = IssueTypo.Bold18.copy(
+                    color = BrandColor.copy(alpha = alpha),
+                    fontSize = if (index % 2 == 0) 16.sp else 12.sp,
+                ),
+                modifier = Modifier.offset(x = x, y = y),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CollectionErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(White)
+            .background(CommunicationContainer)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
     ) {
-        // 상단 바
-        IssueissyuTopAppBar(
-            titleText = "컬렉션",
-            modifier = Modifier.background(color = White)
+        Text(
+            text = message,
+            style = IssueTypo.Regular15,
+            textAlign = TextAlign.Center,
+            color = Gray_5,
         )
-
-        // 나머지 내용
-        CollectionContent(
-            uiState = uiState,
-            onEvent = viewModel::onEvent,
-            modifier = Modifier.weight(1f)
-        )
+        Button(
+            onClick = onRetry,
+            modifier = Modifier.padding(top = 16.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = BrandColor),
+        ) {
+            Text(text = "다시 시도", style = IssueTypo.Bold12, color = White)
+        }
     }
 }
 
@@ -143,25 +574,18 @@ private fun CollectionContent(
 
             // 공지사항
             AutoScrollingNotice(
-                notices = remember {
-                    listOf(
-                        NoticeUiModel(
-                            id = "notice_1",
-                            title = "오늘의 공지: 새로운 업데이트가 있습니다!"
-                        ),
-                        NoticeUiModel(
-                            id = "notice_2",
-                            title = "두 번째 공지: 버그 수정 및 성능 개선"
-                        ),
-                        NoticeUiModel(
-                            id = "notice_3",
-                            title = "세 번째 공지: 새로운 이벤트가 시작됩니다!"
-                        )
+                notices = uiState.notices.map { notice ->
+                    NoticeUiModel(
+                        id = notice.id,
+                        title = notice.content,
+                        pinId = notice.pinId,
                     )
                 },
                 iconResId = R.drawable.ic_megaphone,
-                onClick = { _ ->
-                    // TODO: clickedNotice.id 기준으로 공지 상세 보기 또는 이동
+                onClick = { clickedNotice ->
+                    clickedNotice.pinId
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { pinId -> onEvent(CollectionEvent.NoticeClicked(pinId)) }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -193,16 +617,12 @@ private fun CollectionContent(
                     )
                 }
 
-                // 캐릭터
-                Image(
-                    painter = painterResource(
-                        id = uiState.selectedPin?.imageResId ?: R.drawable.ic_character_default
-                    ),
-                    contentDescription = "선택된 핀 캐릭터",
+                CollectionCharacterImage(
+                    imageUrl = uiState.selectedPin?.imageUrl,
+                    contentDescription = uiState.selectedPin?.name ?: "선택된 캐릭터",
                     modifier = Modifier
                         .size(180.dp)
                         .padding(bottom = 20.dp),
-                    alignment = Alignment.BottomCenter
                 )
             }
 
@@ -230,7 +650,7 @@ private fun CollectionContent(
 
                     Button(
                         onClick = { onEvent(CollectionEvent.UpdateProfile) },
-                        enabled = uiState.canUpdateProfile,
+                        enabled = uiState.canUpdateProfile && !uiState.isUpdatingProfile,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = BrandColor,
                             disabledContainerColor = Gray_4
@@ -238,7 +658,7 @@ private fun CollectionContent(
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Text(
-                            text = "프로필 업데이트",
+                            text = if (uiState.isUpdatingProfile) "업데이트 중..." else "프로필 업데이트",
                             style = IssueTypo.Bold12,
                             color = White
                         )
@@ -262,8 +682,8 @@ private fun CollectionContent(
                         PinCard(
                             pin = pin,
                             isSelected = pin.id == uiState.selectedPin?.id,
-                            isCurrentProfile = pin.id == uiState.currentProfilePin?.id,
-                            isBookmarked = pin.id in uiState.bookmarkedPinIds,
+                            isCurrentProfile = pin.collectionId == uiState.currentProfilePin?.collectionId,
+                            isBookmarkLoading = pin.collectionId == uiState.bookmarkingCollectionId,
                             onPinClick = { onEvent(CollectionEvent.SelectPin(pin.id)) },
                             onBookmarkClick = { onEvent(CollectionEvent.ToggleBookmark(pin.id)) }
                         )
@@ -271,20 +691,63 @@ private fun CollectionContent(
                 }
             }
         }
+
+        if (uiState.isLoading && uiState.pins.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(White.copy(alpha = 0.4f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator()
+            }
+        }
     }
 }
 
-//핀 카드
+@Composable
+private fun CollectionCharacterImage(
+    imageUrl: String?,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    val defaultPainter = painterResource(R.drawable.ic_character_default)
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        if (imageUrl.isNullOrBlank()) {
+            Image(
+                painter = defaultPainter,
+                contentDescription = contentDescription,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+            )
+        } else {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = contentDescription,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Fit,
+                placeholder = defaultPainter,
+                error = defaultPainter,
+            )
+        }
+    }
+}
+
 @Composable
 private fun PinCard(
     pin: PinItem,
     isSelected: Boolean,
     isCurrentProfile: Boolean,
-    isBookmarked: Boolean,
+    isBookmarkLoading: Boolean = false,
     onPinClick: () -> Unit,
     onBookmarkClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val defaultPainter = painterResource(R.drawable.ic_character_default)
+
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -322,11 +785,15 @@ private fun PinCard(
                         modifier = Modifier.size(80.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Image(
-                            painter = painterResource(id = pin.imageResId),
+                        AsyncImage(
+                            model = pin.imageUrl,
                             contentDescription = pin.name,
-                            modifier = Modifier.size(80.dp),
-                            alpha = 0.3f
+                            modifier = Modifier
+                                .size(80.dp)
+                                .alpha(0.3f),
+                            contentScale = ContentScale.Fit,
+                            placeholder = defaultPainter,
+                            error = defaultPainter,
                         )
                         Icon(
                             imageVector = Icons.Default.Lock,
@@ -336,21 +803,31 @@ private fun PinCard(
                         )
                     }
                 } else {
-                    Image(
-                        painter = painterResource(id = pin.imageResId),
+                    AsyncImage(
+                        model = pin.imageUrl,
                         contentDescription = pin.name,
-                        modifier = Modifier.size(100.dp)
+                        modifier = Modifier.size(100.dp),
+                        contentScale = ContentScale.Fit,
+                        placeholder = defaultPainter,
+                        error = defaultPainter,
                     )
                 }
 
                 Text(
                     text = pin.name,
-                    style = IssueTypo.Bold18.copy(color = if (pin.isLocked) Gray_5 else Text, fontSize = 16.sp),
+                    style = IssueTypo.Bold18.copy(
+                        color = if (pin.isLocked) Gray_5 else Text,
+                        fontSize = 16.sp,
+                    ),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 8.dp)
                 )
 
-                if (pin.isLocked && pin.unlockCondition != null) {
+                if (
+                    pin.isLocked &&
+                    pin.unlockCondition.isNotBlank() &&
+                    pin.unlockCondition != "없음"
+                ) {
                     Text(
                         text = pin.unlockCondition,
                         style = IssueTypo.Regular12,
@@ -366,14 +843,19 @@ private fun PinCard(
             if (!pin.isLocked) {
                 IconButton(
                     onClick = onBookmarkClick,
+                    enabled = !isBookmarkLoading,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(4.dp)
                 ) {
                     Icon(
-                        imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                        contentDescription = if (isBookmarked) "북마크 해제" else "북마크",
-                        tint = if (isBookmarked) BrandColor else Gray_5
+                        imageVector = if (pin.isBookmarked) {
+                            Icons.Filled.Bookmark
+                        } else {
+                            Icons.Outlined.BookmarkBorder
+                        },
+                        contentDescription = if (pin.isBookmarked) "북마크 해제" else "북마크",
+                        tint = if (pin.isBookmarked) BrandColor else Gray_5
                     )
                 }
             }
@@ -384,6 +866,59 @@ private fun PinCard(
 
 
 //---프리뷰
+@Preview(showBackground = true, name = "Collection · new unlock")
+@Composable
+private fun CollectionNewUnlockPreview() {
+    val unlockedPin = PinItem(
+        collectionId = 5L,
+        name = "음흉씨",
+        imageUrl = "",
+        isLocked = false,
+    )
+    val uiState = CollectionUiState(
+        isLoading = false,
+        pins = listOf(
+            unlockedPin,
+            PinItem(
+                collectionId = 1L,
+                name = "감자빵",
+                imageUrl = "",
+                isBookmarked = true,
+            ),
+        ),
+        selectedPin = unlockedPin,
+        currentProfilePin = PinItem(
+            collectionId = 1L,
+            name = "감자빵",
+            imageUrl = "",
+        ),
+        characterMessage = "새로운 친구가 생겼어!\n음흉씨",
+        newlyUnlocked = listOf(
+            NewUnlockItem(
+                name = "음흉씨",
+                imageUrl = "",
+            ),
+        ),
+    )
+
+    IssueissyuTheme {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                IssueissyuTopAppBar(titleText = "컬렉션")
+                CollectionContent(
+                    uiState = uiState,
+                    onEvent = {},
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            NewUnlockCelebrationOverlay(
+                unlockedCharacters = uiState.newlyUnlocked,
+                onDismiss = {},
+            )
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun CollectionScreenPreview() {

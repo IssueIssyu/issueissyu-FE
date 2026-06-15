@@ -4,6 +4,8 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.FragmentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
@@ -18,10 +20,11 @@ import com.issueissyu.fe.core.notification.parsePushDestination
 import com.issueissyu.fe.core.notification.readPushAlarmId
 import com.issueissyu.fe.domain.repository.AlarmRepository
 import com.issueissyu.fe.ui.App
+import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : FragmentActivity() {
@@ -30,6 +33,7 @@ class MainActivity : FragmentActivity() {
     lateinit var alarmRepository: AlarmRepository
 
     private var pendingPush by mutableStateOf<PushDestination?>(null)
+    lateinit var billingRepository: BillingRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,5 +69,12 @@ class MainActivity : FragmentActivity() {
             }
         }
         intent.clearPushExtras()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        lifecycleScope.launch {
+            billingRepository.restorePurchases()
+        }
     }
 }

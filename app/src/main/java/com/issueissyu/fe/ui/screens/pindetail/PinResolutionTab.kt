@@ -57,6 +57,7 @@ import com.issueissyu.fe.domain.model.pin.IssueResolverParticipation
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
+import com.issueissyu.fe.core.time.formatPinHomeCreatedAt
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.GoNowButton
@@ -81,10 +82,6 @@ import com.issueissyu.fe.ui.theme.Success
 import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-import java.time.Instant
-import java.time.OffsetDateTime
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun PinResolutionTab(
@@ -139,7 +136,6 @@ fun PinResolutionTab(
                 participations = issueDetail.resolverParticipations,
                 resolvedBy = issueDetail.resolvedBy,
                 currentUserId = currentUserId,
-                resolutionStatus = issueDetail.resolutionStatus,
                 resolvedAt = issueDetail.resolvedAt,
                 isWriterSelectionMode = isWriter && !isResolved,
                 onConfirmResolverClick = onConfirmResolverClick,
@@ -274,7 +270,6 @@ private fun ResolverParticipationCard(
     participations: List<IssueResolverParticipation>,
     resolvedBy: PinUser?,
     currentUserId: String,
-    resolutionStatus: ResolutionStatus,
     resolvedAt: String?,
     isWriterSelectionMode: Boolean = false,
     onConfirmResolverClick: (Long) -> Unit = {},
@@ -307,14 +302,6 @@ private fun ResolverParticipationCard(
         SectionHeader(
             text = "시민해결사 참여 현황",
             leadingIconRes = R.drawable.ic_resolver,
-            trailing = {
-                if (resolutionStatus == ResolutionStatus.RESOLVED && !resolvedAt.isNullOrBlank()) {
-                    Text(
-                        text = "${formatTimestamp(resolvedAt)} 해결",
-                        style = IssueTypo.Regular12.copy(color = Gray_6)
-                    )
-                }
-            }
         )
         when {
             resolverItems.isEmpty() -> {
@@ -526,7 +513,7 @@ private fun PinUser.toResolvedFallbackItemUiModel(
 }
 
 private fun formatResolverDisplayTime(raw: String?): String {
-    return raw?.takeIf { it.isNotBlank() }?.let(::formatTimestamp) ?: "시간 미정"
+    return raw?.takeIf { it.isNotBlank() }?.let(::formatPinHomeCreatedAt) ?: "시간 미정"
 }
 
 @Composable
@@ -1051,19 +1038,6 @@ private fun DisabledGoNowFallback(modifier: Modifier = Modifier) {
     }
 }
 
-private fun formatTimestamp(raw: String): String {
-    val pattern = DateTimeFormatter.ofPattern("MM.dd HH:mm")
-    return runCatching {
-        OffsetDateTime.parse(raw).format(pattern)
-    }.getOrElse {
-        runCatching {
-            Instant.parse(raw)
-                .atZone(ZoneId.systemDefault())
-                .format(pattern)
-        }.getOrDefault(raw)
-    }
-}
-
 @Preview(name = "RESOLUTION · 해결 전 (참여자 없음)", showBackground = true, heightDp = 1000)
 @Composable
 private fun PinResolutionTabPreview_BeforeResolution() {
@@ -1140,7 +1114,6 @@ private fun ResolverParticipationCardPreview_InProgress() {
                 participations = detail.resolverParticipations,
                 resolvedBy = detail.resolvedBy,
                 currentUserId = PinSamples.user1.id,
-                resolutionStatus = detail.resolutionStatus,
                 resolvedAt = detail.resolvedAt
             )
         }
@@ -1168,7 +1141,6 @@ private fun ResolverParticipationCardPreview_Resolved() {
                 participations = detail.resolverParticipations,
                 resolvedBy = detail.resolvedBy,
                 currentUserId = PinSamples.user2.id,
-                resolutionStatus = detail.resolutionStatus,
                 resolvedAt = detail.resolvedAt
             )
         }

@@ -32,6 +32,7 @@ import com.issueissyu.fe.domain.model.notification.Notification
 import com.issueissyu.fe.domain.model.notification.NotificationType
 import com.issueissyu.fe.ui.screens.map.MapScreen
 import com.issueissyu.fe.ui.screens.map.NotificationRoute
+import com.issueissyu.fe.ui.screens.landing.LandingScreen
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
 import com.issueissyu.fe.ui.screens.onboarding.LocalVerificationScreen
 import com.issueissyu.fe.ui.screens.onboarding.LoginScreen
@@ -242,16 +243,37 @@ fun AppNavGraph(
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onNavigateToLanding = {}
+                onNavigateToLanding = {
+                    navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                },
             )
         }
+
+        composable(AppDestinations.Onboarding.LANDING_ROUTE) {
+            val previousRoute =
+                navController.previousBackStackEntry?.destination?.route
+            if (previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE) {
+                OnboardingBackDisabledHandler()
+            }
+
+            LandingScreen(
+                onComplete = {
+                    if (previousRoute == AppDestinations.MyPage.MYPAGE_ROUTE) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(AppDestinations.TOWN_ROUTE) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+            )
+        }
+
         composable(AppDestinations.COLLECTION_ROUTE) {
             NavScreenWrapper(paddingValues = paddingValues) {
                 CollectionScreen(
-                    onNavigateToNoticeDetail = { notice ->
-                        notice.toLongOrNull()?.let { communityId ->
-                            navController.navigate(AppDestinations.communityDetailRoute(communityId))
-                        }
+                    onNavigateToPinDetail = { pinId ->
+                        navController.navigateToPinDetail(pinId)
                     },
                 )
             }
@@ -371,6 +393,9 @@ fun AppNavGraph(
                                 navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
                             }
                             MyPageEvent.NavigateToLanding -> {
+                                navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLogin -> {
                                 navController.navigateToLoginClearingBackStack()
                             }
                             MyPageEvent.NavigateToTerm -> {
@@ -518,6 +543,9 @@ fun AppNavGraph(
                     onBackClick = { navController.popBackStack() },
                     onReportClick = { reportPinId ->
                         navController.navigate(AppDestinations.pinReportRoute(reportPinId))
+                    },
+                    onCommunityClick = { communityId ->
+                        navController.navigate(AppDestinations.communityDetailRoute(communityId))
                     },
                 )
             }
