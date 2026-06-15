@@ -354,6 +354,30 @@ data class UpdatePinRequest(
     val imageUrls: List<String> = emptyList()
 )
 
+data class UpdateIssuePinRequest(
+    val title: String,
+    val description: String,
+    val existingImages: List<PinImageRef> = emptyList(),
+    val newImageUris: List<String> = emptyList(),
+    val mainNewImageUri: String? = null,
+)
+
+data class PinEditRateLimitQuota(
+    val enabled: Boolean,
+    val dailyLimit: Int,
+    val usedCount: Int,
+    val remainingCount: Int,
+    val resetAt: String?,
+)
+
+data class IssuePinEditResult(
+    val pin: Pin,
+    val issuePinId: Long,
+    val reliabilityStatus: String?,
+    val imageUploadStatus: String?,
+    val rateLimitQuota: PinEditRateLimitQuota?,
+)
+
 fun Pin.canEditBy(userId: String? = null): Boolean {
     if (communityPostId != null) return false
     return isMine==true

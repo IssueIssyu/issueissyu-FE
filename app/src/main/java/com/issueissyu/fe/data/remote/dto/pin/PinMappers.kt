@@ -1,10 +1,12 @@
 package com.issueissyu.fe.data.remote.dto.pin
 
 import com.issueissyu.fe.data.remote.dto.response.pin.PinCommentDto
+import com.issueissyu.fe.data.remote.dto.response.pin.IssuePinEditResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojiDto
 import com.issueissyu.fe.data.remote.dto.response.pin.PinEmojisResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.PinImageResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinSolveResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsGetResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsJoinResponse
@@ -13,11 +15,13 @@ import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverItemResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverListResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverPhotoResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverVerificationResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.RateLimitQuotaResponse
 import com.issueissyu.fe.core.text.decodePinContentNewlines
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
+import com.issueissyu.fe.domain.model.pin.IssuePinEditResult
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinCategory
@@ -27,6 +31,7 @@ import com.issueissyu.fe.domain.model.pin.PinEmoji
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.model.pin.PinImageRef
 import com.issueissyu.fe.domain.model.pin.PinLike
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
@@ -46,6 +51,31 @@ data class PinDetailHomeImages(
     val attachments: List<PinImageRef>,
     val displayUrls: List<String>
 )
+
+private data class PinDetailMappingSource(
+    val pinId: Long,
+    val pinType: String,
+    val pinTitle: String,
+    val pinContent: String,
+    val issuePinState: String?,
+    val pinDetailAddress: String,
+    val pinImageUrls: List<PinImageResponse>,
+    val likeCount: Int,
+    val isLike: Boolean,
+    val pinUserId: String?,
+    val pinUserProfile: String?,
+    val pinUserNickname: String?,
+    val discount: String?,
+    val storeImageUrl: String?,
+    val isUpdated: Boolean,
+    val createdAt: String,
+    val updatedAt: String?,
+    val viewCount: Int,
+    val isReported: Boolean,
+    val isMine: Boolean,
+    val communityId: Long?,
+)
+
 fun PinCommentDto.toPinComment(): PinComment {
     return PinComment(
         commentId = commentId,
@@ -82,38 +112,24 @@ fun PinDetailPostResponse.toPostSympathyContentOrNull(): PinPostSympathyContent?
 
 fun PinDetailHomeResponse.toPinOrNull(
     coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
-): Pin? {
-    val category = pinType.toPinCategoryOrNull() ?: return null
-    val author = toPinUserOrNull(category)
-    val images = toPinImages()
-    return Pin(
-        id = pinId.toString(),
-        title = pinTitle,
-        description = pinContent.decodePinContentNewlines(),
-        coordinate = coordinate,
-        address = pinDetailAddress,
-        locationName = null,
-        imageUrls = images.displayUrls,
-        imageAttachments = images.attachments,
-        viewCount = viewCount,
-        sympathyCount = likeCount,
-        isSympathizedByMe = isLike,
-        communityPostId = communityId?.toString(),
-        author = author,
-        storeImageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
-        mainPinImageUrl = pinImageUrls
-            .firstOrNull { it.isMain }
-            ?.pinImageUrl
-            ?.takeIf { it.isNotBlank() }
-            ?: pinImageUrls.firstOrNull()?.pinImageUrl?.takeIf { it.isNotBlank() },
-        isMine = isMine,
-        isReported = isReported,
-        isUpdated = isUpdated,
-        createdAt = createdAt,
-        updatedAt = updatedAt,
-        detail = toPinDetail(category, author),
+): Pin? = toPinDetailMappingSource().toPinOrNull(coordinate)
+
+fun IssuePinEditResponse.toIssuePinEditResult(
+    coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
+): IssuePinEditResult? {
+    val pin = toPinOrNull(coordinate) ?: return null
+    return IssuePinEditResult(
+        pin = pin,
+        issuePinId = issuePinId,
+        reliabilityStatus = reliabilityStatus,
+        imageUploadStatus = imageUploadStatus,
+        rateLimitQuota = rateLimitQuota?.toDomain(),
     )
 }
+
+fun IssuePinEditResponse.toPinOrNull(
+    coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
+): Pin? = toPinDetailMappingSource().toPinOrNull(coordinate)
 
 fun PinLikeResponse.toPinLike(): PinLike {
     return PinLike(
@@ -218,7 +234,94 @@ fun PinEmojiDto.toPinEmojiCandidate(): PinEmojiCandidate? {
     )
 }
 
-private fun PinDetailHomeResponse.toPinDetail(
+private fun PinDetailHomeResponse.toPinDetailMappingSource(): PinDetailMappingSource {
+    return PinDetailMappingSource(
+        pinId = pinId,
+        pinType = pinType,
+        pinTitle = pinTitle,
+        pinContent = pinContent,
+        issuePinState = issuePinState,
+        pinDetailAddress = pinDetailAddress,
+        pinImageUrls = pinImageUrls,
+        likeCount = likeCount,
+        isLike = isLike,
+        pinUserId = pinUserId,
+        pinUserProfile = pinUserProfile,
+        pinUserNickname = pinUserNickname,
+        discount = discount,
+        storeImageUrl = storeImageUrl,
+        isUpdated = isUpdated,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        viewCount = viewCount,
+        isReported = isReported,
+        isMine = isMine,
+        communityId = communityId,
+    )
+}
+
+private fun IssuePinEditResponse.toPinDetailMappingSource(): PinDetailMappingSource {
+    return PinDetailMappingSource(
+        pinId = pinId,
+        pinType = pinType,
+        pinTitle = pinTitle,
+        pinContent = pinContent,
+        issuePinState = issuePinState,
+        pinDetailAddress = pinDetailAddress,
+        pinImageUrls = pinImageUrls,
+        likeCount = likeCount,
+        isLike = isLike,
+        pinUserId = pinUserId,
+        pinUserProfile = null,
+        pinUserNickname = pinUserNickname,
+        discount = null,
+        storeImageUrl = null,
+        isUpdated = isUpdated,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        viewCount = view,
+        isReported = isReported,
+        isMine = isMine,
+        communityId = communityId,
+    )
+}
+
+private fun PinDetailMappingSource.toPinOrNull(
+    coordinate: PinCoordinate,
+): Pin? {
+    val category = pinType.toPinCategoryOrNull() ?: return null
+    val author = toPinUserOrNull(category)
+    val images = toPinImages()
+    return Pin(
+        id = pinId.toString(),
+        title = pinTitle,
+        description = pinContent.decodePinContentNewlines(),
+        coordinate = coordinate,
+        address = pinDetailAddress,
+        locationName = null,
+        imageUrls = images.displayUrls,
+        imageAttachments = images.attachments,
+        viewCount = viewCount,
+        sympathyCount = likeCount,
+        isSympathizedByMe = isLike,
+        communityPostId = communityId?.toString(),
+        author = author,
+        storeImageUrl = storeImageUrl?.takeIf { it.isNotBlank() },
+        mainPinImageUrl = pinImageUrls
+            .firstOrNull { it.isMain }
+            ?.pinImageUrl
+            ?.takeIf { it.isNotBlank() }
+            ?: pinImageUrls.firstOrNull()?.pinImageUrl?.takeIf { it.isNotBlank() },
+        isMine = isMine,
+        isReported = isReported,
+        isUpdated = isUpdated,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        detail = toPinDetail(category, author),
+    )
+}
+
+private fun PinDetailMappingSource.toPinDetail(
     category: PinCategory,
     author: PinUser?,
 ): PinDetail {
@@ -239,7 +342,7 @@ private fun PinDetailHomeResponse.toPinDetail(
     }
 }
 
-private fun PinDetailHomeResponse.toPinUserOrNull(category: PinCategory): PinUser? {
+private fun PinDetailMappingSource.toPinUserOrNull(category: PinCategory): PinUser? {
     when (category) {
         PinCategory.ISSUE, PinCategory.COMMUNICATION, PinCategory.FESTIVAL -> Unit
         else -> return null
@@ -254,7 +357,7 @@ private fun PinDetailHomeResponse.toPinUserOrNull(category: PinCategory): PinUse
 
 private val DETAIL_HOME_NO_KEYWORDS: List<String> = emptyList()
 
-private fun PinDetailHomeResponse.toPinImages(): PinDetailHomeImages {
+private fun PinDetailMappingSource.toPinImages(): PinDetailHomeImages {
     val sorted = pinImageUrls.sortedByDescending { it.isMain }
     val attachments = sorted.map {
         PinImageRef(
@@ -271,12 +374,22 @@ private fun PinDetailHomeResponse.toPinImages(): PinDetailHomeImages {
 
 private fun String?.toResolutionStatus(): ResolutionStatus? {
     return when (this?.trim()?.uppercase()) {
-        "BEFORE_RESOLUTION" -> ResolutionStatus.BEFORE_RESOLUTION
+        "BEFORE_RESOLUTION", "BEFORE_PROGRESS", "BEFORE", "READY" -> ResolutionStatus.BEFORE_RESOLUTION
         "IN_PROGRESS" -> ResolutionStatus.IN_PROGRESS
         "RESOLVED" -> ResolutionStatus.RESOLVED
         null, "" -> null
         else -> null
     }
+}
+
+private fun RateLimitQuotaResponse.toDomain(): PinEditRateLimitQuota {
+    return PinEditRateLimitQuota(
+        enabled = enabled,
+        dailyLimit = dailyLimit,
+        usedCount = usedCount,
+        remainingCount = remainingCount,
+        resetAt = resetAt,
+    )
 }
 
 private fun PinEmojiDto.toPinEmoji(): PinEmoji? {

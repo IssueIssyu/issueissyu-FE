@@ -25,7 +25,7 @@ data class PinDetailHomeResponse(
 )
 
 data class PinImageResponse(
-    val pinImageId: Long,
-    val pinImageUrl: String,
-    val isMain: Boolean,
+    val pinImageId: Long = 0,
+    val pinImageUrl: String = "",
+    val isMain: Boolean = false,
 )

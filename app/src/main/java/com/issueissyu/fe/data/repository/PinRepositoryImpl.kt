@@ -9,6 +9,7 @@ import com.issueissyu.fe.data.remote.api.PinApi
 import com.issueissyu.fe.data.remote.dto.pin.toPinSolveInfo
 import com.issueissyu.fe.data.remote.dto.pin.toPetitionJoinInfo
 import com.issueissyu.fe.data.remote.dto.pin.toPetitionStatusInfo
+import com.issueissyu.fe.data.remote.dto.pin.toIssuePinEditResult
 import com.issueissyu.fe.data.remote.dto.pin.toPinOrNull
 import com.issueissyu.fe.data.remote.dto.pin.toPinComment
 import com.issueissyu.fe.data.remote.dto.pin.toPinEmojiCandidate
@@ -23,6 +24,8 @@ import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.CommunicationPinImportRequest
+import com.issueissyu.fe.data.remote.dto.request.pin.IssuePinEditExistingImageRequest
+import com.issueissyu.fe.data.remote.dto.request.pin.IssuePinEditRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.IssuePinImportRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinImageItemRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
@@ -55,6 +58,7 @@ import com.issueissyu.fe.domain.model.pin.AuthoredPinDetail
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
+import com.issueissyu.fe.domain.model.pin.IssuePinEditResult
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PetitionSubmit
@@ -63,6 +67,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinSolveStatus
 import com.issueissyu.fe.domain.model.pin.PinUser
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
+import com.issueissyu.fe.domain.model.pin.UpdateIssuePinRequest
 import java.time.Instant
 import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.core.media.PinImageMimeResolver
@@ -366,6 +371,103 @@ class PinRepositoryImpl @Inject constructor(
         // TODO: 실제 백엔드 API를 호출하여 핀을 업데이트하고, 서버로부터 반환된 실제 Pin 객체를 사용해야 합니다.
         dummyPins[index] = updatedPin
         return updatedPin
+    }
+
+    override suspend fun updateIssuePin(
+        pinId: Long,
+        request: UpdateIssuePinRequest,
+    ): Result<IssuePinEditResult> = withContext(Dispatchers.IO) {
+        var uploadMetas = emptyList<PinImageUploadMeta>()
+        try {
+            if (request.newImageUris.isNotEmpty()) {
+                PinImageUploadValidator.validate(context, request.newImageUris).getOrThrow()
+            }
+            val multipart = request.newImageUris.toMultipartParts()
+            uploadMetas = multipart.uploadMetas
+            if (uploadMetas.isNotEmpty()) {
+                PinImageUploadDiagnostics.logUploadPrepare(
+                    category = PinCategory.ISSUE.name,
+                    metas = uploadMetas,
+                )
+            }
+            val response = aiIssueApiService.editIssuePin(
+                pinId = pinId,
+                request = gson.toJson(request.toIssuePinEditRequest()).toJsonPart(),
+                photos = multipart.parts,
+            )
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return@withContext Result.failure(
+                        issuePinEditException(
+                            code = response.code,
+                            message = response.message.ifBlank { "이슈 핀 수정 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                val editResult = result.toIssuePinEditResult()
+                    ?: return@withContext Result.failure(
+                        issuePinEditException(
+                            code = response.code,
+                            message = result.pinType.toUnsupportedPinTypeMessage(),
+                        ),
+                    )
+                Result.success(editResult)
+            } else {
+                if (request.newImageUris.isNotEmpty()) {
+                    PinImageUploadDiagnostics.logUploadFailure(
+                        httpStatus = null,
+                        serverCode = response.code,
+                        metas = uploadMetas,
+                        responseBody = gson.toJson(response),
+                    )
+                }
+                Result.failure(issuePinEditException(response.code, response.message))
+            }
+        } catch (e: HttpException) {
+            val rawBody = apiErrorMapper.readHttpErrorBody(e)
+            val errorEnvelope = apiErrorMapper.parseErrorBody(rawBody, PinCreateErrorEnvelope::class.java)
+            if (request.newImageUris.isNotEmpty()) {
+                PinImageUploadDiagnostics.logUploadFailure(
+                    httpStatus = e.code(),
+                    serverCode = errorEnvelope?.code,
+                    metas = uploadMetas,
+                    responseBody = rawBody.takeIf { it.isNotBlank() },
+                )
+            }
+            Result.failure(
+                issuePinEditException(
+                    code = errorEnvelope?.code,
+                    message = errorEnvelope?.message,
+                ),
+            )
+        } catch (e: Exception) {
+            if (request.newImageUris.isNotEmpty() && uploadMetas.isNotEmpty()) {
+                PinImageUploadDiagnostics.logUploadFailure(
+                    httpStatus = null,
+                    serverCode = e.javaClass.simpleName,
+                    metas = uploadMetas,
+                )
+            }
+            failureFrom(e, "이슈 핀 수정에 실패했습니다.")
+        }
+    }
+
+    private fun UpdateIssuePinRequest.toIssuePinEditRequest(): IssuePinEditRequest {
+        val mainNewUri = mainNewImageUri?.takeIf { newImageUris.contains(it) } ?: newImageUris.firstOrNull()
+        val pinImages = newImageUris.takeIf { it.isNotEmpty() }?.map { uri ->
+            PinImageItemRequest(isMain = uri == mainNewUri)
+        }
+        val pinImageUrls = existingImages.takeIf { it.isNotEmpty() }?.map { image ->
+            IssuePinEditExistingImageRequest(
+                pinImageUrl = image.imageUrl,
+                isMain = image.isMain,
+            )
+        }
+        return IssuePinEditRequest(
+            pinTitle = title,
+            pinContent = description,
+            pinImageUrls = pinImageUrls,
+            pinImages = pinImages,
+        )
     }
 
     override suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker> {
@@ -1234,6 +1336,36 @@ private fun problemSolverVerificationException(code: String, message: String): E
             }
         },
     )
+}
+
+private fun issuePinEditException(code: String?, message: String?): Exception {
+    val normalizedCode = code?.takeIf { it.isNotBlank() }
+    val normalizedMessage = message?.takeIf { it.isNotBlank() }
+    val userMessage = when (normalizedCode) {
+        "ISSUE_PIN_EDIT_400_1" ->
+            normalizedMessage
+                ?: "요청 정보가 올바르지 않습니다. 제목, 내용, 사진을 확인해주세요."
+        "ISSUE_PIN_EDIT_400_2" ->
+            normalizedMessage ?: "이슈 핀 수정 저장에 실패했습니다."
+        "PIN_IMAGE_400_1" ->
+            normalizedMessage ?: "첨부한 사진 용량이 너무 큽니다. (최대 50MB)"
+        "PIN_IMAGE_400_2" ->
+            normalizedMessage
+                ?: "사진 첨부에 실패했습니다. 다른 사진으로 다시 시도해주세요."
+        "PIN_IMAGE_400_3" ->
+            normalizedMessage ?: "사진은 최대 5장까지 등록할 수 있습니다."
+        "COMMON_403" ->
+            normalizedMessage ?: "본인이 작성한 핀만 수정할 수 있습니다."
+        "ISSUE_4041" ->
+            normalizedMessage ?: "존재하지 않는 핀이거나 이슈 핀이 아닙니다."
+        "USER_4041" ->
+            normalizedMessage ?: "사용자 정보를 찾을 수 없습니다."
+        "ISSUE_4292" ->
+            normalizedMessage ?: "이 핀의 일일 수정 횟수를 초과했습니다."
+        else ->
+            normalizedMessage ?: "이슈 핀 수정에 실패했습니다."
+    }
+    return Exception(userMessage)
 }
 
 private fun petitionStatusException(code: String, message: String): Exception {

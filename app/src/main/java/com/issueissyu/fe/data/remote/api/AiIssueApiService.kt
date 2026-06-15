@@ -4,11 +4,13 @@ import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.issue.IssueAiDraftResponse
 import com.issueissyu.fe.data.remote.dto.response.issue.IssueReliabilityResponse
 import com.issueissyu.fe.data.remote.dto.response.issue.IssueToneTypeResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.IssuePinEditResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinImportResponse
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Part
 import retrofit2.http.Path
@@ -35,6 +37,14 @@ interface AiIssueApiService {
         @Part("request") request: RequestBody,
         @Part photos: List<MultipartBody.Part>,
     ): BaseResponse<PinImportResponse?>
+
+    @Multipart
+    @PATCH("issues/pin/{pin_id}")
+    suspend fun editIssuePin(
+        @Path("pin_id") pinId: Long,
+        @Part("request") request: RequestBody,
+        @Part photos: List<MultipartBody.Part>,
+    ): BaseResponse<IssuePinEditResponse?>
 
     @GET("issues/pin/{pin_id}/reliability")
     suspend fun getIssueReliability(
