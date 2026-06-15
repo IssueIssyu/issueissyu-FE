@@ -156,7 +156,14 @@ class PinDetailViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = e.message?.takeIf { msg ->
+                                msg.isNotBlank() && !msg.startsWith("HTTP ")
+                            } ?: "핀 정보를 불러오지 못했습니다.",
+                        )
+                    }
                 }
         }
     }

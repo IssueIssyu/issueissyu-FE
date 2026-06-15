@@ -71,7 +71,7 @@ fun AppNavGraph(
 
     LaunchedEffect(sessionViewModel, navController, context) {
         sessionViewModel.sessionExpiredMessages.collect { message ->
-            if (navController.currentDestination?.route != LOGIN_ROUTE) {
+            if (!navController.currentDestination?.route.isLoginRoute()) {
                 navController.navigateToLoginClearingBackStack()
             }
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -91,7 +91,7 @@ fun AppNavGraph(
                     val route = navController.currentDestination?.route ?: return@collect
                     if (
                         route == AppDestinations.Onboarding.SPLASH_ROUTE ||
-                        route == LOGIN_ROUTE
+                        route.isLoginRoute()
                     ) {
                         return@collect
                     }
@@ -113,8 +113,8 @@ fun AppNavGraph(
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
                 },
-                onNavigateToLogin = {
-                    navController.navigateToLoginClearingBackStack()
+                onNavigateToLogin = { showStorageWarning ->
+                    navController.navigateToLoginClearingBackStack(showStorageWarning)
                 },
                 onNavigateToOnboarding = {
                     navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
@@ -124,8 +124,19 @@ fun AppNavGraph(
             )
         }
 
-        composable(LOGIN_ROUTE) {
+        composable(
+            route = AppDestinations.Onboarding.LOGIN_ROUTE_WITH_ARGS,
+            arguments = listOf(
+                navArgument("storageWarning") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { backStackEntry ->
+            val showStorageWarning =
+                backStackEntry.arguments?.getBoolean("storageWarning") ?: false
             LoginScreen(
+                showStorageWarning = showStorageWarning,
                 viewModel = hiltViewModel(),
                 onLoginSuccess = { isNewUser ->
                     if (isNewUser) {
@@ -653,8 +664,13 @@ private fun OnboardingBackDisabledHandler() {
     BackHandler { }
 }
 
-private fun NavHostController.navigateToLoginClearingBackStack() {
-    navigate(LOGIN_ROUTE) {
+private fun String?.isLoginRoute(): Boolean =
+    this?.startsWith(LOGIN_ROUTE) == true
+
+private fun NavHostController.navigateToLoginClearingBackStack(
+    showStorageWarning: Boolean = false,
+) {
+    navigate(AppDestinations.Onboarding.loginRoute(showStorageWarning)) {
         popUpTo(0) { inclusive = true }
     }
 }

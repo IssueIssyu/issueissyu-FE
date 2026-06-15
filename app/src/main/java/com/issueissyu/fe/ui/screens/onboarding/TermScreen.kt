@@ -48,7 +48,6 @@ fun TermScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,

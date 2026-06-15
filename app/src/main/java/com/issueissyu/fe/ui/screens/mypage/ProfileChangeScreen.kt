@@ -1,6 +1,5 @@
 package com.issueissyu.fe.ui.screens.mypage
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -19,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import android.widget.Toast
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -86,7 +86,8 @@ fun ProfileChangeScreen(
 
     Column(
         modifier = Modifier
-            .background(White)
+            .fillMaxSize()
+            .background(White),
     ) {
         IssueissyuTopAppBar(
             titleText = "프로필 편집",

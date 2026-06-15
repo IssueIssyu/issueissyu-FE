@@ -60,7 +60,6 @@ import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-
 internal const val PIN_DETAIL_REFRESH_KEY = "pin_detail_refresh"
 
 @Composable

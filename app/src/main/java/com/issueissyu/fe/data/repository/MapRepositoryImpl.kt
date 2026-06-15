@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.core.text.decodePinContentNewlines
 import com.issueissyu.fe.data.remote.api.MapApi
 import com.issueissyu.fe.data.remote.dto.response.map.MapNoticeItemResponse
@@ -29,7 +30,11 @@ import javax.inject.Singleton
 @Singleton
 class MapRepositoryImpl @Inject constructor(
     private val mapApi: MapApi,
+    private val apiErrorMapper: ApiErrorMapper,
 ) : MapRepository {
+
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+        Result.failure(apiErrorMapper.toException(e, fallback))
 
     override suspend fun getMapPinsInBounds(
         bounds: MapBounds,
@@ -87,7 +92,7 @@ class MapRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "패치노트 조회에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "패치노트 조회에 실패했습니다.")
         }
     }
 
@@ -100,7 +105,7 @@ class MapRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "지도 공지사항 조회에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "지도 공지사항 조회에 실패했습니다.")
         }
     }
 

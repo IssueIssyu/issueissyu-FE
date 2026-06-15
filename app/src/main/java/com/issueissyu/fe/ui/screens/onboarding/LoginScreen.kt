@@ -2,13 +2,14 @@ package com.issueissyu.fe.ui.screens.onboarding
 
 import android.content.Context
 import android.content.ContextWrapper
-import androidx.compose.foundation.layout.Box
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,6 +37,7 @@ import androidx.fragment.app.FragmentActivity
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.R
+import com.issueissyu.fe.core.auth.SessionManager
 import com.navercorp.nid.NaverIdLoginSDK
 import com.navercorp.nid.oauth.OAuthLoginCallback
 import com.issueissyu.fe.ui.components.CommonButton
@@ -51,6 +53,7 @@ import com.issueissyu.fe.ui.theme.suiteFontFamily
 
 @Composable
 fun LoginScreen(
+    showStorageWarning: Boolean = false,
     viewModel: LoginViewModel = hiltViewModel(),
     onLoginSuccess: (isNew: Boolean) -> Unit,
     onNavigateToSignUp: () -> Unit,
@@ -58,6 +61,15 @@ fun LoginScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val onLoginSuccessUpdated by rememberUpdatedState(onLoginSuccess)
+    LaunchedEffect(showStorageWarning) {
+        if (showStorageWarning) {
+            Toast.makeText(
+                context,
+                SessionManager.STORAGE_UNAVAILABLE_MESSAGE,
+                Toast.LENGTH_LONG,
+            ).show()
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->

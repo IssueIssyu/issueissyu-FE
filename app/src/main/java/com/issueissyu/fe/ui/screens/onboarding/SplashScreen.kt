@@ -1,6 +1,5 @@
 package com.issueissyu.fe.ui.screens.onboarding
 
-import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -14,38 +13,26 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.R
-import com.issueissyu.fe.core.auth.SessionManager
 import com.issueissyu.fe.ui.theme.White
 
 @Composable
 fun SplashScreen(
     onNavigateToMain: () -> Unit,
-    onNavigateToLogin: () -> Unit,
+    onNavigateToLogin: (showStorageWarning: Boolean) -> Unit,
     onNavigateToOnboarding: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel(),
 ) {
     val destination by viewModel.destination.collectAsState()
-    val context = LocalContext.current
 
     LaunchedEffect(destination) {
         when (val current = destination) {
             SplashDestination.Loading -> Unit
-            is SplashDestination.Login -> {
-                if (current.showStorageWarning) {
-                    Toast.makeText(
-                        context,
-                        SessionManager.STORAGE_UNAVAILABLE_MESSAGE,
-                        Toast.LENGTH_LONG,
-                    ).show()
-                }
-                onNavigateToLogin()
-            }
+            is SplashDestination.Login -> onNavigateToLogin(current.showStorageWarning)
             SplashDestination.Main -> onNavigateToMain()
             SplashDestination.Onboarding -> onNavigateToOnboarding()
         }
