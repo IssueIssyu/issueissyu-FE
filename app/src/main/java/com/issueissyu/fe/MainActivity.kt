@@ -12,8 +12,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
 import com.issueissyu.fe.core.notification.PushDestination
 import com.issueissyu.fe.core.notification.clearPushExtras
 import com.issueissyu.fe.core.notification.parsePushDestination
