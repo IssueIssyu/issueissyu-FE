@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -57,7 +58,6 @@ import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.ui.components.ActionState
-import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
@@ -371,16 +371,8 @@ private fun CommunityDetailBody(
                     isDeleting = isCommunityDeleting,
                     onDeleteClick = onCommunityDeleteClick,
                     onTakedownClick = onCommunityTakedownClick,
+                    onCardNewsClick = onCardNewsClick,
                 )
-            }
-
-            if (
-                (detail.kind == CommunityItemKind.POLICY || detail.kind == CommunityItemKind.CONTEST) &&
-                !detail.moveCardnews.isNullOrBlank()
-            ) {
-                item {
-                    CommunityCardNewsEntrySection(onClick = onCardNewsClick)
-                }
             }
 
             // 4. 이미지 섹션
@@ -572,15 +564,32 @@ private fun CommunityDetailOutlinedIconButton(
 }
 
 @Composable
-private fun CommunityCardNewsEntrySection(onClick: () -> Unit) {
-    CommonButton(
-        onClick = onClick,
-        text = "카드뉴스 보기",
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 4.dp),
-        textStyle = IssueTypo.Bold12.copy(color = White),
-    )
+private fun CommunityCardNewsLinkButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandColor)
+            .clickable(onClick = onClick)
+            .padding(start = 12.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "카드뉴스",
+            maxLines = 1,
+            softWrap = false,
+            style = IssueTypo.Bold12.copy(color = White),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = White,
+            modifier = Modifier.size(18.dp),
+        )
+    }
 }
 
 @Composable
@@ -638,7 +647,12 @@ private fun CommunityDetailTitleSection(
     isDeleting: Boolean,
     onDeleteClick: () -> Unit,
     onTakedownClick: () -> Unit,
+    onCardNewsClick: () -> Unit,
 ) {
+    val showCardNewsLink = (
+        detail.kind == CommunityItemKind.POLICY || detail.kind == CommunityItemKind.CONTEST
+        ) && !detail.moveCardnews.isNullOrBlank()
+
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -659,7 +673,17 @@ private fun CommunityDetailTitleSection(
                 onTakedownClick = onTakedownClick,
             )
         }
-        
+
+        if (showCardNewsLink) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                CommunityCardNewsLinkButton(onClick = onCardNewsClick)
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         
         Row(
