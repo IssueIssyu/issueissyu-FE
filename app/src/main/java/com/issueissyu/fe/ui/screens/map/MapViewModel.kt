@@ -101,6 +101,7 @@ class MapViewModel @Inject constructor(
     private val _currentBounds = MutableStateFlow<MapBounds?>(null)
     private var currentZoomLevel: Int = DEFAULT_MAP_ZOOM_LEVEL
     private var autoRefreshJob: Job? = null
+    private var refreshJob: Job? = null
     private var refreshRequestId: Long = 0
 
     private val _isLocationSelectionMode = MutableStateFlow(false)
@@ -235,37 +236,40 @@ class MapViewModel @Inject constructor(
         val selectedPinIdAtRequest = _selectedPin.value?.id
         val requestId = ++refreshRequestId
 
-        viewModelScope.launch {
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _isMapRefreshing.value = true
-            mapRepository.getMapPinsInBounds(
-                bounds = bounds,
-                zoomLevel = zoomLevel,
-                category = category,
-            ).onSuccess { result ->
-                if (requestId != refreshRequestId) return@onSuccess
-                _mapPins.value = result.pins
-                _mapClusters.value = result.clusters
-                clearSelectionIfOutsideResult(
-                    selectedPinIdAtRequest = selectedPinIdAtRequest,
-                    resultPinIds = buildSet {
-                        result.pins.forEach { add(it.pinId) }
-                        result.clusters.forEach { cluster ->
-                            cluster.pins.forEach { add(it.pinId) }
-                        }
-                    },
-                )
-                hideResearchAreaButton()
-            }.onFailure { error ->
-                if (requestId != refreshRequestId) return@onFailure
-                showResearchAreaButton()
-                _messageEvents.emit(
-                    error.message?.takeIf { it.isNotBlank() }
-                        ?: "지도 핀을 불러오지 못했습니다."
-                )
-            }
-
-            if (requestId == refreshRequestId) {
-                _isMapRefreshing.value = false
+            try {
+                mapRepository.getMapPinsInBounds(
+                    bounds = bounds,
+                    zoomLevel = zoomLevel,
+                    category = category,
+                ).onSuccess { result ->
+                    if (requestId != refreshRequestId) return@onSuccess
+                    _mapPins.value = result.pins
+                    _mapClusters.value = result.clusters
+                    clearSelectionIfOutsideResult(
+                        selectedPinIdAtRequest = selectedPinIdAtRequest,
+                        resultPinIds = buildSet {
+                            result.pins.forEach { add(it.pinId) }
+                            result.clusters.forEach { cluster ->
+                                cluster.pins.forEach { add(it.pinId) }
+                            }
+                        },
+                    )
+                    hideResearchAreaButton()
+                }.onFailure { error ->
+                    if (requestId != refreshRequestId) return@onFailure
+                    showResearchAreaButton()
+                    _messageEvents.emit(
+                        error.message?.takeIf { it.isNotBlank() }
+                            ?: "지도 핀을 불러오지 못했습니다."
+                    )
+                }
+            } finally {
+                if (requestId == refreshRequestId) {
+                    _isMapRefreshing.value = false
+                }
             }
         }
     }
