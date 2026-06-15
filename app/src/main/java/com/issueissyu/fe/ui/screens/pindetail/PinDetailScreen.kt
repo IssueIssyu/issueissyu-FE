@@ -48,8 +48,10 @@ import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinImageRef
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
+import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.BrandColor
@@ -88,6 +90,19 @@ fun PinDetailScreen(
         cameraFileNamePrefix = "resolution-proof",
     )
     resolutionProofPhotoPicker.PhotoSourceBottomSheet()
+
+    val homeEditPhotoCount = if (uiState.isHomeEditing) {
+        uiState.homeEditExistingImages.size + uiState.homeEditNewImageUris.size
+    } else {
+        0
+    }
+    val homeEditPhotoPicker = rememberPhotoSourcePicker(
+        currentCount = homeEditPhotoCount,
+        maxCount = PinImageUploadConstraints.MAX_COUNT,
+        onImagesPicked = viewModel::addHomeEditImageUris,
+        cameraFileNamePrefix = "pin-edit",
+    )
+    homeEditPhotoPicker.PhotoSourceBottomSheet()
 
     LaunchedEffect(pinId) {
         viewModel.loadPin(pinId)
@@ -153,7 +168,7 @@ fun PinDetailScreen(
                         onCommentEditCancel = viewModel::cancelEditComment,
                         onCommentDelete = viewModel::deleteComment,
                         onReportClick = onReportClick,
-                        onEditClick = { /* TODO: 핀 수정 화면 */ },
+                        onEditClick = { viewModel.startHomeEdit() },
                         onDeleteClick = { deletePinId ->
                             viewModel.deletePin(deletePinId, onSuccess = onBackClick)
                         },
@@ -164,6 +179,21 @@ fun PinDetailScreen(
                         onGoNowClick = viewModel::joinProblemSolver,
                         onPetitionClick = viewModel::joinPetition,
                         onConfirmResolverClick = viewModel::verifyProblemSolver,
+                        isHomeEditing = uiState.isHomeEditing,
+                        homeEditTitle = uiState.homeEditTitle,
+                        homeEditDescription = uiState.homeEditDescription,
+                        homeEditExistingImages = uiState.homeEditExistingImages,
+                        homeEditNewImageUris = uiState.homeEditNewImageUris,
+                        homeEditMainImageKey = uiState.homeEditMainImageKey,
+                        isSubmittingHomeEdit = uiState.isSubmittingHomeEdit,
+                        onHomeEditTitleChange = viewModel::onHomeEditTitleChange,
+                        onHomeEditDescriptionChange = viewModel::onHomeEditDescriptionChange,
+                        onHomeEditCancel = viewModel::cancelHomeEdit,
+                        onHomeEditSubmit = viewModel::submitHomeEdit,
+                        onHomeEditPhotoAddClick = homeEditPhotoPicker.showSourceSheet,
+                        onHomeEditExistingImageRemove = viewModel::removeHomeEditExistingImage,
+                        onHomeEditNewImageRemove = viewModel::removeHomeEditNewImageUri,
+                        onHomeEditMainImageSelect = viewModel::setHomeEditMainImage,
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -233,6 +263,21 @@ private fun PinDetailContent(
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
     onConfirmResolverClick: (Long) -> Unit,
+    isHomeEditing: Boolean = false,
+    homeEditTitle: String = "",
+    homeEditDescription: String = "",
+    homeEditExistingImages: List<PinImageRef> = emptyList(),
+    homeEditNewImageUris: List<String> = emptyList(),
+    homeEditMainImageKey: String? = null,
+    isSubmittingHomeEdit: Boolean = false,
+    onHomeEditTitleChange: (String) -> Unit = {},
+    onHomeEditDescriptionChange: (String) -> Unit = {},
+    onHomeEditCancel: () -> Unit = {},
+    onHomeEditSubmit: () -> Unit = {},
+    onHomeEditPhotoAddClick: () -> Unit = {},
+    onHomeEditExistingImageRemove: (String) -> Unit = {},
+    onHomeEditNewImageRemove: (String) -> Unit = {},
+    onHomeEditMainImageSelect: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val tabs = buildList {
@@ -249,6 +294,7 @@ private fun PinDetailContent(
             tabs = tabs,
             selectedTab = effectiveTab,
             onSelectTab = onSelectTab,
+            enabled = !isHomeEditing,
         )
 
         when (effectiveTab) {
@@ -259,6 +305,21 @@ private fun PinDetailContent(
                 onDeleteClick = onDeleteClick,
                 onCommunityClick = onCommunityClick,
                 isDeleting = uiState.isDeleting,
+                isEditing = isHomeEditing,
+                editTitle = homeEditTitle,
+                editDescription = homeEditDescription,
+                editExistingImages = homeEditExistingImages,
+                editNewImageUris = homeEditNewImageUris,
+                editMainImageKey = homeEditMainImageKey,
+                isSubmittingEdit = isSubmittingHomeEdit,
+                onEditTitleChange = onHomeEditTitleChange,
+                onEditDescriptionChange = onHomeEditDescriptionChange,
+                onEditCancelClick = onHomeEditCancel,
+                onEditSubmitClick = onHomeEditSubmit,
+                onEditPhotoAddClick = onHomeEditPhotoAddClick,
+                onEditExistingImageRemove = onHomeEditExistingImageRemove,
+                onEditNewImageRemove = onHomeEditNewImageRemove,
+                onEditMainImageSelect = onHomeEditMainImageSelect,
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -315,6 +376,7 @@ private fun PinDetailTabBar(
     tabs: List<PinDetailTab>,
     selectedTab: PinDetailTab,
     onSelectTab: (PinDetailTab) -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val selectedIndex = remember(tabs, selectedTab) {
@@ -327,7 +389,7 @@ private fun PinDetailTabBar(
                 PinDetailTabItem(
                     label = tab.label(),
                     selected = selectedTab == tab,
-                    onClick = { onSelectTab(tab) },
+                    onClick = { if (enabled) onSelectTab(tab) },
                     modifier = Modifier.weight(1f),
                 )
             }

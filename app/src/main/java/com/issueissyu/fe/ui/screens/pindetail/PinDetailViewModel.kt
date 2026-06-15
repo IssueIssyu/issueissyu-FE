@@ -9,7 +9,9 @@ import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.IssueResolverParticipation
 import com.issueissyu.fe.domain.model.pin.PinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinComment
+import com.issueissyu.fe.domain.model.pin.PinImageRef
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.PinSolveInfo
@@ -20,11 +22,14 @@ import com.issueissyu.fe.domain.model.pin.ProblemSolverParticipantInfo
 import com.issueissyu.fe.domain.model.issue.IssueReliability
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
+import com.issueissyu.fe.domain.model.pin.UpdateIssuePinRequest
+import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.withHomeFallback
 import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.core.issue.IssueReliabilityPolling
+import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.domain.usecase.issue.GetIssueReliabilityUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -64,6 +69,13 @@ data class PinDetailUiState(
     val reliabilityReason: String? = null,
     val reliabilityStatus: IssueReliabilityStatus? = null,
     val errorMessage: String? = null,
+    val isHomeEditing: Boolean = false,
+    val homeEditTitle: String = "",
+    val homeEditDescription: String = "",
+    val homeEditExistingImages: List<PinImageRef> = emptyList(),
+    val homeEditNewImageUris: List<String> = emptyList(),
+    val homeEditMainImageKey: String? = null,
+    val isSubmittingHomeEdit: Boolean = false,
 )
 
 data class PinDetailEmojiPickerUiState(
@@ -135,6 +147,13 @@ class PinDetailViewModel @Inject constructor(
                     reliabilityScore = null,
                     reliabilityReason = null,
                     reliabilityStatus = null,
+                    isHomeEditing = false,
+                    homeEditTitle = "",
+                    homeEditDescription = "",
+                    homeEditExistingImages = emptyList(),
+                    homeEditNewImageUris = emptyList(),
+                    homeEditMainImageKey = null,
+                    isSubmittingHomeEdit = false,
                 )
             }
 
@@ -216,6 +235,7 @@ class PinDetailViewModel @Inject constructor(
     private fun lookupEmojiImage(emojiId: Long): String? = emojiImageById[emojiId]
 
     fun selectTab(tab: PinDetailTab) {
+        if (_uiState.value.isHomeEditing) return
         _uiState.update { it.copy(selectedTab = tab) }
         if (tab == PinDetailTab.POST) {
             resolvePinId()?.let { pinId ->
@@ -586,6 +606,168 @@ class PinDetailViewModel @Inject constructor(
                 .onFailure { e ->
                     showToast(e.message ?: "이모지 반응 처리에 실패했습니다.")
                 }
+        }
+    }
+
+    fun startHomeEdit() {
+        val pin = _uiState.value.pin ?: return
+        if (!pin.canEditBy(currentUserId) || pin.category != PinCategory.ISSUE) return
+
+        val attachments = pin.imageAttachments.takeIf { it.isNotEmpty() }
+            ?: pin.imageUrls.mapIndexed { index, url ->
+                PinImageRef(
+                    pinImageId = 0,
+                    imageUrl = url,
+                    isMain = index == 0,
+                )
+            }
+        val mainKey = attachments.firstOrNull { it.isMain }?.imageUrl
+            ?: attachments.firstOrNull()?.imageUrl
+
+        _uiState.update {
+            it.copy(
+                isHomeEditing = true,
+                homeEditTitle = pin.title,
+                homeEditDescription = pin.description,
+                homeEditExistingImages = attachments,
+                homeEditNewImageUris = emptyList(),
+                homeEditMainImageKey = mainKey,
+                isSubmittingHomeEdit = false,
+                selectedTab = PinDetailTab.HOME,
+            )
+        }
+    }
+
+    fun cancelHomeEdit() {
+        _uiState.update {
+            it.copy(
+                isHomeEditing = false,
+                homeEditTitle = "",
+                homeEditDescription = "",
+                homeEditExistingImages = emptyList(),
+                homeEditNewImageUris = emptyList(),
+                homeEditMainImageKey = null,
+                isSubmittingHomeEdit = false,
+            )
+        }
+    }
+
+    fun onHomeEditTitleChange(value: String) {
+        if (!_uiState.value.isHomeEditing) return
+        _uiState.update { it.copy(homeEditTitle = value) }
+    }
+
+    fun onHomeEditDescriptionChange(value: String) {
+        if (!_uiState.value.isHomeEditing) return
+        _uiState.update { it.copy(homeEditDescription = value) }
+    }
+
+    fun addHomeEditImageUris(uris: List<String>) {
+        if (!_uiState.value.isHomeEditing || uris.isEmpty()) return
+        _uiState.update { state ->
+            val maxNew = (PinImageUploadConstraints.MAX_COUNT - state.homeEditExistingImages.size)
+                .coerceAtLeast(0)
+            val merged = (state.homeEditNewImageUris + uris).distinct().take(maxNew)
+            val mainKey = state.homeEditMainImageKey
+                ?: state.homeEditExistingImages.firstOrNull { it.isMain }?.imageUrl
+                ?: state.homeEditExistingImages.firstOrNull()?.imageUrl
+                ?: merged.firstOrNull()
+            state.copy(
+                homeEditNewImageUris = merged,
+                homeEditMainImageKey = mainKey,
+            )
+        }
+    }
+
+    fun removeHomeEditExistingImage(imageUrl: String) {
+        if (!_uiState.value.isHomeEditing) return
+        _uiState.update { state ->
+            val remaining = state.homeEditExistingImages.filterNot { it.imageUrl == imageUrl }
+            val mainKey = when (state.homeEditMainImageKey) {
+                imageUrl -> remaining.firstOrNull()?.imageUrl ?: state.homeEditNewImageUris.firstOrNull()
+                else -> state.homeEditMainImageKey
+            }
+            state.copy(
+                homeEditExistingImages = remaining,
+                homeEditMainImageKey = mainKey,
+            )
+        }
+    }
+
+    fun removeHomeEditNewImageUri(uri: String) {
+        if (!_uiState.value.isHomeEditing) return
+        _uiState.update { state ->
+            val remaining = state.homeEditNewImageUris.filterNot { it == uri }
+            val mainKey = when (state.homeEditMainImageKey) {
+                uri -> state.homeEditExistingImages.firstOrNull { it.isMain }?.imageUrl
+                    ?: state.homeEditExistingImages.firstOrNull()?.imageUrl
+                    ?: remaining.firstOrNull()
+                else -> state.homeEditMainImageKey
+            }
+            state.copy(
+                homeEditNewImageUris = remaining,
+                homeEditMainImageKey = mainKey,
+            )
+        }
+    }
+
+    fun setHomeEditMainImage(key: String) {
+        if (!_uiState.value.isHomeEditing) return
+        _uiState.update { it.copy(homeEditMainImageKey = key) }
+    }
+
+    fun submitHomeEdit() {
+        val state = _uiState.value
+        if (!state.isHomeEditing || state.isSubmittingHomeEdit) return
+        val pinId = resolvePinId() ?: return
+
+        val title = state.homeEditTitle.trim()
+        val description = state.homeEditDescription.trim()
+        if (title.isBlank()) {
+            showToast("제목을 입력해주세요.")
+            return
+        }
+        if (description.isBlank()) {
+            showToast("상세 설명을 입력해주세요.")
+            return
+        }
+
+        val mainKey = state.homeEditMainImageKey
+        val existingImages = state.homeEditExistingImages.map { image ->
+            image.copy(isMain = image.imageUrl == mainKey)
+        }
+        val mainNewUri = state.homeEditNewImageUris.firstOrNull { it == mainKey }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmittingHomeEdit = true) }
+            pinRepository.updateIssuePin(
+                pinId = pinId,
+                request = UpdateIssuePinRequest(
+                    title = title,
+                    description = description,
+                    existingImages = existingImages,
+                    newImageUris = state.homeEditNewImageUris,
+                    mainNewImageUri = mainNewUri,
+                ),
+            ).onSuccess { result ->
+                _uiState.update {
+                    it.copy(
+                        isHomeEditing = false,
+                        isSubmittingHomeEdit = false,
+                        homeEditTitle = "",
+                        homeEditDescription = "",
+                        homeEditExistingImages = emptyList(),
+                        homeEditNewImageUris = emptyList(),
+                        homeEditMainImageKey = null,
+                        pin = result.pin,
+                        postSympathy = result.pin.toPostSympathyContent(),
+                    )
+                }
+                showToast("이슈 핀이 수정되었습니다.")
+            }.onFailure { error ->
+                _uiState.update { it.copy(isSubmittingHomeEdit = false) }
+                showToast(error.message ?: "이슈 핀 수정에 실패했습니다.")
+            }
         }
     }
 
