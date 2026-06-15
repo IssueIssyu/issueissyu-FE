@@ -57,6 +57,7 @@ import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.ui.components.ActionState
+import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
@@ -118,10 +119,17 @@ fun CommunityDetailScreen(
 
     CommunityDetailScreenContent(
         uiState = uiState,
-        onBackClick = onBackClick,
+        onBackClick = {
+            if (uiState.isCardNewsView) {
+                viewModel.exitCardNewsView()
+            } else {
+                onBackClick()
+            }
+        },
         onRetry = viewModel::loadDetail,
         onGoNowClick = viewModel::goNow,
         onPetitionClick = viewModel::submitPetition,
+        onCardNewsClick = viewModel::openCardNews,
         onMapClick = onMapClick,
         onCommentSubmit = viewModel::createComment,
         onCommentUpdate = viewModel::updateComment,
@@ -145,6 +153,7 @@ fun CommunityDetailScreenContent(
     onRetry: () -> Unit = {},
     onGoNowClick: () -> Unit = {},
     onPetitionClick: () -> Unit = {},
+    onCardNewsClick: () -> Unit = {},
     onMapClick: (Long) -> Unit = {},
     onCommentSubmit: (String) -> Unit = {},
     onCommentUpdate: (Long, String) -> Unit = { _, _ -> },
@@ -239,6 +248,7 @@ fun CommunityDetailScreenContent(
                     onReportClick = { onCommunityReportClick(uiState.detail.communityId) },
                     onGoNowClick = onGoNowClick,
                     onPetitionClick = onPetitionClick,
+                    onCardNewsClick = onCardNewsClick,
                         comments = uiState.comments,
                         emojiReactions = uiState.emojiReactions,
                         isCommentLoading = uiState.isCommentLoading,
@@ -302,6 +312,7 @@ private fun CommunityDetailBody(
     onReportClick: () -> Unit,
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
+    onCardNewsClick: () -> Unit,
     comments: List<CommunityComment>,
     emojiReactions: List<PinEmojiReaction>,
     isCommentLoading: Boolean,
@@ -361,6 +372,15 @@ private fun CommunityDetailBody(
                     onDeleteClick = onCommunityDeleteClick,
                     onTakedownClick = onCommunityTakedownClick,
                 )
+            }
+
+            if (
+                (detail.kind == CommunityItemKind.POLICY || detail.kind == CommunityItemKind.CONTEST) &&
+                !detail.moveCardnews.isNullOrBlank()
+            ) {
+                item {
+                    CommunityCardNewsEntrySection(onClick = onCardNewsClick)
+                }
             }
 
             // 4. 이미지 섹션
@@ -549,6 +569,18 @@ private fun CommunityDetailOutlinedIconButton(
             content()
         }
     }
+}
+
+@Composable
+private fun CommunityCardNewsEntrySection(onClick: () -> Unit) {
+    CommonButton(
+        onClick = onClick,
+        text = "카드뉴스 보기",
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 4.dp),
+        textStyle = IssueTypo.Bold12.copy(color = White),
+    )
 }
 
 @Composable

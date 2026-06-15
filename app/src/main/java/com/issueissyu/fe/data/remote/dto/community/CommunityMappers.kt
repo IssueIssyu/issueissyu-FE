@@ -66,7 +66,8 @@ fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
         petitionCount = this.petitionCount ?: 0,
         petitionTargetCount = null,
         isPetitionedByMe = this.isPetitioned ?: false,
-        isLikedByMe = this.isLike ?: false
+        isLikedByMe = this.isLike ?: false,
+        moveCardnews = this.moveCardnews?.takeIf { it.isNotBlank() },
     )
 }
 

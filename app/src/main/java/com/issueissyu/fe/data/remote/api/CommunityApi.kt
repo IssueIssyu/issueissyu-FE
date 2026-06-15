@@ -27,6 +27,7 @@ interface CommunityApi {
     @GET("api/communities/{communityId}")
     suspend fun getCommunityDetail(
         @Path("communityId") communityId: Long,
+        @Query("kind") kind: String? = null,
     ): BaseResponse<CommunityDetailResponse?>
 
     @DELETE("api/communities/{communityId}")

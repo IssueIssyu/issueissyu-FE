@@ -18,7 +18,8 @@ data class CommunityDetailUiState(
     val isCommunityLikeSubmitting: Boolean = false,
     val isCommunityDeleting: Boolean = false,
     val reliabilityStatus: IssueReliabilityStatus = IssueReliabilityStatus.PENDING,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val isCardNewsView: Boolean = false,
 )
 
 data class CommunityEmojiPickerUiState(
