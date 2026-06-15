@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
@@ -764,6 +765,11 @@ private fun CommunityDetailImageSection(
     onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val isImageRowScrollable by remember {
+        derivedStateOf {
+            listState.canScrollForward || listState.canScrollBackward
+        }
+    }
     val scrollProgress by remember(imageUrls.size) {
         derivedStateOf {
             when {
@@ -806,7 +812,7 @@ private fun CommunityDetailImageSection(
             }
         }
         
-        if (imageUrls.size > 1) {
+        if (isImageRowScrollable) {
             Spacer(modifier = Modifier.height(12.dp))
             BoxWithConstraints(
                 modifier = Modifier
@@ -816,10 +822,15 @@ private fun CommunityDetailImageSection(
                     .clip(RoundedCornerShape(2.dp))
                     .background(Gray_3)
             ) {
+                val density = LocalDensity.current
                 val indicatorWidth = 12.dp
                 Box(
                     modifier = Modifier
-                        .offset(x = (maxWidth - indicatorWidth) * scrollProgress)
+                        .graphicsLayer {
+                            translationX = with(density) {
+                                (maxWidth - indicatorWidth).toPx() * scrollProgress
+                            }
+                        }
                         .width(indicatorWidth)
                         .fillMaxHeight()
                         .background(BrandColor)
