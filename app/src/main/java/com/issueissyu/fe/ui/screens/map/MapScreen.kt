@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
@@ -90,12 +91,16 @@ import com.naver.maps.geometry.LatLngBounds
 import com.naver.maps.map.LocationTrackingMode
 import com.naver.maps.map.NaverMap
 import com.naver.maps.map.CameraAnimation
+import com.naver.maps.map.CameraPosition
 import com.naver.maps.map.CameraUpdate
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
 import com.naver.maps.map.util.FusedLocationSource
 import com.issueissyu.fe.ui.theme.White
+import kotlin.coroutines.resume
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
@@ -106,6 +111,67 @@ private const val SELECTED_MARKER_Z_INDEX = 1
 private const val CLUSTER_MARKER_Z_INDEX = 2
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
+
+private sealed interface MapInitialLocationState {
+    data object Loading : MapInitialLocationState
+    data object Default : MapInitialLocationState
+    data class Ready(val latLng: LatLng) : MapInitialLocationState
+}
+
+private suspend fun resolveInitialMapLocation(context: Context): LatLng? {
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+    return suspendCancellableCoroutine { continuation ->
+        val cancellationTokenSource = CancellationTokenSource()
+        continuation.invokeOnCancellation { cancellationTokenSource.cancel() }
+
+        try {
+            fusedLocationClient.lastLocation.addOnSuccessListener { lastKnown ->
+                if (lastKnown != null) {
+                    if (continuation.isActive) {
+                        continuation.resume(LatLng(lastKnown.latitude, lastKnown.longitude))
+                    }
+                    return@addOnSuccessListener
+                }
+
+                fusedLocationClient
+                    .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.token)
+                    .addOnSuccessListener { location ->
+                        if (!continuation.isActive) return@addOnSuccessListener
+                        continuation.resume(
+                            location?.let { LatLng(it.latitude, it.longitude) },
+                        )
+                    }
+            }
+        } catch (_: SecurityException) {
+            if (continuation.isActive) {
+                continuation.resume(null)
+            }
+        }
+    }
+}
+
+private suspend fun resolveAccurateMapLocation(context: Context): LatLng? {
+    val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+    return suspendCancellableCoroutine { continuation ->
+        val cancellationTokenSource = CancellationTokenSource()
+        continuation.invokeOnCancellation { cancellationTokenSource.cancel() }
+
+        try {
+            fusedLocationClient
+                .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellationTokenSource.token)
+                .addOnSuccessListener { location ->
+                    if (!continuation.isActive) return@addOnSuccessListener
+                    continuation.resume(
+                        location?.let { LatLng(it.latitude, it.longitude) },
+                    )
+                }
+        } catch (_: SecurityException) {
+            if (continuation.isActive) {
+                continuation.resume(null)
+            }
+        }
+    }
+}
 
 private fun NaverMap.moveToClusterBounds(
     context: Context,
@@ -233,8 +299,9 @@ fun MapScreen(
         )
     }
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
-    var hasAppliedInitialLocation by remember { mutableStateOf(false) }
+    var initialLocationState by remember { mutableStateOf<MapInitialLocationState>(MapInitialLocationState.Loading) }
     var locationCts by remember { mutableStateOf<CancellationTokenSource?>(null) }
+    val coroutineScope = rememberCoroutineScope()
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
 
@@ -286,50 +353,36 @@ fun MapScreen(
     fun focusOnCurrentLocation(
         map: NaverMap,
         animate: Boolean,
-        isInitialFocus: Boolean,
     ) {
-        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
         locationCts?.cancel()
         val cts = CancellationTokenSource()
         locationCts = cts
-
-        fun moveTo(latLng: LatLng) {
-            if (isInitialFocus && hasAppliedInitialLocation) return
-            applyLocationToMap(map, latLng, animate)
-            if (isInitialFocus) {
-                hasAppliedInitialLocation = true
-            }
-        }
+        val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
         try {
             fusedLocationClient.lastLocation.addOnSuccessListener { lastKnown ->
                 if (lastKnown != null) {
-                    moveTo(LatLng(lastKnown.latitude, lastKnown.longitude))
+                    applyLocationToMap(
+                        map = map,
+                        latLng = LatLng(lastKnown.latitude, lastKnown.longitude),
+                        animate = animate,
+                    )
                 }
 
                 fusedLocationClient
                     .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cts.token)
                     .addOnSuccessListener { location ->
                         if (location != null) {
-                            if (isInitialFocus) {
-                                applyLocationToMap(
-                                    map = map,
-                                    latLng = LatLng(location.latitude, location.longitude),
-                                    animate = hasAppliedInitialLocation && animate,
-                                )
-                                hasAppliedInitialLocation = true
-                            } else {
-                                applyLocationToMap(
-                                    map = map,
-                                    latLng = LatLng(location.latitude, location.longitude),
-                                    animate = animate,
-                                )
-                            }
+                            applyLocationToMap(
+                                map = map,
+                                latLng = LatLng(location.latitude, location.longitude),
+                                animate = animate,
+                            )
                         }
                     }
             }
         } catch (_: SecurityException) {
-            naverMapInstance?.locationTrackingMode = LocationTrackingMode.None
+            map.locationTrackingMode = LocationTrackingMode.None
         }
     }
 
@@ -340,12 +393,18 @@ fun MapScreen(
                 permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
 
         if (granted) {
-            naverMapInstance?.let { map ->
-                focusOnCurrentLocation(
-                    map = map,
-                    animate = false,
-                    isInitialFocus = true,
-                )
+            coroutineScope.launch {
+                val latLng = resolveInitialMapLocation(context)
+                if (latLng != null) {
+                    initialLocationState = MapInitialLocationState.Ready(latLng)
+                    naverMapInstance?.let { map ->
+                        applyLocationToMap(map, latLng, animate = false)
+                    }
+                } else {
+                    naverMapInstance?.let { map ->
+                        focusOnCurrentLocation(map, animate = false)
+                    }
+                }
             }
         } else {
             naverMapInstance?.locationTrackingMode = LocationTrackingMode.None
@@ -366,15 +425,25 @@ fun MapScreen(
         focusOnCurrentLocation(
             map = map,
             animate = true,
-            isInitialFocus = false,
         )
     }
 
     LaunchedEffect(focusPinId) {
-        if (focusPinId == null && hasLocationPermission()) {
-            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
-            fusedLocationClient.lastLocation
+        if (focusPinId != null) {
+            initialLocationState = MapInitialLocationState.Default
+            return@LaunchedEffect
         }
+
+        if (!hasLocationPermission()) {
+            initialLocationState = MapInitialLocationState.Default
+            return@LaunchedEffect
+        }
+
+        initialLocationState = MapInitialLocationState.Loading
+        val latLng = resolveInitialMapLocation(context)
+        initialLocationState = latLng?.let { MapInitialLocationState.Ready(it) }
+            ?: MapInitialLocationState.Default
+        latLng?.let(viewModel::updateCurrentLocation)
     }
 
     LaunchedEffect(focusPinId, naverMapInstance) {
@@ -494,42 +563,64 @@ fun MapScreen(
         }
     }
 
+    val shouldWaitForInitialLocation = focusPinId == null &&
+        hasLocationPermission() &&
+        initialLocationState is MapInitialLocationState.Loading
+    val initialCameraPosition = (initialLocationState as? MapInitialLocationState.Ready)?.let { ready ->
+        CameraPosition(ready.latLng, INITIAL_USER_LOCATION_ZOOM)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        IssueissyuNaverMap(
-            modifier = Modifier.fillMaxSize(),
-            onMapReady = { map ->
-                naverMapInstance = map
+        if (!shouldWaitForInitialLocation) {
+            IssueissyuNaverMap(
+                modifier = Modifier.fillMaxSize(),
+                initialCameraPosition = initialCameraPosition,
+                onMapReady = { map ->
+                    naverMapInstance = map
 
-                locationSource?.let {
-                    map.locationSource = it
-                }
+                    locationSource?.let {
+                        map.locationSource = it
+                    }
 
-                if (focusPinId == null) {
-                    if (hasLocationPermission()) {
-                        focusOnCurrentLocation(
-                            map = map,
-                            animate = false,
-                            isInitialFocus = true,
-                        )
-                    } else {
-                        map.locationOverlay.isVisible = false
-                        map.locationTrackingMode = LocationTrackingMode.None
-                        locationPermissionLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                            ),
-                        )
+                    when {
+                        focusPinId != null -> {
+                            map.locationOverlay.isVisible = hasLocationPermission()
+                            map.locationTrackingMode = if (hasLocationPermission()) {
+                                LocationTrackingMode.Follow
+                            } else {
+                                LocationTrackingMode.None
+                            }
+                        }
+
+                        initialLocationState is MapInitialLocationState.Ready -> {
+                            map.locationOverlay.isVisible = true
+                            map.locationTrackingMode = LocationTrackingMode.Follow
+                            coroutineScope.launch {
+                                val refinedLocation = resolveAccurateMapLocation(context)
+                                refinedLocation?.let { latLng ->
+                                    applyLocationToMap(map, latLng, animate = false)
+                                }
+                            }
+                        }
+
+                        hasLocationPermission() -> {
+                            map.locationOverlay.isVisible = true
+                            map.locationTrackingMode = LocationTrackingMode.Follow
+                            focusOnCurrentLocation(map, animate = false)
+                        }
+
+                        else -> {
+                            map.locationOverlay.isVisible = false
+                            map.locationTrackingMode = LocationTrackingMode.None
+                            locationPermissionLauncher.launch(
+                                arrayOf(
+                                    Manifest.permission.ACCESS_FINE_LOCATION,
+                                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                                ),
+                            )
+                        }
                     }
-                } else {
-                    map.locationOverlay.isVisible = hasLocationPermission()
-                    map.locationTrackingMode = if (hasLocationPermission()) {
-                        LocationTrackingMode.Follow
-                    } else {
-                        LocationTrackingMode.None
-                    }
-                }
-            },
+                },
             onCameraIdle = { map ->
                 map.contentBounds.let { bounds ->
                     viewModel.updateMapViewport(
@@ -569,6 +660,13 @@ fun MapScreen(
                 }
             }
         )
+        }
+
+        if (shouldWaitForInitialLocation) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
 
         if (isLocationSelectionMode) {
             val guideText = when (selectedPinCategory) {
