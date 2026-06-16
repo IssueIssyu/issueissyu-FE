@@ -3,6 +3,7 @@ package com.issueissyu.fe.ui.screens.map
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -28,8 +29,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -155,8 +154,6 @@ fun MapScreen(
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-
     val locationSource = remember(activity) {
         activity?.let {
             FusedLocationSource(it, LOCATION_PERMISSION_REQUEST_CODE)
@@ -280,7 +277,7 @@ fun MapScreen(
 
     LaunchedEffect(Unit) {
         viewModel.messageEvents.collectLatest { message ->
-            snackbarHostState.showSnackbar(message)
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -599,16 +596,5 @@ fun MapScreen(
                     .padding(end = 4.dp, bottom = 88.dp)
             )
         }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(
-                    start = 16.dp,
-                    end = 16.dp,
-                    bottom = if (selectedPin != null) 288.dp else 24.dp
-                )
-        )
     }
 }
