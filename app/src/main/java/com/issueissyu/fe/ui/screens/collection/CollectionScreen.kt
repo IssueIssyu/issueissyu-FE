@@ -573,9 +573,11 @@ private fun CollectionContent(
     )
     val layoutExpandPx = if (isPanelDragging) expandPx else panelExpandPx
 
-    LaunchedEffect(panelExpandPx, isPanelDragging) {
+    LaunchedEffect(isPanelDragging) {
         if (!isPanelDragging) {
-            expandPx = panelExpandPx
+            snapshotFlow { panelExpandPx }.collect { value ->
+                expandPx = value
+            }
         }
     }
 
