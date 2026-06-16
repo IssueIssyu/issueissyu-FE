@@ -49,7 +49,6 @@ fun CardNewsFeedGrid(
             start = 4.dp,
             end = 4.dp,
             top = 4.dp,
-            bottom = 24.dp,
         ),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),

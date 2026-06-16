@@ -196,6 +196,7 @@ fun CommunityDetailScreenContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             CommunityDetailTopBar(
                 detail = uiState.detail,

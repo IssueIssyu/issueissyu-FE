@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -180,6 +181,7 @@ fun CommunityScreenContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             Column(
                 modifier = Modifier
@@ -298,7 +300,6 @@ fun CommunityScreenContent(
                     } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp)
                     ) {
                         if (uiState.selectedCategory == CommunityTab.ALL) {
                             // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
