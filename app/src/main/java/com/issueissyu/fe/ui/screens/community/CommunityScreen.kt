@@ -196,6 +196,9 @@ fun CommunityScreenContent(
                     }
                 )
 
+                val showsRegionSelector = uiState.selectedCategory.showsRegionSelector()
+
+                if (onBackClick != null || showsRegionSelector) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -214,10 +217,13 @@ fun CommunityScreenContent(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    RegionDropdownPill(
-                        region = uiState.region.toRegionDisplayName(),
-                        onClick = { showRegionSelector = true }
-                    )
+                    if (showsRegionSelector) {
+                        RegionDropdownPill(
+                            region = uiState.region.toRegionDisplayName(),
+                            onClick = { showRegionSelector = true }
+                        )
+                    }
+                }
                 }
             }
         }
@@ -428,6 +434,14 @@ private fun CommunityUiState.isCurrentCategoryEmpty(): Boolean {
 
 private fun String?.toCommunityTab(): CommunityTab {
     return CommunityTab.entries.find { it.displayName == this } ?: CommunityTab.ALL
+}
+
+private fun CommunityTab.showsRegionSelector(): Boolean {
+    return this !in setOf(
+        CommunityTab.POLICY,
+        CommunityTab.CONTEST,
+        CommunityTab.CARDNEWS,
+    )
 }
 
 @Composable
