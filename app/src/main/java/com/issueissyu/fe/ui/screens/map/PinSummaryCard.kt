@@ -59,7 +59,7 @@ import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.*
 
-val PinSummaryCardHeight = 275.dp
+internal val PinSummaryCardHeight = 275.dp
 
 private fun PinCategory.hasFireBadge(): Boolean =
     this == PinCategory.ISSUE ||
