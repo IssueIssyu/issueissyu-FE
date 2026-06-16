@@ -42,7 +42,7 @@ object AppDestinations {
     const val TOWN_ROUTE = "town_route"
     const val COLLECTION_ROUTE = "collection_route"
     const val COMMUNITY_ROUTE = "community_route"
-    const val COMMUNITY_DETAIL_ROUTE = "community_detail_route/{communityId}"
+    const val COMMUNITY_DETAIL_ROUTE = "community_detail_route/{communityId}?kind={kind}"
     const val COMMUNITY_REPORT_ROUTE = "community_report_route/{communityId}"
 
     // 지도 관련
@@ -51,8 +51,8 @@ object AppDestinations {
     const val PIN_DETAIL_ROUTE = "pin_detail_route/{pinId}"
     const val PIN_REPORT_ROUTE = "pin_report_route/{pinId}"
     const val TOWN_ROUTE_WITH_FOCUS_PIN = "town_route?focusPinId={focusPinId}"
-    fun communityDetailRoute(communityId: Long): String {
-        return "community_detail_route/$communityId"
+    fun communityDetailRoute(communityId: Long, kind: String? = null): String {
+        return "community_detail_route/$communityId?kind=${kind.orEmpty()}"
     }
 
     fun communityReportRoute(communityId: Long): String {
