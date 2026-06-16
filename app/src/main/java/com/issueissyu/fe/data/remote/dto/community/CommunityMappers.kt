@@ -17,14 +17,21 @@ private const val DEFAULT_COMMUNITY_TITLE = "제목 없음"
 fun CommunityFeedResponse.toCommunityFeed(): CommunityFeed {
     val storeItems = storePromotions.orEmpty().map { it.toCommunityFeedItem() }
     val hotItems = hotPreviews.orEmpty().map { it.toCommunityFeedItem(isHot = true) }
-    val recentItems = recentNews?.content.orEmpty().map { it.toCommunityFeedItem() }
+    val pageContentItems = content.orEmpty().ifEmpty { items.orEmpty() }
+    val recentPageItems = recentNews?.content.orEmpty()
+    val recentItems = recentPageItems.map { it.toCommunityFeedItem() }
     val hotIds = hotItems.map { it.communityId }.toSet()
     val items = when {
-        recentNews?.content != null -> recentNews.content.map { item ->
-            item.toCommunityFeedItem(isHot = item.communityId in hotIds)
+        pageContentItems.isNotEmpty() -> pageContentItems.map { item ->
+            item.toCommunityFeedItem(isHot = (item.communityId ?: 0L) in hotIds)
         }
-        content != null -> content.map { it.toCommunityFeedItem() }
-        else -> (storeItems + hotItems).distinctBy { it.communityId }
+        recentPageItems.isNotEmpty() -> recentPageItems.map { item ->
+            item.toCommunityFeedItem(isHot = (item.communityId ?: 0L) in hotIds)
+        }
+        storeItems.isNotEmpty() || hotItems.isNotEmpty() -> {
+            (storeItems + hotItems).distinctBy { it.communityId }
+        }
+        else -> emptyList()
     }
 
     return CommunityFeed(
@@ -66,7 +73,8 @@ fun CommunityDetailResponse.toCommunityDetail(): CommunityDetail {
         petitionCount = this.petitionCount ?: 0,
         petitionTargetCount = null,
         isPetitionedByMe = this.isPetitioned ?: false,
-        isLikedByMe = this.isLike ?: false
+        isLikedByMe = this.isLike ?: false,
+        moveCardnews = this.moveCardnews?.takeIf { it.isNotBlank() },
     )
 }
 
@@ -93,7 +101,10 @@ fun CommunityFeedItemResponse.toCommunityFeedItem(isHot: Boolean = false): Commu
         kind = this.kind.toCommunityItemKind(),
         title = this.title ?: this.pinTitle ?: DEFAULT_COMMUNITY_TITLE,
         content = this.content?.decodeEscapedNewlines(),
-        thumbnailUrl = this.pinImageUrl ?: this.thumbnailUrl ?: this.storeImageUrl,
+        thumbnailUrl = this.pinImageUrl
+            ?: this.thumbnailUrl
+            ?: this.storeImageUrl
+            ?: imageUrls?.firstOrNull(),
         writerNickname = this.pinUserNickname ?: this.writerNickname,
         writerProfileUrl = this.pinUserProfile ?: this.writerProfileUrl,
         address = this.pinDetailAddress ?: this.address ?: this.detailAddress,

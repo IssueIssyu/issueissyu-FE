@@ -25,4 +25,5 @@ data class CommunityDetailResponse(
     val issuePinState: String?,
     val petitionCount: Int?,
     val isMine: Boolean?,
+    val moveCardnews: String? = null,
 )

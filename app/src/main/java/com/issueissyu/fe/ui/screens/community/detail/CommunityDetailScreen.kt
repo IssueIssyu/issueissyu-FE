@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -118,10 +119,17 @@ fun CommunityDetailScreen(
 
     CommunityDetailScreenContent(
         uiState = uiState,
-        onBackClick = onBackClick,
+        onBackClick = {
+            if (viewModel.shouldExitToParentDetail()) {
+                viewModel.exitCardNewsView()
+            } else {
+                onBackClick()
+            }
+        },
         onRetry = viewModel::loadDetail,
         onGoNowClick = viewModel::goNow,
         onPetitionClick = viewModel::submitPetition,
+        onCardNewsClick = viewModel::openCardNews,
         onMapClick = onMapClick,
         onCommentSubmit = viewModel::createComment,
         onCommentUpdate = viewModel::updateComment,
@@ -145,6 +153,7 @@ fun CommunityDetailScreenContent(
     onRetry: () -> Unit = {},
     onGoNowClick: () -> Unit = {},
     onPetitionClick: () -> Unit = {},
+    onCardNewsClick: () -> Unit = {},
     onMapClick: (Long) -> Unit = {},
     onCommentSubmit: (String) -> Unit = {},
     onCommentUpdate: (Long, String) -> Unit = { _, _ -> },
@@ -187,6 +196,7 @@ fun CommunityDetailScreenContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             CommunityDetailTopBar(
                 detail = uiState.detail,
@@ -239,6 +249,7 @@ fun CommunityDetailScreenContent(
                     onReportClick = { onCommunityReportClick(uiState.detail.communityId) },
                     onGoNowClick = onGoNowClick,
                     onPetitionClick = onPetitionClick,
+                    onCardNewsClick = onCardNewsClick,
                         comments = uiState.comments,
                         emojiReactions = uiState.emojiReactions,
                         isCommentLoading = uiState.isCommentLoading,
@@ -302,6 +313,7 @@ private fun CommunityDetailBody(
     onReportClick: () -> Unit,
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
+    onCardNewsClick: () -> Unit,
     comments: List<CommunityComment>,
     emojiReactions: List<PinEmojiReaction>,
     isCommentLoading: Boolean,
@@ -360,6 +372,7 @@ private fun CommunityDetailBody(
                     isDeleting = isCommunityDeleting,
                     onDeleteClick = onCommunityDeleteClick,
                     onTakedownClick = onCommunityTakedownClick,
+                    onCardNewsClick = onCardNewsClick,
                 )
             }
 
@@ -552,6 +565,35 @@ private fun CommunityDetailOutlinedIconButton(
 }
 
 @Composable
+private fun CommunityCardNewsLinkButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandColor)
+            .clickable(onClick = onClick)
+            .padding(start = 12.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "카드뉴스",
+            maxLines = 1,
+            softWrap = false,
+            style = IssueTypo.Bold12.copy(color = White),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = White,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
 private fun CommunityCardNewsTitleSection(title: String) {
     Text(
         text = title,
@@ -606,7 +648,12 @@ private fun CommunityDetailTitleSection(
     isDeleting: Boolean,
     onDeleteClick: () -> Unit,
     onTakedownClick: () -> Unit,
+    onCardNewsClick: () -> Unit,
 ) {
+    val showCardNewsLink = (
+        detail.kind == CommunityItemKind.POLICY || detail.kind == CommunityItemKind.CONTEST
+        ) && !detail.moveCardnews.isNullOrBlank()
+
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -627,7 +674,17 @@ private fun CommunityDetailTitleSection(
                 onTakedownClick = onTakedownClick,
             )
         }
-        
+
+        if (showCardNewsLink) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                CommunityCardNewsLinkButton(onClick = onCardNewsClick)
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         
         Row(
@@ -814,23 +871,59 @@ private fun CommunityCardNewsImageSection(
     imageUrls: List<String>,
     onImageClick: (Int) -> Unit,
 ) {
+    if (imageUrls.isEmpty()) return
+
+    val pagerState = rememberPagerState(pageCount = { imageUrls.size })
+
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        imageUrls.forEachIndexed { index, imageUrl ->
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.78f),
+        ) { page ->
             AsyncImage(
-                model = imageUrl,
+                model = imageUrls[page],
                 contentDescription = "카드뉴스 이미지",
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.72f)
-                    .clip(RoundedCornerShape(6.dp))
+                    .fillMaxSize()
                     .background(Gray_2)
-                    .clickable { onImageClick(index) },
-                contentScale = ContentScale.Fit,
+                    .clickable { onImageClick(page) },
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        if (imageUrls.size > 1) {
+            CardNewsPagerIndicator(
+                pageCount = imageUrls.size,
+                currentPage = pagerState.currentPage,
+                modifier = Modifier.padding(vertical = 12.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CardNewsPagerIndicator(
+    pageCount: Int,
+    currentPage: Int,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        repeat(pageCount) { index ->
+            val isSelected = index == currentPage
+            Box(
+                modifier = Modifier
+                    .size(if (isSelected) 7.dp else 6.dp)
+                    .clip(CircleShape)
+                    .background(if (isSelected) BrandColor else Gray_3),
             )
         }
     }
