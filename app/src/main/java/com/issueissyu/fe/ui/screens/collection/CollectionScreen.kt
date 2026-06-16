@@ -571,7 +571,6 @@ private fun CollectionContent(
         animationSpec = spring(),
         label = "panelExpandPx",
     )
-    val layoutExpandPx = if (isPanelDragging) expandPx else panelExpandPx
 
     LaunchedEffect(isPanelDragging) {
         if (!isPanelDragging) {
@@ -757,7 +756,10 @@ private fun CollectionContent(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .height(with(density) { maxPanelHeightPx.toDp() })
-                .offset { IntOffset(0, (maxExpandPx - layoutExpandPx).roundToInt()) }
+                .offset {
+                    val currentLayoutExpandPx = if (isPanelDragging) expandPx else panelExpandPx
+                    IntOffset(0, (maxExpandPx - currentLayoutExpandPx).roundToInt())
+                }
                 .background(
                     color = White,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
