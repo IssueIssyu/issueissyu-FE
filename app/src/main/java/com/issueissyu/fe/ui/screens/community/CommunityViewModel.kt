@@ -78,10 +78,11 @@ class CommunityViewModel @Inject constructor(
     }
 
     private fun loadFeed(isRefreshing: Boolean = false) {
-        val locationId = _uiState.value.locationId
+        val tab = _uiState.value.selectedCategory
+        val locationId = tab.feedLocationId(_uiState.value.locationId)
         viewModelScope.launch {
             getCommunityFeedUseCase(
-                tab = _uiState.value.selectedCategory,
+                tab = tab,
                 locationId = locationId
             )
                 .onStart {
@@ -194,4 +195,13 @@ class CommunityViewModel @Inject constructor(
 
 private fun List<CommunityFeedItem>.withoutCardNews(): List<CommunityFeedItem> {
     return filter { it.kind != CommunityItemKind.CARDNEWS }
+}
+
+private fun CommunityTab.feedLocationId(locationId: Long?): Long? {
+    return when (this) {
+        CommunityTab.POLICY,
+        CommunityTab.CONTEST,
+        CommunityTab.CARDNEWS -> null
+        else -> locationId
+    }
 }
