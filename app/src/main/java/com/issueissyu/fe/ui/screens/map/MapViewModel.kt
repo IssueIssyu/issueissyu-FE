@@ -106,6 +106,7 @@ class MapViewModel @Inject constructor(
     private var refreshJob: Job? = null
     private var clusterPinLoadJob: Job? = null
     private var refreshRequestId: Long = 0
+    private var lastFetchedBounds: MapBounds? = null
 
     private val _isLocationSelectionMode = MutableStateFlow(false)
     val isLocationSelectionMode: StateFlow<Boolean> = _isLocationSelectionMode.asStateFlow()
@@ -204,8 +205,12 @@ class MapViewModel @Inject constructor(
         _showResearchButton.value = true
     }
 
-    private fun hideResearchAreaButton() {
-        _showResearchButton.value = false
+    private fun updateResearchButtonVisibility() {
+        val currentBounds = _currentBounds.value
+        val fetchedBounds = lastFetchedBounds
+        _showResearchButton.value = currentBounds != null &&
+            fetchedBounds != null &&
+            currentBounds != fetchedBounds
     }
 
     fun updateMapViewport(bounds: MapBounds, zoomLevel: Int) {
@@ -215,7 +220,7 @@ class MapViewModel @Inject constructor(
         if (isInitialBounds) {
             refreshMapImmediately()
         } else {
-            showResearchAreaButton()
+            updateResearchButtonVisibility()
             scheduleAutomaticRefresh()
         }
     }
@@ -261,7 +266,8 @@ class MapViewModel @Inject constructor(
                             }
                         },
                     )
-                    hideResearchAreaButton()
+                    lastFetchedBounds = bounds
+                    updateResearchButtonVisibility()
                 }.onFailure { error ->
                     if (requestId != refreshRequestId) return@onFailure
                     showResearchAreaButton()
