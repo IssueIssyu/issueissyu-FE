@@ -23,10 +23,10 @@ fun CommunityFeedResponse.toCommunityFeed(): CommunityFeed {
     val hotIds = hotItems.map { it.communityId }.toSet()
     val items = when {
         pageContentItems.isNotEmpty() -> pageContentItems.map { item ->
-            item.toCommunityFeedItem(isHot = item.communityId in hotIds)
+            item.toCommunityFeedItem(isHot = (item.communityId ?: 0L) in hotIds)
         }
         recentPageItems.isNotEmpty() -> recentPageItems.map { item ->
-            item.toCommunityFeedItem(isHot = item.communityId in hotIds)
+            item.toCommunityFeedItem(isHot = (item.communityId ?: 0L) in hotIds)
         }
         storeItems.isNotEmpty() || hotItems.isNotEmpty() -> {
             (storeItems + hotItems).distinctBy { it.communityId }

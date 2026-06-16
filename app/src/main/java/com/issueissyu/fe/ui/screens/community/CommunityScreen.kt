@@ -304,36 +304,65 @@ fun CommunityScreenContent(
                             onItemClick = { onCommunityClick(it.communityId, "CARDNEWS") },
                         )
                     } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        if (uiState.selectedCategory == CommunityTab.ALL) {
-                            // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
-                            uiState.storePromotions.firstOrNull()?.let { storePromotion ->
-                                item {
-                                    RepresentativeFeedCard(
-                                        item = storePromotion,
-                                        onClick = { onCommunityClick(storePromotion.communityId, null) },
-                                        modifier = Modifier.padding(16.dp)
-                                    )
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            if (uiState.selectedCategory == CommunityTab.ALL) {
+                                // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
+                                uiState.storePromotions.firstOrNull()?.let { storePromotion ->
+                                    item {
+                                        RepresentativeFeedCard(
+                                            item = storePromotion,
+                                            onClick = { onCommunityClick(storePromotion.communityId, null) },
+                                            modifier = Modifier.padding(16.dp)
+                                        )
+                                    }
                                 }
-                            }
 
-                            // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
-                            if (uiState.hotPreviews.isNotEmpty()) {
+                                // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
+                                if (uiState.hotPreviews.isNotEmpty()) {
+                                    item {
+                                        SectionHeaderWithAction(
+                                            title = "우리 동네 인기 소식 🔥",
+                                            actionText = "더보기",
+                                            onActionClick = { onCategorySelected(CommunityTab.HOT) }
+                                        )
+                                        Column(
+                                            modifier = Modifier
+                                                .padding(horizontal = 16.dp)
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(Color.White)
+                                        ) {
+                                            uiState.hotPreviews.take(3).forEachIndexed { index, item ->
+                                                CommunityFeedCard(
+                                                    item = item,
+                                                    onClick = {
+                                                        onCommunityClick(item.communityId, null)
+                                                    }
+                                                )
+
+                                                if (index < uiState.hotPreviews.take(3).lastIndex) {
+                                                    HorizontalDivider(
+                                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                                        thickness = 1.dp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 item {
-                                    SectionHeaderWithAction(
-                                        title = "우리 동네 인기 소식 🔥",
-                                        actionText = "더보기",
-                                        onActionClick = { onCategorySelected(CommunityTab.HOT) }
-                                    )
+                                    SectionHeader(title = "우리 동네 최근 소식 🆕")
+
                                     Column(
                                         modifier = Modifier
                                             .padding(horizontal = 16.dp)
                                             .clip(RoundedCornerShape(16.dp))
                                             .background(Color.White)
                                     ) {
-                                        uiState.hotPreviews.take(3).forEachIndexed { index, item ->
+                                        uiState.recentNews.forEachIndexed { index, item ->
                                             CommunityFeedCard(
                                                 item = item,
                                                 onClick = {
@@ -341,7 +370,7 @@ fun CommunityScreenContent(
                                                 }
                                             )
 
-                                            if (index < uiState.hotPreviews.take(3).lastIndex) {
+                                            if (index < uiState.recentNews.lastIndex) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = 16.dp),
                                                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -351,26 +380,18 @@ fun CommunityScreenContent(
                                         }
                                     }
                                 }
-                            }
-
-                            item {
-                                SectionHeader(title = "우리 동네 최근 소식 🆕")
-
-                                Column(
-                                    modifier = Modifier
-                                        .padding(horizontal = 16.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(Color.White)
-                                ) {
-                                    uiState.recentNews.forEachIndexed { index, item ->
+                            } else {
+                                itemsIndexed(uiState.feedItems) { index, item ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color.White)
+                                    ) {
                                         CommunityFeedCard(
                                             item = item,
-                                            onClick = {
-                                                onCommunityClick(item.communityId, null)
-                                            }
+                                            onClick = { onCommunityClick(item.communityId, null) }
                                         )
-
-                                        if (index < uiState.recentNews.lastIndex) {
+                                        if (index < uiState.feedItems.lastIndex) {
                                             HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
                                                 color = MaterialTheme.colorScheme.surfaceVariant,
@@ -380,28 +401,7 @@ fun CommunityScreenContent(
                                     }
                                 }
                             }
-                        } else {
-                            itemsIndexed(uiState.feedItems) { index, item ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Color.White)
-                                ) {
-                                    CommunityFeedCard(
-                                        item = item,
-                                        onClick = { onCommunityClick(item.communityId, null) }
-                                    )
-                                    if (index < uiState.feedItems.lastIndex) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                            color = MaterialTheme.colorScheme.surfaceVariant,
-                                            thickness = 1.dp
-                                        )
-                                    }
-                                }
-                            }
                         }
-                    }
                     }
                 }
             }

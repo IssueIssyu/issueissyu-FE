@@ -899,7 +899,7 @@ private fun CommunityCardNewsImageSection(
         if (imageUrls.size > 1) {
             CardNewsPagerIndicator(
                 pageCount = imageUrls.size,
-                currentPage = pagerState.settledPage,
+                currentPage = pagerState.currentPage,
                 modifier = Modifier.padding(vertical = 12.dp),
             )
         }

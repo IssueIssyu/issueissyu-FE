@@ -9,6 +9,7 @@ import com.issueissyu.fe.domain.model.community.CommunityTab
 import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityFeedUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,6 +28,7 @@ class CommunityViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CommunityUiState())
     val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
+    private var feedLoadJob: Job? = null
 
     init {
         loadInitialRegionAndFeed()
@@ -80,7 +82,8 @@ class CommunityViewModel @Inject constructor(
     private fun loadFeed(isRefreshing: Boolean = false) {
         val tab = _uiState.value.selectedCategory
         val locationId = tab.feedLocationId(_uiState.value.locationId)
-        viewModelScope.launch {
+        feedLoadJob?.cancel()
+        feedLoadJob = viewModelScope.launch {
             getCommunityFeedUseCase(
                 tab = tab,
                 locationId = locationId
@@ -93,6 +96,7 @@ class CommunityViewModel @Inject constructor(
                 }
                 .collect { feed ->
                     _uiState.update {
+                        if (it.selectedCategory != tab) return@update it
                         if (it.selectedCategory == CommunityTab.ALL) {
                             it.copy(
                                 storePromotions = feed.storePromotions.withoutCardNews(),
