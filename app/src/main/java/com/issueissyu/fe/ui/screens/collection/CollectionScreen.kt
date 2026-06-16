@@ -629,21 +629,6 @@ private fun CollectionContent(
                     return Offset.Zero
                 }
 
-                override fun onPostScroll(
-                    consumed: Offset,
-                    available: Offset,
-                    source: NestedScrollSource,
-                ): Offset {
-                    val delta = available.y
-                    if (delta < 0 && expandPx < maxExpandPx) {
-                        if (source == NestedScrollSource.Drag) isPanelDragging = true
-                        val oldOffset = expandPx
-                        expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
-                        return Offset(0f, oldOffset - expandPx)
-                    }
-                    return Offset.Zero
-                }
-
                 override suspend fun onPreFling(available: Velocity): Velocity {
                     isPanelDragging = false
                     if (expandPx < maxExpandPx - 1f) {
