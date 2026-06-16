@@ -58,6 +58,12 @@ data class MapEmojiPickerUiState(
         get() = targetPinId != null
 }
 
+data class SavedMapCamera(
+    val latitude: Double,
+    val longitude: Double,
+    val zoom: Double,
+)
+
 @HiltViewModel
 class MapViewModel @Inject constructor(
     private val mapRepository: MapRepository,
@@ -107,6 +113,7 @@ class MapViewModel @Inject constructor(
     private var clusterPinLoadJob: Job? = null
     private var refreshRequestId: Long = 0
     private var lastFetchedBounds: MapBounds? = null
+    private var savedCameraPosition: SavedMapCamera? = null
 
     private val _isLocationSelectionMode = MutableStateFlow(false)
     val isLocationSelectionMode: StateFlow<Boolean> = _isLocationSelectionMode.asStateFlow()
@@ -642,6 +649,16 @@ class MapViewModel @Inject constructor(
     fun updateCurrentLocation(latLng: LatLng) {
         _currentLocation.value = PinCoordinate(latitude = latLng.latitude, longitude = latLng.longitude)
     }
+
+    fun saveCameraPosition(latitude: Double, longitude: Double, zoom: Double) {
+        savedCameraPosition = SavedMapCamera(
+            latitude = latitude,
+            longitude = longitude,
+            zoom = zoom,
+        )
+    }
+
+    fun getSavedCameraPosition(): SavedMapCamera? = savedCameraPosition
 
     private companion object {
         const val DEFAULT_MAP_ZOOM_LEVEL = 11

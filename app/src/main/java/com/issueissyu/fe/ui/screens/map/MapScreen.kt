@@ -111,11 +111,14 @@ private const val SELECTED_MARKER_Z_INDEX = 1
 private const val CLUSTER_MARKER_Z_INDEX = 2
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
+const val MAP_FOCUS_USER_LOCATION_KEY = "map_focus_user_location"
 
 private sealed interface MapInitialLocationState {
+    data object Pending : MapInitialLocationState
     data object Loading : MapInitialLocationState
     data object Default : MapInitialLocationState
     data class Ready(val latLng: LatLng) : MapInitialLocationState
+    data class Restored(val latLng: LatLng, val zoom: Double) : MapInitialLocationState
 }
 
 private suspend fun resolveInitialMapLocation(context: Context): LatLng? {
@@ -299,7 +302,7 @@ fun MapScreen(
         )
     }
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
-    var initialLocationState by remember { mutableStateOf<MapInitialLocationState>(MapInitialLocationState.Loading) }
+    var initialLocationState by remember { mutableStateOf<MapInitialLocationState>(MapInitialLocationState.Pending) }
     var locationCts by remember { mutableStateOf<CancellationTokenSource?>(null) }
     val coroutineScope = rememberCoroutineScope()
 
@@ -429,8 +432,24 @@ fun MapScreen(
     }
 
     LaunchedEffect(focusPinId) {
-        if (focusPinId != null) {
+        val focusUserLocation = savedStateHandle.get<Boolean>(MAP_FOCUS_USER_LOCATION_KEY) == true
+        if (focusUserLocation) {
+            savedStateHandle[MAP_FOCUS_USER_LOCATION_KEY] = false
+        }
+
+        val pendingPinFocus = savedStateHandle.get<String>(PIN_CREATE_FOCUS_PIN_ID_KEY).orEmpty().isNotBlank()
+
+        if (focusPinId != null || pendingPinFocus) {
             initialLocationState = MapInitialLocationState.Default
+            return@LaunchedEffect
+        }
+
+        val savedCamera = viewModel.getSavedCameraPosition()
+        if (!focusUserLocation && savedCamera != null) {
+            initialLocationState = MapInitialLocationState.Restored(
+                latLng = LatLng(savedCamera.latitude, savedCamera.longitude),
+                zoom = savedCamera.zoom,
+            )
             return@LaunchedEffect
         }
 
@@ -446,10 +465,57 @@ fun MapScreen(
         latLng?.let(viewModel::updateCurrentLocation)
     }
 
+    val focusUserLocationRequest by savedStateHandle
+        .getStateFlow(MAP_FOCUS_USER_LOCATION_KEY, false)
+        .collectAsStateWithLifecycle()
+
+    LaunchedEffect(focusUserLocationRequest) {
+        if (!focusUserLocationRequest || focusPinId != null) return@LaunchedEffect
+
+        savedStateHandle[MAP_FOCUS_USER_LOCATION_KEY] = false
+
+        if (!hasLocationPermission()) {
+            initialLocationState = MapInitialLocationState.Default
+            naverMapInstance?.let { map ->
+                focusOnCurrentLocation(map, animate = false)
+            }
+            return@LaunchedEffect
+        }
+
+        initialLocationState = MapInitialLocationState.Loading
+        val latLng = resolveInitialMapLocation(context)
+        if (latLng != null) {
+            initialLocationState = MapInitialLocationState.Ready(latLng)
+            viewModel.updateCurrentLocation(latLng)
+            naverMapInstance?.let { map ->
+                applyLocationToMap(map, latLng, animate = false)
+            }
+        } else {
+            initialLocationState = MapInitialLocationState.Default
+            naverMapInstance?.let { map ->
+                focusOnCurrentLocation(map, animate = false)
+            }
+        }
+    }
+
     LaunchedEffect(focusPinId, naverMapInstance) {
         if (focusPinId != null && naverMapInstance != null) {
             viewModel.focusPinById(focusPinId)
         }
+    }
+
+    LaunchedEffect(naverMapInstance, initialLocationState) {
+        val map = naverMapInstance ?: return@LaunchedEffect
+        if (initialLocationState !is MapInitialLocationState.Restored) return@LaunchedEffect
+        if (!hasLocationPermission()) return@LaunchedEffect
+
+        map.locationTrackingMode = LocationTrackingMode.None
+        viewModel.currentLocation.value?.let { coordinate ->
+            map.locationOverlay.position = LatLng(coordinate.latitude, coordinate.longitude)
+        }
+        locationSource?.let { map.locationSource = it }
+        map.locationOverlay.isVisible = true
+        map.locationTrackingMode = LocationTrackingMode.None
     }
 
     LaunchedEffect(Unit) {
@@ -564,10 +630,15 @@ fun MapScreen(
     }
 
     val shouldWaitForInitialLocation = focusPinId == null &&
-        hasLocationPermission() &&
-        initialLocationState is MapInitialLocationState.Loading
-    val initialCameraPosition = (initialLocationState as? MapInitialLocationState.Ready)?.let { ready ->
-        CameraPosition(ready.latLng, INITIAL_USER_LOCATION_ZOOM)
+        when (initialLocationState) {
+            MapInitialLocationState.Pending -> true
+            MapInitialLocationState.Loading -> hasLocationPermission()
+            else -> false
+        }
+    val initialCameraPosition = when (val state = initialLocationState) {
+        is MapInitialLocationState.Ready -> CameraPosition(state.latLng, INITIAL_USER_LOCATION_ZOOM)
+        is MapInitialLocationState.Restored -> CameraPosition(state.latLng, state.zoom)
+        else -> null
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -578,12 +649,9 @@ fun MapScreen(
                 onMapReady = { map ->
                     naverMapInstance = map
 
-                    locationSource?.let {
-                        map.locationSource = it
-                    }
-
                     when {
                         focusPinId != null -> {
+                            locationSource?.let { map.locationSource = it }
                             map.locationOverlay.isVisible = hasLocationPermission()
                             map.locationTrackingMode = if (hasLocationPermission()) {
                                 LocationTrackingMode.Follow
@@ -593,6 +661,7 @@ fun MapScreen(
                         }
 
                         initialLocationState is MapInitialLocationState.Ready -> {
+                            locationSource?.let { map.locationSource = it }
                             map.locationOverlay.isVisible = true
                             map.locationTrackingMode = LocationTrackingMode.Follow
                             coroutineScope.launch {
@@ -603,7 +672,13 @@ fun MapScreen(
                             }
                         }
 
+                        initialLocationState is MapInitialLocationState.Restored -> {
+                            map.locationTrackingMode = LocationTrackingMode.None
+                            map.locationOverlay.isVisible = false
+                        }
+
                         hasLocationPermission() -> {
+                            locationSource?.let { map.locationSource = it }
                             map.locationOverlay.isVisible = true
                             map.locationTrackingMode = LocationTrackingMode.Follow
                             focusOnCurrentLocation(map, animate = false)
@@ -622,6 +697,11 @@ fun MapScreen(
                     }
                 },
             onCameraIdle = { map ->
+                viewModel.saveCameraPosition(
+                    latitude = map.cameraPosition.target.latitude,
+                    longitude = map.cameraPosition.target.longitude,
+                    zoom = map.cameraPosition.zoom,
+                )
                 map.contentBounds.let { bounds ->
                     viewModel.updateMapViewport(
                         bounds = MapBounds(
