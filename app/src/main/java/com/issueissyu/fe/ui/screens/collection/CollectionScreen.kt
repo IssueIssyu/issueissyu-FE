@@ -569,6 +569,12 @@ private fun CollectionContent(
         label = "panelExpandPx",
     )
 
+    LaunchedEffect(panelExpandPx, isPanelDragging) {
+        if (!isPanelDragging) {
+            expandPx = panelExpandPx
+        }
+    }
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
