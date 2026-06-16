@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.screens.map
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,10 +25,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
@@ -44,6 +51,13 @@ import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.*
+
+val PinSummaryCardHeight = 275.dp
+
+private fun PinCategory.hasFireBadge(): Boolean =
+    this == PinCategory.ISSUE ||
+        this == PinCategory.COMMUNICATION ||
+        this == PinCategory.FESTIVAL
 
 enum class PinSummaryCardHighlight {
     NONE,
@@ -81,20 +95,22 @@ fun PinSummaryCard(
         is CommunicationPinDetail -> false
     }
 
-    Box(
-        modifier = modifier
-            .height(260.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(cardBackgroundColor)
-            .then(
-                if (interactionsEnabled) {
-                    Modifier.clickable { onDetailClick(pin.id) }
-                } else {
-                    Modifier
-                }
-            )
-            .padding(16.dp)
-    ) {
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(PinSummaryCardHeight)
+                .clip(RoundedCornerShape(24.dp))
+                .background(cardBackgroundColor)
+                .then(
+                    if (interactionsEnabled) {
+                        Modifier.clickable { onDetailClick(pin.id) }
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(16.dp)
+        ) {
         Column {
             // TopRow: 제목/장소/사용자액션 + 이미지
             Row(
@@ -107,9 +123,10 @@ fun PinSummaryCard(
                     // 1. 제목
                     Text(
                         text = pin.title,
-                        style = IssueTypo.Bold18.copy(color = Title),
+                        style = IssueTypo.Bold18.copy(color = Gray_7, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 8.dp, top = 10.dp),
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -117,28 +134,28 @@ fun PinSummaryCard(
                     // 2. 장소 + 해결 상태
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
                             imageVector = Icons.Default.LocationOn,
                             contentDescription = "위치",
                             tint = Gray_7,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(25.dp),
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
                             text = (pin.locationName ?: pin.address).toSummaryAddress(),
-                            style = IssueTypo.Regular12.copy(color = Gray_7),
+                            style = IssueTypo.Regular12.copy(color = Gray_7, fontSize = 14.sp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
 
                         val issueDetail = pin.detail as? IssuePinDetail
                         if (issueDetail != null) {
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
                             ResolutionStatusPill(
-                                resolutionStatus = issueDetail.resolutionStatus
+                                resolutionStatus = issueDetail.resolutionStatus,
                             )
                         }
                     }
@@ -154,12 +171,12 @@ fun PinSummaryCard(
                                 ProfileImageFrame(
                                     size = 24.dp,
                                     imageUrl = detail.writer.imageUrl,
-                                    borderWidth = 1.dp,
+                                    borderWidth = 0.dp,
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = detail.writer.name,
-                                    style = IssueTypo.Regular12.copy(color = Text),
+                                    style = IssueTypo.Regular12.copy(color = Text, fontSize = 14.sp),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.widthIn(max = 80.dp)
@@ -209,7 +226,7 @@ fun PinSummaryCard(
                                 ProfileImageFrame(
                                     size = 24.dp,
                                     imageUrl = detail.writer.imageUrl,
-                                    borderWidth = 1.dp,
+                                    borderWidth = 0.dp,
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
@@ -273,9 +290,14 @@ fun PinSummaryCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             // 4) Divider
-            HorizontalDivider(color = Gray_3, thickness = 1.dp) 
+            HorizontalDivider(color = Gray_3, thickness = 1.dp)
 
-            Spacer(modifier = Modifier.height(12.dp))
+            val categorySectionTopSpacing = if (pin.category == PinCategory.SHOP && hasCategoryInfo) {
+                4.dp
+            } else {
+                12.dp
+            }
+            Spacer(modifier = Modifier.height(categorySectionTopSpacing))
 
             // 3) CategoryInfoRow 또는 CategoryInfoBox
             when (val detail = pin.detail) {
@@ -285,7 +307,7 @@ fun PinSummaryCard(
                             text = "최신 소식: $news",
                             modifier = Modifier.padding(horizontal = 0.dp)
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
                 is FestivalPinDetail -> {
@@ -308,30 +330,38 @@ fun PinSummaryCard(
             }
 
             // 4) DescriptionArea: 본문 + "더보기"
-            Column {
-                Text(
-                    text = pin.description,
-                    style = IssueTypo.Regular15.copy(color = Text),
-                    maxLines = if (hasCategoryInfo) 1 else 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "더보기",
-                    style = IssueTypo.Bold12.copy(color = BrandColor),
-                    modifier = if (interactionsEnabled) {
-                        Modifier.clickable { onDetailClick(pin.id) }
-                    } else {
-                        Modifier
-                    },
-                )
-            }
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = Text)) {
+                        append(pin.description)
+                    }
+                    withStyle(
+                        SpanStyle(
+                            color = Title,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    ) {
+                        append(" 더보기")
+                    }
+                },
+                style = IssueTypo.Regular15,
+                maxLines = if (hasCategoryInfo) 1 else 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = if (interactionsEnabled) {
+                    Modifier.clickable { onDetailClick(pin.id) }
+                } else {
+                    Modifier
+                },
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
             // 6) BottomActionRow: 이모지/반응 영역 + 커뮤니티 버튼
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 40.dp)
+                    .padding(top = 8.dp, bottom = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -343,7 +373,7 @@ fun PinSummaryCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 // 커뮤니티 버튼 (pin.communityPostId가 있을 때만 표시)
                 if (pin.communityPostId != null) {
@@ -359,6 +389,19 @@ fun PinSummaryCard(
                     )
                 }
             }
+        }
+        }
+
+        if (pin.category.hasFireBadge()) {
+            Image(
+                painter = painterResource(R.drawable.fire),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(48.dp)
+                    .align(Alignment.TopStart)
+                    .offset(x = 4.dp, y = (-25).dp)
+                    .zIndex(1f),
+            )
         }
     }
 }
@@ -445,14 +488,23 @@ private fun ResolutionStatusPill(
         ResolutionStatus.IN_PROGRESS -> Orange
         ResolutionStatus.RESOLVED -> BrandColor
     }
+    val pillHeight = 24.dp
 
-    Text(
-        text = resolutionStatus.toDisplayText(),
-        style = IssueTypo.Bold12.copy(color = White),
+    Box(
         modifier = Modifier
-            .background(backgroundColor, RoundedCornerShape(4.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    )
+            .height(pillHeight)
+            .clip(RoundedCornerShape(pillHeight / 2))
+            .background(backgroundColor)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = resolutionStatus.toDisplayText(),
+            style = IssueTypo.Bold12.copy(color = White),
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
 }
 
 @Composable
@@ -465,13 +517,12 @@ private fun EmojiReactionRow(
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // 이모지 추가 버튼
         Box(
             modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
+                .size(30.dp)
                 .then(
                     if (enabled) {
                         Modifier.clickable { onEmojiClick(pin.id) }
@@ -485,7 +536,7 @@ private fun EmojiReactionRow(
                 painter = painterResource(id = R.drawable.ic_add_emoji),
                 contentDescription = "이모지 추가",
                 tint = Color.Unspecified,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(34.dp)
             )
         }
 
@@ -496,29 +547,21 @@ private fun EmojiReactionRow(
         visibleReactions.forEach { reaction ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(Gray_3, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 if (!reaction.emojiImageUrl.isNullOrBlank()) {
                     AsyncImage(
                         model = reaction.emojiImageUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Color.LightGray)
-                    )
+                    Box(modifier = Modifier.size(24.dp))
                 }
-                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "${reaction.count}",
-                    style = IssueTypo.Regular12.copy(color = Text)
+                    style = IssueTypo.Regular15.copy(color = Text)
                 )
             }
         }
@@ -527,10 +570,7 @@ private fun EmojiReactionRow(
         if (hiddenReactionTypeCount > 0) {
             Text(
                 text = "+${hiddenReactionTypeCount}",
-                style = IssueTypo.Regular12.copy(color = Text),
-                modifier = Modifier
-                    .background(Gray_3, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                style = IssueTypo.Regular15.copy(color = Text),
             )
         }
     }
@@ -568,9 +608,9 @@ private fun PinThumbnail(
 
 private fun ResolutionStatus.toDisplayText(): String {
     return when (this) {
-        ResolutionStatus.BEFORE_RESOLUTION -> "해결 전"
-        ResolutionStatus.IN_PROGRESS -> "해결 중"
-        ResolutionStatus.RESOLVED -> "해결 완료"
+        ResolutionStatus.BEFORE_RESOLUTION -> "해결\u00A0전"
+        ResolutionStatus.IN_PROGRESS -> "해결\u00A0중"
+        ResolutionStatus.RESOLVED -> "해결\u00A0완료"
     }
 }
 
