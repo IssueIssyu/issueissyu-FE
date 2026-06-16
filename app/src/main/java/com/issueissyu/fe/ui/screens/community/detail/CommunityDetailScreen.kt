@@ -767,7 +767,7 @@ private fun CommunityDetailImageSection(
     val listState = rememberLazyListState()
     val density = LocalDensity.current
     val itemSpacingPx = with(density) { 8.dp.roundToPx() }
-    val scrollBarMetrics by remember(imageUrls.size, itemSpacingPx) {
+    val scrollBarState = remember(imageUrls.size, itemSpacingPx) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
@@ -803,6 +803,12 @@ private fun CommunityDetailImageSection(
             )
         }
     }
+    val isScrollable by remember {
+        derivedStateOf { scrollBarState.value.scrollable }
+    }
+    val thumbFraction by remember {
+        derivedStateOf { scrollBarState.value.thumbFraction }
+    }
 
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         LazyRow(
@@ -830,7 +836,7 @@ private fun CommunityDetailImageSection(
             }
         }
 
-        if (scrollBarMetrics.scrollable) {
+        if (isScrollable) {
             Spacer(modifier = Modifier.height(12.dp))
             BoxWithConstraints(
                 modifier = Modifier
@@ -841,12 +847,12 @@ private fun CommunityDetailImageSection(
                     .clip(RoundedCornerShape(2.dp))
                     .background(Gray_3),
             ) {
-                val thumbWidth = maxWidth * scrollBarMetrics.thumbFraction
+                val thumbWidth = maxWidth * thumbFraction
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
                             translationX = with(density) {
-                                (maxWidth - thumbWidth).toPx() * scrollBarMetrics.offsetFraction
+                                (maxWidth - thumbWidth).toPx() * scrollBarState.value.offsetFraction
                             }
                         }
                         .width(thumbWidth)

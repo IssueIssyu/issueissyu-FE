@@ -106,7 +106,6 @@ fun MyPageScreen(
     val context = LocalContext.current
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }
-    var actionErrorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(authActionState) {
         when (val state = authActionState) {
@@ -119,17 +118,10 @@ fun MyPageScreen(
             is MyPageViewModel.AuthActionState.Error -> {
                 showLogoutDialog = false
                 showWithdrawDialog = false
-                actionErrorMessage = state.message
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
                 viewModel.resetAuthActionState()
             }
             else -> Unit
-        }
-    }
-
-    LaunchedEffect(actionErrorMessage) {
-        actionErrorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            actionErrorMessage = null
         }
     }
 
