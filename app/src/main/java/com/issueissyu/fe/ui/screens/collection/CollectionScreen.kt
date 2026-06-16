@@ -65,16 +65,19 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.PI
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -578,11 +581,12 @@ private fun CollectionContent(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
+            .clipToBounds()
             .background(CommunicationContainer)
     ) {
         val basePanelHeightPx = constraints.maxHeight * 0.45f
         val maxExpandPx = constraints.maxHeight * 0.40f
-        val panelHeightPx = basePanelHeightPx + panelExpandPx
+        val maxPanelHeightPx = basePanelHeightPx + maxExpandPx
 
         val nestedScrollConnection = remember(gridState, maxExpandPx) {
             object : NestedScrollConnection {
@@ -641,7 +645,6 @@ private fun CollectionContent(
                 ) {
                     isPanelDragging = false
                     snapExpandPx = 0f
-                    expandPx = 0f
                     gridWasScrolled = false
                 }
             }
@@ -721,7 +724,8 @@ private fun CollectionContent(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .height(with(density) { panelHeightPx.toDp() })
+                .height(with(density) { maxPanelHeightPx.toDp() })
+                .offset { IntOffset(0, (maxExpandPx - panelExpandPx).roundToInt()) }
                 .background(
                     color = White,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
