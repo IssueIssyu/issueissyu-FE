@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
@@ -764,50 +765,105 @@ private fun CommunityDetailImageSection(
     onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    
+    val density = LocalDensity.current
+    val itemSpacingPx = with(density) { 8.dp.roundToPx() }
+    val scrollBarMetrics by remember(imageUrls.size, itemSpacingPx) {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty()) {
+                return@derivedStateOf CommunityImageScrollBarMetrics()
+            }
+
+            val itemSize = visibleItems.first().size
+            val beforePadding = layoutInfo.beforeContentPadding
+            val afterPadding = layoutInfo.afterContentPadding
+            val viewportSize = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+            val totalContentSize = beforePadding +
+                imageUrls.size * itemSize +
+                (imageUrls.size - 1).coerceAtLeast(0) * itemSpacingPx +
+                afterPadding
+            val maxScroll = (totalContentSize - viewportSize).coerceAtLeast(0)
+            val scrollable = maxScroll > 0 &&
+                (listState.canScrollForward || listState.canScrollBackward)
+
+            if (!scrollable) {
+                return@derivedStateOf CommunityImageScrollBarMetrics()
+            }
+
+            val currentScroll = (
+                listState.firstVisibleItemIndex * (itemSize + itemSpacingPx) +
+                    listState.firstVisibleItemScrollOffset
+                ).coerceIn(0, maxScroll)
+
+            CommunityImageScrollBarMetrics(
+                scrollable = true,
+                thumbFraction = (viewportSize.toFloat() / totalContentSize).coerceIn(0.15f, 1f),
+                offsetFraction = (currentScroll.toFloat() / maxScroll.coerceAtLeast(1)).coerceIn(0f, 1f),
+            )
+        }
+    }
+
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         LazyRow(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             itemsIndexed(imageUrls) { index, imageUrl ->
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "게시글 이미지",
+                Box(
                     modifier = Modifier
-                        .width(110.dp)
-                        .height(110.dp)
+                        .size(width = 110.dp, height = 110.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Gray_3)
                         .clickable { onImageClick(index) },
-                    contentScale = ContentScale.Crop
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "게시글 이미지",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
             }
         }
-        
-        if (imageUrls.size > 1) {
+
+        if (scrollBarMetrics.scrollable) {
             Spacer(modifier = Modifier.height(12.dp))
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
-                    .width(40.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
                     .height(4.dp)
                     .align(Alignment.CenterHorizontally)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Gray_3)
+                    .background(Gray_3),
             ) {
-                // TODO: 실제 스크롤 위치에 연동된 인디케이터 구현 필요
+                val thumbWidth = maxWidth * scrollBarMetrics.thumbFraction
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.3f)
+                        .graphicsLayer {
+                            translationX = with(density) {
+                                (maxWidth - thumbWidth).toPx() * scrollBarMetrics.offsetFraction
+                            }
+                        }
+                        .width(thumbWidth)
                         .fillMaxHeight()
-                        .background(BrandColor)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(BrandColor),
                 )
             }
         }
     }
 }
+
+private data class CommunityImageScrollBarMetrics(
+    val scrollable: Boolean = false,
+    val thumbFraction: Float = 1f,
+    val offsetFraction: Float = 0f,
+)
 
 @Composable
 private fun CommunityCardNewsImageSection(
