@@ -822,28 +822,35 @@ private fun CommunityDetailImageSection(
     onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
+    val itemSpacingPx = with(LocalDensity.current) { 8.dp.roundToPx() }
     val isImageRowScrollable by remember {
         derivedStateOf {
             listState.canScrollForward || listState.canScrollBackward
         }
     }
-    val scrollProgress by remember(imageUrls.size) {
+    val scrollProgress by remember {
         derivedStateOf {
-            when {
-                !listState.canScrollBackward -> 0f
-                !listState.canScrollForward -> 1f
-                else -> {
-                    val firstVisibleItem = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-                    if (firstVisibleItem == null) {
-                        0f
-                    } else {
-                        val itemProgress =
-                            (-firstVisibleItem.offset).toFloat() / firstVisibleItem.size.coerceAtLeast(1)
-                        ((firstVisibleItem.index + itemProgress) / imageUrls.lastIndex.coerceAtLeast(1))
-                            .coerceIn(0f, 1f)
-                    }
-                }
-            }
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            if (totalItems <= 1) return@derivedStateOf 0f
+            if (!listState.canScrollBackward) return@derivedStateOf 0f
+            if (!listState.canScrollForward) return@derivedStateOf 1f
+
+            val firstVisibleItem = layoutInfo.visibleItemsInfo.firstOrNull()
+                ?: return@derivedStateOf 0f
+            val itemSizePx = firstVisibleItem.size
+            val spacingPx = itemSpacingPx
+            val viewportWidthPx =
+                (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).coerceAtLeast(1)
+            val totalContentWidthPx = itemSizePx * totalItems +
+                spacingPx * (totalItems - 1) +
+                layoutInfo.beforeContentPadding +
+                layoutInfo.afterContentPadding
+            val maxScrollPx = (totalContentWidthPx - viewportWidthPx).coerceAtLeast(1)
+            val currentScrollPx = listState.firstVisibleItemIndex * (itemSizePx + spacingPx) +
+                listState.firstVisibleItemScrollOffset
+
+            (currentScrollPx.toFloat() / maxScrollPx).coerceIn(0f, 1f)
         }
     }
 

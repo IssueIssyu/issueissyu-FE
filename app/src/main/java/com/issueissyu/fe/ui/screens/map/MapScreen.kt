@@ -107,7 +107,7 @@ private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
 private const val INITIAL_USER_LOCATION_ZOOM = 16.0
 private const val DEFAULT_MARKER_SCALE = 1.5f
 private const val SELECTED_MARKER_SCALE = 2f
-private const val SELECTED_MARKER_Z_INDEX = 1
+private const val SELECTED_MARKER_Z_INDEX = 3
 private const val CLUSTER_MARKER_Z_INDEX = 2
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
@@ -205,19 +205,29 @@ private fun createSinglePinClusterMarker(
     context: Context,
     cluster: MapPinCluster,
     pin: MapPinMarker,
+    isSelected: Boolean,
     naverMap: NaverMap,
     onClick: () -> Unit,
 ): Marker {
     val iconRes = pin.category.toMarkerIconRes()
+    val markerScale = if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE
     return Marker().apply {
         position = cluster.coordinate.toLatLng()
         icon = OverlayImage.fromResource(iconRes)
         ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-            width = (drawable.intrinsicWidth * DEFAULT_MARKER_SCALE).toInt()
-            height = (drawable.intrinsicHeight * DEFAULT_MARKER_SCALE).toInt()
+            width = (drawable.intrinsicWidth * markerScale).toInt()
+            height = (drawable.intrinsicHeight * markerScale).toInt()
+        }
+        if (isSelected) {
+            zIndex = SELECTED_MARKER_Z_INDEX
         }
         map = naverMap
         setOnClickListener {
+            ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
+                width = (drawable.intrinsicWidth * SELECTED_MARKER_SCALE).toInt()
+                height = (drawable.intrinsicHeight * SELECTED_MARKER_SCALE).toInt()
+            }
+            zIndex = SELECTED_MARKER_Z_INDEX
             onClick()
             true
         }
@@ -550,6 +560,11 @@ fun MapScreen(
                 }
                 this.map = naverMap
                 setOnClickListener {
+                    ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
+                        width = (drawable.intrinsicWidth * SELECTED_MARKER_SCALE).toInt()
+                        height = (drawable.intrinsicHeight * SELECTED_MARKER_SCALE).toInt()
+                    }
+                    zIndex = SELECTED_MARKER_Z_INDEX
                     viewModel.selectPinById(mapPin.pinId)
                     naverMap.moveCamera(
                         CameraUpdate
@@ -570,6 +585,7 @@ fun MapScreen(
                     context = context,
                     cluster = cluster,
                     pin = singlePin,
+                    isSelected = singlePin.pinId == selectedPin?.id,
                     naverMap = naverMap,
                     onClick = {
                         viewModel.selectPinById(singlePin.pinId)
@@ -1001,7 +1017,7 @@ fun MapScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(160.dp)
+                            .height(260.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(MaterialTheme.colorScheme.surface),
                         contentAlignment = Alignment.Center,

@@ -110,6 +110,7 @@ class MapViewModel @Inject constructor(
     private var currentZoomLevel: Int = DEFAULT_MAP_ZOOM_LEVEL
     private var autoRefreshJob: Job? = null
     private var refreshJob: Job? = null
+    private var researchButtonReshowJob: Job? = null
     private var clusterPinLoadJob: Job? = null
     private var refreshRequestId: Long = 0
     private var lastFetchedBounds: MapBounds? = null
@@ -220,6 +221,18 @@ class MapViewModel @Inject constructor(
             currentBounds != fetchedBounds
     }
 
+    private fun scheduleResearchButtonReshow(fetchedBounds: MapBounds) {
+        researchButtonReshowJob?.cancel()
+        researchButtonReshowJob = viewModelScope.launch {
+            delay(MANUAL_RESEARCH_BUTTON_RESHOW_MILLIS)
+            if (_isMapRefreshing.value) return@launch
+            val currentBounds = _currentBounds.value ?: return@launch
+            if (currentBounds == fetchedBounds) {
+                _showResearchButton.value = true
+            }
+        }
+    }
+
     fun updateMapViewport(bounds: MapBounds, zoomLevel: Int) {
         val isInitialBounds = _currentBounds.value == null
         _currentBounds.value = bounds
@@ -275,6 +288,7 @@ class MapViewModel @Inject constructor(
                     )
                     lastFetchedBounds = bounds
                     updateResearchButtonVisibility()
+                    scheduleResearchButtonReshow(bounds)
                 }.onFailure { error ->
                     if (requestId != refreshRequestId) return@onFailure
                     showResearchAreaButton()
@@ -663,5 +677,6 @@ class MapViewModel @Inject constructor(
     private companion object {
         const val DEFAULT_MAP_ZOOM_LEVEL = 11
         const val MAP_AUTO_REFRESH_DEBOUNCE_MILLIS = 400L
+        const val MANUAL_RESEARCH_BUTTON_RESHOW_MILLIS = 15_000L
     }
 }
