@@ -295,8 +295,13 @@ fun AppNavGraph(
                     onBackClick = {
                         navController.navigateUp()
                     },
-                    onCommunityClick = { communityId ->
-                        navController.navigate(AppDestinations.communityDetailRoute(communityId))
+                    onCommunityClick = { communityId, detailKind ->
+                        navController.navigate(
+                            AppDestinations.communityDetailRoute(
+                                communityId = communityId,
+                                kind = detailKind,
+                            )
+                        )
                     }
                 )
             }
@@ -306,7 +311,11 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("communityId") {
                     type = NavType.LongType
-                }
+                },
+                navArgument("kind") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
             )
         ) {
             NavScreenWrapper(

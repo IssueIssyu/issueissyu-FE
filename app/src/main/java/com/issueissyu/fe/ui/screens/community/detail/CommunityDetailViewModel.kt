@@ -74,8 +74,14 @@ class CommunityDetailViewModel @Inject constructor(
         const val DETAIL_KIND_CARDNEWS = "CARDNEWS"
     }
 
+    private val initialDetailKind: String? = savedStateHandle.get<String>("kind")?.takeIf { it.isNotBlank() }
+
     init {
-        loadDetail()
+        if (initialDetailKind == DETAIL_KIND_CARDNEWS) {
+            loadDetail(kind = DETAIL_KIND_CARDNEWS, markAsCardNewsView = true)
+        } else {
+            loadDetail()
+        }
         observeBillingPurchaseEvents()
     }
 

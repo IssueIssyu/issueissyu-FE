@@ -80,7 +80,7 @@ import androidx.compose.material3.TextButton
 fun CommunityScreen(
     viewModel: CommunityViewModel = hiltViewModel(),
     onBackClick: (() -> Unit)? = null,
-    onCommunityClick: (Long) -> Unit = {}
+    onCommunityClick: (communityId: Long, detailKind: String?) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -99,7 +99,7 @@ fun CommunityScreen(
 fun CommunityScreenContent(
     uiState: CommunityUiState,
     onBackClick: (() -> Unit)? = null,
-    onCommunityClick: (Long) -> Unit = {},
+    onCommunityClick: (communityId: Long, detailKind: String?) -> Unit = { _, _ -> },
     onCategorySelected: (CommunityTab) -> Unit = {},
     onRefresh: () -> Unit = {},
     onRegionSelected: (LocationRegionItem) -> Unit = {}
@@ -293,7 +293,7 @@ fun CommunityScreenContent(
                     if (uiState.selectedCategory == CommunityTab.CARDNEWS) {
                         CardNewsFeedGrid(
                             items = uiState.feedItems,
-                            onItemClick = { onCommunityClick(it.communityId) },
+                            onItemClick = { onCommunityClick(it.communityId, "CARDNEWS") },
                         )
                     } else {
                     LazyColumn(
@@ -306,7 +306,7 @@ fun CommunityScreenContent(
                                 item {
                                     RepresentativeFeedCard(
                                         item = storePromotion,
-                                        onClick = { onCommunityClick(storePromotion.communityId) },
+                                        onClick = { onCommunityClick(storePromotion.communityId, null) },
                                         modifier = Modifier.padding(16.dp)
                                     )
                                 }
@@ -330,7 +330,7 @@ fun CommunityScreenContent(
                                             CommunityFeedCard(
                                                 item = item,
                                                 onClick = {
-                                                    onCommunityClick(item.communityId)
+                                                    onCommunityClick(item.communityId, null)
                                                 }
                                             )
 
@@ -359,7 +359,7 @@ fun CommunityScreenContent(
                                         CommunityFeedCard(
                                             item = item,
                                             onClick = {
-                                                onCommunityClick(item.communityId)
+                                                onCommunityClick(item.communityId, null)
                                             }
                                         )
 
@@ -382,7 +382,7 @@ fun CommunityScreenContent(
                                 ) {
                                     CommunityFeedCard(
                                         item = item,
-                                        onClick = { onCommunityClick(item.communityId) }
+                                        onClick = { onCommunityClick(item.communityId, null) }
                                     )
                                     if (index < uiState.feedItems.lastIndex) {
                                         HorizontalDivider(
@@ -922,7 +922,7 @@ fun PreviewCommunityScreenEmpty() {
             region = "서대문구"
         ),
         onBackClick = {},
-        onCommunityClick = {}
+        onCommunityClick = { _, _ -> }
     )
 }
 
@@ -937,7 +937,7 @@ fun PreviewCommunityScreenLoading() {
             region = "마포구"
         ),
         onBackClick = {},
-        onCommunityClick = {}
+        onCommunityClick = { _, _ -> }
     )
 }
 
@@ -952,7 +952,7 @@ fun PreviewCommunityScreenError() {
             region = "마포구"
         ),
         onBackClick = {},
-        onCommunityClick = {},
+        onCommunityClick = { _, _ -> },
         onRegionSelected = {}
     )
 }
