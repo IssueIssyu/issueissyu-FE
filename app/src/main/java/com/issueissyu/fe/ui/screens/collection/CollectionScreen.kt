@@ -571,11 +571,21 @@ private fun CollectionContent(
         animationSpec = spring(),
         label = "panelExpandPx",
     )
+    val layoutExpandPx = if (isPanelDragging) expandPx else panelExpandPx
 
     LaunchedEffect(panelExpandPx, isPanelDragging) {
         if (!isPanelDragging) {
             expandPx = panelExpandPx
         }
+    }
+
+    var wasUpdatingProfile by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.isUpdatingProfile, uiState.canUpdateProfile) {
+        if (wasUpdatingProfile && !uiState.isUpdatingProfile && !uiState.canUpdateProfile) {
+            isPanelDragging = false
+            snapExpandPx = 0f
+        }
+        wasUpdatingProfile = uiState.isUpdatingProfile
     }
 
     BoxWithConstraints(
@@ -591,35 +601,54 @@ private fun CollectionContent(
         val nestedScrollConnection = remember(gridState, maxExpandPx) {
             object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                    if (source != NestedScrollSource.Drag) return Offset.Zero
                     val delta = available.y
 
+                    // 위로 스크롤: 패널이 완전히 펼쳐질 때까지 그리드 스크롤 대신 패널 확장
                     if (delta < 0 && expandPx < maxExpandPx) {
-                        isPanelDragging = true
+                        if (source == NestedScrollSource.Drag) isPanelDragging = true
                         val oldOffset = expandPx
                         expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
-                        val consumed = oldOffset - expandPx
-                        return Offset(0f, consumed)
+                        return Offset(0f, oldOffset - expandPx)
                     }
 
-                    if (
-                        delta > 0 &&
-                        expandPx > 0f &&
-                        gridState.firstVisibleItemIndex == 0 &&
-                        gridState.firstVisibleItemScrollOffset == 0
-                    ) {
-                        isPanelDragging = true
-                        val oldOffset = expandPx
-                        expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
-                        val consumed = oldOffset - expandPx
-                        return Offset(0f, consumed)
+                    if (source != NestedScrollSource.Drag) return Offset.Zero
+
+                    if (delta > 0 && expandPx > 0f) {
+                        val canCollapsePanel = expandPx < maxExpandPx ||
+                            (gridState.firstVisibleItemIndex == 0 &&
+                                gridState.firstVisibleItemScrollOffset == 0)
+                        if (canCollapsePanel) {
+                            isPanelDragging = true
+                            val oldOffset = expandPx
+                            expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
+                            return Offset(0f, oldOffset - expandPx)
+                        }
                     }
 
                     return Offset.Zero
                 }
 
+                override fun onPostScroll(
+                    consumed: Offset,
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    val delta = available.y
+                    if (delta < 0 && expandPx < maxExpandPx) {
+                        if (source == NestedScrollSource.Drag) isPanelDragging = true
+                        val oldOffset = expandPx
+                        expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
+                        return Offset(0f, oldOffset - expandPx)
+                    }
+                    return Offset.Zero
+                }
+
                 override suspend fun onPreFling(available: Velocity): Velocity {
                     isPanelDragging = false
+                    if (expandPx < maxExpandPx - 1f) {
+                        snapExpandPx = if (available.y < 0f) maxExpandPx else 0f
+                        return available
+                    }
                     snapExpandPx = if (expandPx > maxExpandPx / 2f) maxExpandPx else 0f
                     return Velocity.Zero
                 }
@@ -726,7 +755,7 @@ private fun CollectionContent(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .height(with(density) { maxPanelHeightPx.toDp() })
-                .offset { IntOffset(0, (maxExpandPx - panelExpandPx).roundToInt()) }
+                .offset { IntOffset(0, (maxExpandPx - layoutExpandPx).roundToInt()) }
                 .background(
                     color = White,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
