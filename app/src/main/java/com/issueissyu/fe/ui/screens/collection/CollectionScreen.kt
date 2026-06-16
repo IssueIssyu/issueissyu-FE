@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -53,6 +54,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -76,6 +78,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -98,6 +101,7 @@ import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.White
+import kotlinx.coroutines.launch
 
 @Composable
 fun CollectionScreen(
@@ -560,31 +564,25 @@ private fun CollectionContent(
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
     var expandPx by remember { mutableFloatStateOf(0f) }
-    var snapExpandPx by remember { mutableFloatStateOf(0f) }
     var isPanelDragging by remember { mutableStateOf(false) }
     var gridWasScrolled by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
+    val panelExpandAnim = remember { Animatable(0f) }
 
-    val panelExpandPx by animateFloatAsState(
-        targetValue = if (isPanelDragging) expandPx else snapExpandPx,
-        animationSpec = spring(),
-        label = "panelExpandPx",
+    val panelSnapSpec = spring<Float>(
+        stiffness = Spring.StiffnessMediumLow,
+        dampingRatio = Spring.DampingRatioNoBouncy,
     )
-
-    LaunchedEffect(isPanelDragging) {
-        if (!isPanelDragging) {
-            snapshotFlow { panelExpandPx }.collect { value ->
-                expandPx = value
-            }
-        }
-    }
 
     var wasUpdatingProfile by remember { mutableStateOf(false) }
     LaunchedEffect(uiState.isUpdatingProfile, uiState.canUpdateProfile) {
         if (wasUpdatingProfile && !uiState.isUpdatingProfile && !uiState.canUpdateProfile) {
             isPanelDragging = false
-            snapExpandPx = 0f
+            panelExpandAnim.snapTo(expandPx)
+            panelExpandAnim.animateTo(0f, panelSnapSpec)
+            expandPx = panelExpandAnim.value
         }
         wasUpdatingProfile = uiState.isUpdatingProfile
     }
@@ -599,8 +597,7 @@ private fun CollectionContent(
         val maxExpandPx = constraints.maxHeight * 0.40f
         val maxPanelHeightPx = basePanelHeightPx + maxExpandPx
 
-        val nestedScrollConnection = remember(gridState, maxExpandPx) {
-            object : NestedScrollConnection {
+        val nestedScrollConnection = object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                     val delta = available.y
 
@@ -630,16 +627,24 @@ private fun CollectionContent(
                 }
 
                 override suspend fun onPreFling(available: Velocity): Velocity {
-                    isPanelDragging = false
-                    if (expandPx < maxExpandPx - 1f) {
-                        snapExpandPx = if (available.y < 0f) maxExpandPx else 0f
-                        return available
+                    val consumeFling = expandPx < maxExpandPx - 1f
+                    val targetPx = if (consumeFling) {
+                        if (available.y < 0f) maxExpandPx else 0f
+                    } else {
+                        if (expandPx > maxExpandPx / 2f) maxExpandPx else 0f
                     }
-                    snapExpandPx = if (expandPx > maxExpandPx / 2f) maxExpandPx else 0f
-                    return Velocity.Zero
+                    isPanelDragging = false
+                    val startPx = expandPx
+                    scope.launch {
+                        panelExpandAnim.snapTo(startPx)
+                        if (abs(targetPx - startPx) > 0.5f) {
+                            panelExpandAnim.animateTo(targetPx, panelSnapSpec)
+                        }
+                        expandPx = panelExpandAnim.value
+                    }
+                    return if (consumeFling) available else Velocity.Zero
                 }
             }
-        }
 
         LaunchedEffect(gridState) {
             snapshotFlow {
@@ -660,7 +665,9 @@ private fun CollectionContent(
                     expandPx > 0f
                 ) {
                     isPanelDragging = false
-                    snapExpandPx = 0f
+                    panelExpandAnim.snapTo(expandPx)
+                    panelExpandAnim.animateTo(0f, panelSnapSpec)
+                    expandPx = panelExpandAnim.value
                     gridWasScrolled = false
                 }
             }
@@ -742,7 +749,8 @@ private fun CollectionContent(
                 .padding(horizontal = 24.dp)
                 .height(with(density) { maxPanelHeightPx.toDp() })
                 .offset {
-                    val currentLayoutExpandPx = if (isPanelDragging) expandPx else panelExpandPx
+                    val currentLayoutExpandPx =
+                        if (isPanelDragging) expandPx else panelExpandAnim.value
                     IntOffset(0, (maxExpandPx - currentLayoutExpandPx).roundToInt())
                 }
                 .background(
