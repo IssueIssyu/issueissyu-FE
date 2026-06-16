@@ -24,9 +24,15 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -34,6 +40,7 @@ import androidx.compose.ui.zIndex
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
@@ -330,28 +337,11 @@ fun PinSummaryCard(
             }
 
             // 4) DescriptionArea: 본문 + "더보기"
-            Text(
-                text = buildAnnotatedString {
-                    withStyle(SpanStyle(color = Text)) {
-                        append(pin.description)
-                    }
-                    withStyle(
-                        SpanStyle(
-                            color = Title,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    ) {
-                        append(" 더보기")
-                    }
-                },
-                style = IssueTypo.Regular15,
+            DescriptionWithSeeMore(
+                description = pin.description,
                 maxLines = if (hasCategoryInfo) 1 else 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = if (interactionsEnabled) {
-                    Modifier.clickable { onDetailClick(pin.id) }
-                } else {
-                    Modifier
-                },
+                interactionsEnabled = interactionsEnabled,
+                onSeeMoreClick = { onDetailClick(pin.id) },
             )
 
             Spacer(modifier = Modifier.weight(1f))
@@ -402,6 +392,106 @@ fun PinSummaryCard(
                     .offset(x = 4.dp, y = (-25).dp)
                     .zIndex(1f),
             )
+        }
+    }
+}
+
+@Composable
+private fun DescriptionWithSeeMore(
+    description: String,
+    maxLines: Int,
+    interactionsEnabled: Boolean,
+    onSeeMoreClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val textStyle = IssueTypo.Regular15.copy(color = Text)
+    val seeMoreSuffix = " 더보기"
+    val seeMoreSpanStyle = SpanStyle(color = Title, fontWeight = FontWeight.Bold)
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val textMeasurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val maxWidthPx = with(density) { maxWidth.roundToPx() }
+
+        val displayText = remember(description, maxWidthPx, maxLines) {
+            buildDescriptionWithSeeMore(
+                description = description,
+                suffix = seeMoreSuffix,
+                textStyle = textStyle,
+                seeMoreSpanStyle = seeMoreSpanStyle,
+                maxWidthPx = maxWidthPx,
+                maxLines = maxLines,
+                textMeasurer = textMeasurer,
+            )
+        }
+
+        Text(
+            text = displayText,
+            style = textStyle,
+            modifier = if (interactionsEnabled) {
+                Modifier.clickable(onClick = onSeeMoreClick)
+            } else {
+                Modifier
+            },
+        )
+    }
+}
+
+private fun buildDescriptionWithSeeMore(
+    description: String,
+    suffix: String,
+    textStyle: TextStyle,
+    seeMoreSpanStyle: SpanStyle,
+    maxWidthPx: Int,
+    maxLines: Int,
+    textMeasurer: TextMeasurer,
+): AnnotatedString {
+    fun fits(text: String): Boolean {
+        val layout = textMeasurer.measure(
+            text = AnnotatedString(text),
+            style = textStyle,
+            constraints = Constraints(maxWidth = maxWidthPx),
+            maxLines = maxLines,
+            overflow = TextOverflow.Clip,
+        )
+        return layout.lineCount <= maxLines && !layout.didOverflowHeight
+    }
+
+    if (fits(description + suffix)) {
+        return buildAnnotatedString {
+            withStyle(SpanStyle(color = Text)) {
+                append(description)
+            }
+            withStyle(seeMoreSpanStyle) {
+                append(suffix)
+            }
+        }
+    }
+
+    var low = 0
+    var high = description.length
+    while (low < high) {
+        val mid = (low + high + 1) / 2
+        val candidate = description.take(mid).trimEnd() + "…$suffix"
+        if (fits(candidate)) {
+            low = mid
+        } else {
+            high = mid - 1
+        }
+    }
+
+    val trimmedBody = if (low > 0) {
+        description.take(low).trimEnd() + "…"
+    } else {
+        "…"
+    }
+
+    return buildAnnotatedString {
+        withStyle(SpanStyle(color = Text)) {
+            append(trimmedBody)
+        }
+        withStyle(seeMoreSpanStyle) {
+            append(suffix)
         }
     }
 }
