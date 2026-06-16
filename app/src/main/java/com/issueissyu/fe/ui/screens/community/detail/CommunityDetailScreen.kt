@@ -120,7 +120,7 @@ fun CommunityDetailScreen(
     CommunityDetailScreenContent(
         uiState = uiState,
         onBackClick = {
-            if (uiState.isCardNewsView) {
+            if (viewModel.shouldExitToParentDetail()) {
                 viewModel.exitCardNewsView()
             } else {
                 onBackClick()

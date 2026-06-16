@@ -69,6 +69,7 @@ class CommunityDetailViewModel @Inject constructor(
     val deleteCompleted: SharedFlow<Unit> = _deleteCompleted.asSharedFlow()
 
     private var detailLoadJob: Job? = null
+    private var cardNewsOpenedFromParentDetail = false
 
     private companion object {
         const val DETAIL_KIND_CARDNEWS = "CARDNEWS"
@@ -94,11 +95,17 @@ class CommunityDetailViewModel @Inject constructor(
         if (detail.moveCardnews.isNullOrBlank()) return
         if (detail.kind != CommunityItemKind.POLICY && detail.kind != CommunityItemKind.CONTEST) return
 
+        cardNewsOpenedFromParentDetail = true
         loadDetail(kind = DETAIL_KIND_CARDNEWS, markAsCardNewsView = true)
+    }
+
+    fun shouldExitToParentDetail(): Boolean {
+        return _uiState.value.isCardNewsView && cardNewsOpenedFromParentDetail
     }
 
     fun exitCardNewsView() {
         if (!_uiState.value.isCardNewsView) return
+        cardNewsOpenedFromParentDetail = false
         loadDetail(kind = null, markAsCardNewsView = false)
     }
 
