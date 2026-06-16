@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
@@ -48,20 +50,28 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.cos
@@ -546,13 +556,92 @@ private fun CollectionContent(
     onEvent: (CollectionEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val density = LocalDensity.current
+    var expandPx by remember { mutableFloatStateOf(0f) }
+    var snapExpandPx by remember { mutableFloatStateOf(0f) }
+    var isPanelDragging by remember { mutableStateOf(false) }
+    var gridWasScrolled by remember { mutableStateOf(false) }
+    val gridState = rememberLazyGridState()
 
-    Box(
+    val panelExpandPx by animateFloatAsState(
+        targetValue = if (isPanelDragging) expandPx else snapExpandPx,
+        animationSpec = spring(),
+        label = "panelExpandPx",
+    )
+
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(CommunicationContainer)
     ) {
-        // 배경 (벚꽃 + 덤불)
+        val basePanelHeightPx = constraints.maxHeight * 0.45f
+        val maxExpandPx = constraints.maxHeight * 0.40f
+        val panelHeightPx = basePanelHeightPx + panelExpandPx
+
+        val nestedScrollConnection = remember(gridState, maxExpandPx) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    val delta = available.y
+
+                    if (delta < 0 && expandPx < maxExpandPx) {
+                        isPanelDragging = true
+                        val oldOffset = expandPx
+                        expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
+                        val consumed = oldOffset - expandPx
+                        return Offset(0f, consumed)
+                    }
+
+                    if (
+                        delta > 0 &&
+                        expandPx > 0f &&
+                        gridState.firstVisibleItemIndex == 0 &&
+                        gridState.firstVisibleItemScrollOffset == 0
+                    ) {
+                        isPanelDragging = true
+                        val oldOffset = expandPx
+                        expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
+                        val consumed = oldOffset - expandPx
+                        return Offset(0f, consumed)
+                    }
+
+                    return Offset.Zero
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    isPanelDragging = false
+                    snapExpandPx = if (expandPx > maxExpandPx / 2f) maxExpandPx else 0f
+                    expandPx = snapExpandPx
+                    return Velocity.Zero
+                }
+            }
+        }
+
+        LaunchedEffect(gridState) {
+            snapshotFlow {
+                Triple(
+                    gridState.firstVisibleItemIndex,
+                    gridState.firstVisibleItemScrollOffset,
+                    gridState.isScrollInProgress,
+                )
+            }.collect { (index, scrollOffset, scrolling) ->
+                if (index > 0 || scrollOffset > 0) {
+                    gridWasScrolled = true
+                }
+                if (
+                    !scrolling &&
+                    gridWasScrolled &&
+                    index == 0 &&
+                    scrollOffset == 0 &&
+                    expandPx > 0f
+                ) {
+                    isPanelDragging = false
+                    snapExpandPx = 0f
+                    expandPx = 0f
+                    gridWasScrolled = false
+                }
+            }
+        }
+
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
@@ -569,10 +658,7 @@ private fun CollectionContent(
             )
         }
 
-        // 앞쪽 요소들
         Column(modifier = Modifier.fillMaxSize()) {
-
-            // 공지사항
             AutoScrollingNotice(
                 notices = uiState.notices.map { notice ->
                     NoticeUiModel(
@@ -592,7 +678,6 @@ private fun CollectionContent(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -600,7 +685,6 @@ private fun CollectionContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 말풍선
                 Box {
                     Image(
                         painter = painterResource(id = R.drawable.ic_bubble),
@@ -625,69 +709,69 @@ private fun CollectionContent(
                         .padding(bottom = 20.dp),
                 )
             }
+        }
 
-            // 핀 컬렉션
-            Column(
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .height(with(density) { panelHeightPx.toDp() })
+                .background(
+                    color = White,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                )
+                .nestedScroll(nestedScrollConnection)
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
                     .padding(horizontal = 24.dp)
-                    .background(
-                        color = White,
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                    )
+                    .padding(top = 20.dp, bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 헤더
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 20.dp, bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "내 핀들", style = IssueTypo.Bold18)
+                Text(text = "내 핀들", style = IssueTypo.Bold18)
 
-                    Button(
-                        onClick = { onEvent(CollectionEvent.UpdateProfile) },
-                        enabled = uiState.canUpdateProfile && !uiState.isUpdatingProfile,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BrandColor,
-                            disabledContainerColor = Gray_4
-                        ),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text(
-                            text = if (uiState.isUpdatingProfile) "업데이트 중..." else "프로필 업데이트",
-                            style = IssueTypo.Bold12,
-                            color = White
-                        )
-                    }
-                }
-
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 24.dp,
-                        end = 24.dp,
-                        top = 8.dp,
-                        bottom = 16.dp
+                Button(
+                    onClick = { onEvent(CollectionEvent.UpdateProfile) },
+                    enabled = uiState.canUpdateProfile && !uiState.isUpdatingProfile,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandColor,
+                        disabledContainerColor = Gray_4
                     ),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    items(uiState.pins, key = { it.id }) { pin ->
-                        PinCard(
-                            pin = pin,
-                            isSelected = pin.id == uiState.selectedPin?.id,
-                            isCurrentProfile = pin.collectionId == uiState.currentProfilePin?.collectionId,
-                            isBookmarkLoading = pin.collectionId == uiState.bookmarkingCollectionId,
-                            onPinClick = { onEvent(CollectionEvent.SelectPin(pin.id)) },
-                            onBookmarkClick = { onEvent(CollectionEvent.ToggleBookmark(pin.id)) }
-                        )
-                    }
+                    Text(
+                        text = if (uiState.isUpdatingProfile) "업데이트 중..." else "프로필 업데이트",
+                        style = IssueTypo.Bold12,
+                        color = White
+                    )
+                }
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 24.dp,
+                    end = 24.dp,
+                    top = 8.dp,
+                    bottom = 16.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(uiState.pins, key = { it.id }) { pin ->
+                    PinCard(
+                        pin = pin,
+                        isSelected = pin.id == uiState.selectedPin?.id,
+                        isCurrentProfile = pin.collectionId == uiState.currentProfilePin?.collectionId,
+                        isBookmarkLoading = pin.collectionId == uiState.bookmarkingCollectionId,
+                        onPinClick = { onEvent(CollectionEvent.SelectPin(pin.id)) },
+                        onBookmarkClick = { onEvent(CollectionEvent.ToggleBookmark(pin.id)) }
+                    )
                 }
             }
         }
