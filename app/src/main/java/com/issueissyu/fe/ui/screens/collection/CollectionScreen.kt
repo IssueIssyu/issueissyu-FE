@@ -616,7 +616,6 @@ private fun CollectionContent(
                 override suspend fun onPreFling(available: Velocity): Velocity {
                     isPanelDragging = false
                     snapExpandPx = if (expandPx > maxExpandPx / 2f) maxExpandPx else 0f
-                    expandPx = snapExpandPx
                     return Velocity.Zero
                 }
             }
