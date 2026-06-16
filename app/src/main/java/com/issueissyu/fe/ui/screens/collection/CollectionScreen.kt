@@ -591,6 +591,7 @@ private fun CollectionContent(
         val nestedScrollConnection = remember(gridState, maxExpandPx) {
             object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    if (source != NestedScrollSource.Drag) return Offset.Zero
                     val delta = available.y
 
                     if (delta < 0 && expandPx < maxExpandPx) {
