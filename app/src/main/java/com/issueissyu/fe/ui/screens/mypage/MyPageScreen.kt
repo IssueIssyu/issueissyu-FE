@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +48,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.SavedStateHandle
@@ -100,6 +103,7 @@ fun MyPageScreen(
         }
     }
 
+    val context = LocalContext.current
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }
     var actionErrorMessage by remember { mutableStateOf<String?>(null) }
@@ -119,6 +123,13 @@ fun MyPageScreen(
                 viewModel.resetAuthActionState()
             }
             else -> Unit
+        }
+    }
+
+    LaunchedEffect(actionErrorMessage) {
+        actionErrorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            actionErrorMessage = null
         }
     }
 
@@ -189,17 +200,6 @@ fun MyPageScreen(
         )
         }
 
-        actionErrorMessage?.let { message ->
-            Dialog(
-                title = "안내",
-                message = message,
-                confirmText = "확인",
-                dismissText = "확인",
-                onDismiss = { actionErrorMessage = null },
-                onConfirm = { actionErrorMessage = null },
-            )
-        }
-
         if (isAuthActionLoading) {
             Box(
                 modifier = Modifier
@@ -229,6 +229,7 @@ private fun MyPageContent(
         IssueissyuTopAppBar(
             titleText = "마이페이지",
             onBackClick = { onEvent(MyPageEvent.NavigateBack) },
+            modifier = Modifier.statusBarsPadding(),
         )
 
         Column(
