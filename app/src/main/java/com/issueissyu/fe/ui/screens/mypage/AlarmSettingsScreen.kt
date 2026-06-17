@@ -29,10 +29,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -107,68 +111,68 @@ fun AlarmSettingScreen(
 
     Column(
         modifier = Modifier
-        .fillMaxSize()
-        .background(White)
+            .fillMaxSize()
+            .background(White)
     ) {
         IssueissyuTopAppBar(
             titleText = "알림 설정",
             onBackClick = onBackClick
         )
 
-        if (!isDeviceNotificationEnabled) {
-            DeviceNotificationDisabledBanner(
-                onOpenSettings = ::openNotificationSettings,
-            )
-        }
-
-        when {
-            uiState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator()
-                }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(31.dp, 20.dp),
+        ) {
+            if (!isDeviceNotificationEnabled) {
+                DeviceNotificationDisabledBanner(
+                    onOpenSettings = ::openNotificationSettings,
+                )
+                Spacer(modifier = Modifier.height(30.dp))
             }
 
-            uiState.errorMessage != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 31.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
+            when {
+                uiState.isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = uiState.errorMessage.orEmpty(),
-                            fontFamily = suiteFontFamily,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 16.sp,
-                            color = Gray_6,
-                            textAlign = TextAlign.Center,
-                        )
-                        Button(onClick = viewModel::loadAlarmSettings) {
-                            Text("다시 시도")
+                        CircularProgressIndicator()
+                    }
+                }
+
+                uiState.errorMessage != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                        ) {
+                            Text(
+                                text = uiState.errorMessage.orEmpty(),
+                                fontFamily = suiteFontFamily,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 16.sp,
+                                color = Gray_6,
+                                textAlign = TextAlign.Center,
+                            )
+                            Button(onClick = viewModel::loadAlarmSettings) {
+                                Text("다시 시도")
+                            }
                         }
                     }
                 }
-            }
 
-            else -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(31.dp, 20.dp),
-                ){
+                else -> {
                     Text(
                         text = "여기서 끄면 해당 내용의 알림은 보내지 않아요.",
                         style = IssueTypo.Regular15.copy(color = Gray_5)
                     )
 
-                    Spacer(modifier = Modifier.height(50.dp))
+                    Spacer(modifier = Modifier.height(15.dp))
 
                     Column(
                         verticalArrangement = Arrangement.spacedBy(15.dp),
@@ -213,9 +217,7 @@ private fun DeviceNotificationDisabledBanner(
     onOpenSettings: () -> Unit,
 ) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Gray_2),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -253,29 +255,33 @@ fun AlarmToggleItem(
     enabled: Boolean = true,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Card(
-        shape = RoundedCornerShape(15.dp),
-        colors = CardDefaults.cardColors(containerColor = White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(title, style = IssueTypo.Bold18.copy(color = Title, fontSize = 20.sp))
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-                enabled = enabled,
-                colors = SwitchDefaults.colors(
-                    checkedTrackColor = BrandColor
-                )
+    val shape = RoundedCornerShape(15.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .dropShadow(
+                shape = shape,
+                shadow = Shadow(
+                    radius = 5.dp,
+                    spread = 0.dp,
+                    color = Color.Black.copy(alpha = 0.12f),
+                    offset = DpOffset(0.dp, 0.dp),
+                ),
             )
-        }
+            .background(White, shape)
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, style = IssueTypo.Bold18.copy(color = Title, fontSize = 20.sp))
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = BrandColor
+            )
+        )
     }
 }
 
