@@ -13,19 +13,28 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.naver.maps.geometry.LatLng
+import com.naver.maps.map.CameraPosition
 import com.naver.maps.map.MapView
 import com.naver.maps.map.NaverMap
+import com.naver.maps.map.NaverMapOptions
 
 @Composable
 fun IssueissyuNaverMap(
     modifier: Modifier = Modifier,
+    initialCameraPosition: CameraPosition? = null,
     onMapReady: (NaverMap) -> Unit,
     onCameraIdle: ((NaverMap) -> Unit)? = null, // LatLng 대신 NaverMap 자체를 넘기도록 변경 (2단계 준비)
     onMapClick: ((LatLng) -> Unit)? = null
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val mapView = remember { MapView(context) }
+    val mapView = remember(initialCameraPosition) {
+        if (initialCameraPosition != null) {
+            MapView(context, NaverMapOptions().camera(initialCameraPosition))
+        } else {
+            MapView(context)
+        }
+    }
 
     val currentOnMapReady by rememberUpdatedState(onMapReady)
     val currentOnCameraIdle by rememberUpdatedState(onCameraIdle)
