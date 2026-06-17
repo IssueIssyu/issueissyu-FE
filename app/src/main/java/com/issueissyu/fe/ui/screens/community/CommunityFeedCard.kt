@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.domain.model.community.CommunityFeedItem
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
+import com.issueissyu.fe.ui.theme.Gray_5
+import com.issueissyu.fe.ui.theme.Gray_7
 import com.issueissyu.fe.ui.theme.IssueTypo // IssueTypo 임포트
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -121,7 +123,7 @@ fun CommunityFeedCard(
                     if (!item.content.isNullOrBlank()) {
                         Text(
                             text = item.content,
-                            style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                            style = IssueTypo.Regular12.copy(color = Gray_7),
                             maxLines = 1, // 1줄로 제한
                             overflow = TextOverflow.Ellipsis
                         )
@@ -169,7 +171,7 @@ fun CommunityFeedCard(
                     } else if (!item.content.isNullOrBlank()) { // 주소가 없으면 content 요약
                         Text(
                             text = item.content,
-                            style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.outline),
+                            style = IssueTypo.Regular12.copy(color = Gray_7),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -180,7 +182,7 @@ fun CommunityFeedCard(
                     if (!item.content.isNullOrBlank()) {
                         Text(
                             text = item.content,
-                            style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                            style = IssueTypo.Regular12.copy(color = Gray_7),
                             maxLines = 1, // 1줄로 제한
                             overflow = TextOverflow.Ellipsis
                         )
@@ -195,7 +197,7 @@ fun CommunityFeedCard(
             // 3. 조회수/공감수 (모든 카테고리)
             Text(
                 text = "조회 ${item.viewCount}·공감 ${item.likeCount}",
-                style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.outlineVariant)
+                style = IssueTypo.Regular12.copy(color = Gray_5)
             )
         }
     }
@@ -259,7 +261,7 @@ fun RepresentativeFeedCard(
                 if (!item.content.isNullOrBlank()) {
                     Text(
                         text = item.content,
-                        style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+                        style = IssueTypo.Regular12.copy(color = Gray_7),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -279,7 +281,7 @@ fun RepresentativeFeedCard(
 
                 Text(
                     text = "조회 ${item.viewCount}·공감 ${item.likeCount}",
-                    style = IssueTypo.Regular12.copy(color = MaterialTheme.colorScheme.outlineVariant)
+                    style = IssueTypo.Regular12.copy(color = Gray_5)
                 )
             }
         }

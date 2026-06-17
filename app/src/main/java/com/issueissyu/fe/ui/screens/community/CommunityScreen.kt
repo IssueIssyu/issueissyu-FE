@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -79,14 +79,12 @@ import androidx.compose.material3.TextButton
 @Composable
 fun CommunityScreen(
     viewModel: CommunityViewModel = hiltViewModel(),
-    onBackClick: (() -> Unit)? = null,
-    onCommunityClick: (Long) -> Unit = {}
+    onCommunityClick: (communityId: Long, detailKind: String?) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     CommunityScreenContent(
         uiState = uiState,
-        onBackClick = onBackClick,
         onCommunityClick = onCommunityClick,
         onCategorySelected = viewModel::onCategorySelected,
         onRefresh = viewModel::onRefresh,
@@ -98,8 +96,7 @@ fun CommunityScreen(
 @Composable
 fun CommunityScreenContent(
     uiState: CommunityUiState,
-    onBackClick: (() -> Unit)? = null,
-    onCommunityClick: (Long) -> Unit = {},
+    onCommunityClick: (communityId: Long, detailKind: String?) -> Unit = { _, _ -> },
     onCategorySelected: (CommunityTab) -> Unit = {},
     onRefresh: () -> Unit = {},
     onRegionSelected: (LocationRegionItem) -> Unit = {}
@@ -113,6 +110,7 @@ fun CommunityScreenContent(
         CommunityTab.visibleTabs.map { tab ->
             when (tab) {
                 CommunityTab.HOT -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_fire,
                     Issue,
@@ -120,6 +118,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.ISSUE -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.issue,
                     Issue,
@@ -127,6 +126,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.STORE -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.shop,
                     Shop,
@@ -134,6 +134,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.FESTIVAL -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.festival,
                     Festival,
@@ -141,6 +142,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.POLICY -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_policy,
                     Gray_5,
@@ -148,6 +150,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.CONTEST -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_award,
                     Shop,
@@ -155,6 +158,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.CARDNEWS -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_cardnews,
                     Lime,
@@ -162,6 +166,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.ALL -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_all,
                     Title,
@@ -170,6 +175,7 @@ fun CommunityScreenContent(
                 )
 
                 else -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.communicate,
                     Communication,
@@ -180,6 +186,7 @@ fun CommunityScreenContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             Column(
                 modifier = Modifier
@@ -188,34 +195,27 @@ fun CommunityScreenContent(
             ) {
                 CategoryButtons(
                     categories = categories,
-                    selectedCategory = uiState.selectedCategory.displayName,
-                    onCategorySelected = { name ->
-                        onCategorySelected(name.toCommunityTab())
+                    selectedCategory = uiState.selectedCategory,
+                    onCategorySelected = { category ->
+                        onCategorySelected(category ?: CommunityTab.ALL)
                     }
                 )
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (onBackClick != null) {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "뒤로가기",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                val showsRegionSelector = uiState.selectedCategory.showsRegionSelector()
+                
+                if (showsRegionSelector) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.CenterEnd,
+                    ) {
+                        RegionDropdownPill(
+                            region = uiState.region.toRegionDisplayName(),
+                            onClick = { showRegionSelector = true }
+                        )
                     }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    RegionDropdownPill(
-                        region = uiState.region.toRegionDisplayName(),
-                        onClick = { showRegionSelector = true }
-                    )
                 }
             }
         }
@@ -290,45 +290,79 @@ fun CommunityScreenContent(
                 }
 
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp)
-                    ) {
-                        if (uiState.selectedCategory == CommunityTab.ALL) {
-                            // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
-                            uiState.storePromotions.firstOrNull()?.let { storePromotion ->
-                                item {
-                                    RepresentativeFeedCard(
-                                        item = storePromotion,
-                                        onClick = { onCommunityClick(storePromotion.communityId) },
-                                        modifier = Modifier.padding(16.dp)
-                                    )
+                    if (uiState.selectedCategory == CommunityTab.CARDNEWS) {
+                        CardNewsFeedGrid(
+                            items = uiState.feedItems,
+                            onItemClick = { onCommunityClick(it.communityId, "CARDNEWS") },
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            if (uiState.selectedCategory == CommunityTab.ALL) {
+                                // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
+                                uiState.storePromotions.firstOrNull()?.let { storePromotion ->
+                                    item {
+                                        RepresentativeFeedCard(
+                                            item = storePromotion,
+                                            onClick = { onCommunityClick(storePromotion.communityId, null) },
+                                            modifier = Modifier.padding(16.dp)
+                                        )
+                                    }
                                 }
-                            }
 
-                            // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
-                            if (uiState.hotPreviews.isNotEmpty()) {
+                                // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
+                                if (uiState.hotPreviews.isNotEmpty()) {
+                                    item {
+                                        SectionHeaderWithAction(
+                                            title = "우리 동네 인기 소식 🔥",
+                                            actionText = "더보기",
+                                            onActionClick = { onCategorySelected(CommunityTab.HOT) }
+                                        )
+                                        Column(
+                                            modifier = Modifier
+                                                .padding(horizontal = 16.dp)
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(Color.White)
+                                        ) {
+                                            uiState.hotPreviews.take(3).forEachIndexed { index, item ->
+                                                CommunityFeedCard(
+                                                    item = item,
+                                                    onClick = {
+                                                        onCommunityClick(item.communityId, null)
+                                                    }
+                                                )
+
+                                                if (index < uiState.hotPreviews.take(3).lastIndex) {
+                                                    HorizontalDivider(
+                                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                                        thickness = 1.dp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 item {
-                                    SectionHeaderWithAction(
-                                        title = "우리 동네 인기 소식 🔥",
-                                        actionText = "더보기",
-                                        onActionClick = { onCategorySelected(CommunityTab.HOT) }
-                                    )
+                                    SectionHeader(title = "우리 동네 최근 소식 🆕")
+
                                     Column(
                                         modifier = Modifier
                                             .padding(horizontal = 16.dp)
                                             .clip(RoundedCornerShape(16.dp))
                                             .background(Color.White)
                                     ) {
-                                        uiState.hotPreviews.take(3).forEachIndexed { index, item ->
+                                        uiState.recentNews.forEachIndexed { index, item ->
                                             CommunityFeedCard(
                                                 item = item,
                                                 onClick = {
-                                                    onCommunityClick(item.communityId)
+                                                    onCommunityClick(item.communityId, null)
                                                 }
                                             )
 
-                                            if (index < uiState.hotPreviews.take(3).lastIndex) {
+                                            if (index < uiState.recentNews.lastIndex) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = 16.dp),
                                                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -338,52 +372,24 @@ fun CommunityScreenContent(
                                         }
                                     }
                                 }
-                            }
-
-                            item {
-                                SectionHeader(title = "우리 동네 최근 소식 🆕")
-
-                                Column(
-                                    modifier = Modifier
-                                        .padding(horizontal = 16.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(Color.White)
-                                ) {
-                                    uiState.recentNews.forEachIndexed { index, item ->
+                            } else {
+                                itemsIndexed(uiState.feedItems) { index, item ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color.White)
+                                    ) {
                                         CommunityFeedCard(
                                             item = item,
-                                            onClick = {
-                                                onCommunityClick(item.communityId)
-                                            }
+                                            onClick = { onCommunityClick(item.communityId, null) }
                                         )
-
-                                        if (index < uiState.recentNews.lastIndex) {
+                                        if (index < uiState.feedItems.lastIndex) {
                                             HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
                                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                                 thickness = 1.dp
                                             )
                                         }
-                                    }
-                                }
-                            }
-                        } else {
-                            itemsIndexed(uiState.feedItems) { index, item ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Color.White)
-                                ) {
-                                    CommunityFeedCard(
-                                        item = item,
-                                        onClick = { onCommunityClick(item.communityId) }
-                                    )
-                                    if (index < uiState.feedItems.lastIndex) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                            color = MaterialTheme.colorScheme.surfaceVariant,
-                                            thickness = 1.dp
-                                        )
                                     }
                                 }
                             }
@@ -420,6 +426,14 @@ private fun CommunityUiState.isCurrentCategoryEmpty(): Boolean {
 
 private fun String?.toCommunityTab(): CommunityTab {
     return CommunityTab.entries.find { it.displayName == this } ?: CommunityTab.ALL
+}
+
+private fun CommunityTab.showsRegionSelector(): Boolean {
+    return this !in setOf(
+        CommunityTab.POLICY,
+        CommunityTab.CONTEST,
+        CommunityTab.CARDNEWS,
+    )
 }
 
 @Composable
@@ -872,7 +886,6 @@ fun PreviewCommunityScreenHome() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -886,7 +899,6 @@ fun PreviewCommunityScreenHot() {
             selectedCategory = CommunityTab.HOT,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -900,7 +912,6 @@ fun PreviewCommunityScreenIssue() {
             selectedCategory = CommunityTab.ISSUE,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -914,8 +925,7 @@ fun PreviewCommunityScreenEmpty() {
             selectedCategory = CommunityTab.ALL,
             region = "서대문구"
         ),
-        onBackClick = {},
-        onCommunityClick = {}
+        onCommunityClick = { _, _ -> }
     )
 }
 
@@ -929,8 +939,7 @@ fun PreviewCommunityScreenLoading() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
-        onCommunityClick = {}
+        onCommunityClick = { _, _ -> }
     )
 }
 
@@ -944,8 +953,7 @@ fun PreviewCommunityScreenError() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
-        onCommunityClick = {},
+        onCommunityClick = { _, _ -> },
         onRegionSelected = {}
     )
 }
