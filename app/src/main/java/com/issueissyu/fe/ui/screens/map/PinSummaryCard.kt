@@ -428,6 +428,8 @@ private fun DescriptionWithSeeMore(
         Text(
             text = displayText,
             style = textStyle,
+            maxLines = maxLines,
+            overflow = TextOverflow.Clip,
             modifier = if (interactionsEnabled) {
                 Modifier.clickable(onClick = onSeeMoreClick)
             } else {
@@ -446,9 +448,20 @@ private fun buildDescriptionWithSeeMore(
     maxLines: Int,
     textMeasurer: TextMeasurer,
 ): AnnotatedString {
-    fun fits(text: String): Boolean {
+    val bodySpanStyle = SpanStyle(color = Text)
+
+    fun buildContent(body: String): AnnotatedString = buildAnnotatedString {
+        withStyle(bodySpanStyle) {
+            append(body)
+        }
+        withStyle(seeMoreSpanStyle) {
+            append(suffix)
+        }
+    }
+
+    fun fits(content: AnnotatedString): Boolean {
         val layout = textMeasurer.measure(
-            text = AnnotatedString(text),
+            text = content,
             style = textStyle,
             constraints = Constraints(maxWidth = maxWidthPx),
             maxLines = maxLines,
@@ -457,23 +470,16 @@ private fun buildDescriptionWithSeeMore(
         return layout.lineCount <= maxLines && !layout.didOverflowHeight
     }
 
-    if (fits(description + suffix)) {
-        return buildAnnotatedString {
-            withStyle(SpanStyle(color = Text)) {
-                append(description)
-            }
-            withStyle(seeMoreSpanStyle) {
-                append(suffix)
-            }
-        }
+    if (fits(buildContent(description))) {
+        return buildContent(description)
     }
 
     var low = 0
     var high = description.length
     while (low < high) {
         val mid = (low + high + 1) / 2
-        val candidate = description.take(mid).trimEnd() + "…$suffix"
-        if (fits(candidate)) {
+        val candidateBody = description.take(mid).trimEnd() + "…"
+        if (fits(buildContent(candidateBody))) {
             low = mid
         } else {
             high = mid - 1
@@ -486,14 +492,7 @@ private fun buildDescriptionWithSeeMore(
         "…"
     }
 
-    return buildAnnotatedString {
-        withStyle(SpanStyle(color = Text)) {
-            append(trimmedBody)
-        }
-        withStyle(seeMoreSpanStyle) {
-            append(suffix)
-        }
-    }
+    return buildContent(trimmedBody)
 }
 
 @Composable
