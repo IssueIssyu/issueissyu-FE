@@ -2,7 +2,6 @@ package com.issueissyu.fe
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
 import androidx.fragment.app.FragmentActivity
@@ -61,11 +60,7 @@ class MainActivity : FragmentActivity() {
         intent.parsePushDestination()?.let { pendingPush = it }
         intent.readPushAlarmContext()?.let { context ->
             lifecycleScope.launch {
-                alarmRepository.confirmPushAlarm(context).onFailure { error ->
-                    val message = error.message?.takeIf { it.isNotBlank() }
-                        ?: "알림 확인에 실패했습니다."
-                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
-                }
+                alarmRepository.confirmPushAlarm(context)
             }
         }
         intent.clearPushExtras()
