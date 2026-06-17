@@ -470,8 +470,14 @@ private fun buildDescriptionWithSeeMore(
         return layout.lineCount <= maxLines && !layout.didOverflowHeight
     }
 
-    if (fits(buildContent(description))) {
-        return buildContent(description)
+    val fullContent = buildAnnotatedString {
+        withStyle(bodySpanStyle) {
+            append(description)
+        }
+    }
+
+    if (fits(fullContent)) {
+        return fullContent
     }
 
     var low = 0
@@ -486,8 +492,19 @@ private fun buildDescriptionWithSeeMore(
         }
     }
 
-    val trimmedBody = if (low > 0) {
-        description.take(low).trimEnd() + "…"
+    val safeLow = if (
+        low > 0 &&
+        low < description.length &&
+        description[low].isLowSurrogate() &&
+        description[low - 1].isHighSurrogate()
+    ) {
+        low - 1
+    } else {
+        low
+    }
+
+    val trimmedBody = if (safeLow > 0) {
+        description.take(safeLow).trimEnd() + "…"
     } else {
         "…"
     }
