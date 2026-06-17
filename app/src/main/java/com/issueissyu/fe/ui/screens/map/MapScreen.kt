@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -44,7 +45,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -503,15 +507,10 @@ fun MapScreen(
                     .padding(end = 16.dp, bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.patchnotebutton),
-                    contentDescription = "패치노트",
-                    modifier = Modifier
-                        .size(70.dp)
-                        .clickable {
-                            navController.navigate(AppDestinations.PATCH_NOTE_ROUTE)
-                        },
-                    tint = Color.Unspecified
+                PatchNoteMapButton(
+                    onClick = {
+                        navController.navigate(AppDestinations.PATCH_NOTE_ROUTE)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -587,7 +586,7 @@ fun MapScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 4.dp, bottom = 88.dp)
+                    .padding(end = 10.dp, bottom = 95.dp)
             )
         }
 
