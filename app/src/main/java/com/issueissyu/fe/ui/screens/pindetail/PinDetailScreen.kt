@@ -183,16 +183,18 @@ fun PinDetailScreen(
                         onGoNowClick = viewModel::joinProblemSolver,
                         onPetitionClick = viewModel::joinPetition,
                         onConfirmResolverClick = viewModel::verifyProblemSolver,
-                        onHomeEditToneChange = viewModel::onHomeEditToneChange,
-                        onHomeEditAiDraftClick = viewModel::requestHomeEditAiDraft,
-                        onHomeEditTitleChange = viewModel::onHomeEditTitleChange,
-                        onHomeEditDescriptionChange = viewModel::onHomeEditDescriptionChange,
-                        onHomeEditCancel = viewModel::cancelHomeEdit,
-                        onHomeEditSubmit = viewModel::requestHomeEditSubmit,
-                        onHomeEditPhotoAddClick = homeEditPhotoPicker.showSourceSheet,
-                        onHomeEditExistingImageRemove = viewModel::removeHomeEditExistingImage,
-                        onHomeEditNewImageRemove = viewModel::removeHomeEditNewImageUri,
-                        onHomeEditMainImageSelect = viewModel::setHomeEditMainImage,
+                        homeEditCallbacks = PinHomeEditCallbacks(
+                            onTitleChange = viewModel::onHomeEditTitleChange,
+                            onDescriptionChange = viewModel::onHomeEditDescriptionChange,
+                            onCancel = viewModel::cancelHomeEdit,
+                            onSubmit = viewModel::requestHomeEditSubmit,
+                            onPhotoAddClick = homeEditPhotoPicker.showSourceSheet,
+                            onExistingImageRemove = viewModel::removeHomeEditExistingImage,
+                            onNewImageRemove = viewModel::removeHomeEditNewImageUri,
+                            onMainImageSelect = viewModel::setHomeEditMainImage,
+                            onToneChange = viewModel::onHomeEditToneChange,
+                            onAiDraftClick = viewModel::requestHomeEditAiDraft,
+                        ),
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -284,23 +286,10 @@ private fun PinDetailContent(
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
     onConfirmResolverClick: (Long) -> Unit,
-    onHomeEditTitleChange: (String) -> Unit = {},
-    onHomeEditDescriptionChange: (String) -> Unit = {},
-    onHomeEditCancel: () -> Unit = {},
-    onHomeEditSubmit: () -> Unit = {},
-    onHomeEditPhotoAddClick: () -> Unit = {},
-    onHomeEditExistingImageRemove: (String) -> Unit = {},
-    onHomeEditNewImageRemove: (String) -> Unit = {},
-    onHomeEditMainImageSelect: (String) -> Unit = {},
-    onHomeEditToneChange: (String) -> Unit = {},
-    onHomeEditAiDraftClick: () -> Unit = {},
+    homeEditCallbacks: PinHomeEditCallbacks = PinHomeEditCallbacks(),
     modifier: Modifier = Modifier,
 ) {
     val homeEdit = uiState.homeEdit
-    val isSubmittingHomeEdit = homeEdit.isSubmitting ||
-        homeEdit.isLoadingQuota ||
-        homeEdit.isGeneratingAiContent ||
-        homeEdit.isLoadingAiDraftQuota
     val tabs = buildList {
         add(PinDetailTab.HOME)
         add(PinDetailTab.POST)
@@ -322,33 +311,13 @@ private fun PinDetailContent(
             PinDetailTab.HOME -> PinHomeTab(
                 pin = pin,
                 currentUserId = currentUserId,
+                homeEdit = homeEdit,
+                homeEditCallbacks = homeEditCallbacks,
                 onReportClick = onReportClick,
                 onEditClick = onEditClick,
                 onDeleteClick = onDeleteClick,
                 onCommunityClick = onCommunityClick,
                 isDeleting = uiState.isDeleting,
-                isEditing = homeEdit.isActive,
-                editTitle = homeEdit.title,
-                editDescription = homeEdit.description,
-                editExistingImages = homeEdit.existingImages,
-                editNewImageUris = homeEdit.newImageUris,
-                editMainImageKey = homeEdit.mainImageKey,
-                isSubmittingEdit = isSubmittingHomeEdit,
-                onEditTitleChange = onHomeEditTitleChange,
-                onEditDescriptionChange = onHomeEditDescriptionChange,
-                onEditCancelClick = onHomeEditCancel,
-                onEditSubmitClick = onHomeEditSubmit,
-                onEditPhotoAddClick = onHomeEditPhotoAddClick,
-                onEditExistingImageRemove = onHomeEditExistingImageRemove,
-                onEditNewImageRemove = onHomeEditNewImageRemove,
-                onEditMainImageSelect = onHomeEditMainImageSelect,
-                editToneOptions = homeEdit.toneOptions,
-                isLoadingEditToneOptions = homeEdit.isLoadingToneOptions,
-                editSelectedTone = homeEdit.selectedTone,
-                isGeneratingEditAiContent = homeEdit.isGeneratingAiContent,
-                isLoadingEditAiDraftQuota = homeEdit.isLoadingAiDraftQuota,
-                onEditToneChange = onHomeEditToneChange,
-                onEditAiDraftClick = onHomeEditAiDraftClick,
                 modifier = Modifier.fillMaxSize(),
             )
 

@@ -11,6 +11,8 @@ import com.issueissyu.fe.domain.model.pin.PinCreateException
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.ui.components.IssueAiDraftDefaults
+import com.issueissyu.fe.ui.components.IssueAiDraftFlow
+import com.issueissyu.fe.ui.components.IssueAiDraftQuotaResult
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -253,32 +255,35 @@ class PinCreateViewModel @Inject constructor(
                     errorMessage = null,
                 )
             }
-            issueRepository.getIssueAiDraftQuota()
-                .onSuccess { quota ->
-                    if (quota.enabled && quota.remainingCount <= 0) {
-                        _uiState.update { it.copy(isLoadingAiDraftQuota = false) }
-                        _uiState.update {
-                            it.copy(errorMessage = "AI 글쓰기 일일 횟수를 초과했습니다.")
-                        }
-                        return@launch
-                    }
+            when (val result = IssueAiDraftFlow.loadQuota(issueRepository)) {
+                IssueAiDraftQuotaResult.Exceeded -> {
                     _uiState.update {
                         it.copy(
                             isLoadingAiDraftQuota = false,
-                            aiDraftRateLimitQuota = quota,
+                            errorMessage = "AI 글쓰기 일일 횟수를 초과했습니다.",
+                        )
+                    }
+                }
+
+                is IssueAiDraftQuotaResult.Ready -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoadingAiDraftQuota = false,
+                            aiDraftRateLimitQuota = result.quota,
                             showAiDraftConfirmDialog = true,
                         )
                     }
                 }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isLoadingAiDraftQuota = false) }
+
+                is IssueAiDraftQuotaResult.Failed -> {
                     _uiState.update {
                         it.copy(
-                            errorMessage = e.message?.takeIf { message -> message.isNotBlank() }
-                                ?: "AI 글쓰기 제한 횟수 조회에 실패했습니다.",
+                            isLoadingAiDraftQuota = false,
+                            errorMessage = result.message,
                         )
                     }
                 }
+            }
         }
     }
 
@@ -302,7 +307,8 @@ class PinCreateViewModel @Inject constructor(
                 )
             }
 
-            issueRepository.createIssueAiDraft(
+            IssueAiDraftFlow.createDraft(
+                issueRepository = issueRepository,
                 title = state.title,
                 content = state.description,
                 tone = state.selectedTone ?: IssueAiDraftDefaults.DEFAULT_TONE,

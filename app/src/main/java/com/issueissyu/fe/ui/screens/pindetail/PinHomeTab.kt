@@ -78,40 +78,20 @@ import com.issueissyu.fe.ui.theme.White
 fun PinHomeTab(
     pin: Pin,
     currentUserId: String? = null,
+    homeEdit: PinHomeEditUiState = PinHomeEditUiState(),
+    homeEditCallbacks: PinHomeEditCallbacks = PinHomeEditCallbacks(),
     onReportClick: (String) -> Unit,
     onEditClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
     onCommunityClick: (String) -> Unit,
     isDeleting: Boolean = false,
-    isEditing: Boolean = false,
-    editTitle: String = "",
-    editDescription: String = "",
-    editExistingImages: List<PinImageRef> = emptyList(),
-    editNewImageUris: List<String> = emptyList(),
-    editMainImageKey: String? = null,
-    isSubmittingEdit: Boolean = false,
-    showEditCancel: Boolean = true,
-    onEditTitleChange: (String) -> Unit = {},
-    onEditDescriptionChange: (String) -> Unit = {},
-    onEditCancelClick: () -> Unit = {},
-    onEditSubmitClick: () -> Unit = {},
-    onEditPhotoAddClick: () -> Unit = {},
-    onEditExistingImageRemove: (String) -> Unit = {},
-    onEditNewImageRemove: (String) -> Unit = {},
-    onEditMainImageSelect: (String) -> Unit = {},
-    editToneOptions: List<String> = emptyList(),
-    isLoadingEditToneOptions: Boolean = false,
-    editSelectedTone: String? = null,
-    isGeneratingEditAiContent: Boolean = false,
-    isLoadingEditAiDraftQuota: Boolean = false,
-    onEditToneChange: (String) -> Unit = {},
-    onEditAiDraftClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val displayProfile = pin.detailDisplayProfile()
     val canEdit = pin.canEditBy(currentUserId)
     val issueDetail = pin.detail as? IssuePinDetail
     val shopDetail = pin.detail as? ShopPinDetail
+    val isEditing = homeEdit.isActive
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.padding(horizontal = 28.dp, vertical = 20.dp)) {
@@ -128,8 +108,8 @@ fun PinHomeTab(
             ) {
                 if (isEditing) {
                     CommonTextField(
-                        value = editTitle,
-                        onValueChange = onEditTitleChange,
+                        value = homeEdit.title,
+                        onValueChange = homeEditCallbacks.onTitleChange,
                         placeholder = "제목을 입력하세요.",
                         maxLength = 50,
                         textStyle = IssueTypo.Bold18,
@@ -147,10 +127,9 @@ fun PinHomeTab(
 
                 if (isEditing) {
                     PinHomeEditActionButtons(
-                        isSubmitting = isSubmittingEdit,
-                        showCancel = showEditCancel,
-                        onCancelClick = onEditCancelClick,
-                        onSubmitClick = onEditSubmitClick,
+                        isSubmitting = homeEdit.isSubmittingHomeEdit,
+                        onCancelClick = homeEditCallbacks.onCancel,
+                        onSubmitClick = homeEditCallbacks.onSubmit,
                     )
                 } else {
                     PinDetailActionButtons(
@@ -264,20 +243,20 @@ fun PinHomeTab(
                     text = "사진",
                     trailing = {
                         Text(
-                            text = "${editExistingImages.size + editNewImageUris.size}/${PinImageUploadConstraints.MAX_COUNT}",
+                            text = "${homeEdit.existingImages.size + homeEdit.newImageUris.size}/${PinImageUploadConstraints.MAX_COUNT}",
                             style = IssueTypo.Regular12.copy(color = Gray_6),
                         )
                     },
                 )
 
                 PinHomeEditPhotoSection(
-                    existingImages = editExistingImages,
-                    newImageUris = editNewImageUris,
-                    mainImageKey = editMainImageKey,
-                    onPhotoAddClick = onEditPhotoAddClick,
-                    onExistingImageRemove = onEditExistingImageRemove,
-                    onNewImageRemove = onEditNewImageRemove,
-                    onSetMainImage = onEditMainImageSelect,
+                    existingImages = homeEdit.existingImages,
+                    newImageUris = homeEdit.newImageUris,
+                    mainImageKey = homeEdit.mainImageKey,
+                    onPhotoAddClick = homeEditCallbacks.onPhotoAddClick,
+                    onExistingImageRemove = homeEditCallbacks.onExistingImageRemove,
+                    onNewImageRemove = homeEditCallbacks.onNewImageRemove,
+                    onSetMainImage = homeEditCallbacks.onMainImageSelect,
                     showHeader = false,
                 )
 
@@ -286,8 +265,8 @@ fun PinHomeTab(
                 PinHomeEditSectionLabel(text = "상세 설명")
 
                 CommonTextField(
-                    value = editDescription,
-                    onValueChange = onEditDescriptionChange,
+                    value = homeEdit.description,
+                    onValueChange = homeEditCallbacks.onDescriptionChange,
                     placeholder = "상세 설명을 작성해 주세요.",
                     maxLines = 8,
                     maxLength = 500,
@@ -304,28 +283,28 @@ fun PinHomeTab(
                     )
 
                     IssueToneSelectionSection(
-                        toneOptions = editToneOptions,
-                        isLoading = isLoadingEditToneOptions,
-                        selectedTone = editSelectedTone,
-                        onToneChange = onEditToneChange,
+                        toneOptions = homeEdit.toneOptions,
+                        isLoading = homeEdit.isLoadingToneOptions,
+                        selectedTone = homeEdit.selectedTone,
+                        onToneChange = homeEditCallbacks.onToneChange,
                         showTitle = false,
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     IssueAiDraftButton(
-                        isLoading = isGeneratingEditAiContent || isLoadingEditAiDraftQuota,
-                        isEnabled = editTitle.isNotBlank() &&
-                            editDescription.isNotBlank() &&
-                            !isSubmittingEdit &&
-                            !isGeneratingEditAiContent &&
-                            !isLoadingEditAiDraftQuota,
+                        isLoading = homeEdit.isGeneratingAiContent || homeEdit.isLoadingAiDraftQuota,
+                        isEnabled = homeEdit.title.isNotBlank() &&
+                            homeEdit.description.isNotBlank() &&
+                            !homeEdit.isSubmittingHomeEdit &&
+                            !homeEdit.isGeneratingAiContent &&
+                            !homeEdit.isLoadingAiDraftQuota,
                         loadingText = when {
-                            isGeneratingEditAiContent -> "AI 글 작성 중"
-                            isLoadingEditAiDraftQuota -> "확인 중"
+                            homeEdit.isGeneratingAiContent -> "AI 글 작성 중"
+                            homeEdit.isLoadingAiDraftQuota -> "확인 중"
                             else -> "AI 글쓰기"
                         },
-                        onClick = onEditAiDraftClick,
+                        onClick = homeEditCallbacks.onAiDraftClick,
                     )
                 }
             }
@@ -552,7 +531,6 @@ private fun PinHomeEditPhotoBox(
 @Composable
 private fun PinHomeEditActionButtons(
     isSubmitting: Boolean,
-    showCancel: Boolean,
     onCancelClick: () -> Unit,
     onSubmitClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -561,15 +539,13 @@ private fun PinHomeEditActionButtons(
         modifier = modifier,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (showCancel) {
-            CircleActionIcon(
-                iconRes = R.drawable.ic_cancel,
-                contentDescription = "취소",
-                onClick = onCancelClick,
-                enabled = !isSubmitting,
-                iconTint = Gray_6,
-            )
-        }
+        CircleActionIcon(
+            iconRes = R.drawable.ic_cancel,
+            contentDescription = "취소",
+            onClick = onCancelClick,
+            enabled = !isSubmitting,
+            iconTint = Gray_6,
+        )
         CircleActionIcon(
             iconRes = R.drawable.ic_edit_complete,
             contentDescription = "수정 완료",
@@ -765,13 +741,7 @@ private fun PinHomeTabPreview_IssueEditMode() {
             onEditClick = {},
             onDeleteClick = {},
             onCommunityClick = {},
-            isEditing = true,
-            editTitle = pin.title,
-            editDescription = pin.description,
-            editExistingImages = pin.imageUrls.mapIndexed { index, url ->
-                PinImageRef(pinImageId = index.toLong(), imageUrl = url, isMain = index == 0)
-            },
-            editMainImageKey = pin.imageUrls.firstOrNull(),
+            homeEdit = PinHomeEditUiState().openedFrom(pin),
         )
     }
 }
