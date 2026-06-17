@@ -564,20 +564,20 @@ fun AppNavGraph(
                     defaultValue = "issue"
                 },
                 navArgument("pinLat") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("pinLng") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("userLat") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("userLng") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("address") {
                     type = NavType.StringType
@@ -586,12 +586,10 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val pinType = backStackEntry.arguments?.getString("type")
-            // route는 Float로 정의되어 있어 Double로 변환해 PinCreateScreen에 넘긴다.
-            // TODO: NavType.Float → 사용자 정의 NavType 또는 String 인코딩으로 정밀도 손실을 줄이는 방안 검토.
-            val pinLat = (backStackEntry.arguments?.getFloat("pinLat") ?: 0f).toDouble()
-            val pinLng = (backStackEntry.arguments?.getFloat("pinLng") ?: 0f).toDouble()
-            val userLat = (backStackEntry.arguments?.getFloat("userLat") ?: 0f).toDouble()
-            val userLng = (backStackEntry.arguments?.getFloat("userLng") ?: 0f).toDouble()
+            val pinLat = backStackEntry.arguments?.getString("pinLat")?.toDoubleOrNull() ?: 0.0
+            val pinLng = backStackEntry.arguments?.getString("pinLng")?.toDoubleOrNull() ?: 0.0
+            val userLat = backStackEntry.arguments?.getString("userLat")?.toDoubleOrNull() ?: 0.0
+            val userLng = backStackEntry.arguments?.getString("userLng")?.toDoubleOrNull() ?: 0.0
             val address = Uri.decode(backStackEntry.arguments?.getString("address").orEmpty())
 
             // 일반 유저 생성 대상은 ISSUE / COMMUNICATION 두 가지. 그 외는 화면 진입을 차단한다.

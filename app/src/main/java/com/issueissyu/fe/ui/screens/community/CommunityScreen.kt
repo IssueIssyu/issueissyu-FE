@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -80,14 +79,12 @@ import androidx.compose.material3.TextButton
 @Composable
 fun CommunityScreen(
     viewModel: CommunityViewModel = hiltViewModel(),
-    onBackClick: (() -> Unit)? = null,
     onCommunityClick: (communityId: Long, detailKind: String?) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     CommunityScreenContent(
         uiState = uiState,
-        onBackClick = onBackClick,
         onCommunityClick = onCommunityClick,
         onCategorySelected = viewModel::onCategorySelected,
         onRefresh = viewModel::onRefresh,
@@ -99,7 +96,6 @@ fun CommunityScreen(
 @Composable
 fun CommunityScreenContent(
     uiState: CommunityUiState,
-    onBackClick: (() -> Unit)? = null,
     onCommunityClick: (communityId: Long, detailKind: String?) -> Unit = { _, _ -> },
     onCategorySelected: (CommunityTab) -> Unit = {},
     onRefresh: () -> Unit = {},
@@ -114,6 +110,7 @@ fun CommunityScreenContent(
         CommunityTab.visibleTabs.map { tab ->
             when (tab) {
                 CommunityTab.HOT -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_fire,
                     Issue,
@@ -121,6 +118,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.ISSUE -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.issue,
                     Issue,
@@ -128,6 +126,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.STORE -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.shop,
                     Shop,
@@ -135,6 +134,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.FESTIVAL -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.festival,
                     Festival,
@@ -142,6 +142,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.POLICY -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_policy,
                     Gray_5,
@@ -149,6 +150,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.CONTEST -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_award,
                     Shop,
@@ -156,6 +158,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.CARDNEWS -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_cardnews,
                     Lime,
@@ -163,6 +166,7 @@ fun CommunityScreenContent(
                 )
 
                 CommunityTab.ALL -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.ic_all,
                     Title,
@@ -171,6 +175,7 @@ fun CommunityScreenContent(
                 )
 
                 else -> CategoryItem(
+                    tab,
                     tab.displayName,
                     R.drawable.communicate,
                     Communication,
@@ -190,40 +195,27 @@ fun CommunityScreenContent(
             ) {
                 CategoryButtons(
                     categories = categories,
-                    selectedCategory = uiState.selectedCategory.displayName,
-                    onCategorySelected = { name ->
-                        onCategorySelected(name.toCommunityTab())
+                    selectedCategory = uiState.selectedCategory,
+                    onCategorySelected = { category ->
+                        onCategorySelected(category ?: CommunityTab.ALL)
                     }
                 )
 
                 val showsRegionSelector = uiState.selectedCategory.showsRegionSelector()
-
-                if (onBackClick != null || showsRegionSelector) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (onBackClick != null) {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "뒤로가기",
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    if (showsRegionSelector) {
+                
+                if (showsRegionSelector) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.CenterEnd,
+                    ) {
                         RegionDropdownPill(
                             region = uiState.region.toRegionDisplayName(),
                             onClick = { showRegionSelector = true }
                         )
                     }
-                }
                 }
             }
         }
@@ -894,7 +886,6 @@ fun PreviewCommunityScreenHome() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -908,7 +899,6 @@ fun PreviewCommunityScreenHot() {
             selectedCategory = CommunityTab.HOT,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -922,7 +912,6 @@ fun PreviewCommunityScreenIssue() {
             selectedCategory = CommunityTab.ISSUE,
             region = "마포구"
         ),
-        onBackClick = {},
         onRegionSelected = {}
     )
 }
@@ -936,7 +925,6 @@ fun PreviewCommunityScreenEmpty() {
             selectedCategory = CommunityTab.ALL,
             region = "서대문구"
         ),
-        onBackClick = {},
         onCommunityClick = { _, _ -> }
     )
 }
@@ -951,7 +939,6 @@ fun PreviewCommunityScreenLoading() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
         onCommunityClick = { _, _ -> }
     )
 }
@@ -966,7 +953,6 @@ fun PreviewCommunityScreenError() {
             selectedCategory = CommunityTab.ALL,
             region = "마포구"
         ),
-        onBackClick = {},
         onCommunityClick = { _, _ -> },
         onRegionSelected = {}
     )

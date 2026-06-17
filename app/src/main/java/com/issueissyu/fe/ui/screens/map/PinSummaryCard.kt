@@ -465,29 +465,12 @@ private fun EmojiReactionRow(
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        // 이모지 추가 버튼
-        Box(
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .then(
-                    if (enabled) {
-                        Modifier.clickable { onEmojiClick(pin.id) }
-                    } else {
-                        Modifier
-                    }
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_add_emoji),
-                contentDescription = "이모지 추가",
-                tint = Color.Unspecified,
-                modifier = Modifier.size(26.dp)
-            )
-        }
+        AddEmojiButton(
+            onClick = { onEmojiClick(pin.id) },
+            enabled = enabled,
+        )
 
         val visibleReactions = pin.emojiReactions
             .sortedByDescending { it.count }
@@ -496,28 +479,25 @@ private fun EmojiReactionRow(
         visibleReactions.forEach { reaction ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(Gray_3, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                horizontalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 if (!reaction.emojiImageUrl.isNullOrBlank()) {
                     AsyncImage(
                         model = reaction.emojiImageUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(16.dp)
+                        contentDescription = "이모지 반응",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.size(24.dp)
                     )
                 } else {
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(24.dp)
                             .clip(CircleShape)
                             .background(Color.LightGray)
                     )
                 }
-                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "${reaction.count}",
+                    text = reaction.count.toString(),
                     style = IssueTypo.Regular12.copy(color = Text)
                 )
             }
@@ -528,11 +508,30 @@ private fun EmojiReactionRow(
             Text(
                 text = "+${hiddenReactionTypeCount}",
                 style = IssueTypo.Regular12.copy(color = Text),
-                modifier = Modifier
-                    .background(Gray_3, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun AddEmojiButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    Box(
+        modifier = modifier
+            .size(32.dp)
+            .clip(CircleShape)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_add_emoji),
+            contentDescription = "이모지 추가",
+            tint = Color.Unspecified,
+            modifier = Modifier.size(26.dp),
+        )
     }
 }
 

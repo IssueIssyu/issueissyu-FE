@@ -20,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.issueissyu.fe.ui.navigation.AppDestinations
+import com.issueissyu.fe.ui.screens.map.MAP_FOCUS_USER_LOCATION_KEY
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
@@ -84,6 +85,11 @@ fun BottomNavigationBar(
                             }
                             launchSingleTop = true
                             restoreState = true
+                        }
+                        if (item.route == AppDestinations.TOWN_ROUTE) {
+                            navController.currentBackStackEntry
+                                ?.savedStateHandle
+                                ?.set(MAP_FOCUS_USER_LOCATION_KEY, true)
                         }
                     }
                 },
