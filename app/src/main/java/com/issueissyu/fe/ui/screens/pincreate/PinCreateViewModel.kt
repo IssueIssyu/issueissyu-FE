@@ -9,6 +9,7 @@ import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCreateException
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,6 +42,9 @@ data class PinCreateUiState(
     val isLoadingToneOptions: Boolean = false,
     val isSubmitting: Boolean = false,
     val isGeneratingAiContent: Boolean = false,
+    val isLoadingAiDraftQuota: Boolean = false,
+    val showAiDraftConfirmDialog: Boolean = false,
+    val aiDraftRateLimitQuota: PinEditRateLimitQuota? = null,
     val errorMessage: String? = null
 )
 
@@ -205,8 +209,23 @@ class PinCreateViewModel @Inject constructor(
     }
 
     fun createAiDraft() {
+        requestAiDraft()
+    }
+
+    fun dismissAiDraftConfirmDialog() {
         val state = _uiState.value
-        if (state.category != PinCategory.ISSUE || state.isGeneratingAiContent) return
+        if (state.isGeneratingAiContent || state.isLoadingAiDraftQuota) return
+        _uiState.update { it.copy(showAiDraftConfirmDialog = false) }
+    }
+
+    fun requestAiDraft() {
+        val state = _uiState.value
+        if (state.category != PinCategory.ISSUE ||
+            state.isGeneratingAiContent ||
+            state.isLoadingAiDraftQuota
+        ) {
+            return
+        }
 
         val pinLat = state.pinLat
         val pinLng = state.pinLng
@@ -228,7 +247,55 @@ class PinCreateViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
+                    isLoadingAiDraftQuota = true,
+                    errorMessage = null,
+                )
+            }
+            issueRepository.getIssueAiDraftQuota()
+                .onSuccess { quota ->
+                    if (quota.enabled && quota.remainingCount <= 0) {
+                        _uiState.update { it.copy(isLoadingAiDraftQuota = false) }
+                        _uiState.update {
+                            it.copy(errorMessage = "AI 글쓰기 일일 횟수를 초과했습니다.")
+                        }
+                        return@launch
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoadingAiDraftQuota = false,
+                            aiDraftRateLimitQuota = quota,
+                            showAiDraftConfirmDialog = true,
+                        )
+                    }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoadingAiDraftQuota = false) }
+                    _uiState.update {
+                        it.copy(
+                            errorMessage = e.message?.takeIf { message -> message.isNotBlank() }
+                                ?: "AI 글쓰기 제한 횟수 조회에 실패했습니다.",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun confirmAiDraft() {
+        val state = _uiState.value
+        if (state.category != PinCategory.ISSUE || state.isGeneratingAiContent) return
+
+        val pinLat = state.pinLat
+        val pinLng = state.pinLng
+        if (pinLat == null || pinLng == null) {
+            _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
                     isGeneratingAiContent = true,
+                    showAiDraftConfirmDialog = false,
                     errorMessage = null,
                 )
             }
@@ -245,6 +312,7 @@ class PinCreateViewModel @Inject constructor(
                         title = draft.title?.takeIf { title -> title.isNotBlank() } ?: it.title,
                         description = draft.content.orEmpty(),
                         isGeneratingAiContent = false,
+                        aiDraftRateLimitQuota = null,
                         errorMessage = null,
                     )
                 }

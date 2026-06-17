@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -43,9 +44,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
 import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.RemainingQuotaDialog
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
@@ -93,20 +96,33 @@ fun PinCreateScreen(
         }
     }
 
-    PinCreateContent(
-        category = category,
-        uiState = uiState,
-        onBackClick = onBackClick,
-        onTitleChange = viewModel::onTitleChange,
-        onDescriptionChange = viewModel::onDescriptionChange,
-        onToneChange = viewModel::onToneChange,
-        onPhotoAddClick = photoSourcePicker.showSourceSheet,
-        onPhotoRemoveClick = viewModel::removeImageUri,
-        onSetMainImageClick = viewModel::setMainImageUri,
-        onAiDraftClick = viewModel::createAiDraft,
-        onSubmit = viewModel::submitPin,
-        modifier = modifier
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        PinCreateContent(
+            category = category,
+            uiState = uiState,
+            onBackClick = onBackClick,
+            onTitleChange = viewModel::onTitleChange,
+            onDescriptionChange = viewModel::onDescriptionChange,
+            onToneChange = viewModel::onToneChange,
+            onPhotoAddClick = photoSourcePicker.showSourceSheet,
+            onPhotoRemoveClick = viewModel::removeImageUri,
+            onSetMainImageClick = viewModel::setMainImageUri,
+            onAiDraftClick = viewModel::createAiDraft,
+            onSubmit = viewModel::submitPin,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        if (uiState.showAiDraftConfirmDialog) {
+            val dialogContent = uiState.aiDraftRateLimitQuota.toAiDraftConfirmDialogContent()
+            RemainingQuotaDialog(
+                title = dialogContent.title,
+                countLabel = dialogContent.countLabel,
+                description = dialogContent.description,
+                onDismiss = viewModel::dismissAiDraftConfirmDialog,
+                onConfirm = viewModel::confirmAiDraft,
+            )
+        }
+    }
 }
 
 @Composable
@@ -194,10 +210,16 @@ private fun PinCreateContent(
 
             if (category == PinCategory.ISSUE) {
                 AiDraftButton(
-                    isLoading = uiState.isGeneratingAiContent,
+                    isLoading = uiState.isGeneratingAiContent || uiState.isLoadingAiDraftQuota,
                     isEnabled = uiState.title.isNotBlank() &&
                         uiState.description.isNotBlank() &&
-                        !uiState.isGeneratingAiContent,
+                        !uiState.isGeneratingAiContent &&
+                        !uiState.isLoadingAiDraftQuota,
+                    loadingText = when {
+                        uiState.isGeneratingAiContent -> "AI 글 작성 중"
+                        uiState.isLoadingAiDraftQuota -> "확인 중"
+                        else -> "AI 글쓰기"
+                    },
                     onClick = onAiDraftClick,
                 )
             }
@@ -459,14 +481,36 @@ private fun ToneSelectionSection(
 private fun AiDraftButton(
     isLoading: Boolean,
     isEnabled: Boolean,
+    loadingText: String,
     onClick: () -> Unit,
 ) {
     CommonButton(
         onClick = onClick,
-        text = if (isLoading) "AI 글 작성 중" else "AI 글쓰기",
+        text = if (isLoading) loadingText else "AI 글쓰기",
         isEnabled = isEnabled,
         textStyle = IssueTypo.Bold18.copy(fontSize = 16.sp),
         modifier = Modifier.fillMaxWidth()
+    )
+}
+
+private data class AiDraftConfirmDialogContent(
+    val title: String,
+    val countLabel: String?,
+    val description: String,
+)
+
+private fun PinEditRateLimitQuota?.toAiDraftConfirmDialogContent(): AiDraftConfirmDialogContent {
+    if (this == null || !enabled) {
+        return AiDraftConfirmDialogContent(
+            title = "AI 글쓰기",
+            countLabel = null,
+            description = "이대로 AI 글쓰기를 진행하시겠습니까?",
+        )
+    }
+    return AiDraftConfirmDialogContent(
+        title = "남은 자동 글쓰기 횟수",
+        countLabel = "$remainingCount/$dailyLimit",
+        description = "자동 글쓰기는 정해진 일일 한도 내에서만 사용 가능합니다!",
     )
 }
 

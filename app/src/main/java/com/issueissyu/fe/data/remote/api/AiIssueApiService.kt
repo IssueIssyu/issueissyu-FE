@@ -54,9 +54,9 @@ interface AiIssueApiService {
         @Query("pin_id") pinId: Int,
     ): BaseResponse<RateLimitQuotaResponse?>
 
-    //ai 글쓰기 수정 횟수
+    // AI 글쓰기 제한 횟수
     @GET("issues/pin/ai/quota")
-    suspend fun getAiDraft(): BaseResponse<RateLimitQuotaResponse?>
+    suspend fun getIssueAiDraftQuota(): BaseResponse<RateLimitQuotaResponse?>
 
     @GET("issues/pin/{pin_id}/reliability")
     suspend fun getIssueReliability(
