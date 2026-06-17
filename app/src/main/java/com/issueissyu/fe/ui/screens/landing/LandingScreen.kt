@@ -82,6 +82,7 @@ import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.screens.map.PinSummaryCard
 import com.issueissyu.fe.ui.screens.map.PinSummaryCardHighlight
+import com.issueissyu.fe.ui.screens.onboarding.OnboardingSwitchAccountAction
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
@@ -113,37 +114,50 @@ private const val LANDING_STAGE_COUNT = 14
 fun LandingScreen(
     onComplete: () -> Unit,
     modifier: Modifier = Modifier,
+    onSwitchAccountClick: (() -> Unit)? = null,
 ) {
     val pagerState = rememberPagerState(pageCount = { LANDING_STAGE_COUNT })
     val coroutineScope = rememberCoroutineScope()
 
-    HorizontalPager(
-        state = pagerState,
-        userScrollEnabled = false,
-        modifier = modifier.fillMaxSize(),
-    ) { page ->
-        LandingPage(
-            page = page,
-            onNext = {
-                if (page < LANDING_STAGE_COUNT - 1) {
-                    coroutineScope.launch {
-                        val nextPage = page + 1
-                        if (page.toProgressIndex() == nextPage.toProgressIndex()) {
-                            pagerState.scrollToPage(nextPage)
-                        } else {
-                            pagerState.animateScrollToPage(
-                                page = nextPage,
-                                animationSpec = tween(
-                                    durationMillis = 250,
-                                    easing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f),
-                                ),
-                            )
+    Box(modifier = modifier.fillMaxSize()) {
+        HorizontalPager(
+            state = pagerState,
+            userScrollEnabled = false,
+            modifier = Modifier.fillMaxSize(),
+        ) { page ->
+            LandingPage(
+                page = page,
+                onNext = {
+                    if (page < LANDING_STAGE_COUNT - 1) {
+                        coroutineScope.launch {
+                            val nextPage = page + 1
+                            if (page.toProgressIndex() == nextPage.toProgressIndex()) {
+                                pagerState.scrollToPage(nextPage)
+                            } else {
+                                pagerState.animateScrollToPage(
+                                    page = nextPage,
+                                    animationSpec = tween(
+                                        durationMillis = 250,
+                                        easing = CubicBezierEasing(0.42f, 0f, 0.58f, 1f),
+                                    ),
+                                )
+                            }
                         }
                     }
-                }
-            },
-            onComplete = onComplete,
-        )
+                },
+                onComplete = onComplete,
+            )
+        }
+
+        onSwitchAccountClick?.let { onClick ->
+            OnboardingSwitchAccountAction(
+                onClick = onClick,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(start = 4.dp),
+            )
+        }
     }
 }
 

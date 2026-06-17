@@ -44,6 +44,7 @@ import com.issueissyu.fe.ui.theme.suiteFontFamily
 fun TermScreen(
     onAgreeClick: () -> Unit = {},
     onTermsDetailClick: (TermsType) -> Unit = {},
+    onSwitchAccountClick: (() -> Unit)? = null,
     viewModel: TermViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -89,7 +90,13 @@ fun TermScreen(
 
     Scaffold(
         topBar = {
-            IssueissyuTopAppBar()
+            IssueissyuTopAppBar(
+                navigationContent = {
+                    onSwitchAccountClick?.let { onClick ->
+                        OnboardingSwitchAccountAction(onClick = onClick)
+                    }
+                },
+            )
         },
         bottomBar = {
             CommonButton(

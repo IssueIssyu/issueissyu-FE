@@ -33,6 +33,7 @@ fun UserVerificationScreen(
     viewModel: UserVerificationViewModel = hiltViewModel(),
     onVerificationComplete: (nickname: String, email: String, phoneNumber: String) -> Unit,
     onNavigateToLogin: () -> Unit,
+    onSwitchAccountClick: (() -> Unit)? = null,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -136,6 +137,7 @@ fun UserVerificationScreen(
         onSignupClick = {
             viewModel.onSignupClick(onVerificationComplete)
         },
+        onSwitchAccountClick = onSwitchAccountClick,
     )
 }
 
@@ -170,13 +172,19 @@ fun UserVerificationContent(
     onSendVerificationCode: () -> Unit,
     onVerificationCodeChange: (String) -> Unit,
     onConfirmVerificationCode: () -> Unit,
-    onSignupClick: () -> Unit
+    onSignupClick: () -> Unit,
+    onSwitchAccountClick: (() -> Unit)? = null,
 ) {
     Scaffold(
         containerColor = White,
         topBar = {
             IssueissyuTopAppBar(
-                titleText = "본인인증"
+                titleText = "본인인증",
+                navigationContent = {
+                    onSwitchAccountClick?.let { onClick ->
+                        OnboardingSwitchAccountAction(onClick = onClick)
+                    }
+                },
             )
         },
         bottomBar = {
