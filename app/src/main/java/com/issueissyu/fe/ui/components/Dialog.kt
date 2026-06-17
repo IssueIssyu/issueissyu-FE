@@ -145,8 +145,8 @@ private fun DialogButtonText(
     color: Color,
 ) {
     val baseStyle = IssueTypo.Bold18.copy(color = color)
-    var fontSize by remember(text) { mutableStateOf(baseStyle.fontSize) }
-    var readyToDraw by remember(text) { mutableStateOf(false) }
+    var fontSize by remember(text, color) { mutableStateOf(baseStyle.fontSize) }
+    var readyToDraw by remember(text, color) { mutableStateOf(true) }
 
     Text(
         text = text,
@@ -159,7 +159,7 @@ private fun DialogButtonText(
         maxLines = 1,
         softWrap = false,
         onTextLayout = { result ->
-            if (result.didOverflowWidth && fontSize > 10.sp) {
+            if (result.didOverflowWidth && fontSize.value > 10f) {
                 readyToDraw = false
                 fontSize = (fontSize.value * 0.92f).sp
             } else {
