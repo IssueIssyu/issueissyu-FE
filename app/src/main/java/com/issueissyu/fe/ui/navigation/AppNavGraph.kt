@@ -172,11 +172,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.TERM_ROUTE) {
-            OnboardingBackDisabledHandler()
-
-            OnboardingExitHost(
-                onNavigateToLogin = { navController.navigateToLoginClearingBackStack() },
-            ) { onSwitchAccountClick ->
+            OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
                 TermScreen(
                     onAgreeClick = { navController.navigate(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) },
                     onTermsDetailClick = { termsType ->
@@ -206,11 +202,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) {
-            OnboardingBackDisabledHandler()
-
-            OnboardingExitHost(
-                onNavigateToLogin = { navController.navigateToLoginClearingBackStack() },
-            ) { onSwitchAccountClick ->
+            OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
                 UserVerificationScreen(
                     onVerificationComplete = { _, _, _ ->
                         navController.navigate(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE)
@@ -224,11 +216,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE) {
-            OnboardingBackDisabledHandler()
-
-            OnboardingExitHost(
-                onNavigateToLogin = { navController.navigateToLoginClearingBackStack() },
-            ) { onSwitchAccountClick ->
+            OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
                 LocalVerificationScreen(
                     onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE) },
                     onSwitchAccountClick = onSwitchAccountClick,
@@ -237,11 +225,7 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.COMPLETE_ROUTE) {
-            OnboardingBackDisabledHandler()
-
-            OnboardingExitHost(
-                onNavigateToLogin = { navController.navigateToLoginClearingBackStack() },
-            ) { onSwitchAccountClick ->
+            OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
                 CompleteScreen(
                     onNavigateToMain = {
                         navController.navigate(AppDestinations.TOWN_ROUTE) {
@@ -259,15 +243,9 @@ fun AppNavGraph(
         composable(AppDestinations.Onboarding.LANDING_ROUTE) {
             val previousRoute =
                 navController.previousBackStackEntry?.destination?.route
-            if (previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE) {
-                OnboardingBackDisabledHandler()
-            }
-
             val isOnboardingLanding = previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE
             if (isOnboardingLanding) {
-                OnboardingExitHost(
-                    onNavigateToLogin = { navController.navigateToLoginClearingBackStack() },
-                ) { onSwitchAccountClick ->
+                OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
                     LandingScreen(
                         onSwitchAccountClick = onSwitchAccountClick,
                         onComplete = {
@@ -701,6 +679,18 @@ private fun NavScreenWrapper(
 @Composable
 private fun OnboardingBackDisabledHandler() {
     BackHandler { }
+}
+
+@Composable
+private fun OnboardingRouteWithExit(
+    navController: NavHostController,
+    content: @Composable (onSwitchAccountClick: () -> Unit) -> Unit,
+) {
+    OnboardingBackDisabledHandler()
+    OnboardingExitHost(
+        onNavigateToLogin = { navController.navigateToLoginClearingBackStack() },
+        content = content,
+    )
 }
 
 private fun String?.isLoginRoute(): Boolean =

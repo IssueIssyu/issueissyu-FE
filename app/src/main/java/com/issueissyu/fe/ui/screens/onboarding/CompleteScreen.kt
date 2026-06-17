@@ -47,9 +47,7 @@ fun CompleteScreen(
             topBar = {
                 IssueissyuTopAppBar(
                     navigationContent = {
-                        onSwitchAccountClick?.let { onClick ->
-                            OnboardingSwitchAccountAction(onClick = onClick)
-                        }
+                        OnboardingSwitchAccountNavigationContent(onSwitchAccountClick)
                     },
                 )
             },

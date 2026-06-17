@@ -73,9 +73,7 @@ fun LocalVerificationScreen(
         onBackClick = null,
 
         navigationContent = {
-            onSwitchAccountClick?.let { onClick ->
-                OnboardingSwitchAccountAction(onClick = onClick)
-            }
+            OnboardingSwitchAccountNavigationContent(onSwitchAccountClick)
         },
 
         addressText = uiState.addressText,

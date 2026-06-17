@@ -10,7 +10,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import android.widget.Toast
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,7 +38,7 @@ fun UserVerificationScreen(
     onNavigateToLogin: () -> Unit,
     onSwitchAccountClick: (() -> Unit)? = null,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val emailDomains = listOf("선택", "naver.com", "gmail.com", "daum.net", "직접 입력")
 
@@ -181,9 +184,7 @@ fun UserVerificationContent(
             IssueissyuTopAppBar(
                 titleText = "본인인증",
                 navigationContent = {
-                    onSwitchAccountClick?.let { onClick ->
-                        OnboardingSwitchAccountAction(onClick = onClick)
-                    }
+                    OnboardingSwitchAccountNavigationContent(onSwitchAccountClick)
                 },
             )
         },

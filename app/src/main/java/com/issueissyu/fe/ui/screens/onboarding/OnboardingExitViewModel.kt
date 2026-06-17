@@ -2,10 +2,10 @@ package com.issueissyu.fe.ui.screens.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.data.local.OnboardingSessionStore
-import com.issueissyu.fe.domain.repository.AuthRepository
+import com.issueissyu.fe.domain.usecase.onboarding.ExitOnboardingUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -17,8 +17,7 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class OnboardingExitViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
-    private val onboardingSessionStore: OnboardingSessionStore,
+    private val exitOnboardingUseCase: ExitOnboardingUseCase,
 ) : ViewModel() {
 
     data class UiState(
@@ -50,9 +49,25 @@ class OnboardingExitViewModel @Inject constructor(
         if (_uiState.value.isExiting) return
         viewModelScope.launch {
             _uiState.update { it.copy(showConfirmDialog = false, isExiting = true) }
-            authRepository.logout()
-            onboardingSessionStore.clearPendingProfile()
-            _effects.emit(Effect.NavigateToLogin)
+            try {
+                exitOnboardingUseCase()
+                _effects.emit(Effect.NavigateToLogin)
+            } catch (_: Exception) {
+                _uiState.update { it.copy(isExiting = false) }
+            }
         }
+    }
+
+    fun onNavigateToLoginDispatched() {
+        viewModelScope.launch {
+            delay(NAVIGATION_RESET_DELAY_MS)
+            if (_uiState.value.isExiting) {
+                _uiState.update { it.copy(isExiting = false) }
+            }
+        }
+    }
+
+    companion object {
+        private const val NAVIGATION_RESET_DELAY_MS = 500L
     }
 }

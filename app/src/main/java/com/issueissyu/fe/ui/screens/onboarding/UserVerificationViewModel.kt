@@ -6,6 +6,7 @@ import com.issueissyu.fe.data.local.OnboardingSessionStore
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
 import com.issueissyu.fe.domain.repository.AuthRepository
+import com.issueissyu.fe.domain.usecase.onboarding.ExitOnboardingUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,6 +51,7 @@ data class UserVerificationUiState(
 class UserVerificationViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val onboardingSessionStore: OnboardingSessionStore,
+    private val exitOnboardingUseCase: ExitOnboardingUseCase,
     private val tokenManager: TokenManager,
 ) : ViewModel() {
 
@@ -324,14 +326,9 @@ class UserVerificationViewModel @Inject constructor(
     fun onLinkCompletedAcknowledged(onNavigateToLogin: () -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(showLinkCompletedDialog = false) }
-            exitToLogin()
+            exitOnboardingUseCase()
             onNavigateToLogin()
         }
-    }
-
-    private suspend fun exitToLogin() {
-        authRepository.logout()
-        onboardingSessionStore.clearPendingProfile()
     }
 
     fun onSignupClick(onComplete: (nickname: String, email: String, phoneNumber: String) -> Unit) {

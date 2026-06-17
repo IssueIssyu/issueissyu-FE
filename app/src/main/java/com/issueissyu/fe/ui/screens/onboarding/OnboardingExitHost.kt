@@ -1,19 +1,24 @@
 package com.issueissyu.fe.ui.screens.onboarding
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -23,6 +28,7 @@ import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Text
+import com.issueissyu.fe.ui.theme.White
 
 @Composable
 fun OnboardingExitHost(
@@ -31,11 +37,15 @@ fun OnboardingExitHost(
     content: @Composable (onSwitchAccountClick: () -> Unit) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val onNavigateToLoginUpdated by rememberUpdatedState(onNavigateToLogin)
 
-    LaunchedEffect(viewModel, onNavigateToLogin) {
+    LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                OnboardingExitViewModel.Effect.NavigateToLogin -> onNavigateToLogin()
+                OnboardingExitViewModel.Effect.NavigateToLogin -> {
+                    onNavigateToLoginUpdated()
+                    viewModel.onNavigateToLoginDispatched()
+                }
             }
         }
     }
@@ -74,7 +84,29 @@ fun OnboardingExitHost(
         )
     }
 
-    content(viewModel::requestSwitchAccount)
+    Box(modifier = Modifier.fillMaxSize()) {
+        content(viewModel::requestSwitchAccount)
+
+        if (uiState.isExiting) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(White.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = BrandColor)
+            }
+        }
+    }
+}
+
+@Composable
+fun OnboardingSwitchAccountNavigationContent(
+    onSwitchAccountClick: (() -> Unit)?,
+) {
+    onSwitchAccountClick?.let { onClick ->
+        OnboardingSwitchAccountAction(onClick = onClick)
+    }
 }
 
 @Composable
