@@ -2475,6 +2475,8 @@ private fun LandingIssueDetailGuidePage(
             } else {
                 listOfNotNull(reactionBounds, commentBounds)
             },
+            cutoutPadding = if (showActionGuide) 0.dp else 8.dp,
+            lastCutoutExtraRight = if (showActionGuide) 0.dp else 24.dp,
         )
 
         Box(
@@ -2511,6 +2513,8 @@ private fun LandingIssueDetailGuidePage(
 @Composable
 private fun LandingIssueDetailHighlight(
     cutoutBounds: List<Rect>,
+    cutoutPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    lastCutoutExtraRight: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     var overlayBounds by remember { mutableStateOf<Rect?>(null) }
 
@@ -2525,12 +2529,23 @@ private fun LandingIssueDetailHighlight(
             },
     ) {
         drawRect(Color.Black.copy(alpha = 0.22f))
-        cutoutBounds.forEach { rootBounds ->
-            val bounds = rootBounds.toLocalRect(overlayBounds) ?: return@forEach
+        val paddingPx = cutoutPadding.toPx()
+        val extraRightPx = lastCutoutExtraRight.toPx()
+        cutoutBounds.forEachIndexed { index, rootBounds ->
+            val bounds = rootBounds.toLocalRect(overlayBounds) ?: return@forEachIndexed
+            val left = (bounds.left - paddingPx).coerceAtLeast(0f)
+            val top = (bounds.top - paddingPx).coerceAtLeast(0f)
+            val rightExpand = if (index == cutoutBounds.lastIndex) extraRightPx else 0f
+            val right = (bounds.right + paddingPx + rightExpand).coerceAtMost(size.width)
+            val bottom = (bounds.bottom + paddingPx).coerceAtMost(size.height)
+            if (right <= left || bottom <= top) return@forEachIndexed
             drawRoundRect(
                 color = Color.Transparent,
-                topLeft = bounds.topLeft,
-                size = bounds.size,
+                topLeft = androidx.compose.ui.geometry.Offset(left, top),
+                size = androidx.compose.ui.geometry.Size(
+                    width = right - left,
+                    height = bottom - top,
+                ),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(13.dp.toPx()),
                 blendMode = BlendMode.Clear,
             )
