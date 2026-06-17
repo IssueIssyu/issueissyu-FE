@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -38,9 +39,12 @@ fun PinTypeSelector(
     onCommunicationClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val fontScale = LocalDensity.current.fontScale.coerceIn(1f, 1.3f)
+    val containerWidth = (85f * fontScale).dp
+
     Column(
         modifier = modifier
-            .width(85.dp)
+            .width(containerWidth)
             .clip(RoundedCornerShape(30.dp))
             .background(White)
             .padding(10.dp),
@@ -100,9 +104,9 @@ private fun PinTypeSelectorItem(
             modifier = Modifier.fillMaxWidth(),
             style = IssueTypo.Bold12.copy(color = Title),
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = 2,
             softWrap = true,
-            overflow = TextOverflow.Visible
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
