@@ -238,29 +238,31 @@ private fun PatchNoteStatusBadge(
 }
 
 
+private const val LoadMoreThreshold = 3
+private val ExpandedPatchNoteCardMaxWidth = 560.dp
+
 @Composable
 fun PatchNoteCard(
     patchNote: PatchNoteItem,
-    modifier: Modifier = Modifier
+    maxWidth: Dp,
+    modifier: Modifier = Modifier,
 ) {
     val cardBackgroundColor = getPatchNoteCardColor(patchNote.resolutionStatus)
+    val layout = rememberPatchNoteCardLayoutSpec(maxWidth)
+    val cardShape = RoundedCornerShape(layout.cardCornerRadius)
 
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val layout = rememberPatchNoteCardLayoutSpec(maxWidth)
-        val cardShape = RoundedCornerShape(layout.cardCornerRadius)
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-                .shadow(elevation = 4.dp, shape = cardShape)
-                .clip(cardShape)
-                .background(cardBackgroundColor)
-                .padding(
-                    horizontal = layout.cardHorizontalPadding,
-                    vertical = layout.cardVerticalPadding,
-                )
-        ) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight()
+            .shadow(elevation = 4.dp, shape = cardShape)
+            .clip(cardShape)
+            .background(cardBackgroundColor)
+            .padding(
+                horizontal = layout.cardHorizontalPadding,
+                vertical = layout.cardVerticalPadding,
+            )
+    ) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(layout.rowSpacing)
             ) {
@@ -349,7 +351,6 @@ fun PatchNoteCard(
                     )
                 }
             }
-        }
     }
 }
 
@@ -434,9 +435,15 @@ fun PatchNotesScreen(
                     ) {
                         val isExpanded = maxWidth >= 600.dp
                         val listHorizontalPadding = if (isExpanded) 24.dp else 16.dp
+                        val contentWidth = maxWidth - (listHorizontalPadding * 2)
+                        val cardLayoutWidth = if (isExpanded) {
+                            minOf(contentWidth, ExpandedPatchNoteCardMaxWidth)
+                        } else {
+                            contentWidth
+                        }
                         val cardWidthModifier = if (isExpanded) {
                             Modifier
-                                .widthIn(max = 560.dp)
+                                .widthIn(max = ExpandedPatchNoteCardMaxWidth)
                                 .fillMaxWidth()
                         } else {
                             Modifier.fillMaxWidth()
@@ -456,6 +463,7 @@ fun PatchNotesScreen(
                             items(items = uiState.patchNotes, key = { it.id }) { patchNote ->
                                 PatchNoteCard(
                                     patchNote = patchNote,
+                                    maxWidth = cardLayoutWidth,
                                     modifier = cardWidthModifier.clickable {
                                         onPatchNoteClick(patchNote.id)
                                     }
@@ -538,8 +546,6 @@ fun PreviewPatchNotesScreenContent() {
     }
 }
 
-private const val LoadMoreThreshold = 3
-
 @Preview(showBackground = true)
 @Composable
 fun PreviewPatchNoteCardStates() {
@@ -558,7 +564,8 @@ fun PreviewPatchNoteCardStates() {
                     locationName = "역삼동 테헤란로 123",
                     writerName = "관리자",
                     resolutionStatus = ResolutionStatus.RESOLVED
-                )
+                ),
+                maxWidth = 360.dp,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text("진행 중", style = MaterialTheme.typography.titleSmall)
@@ -570,7 +577,8 @@ fun PreviewPatchNoteCardStates() {
                     locationName = "강남대로 456",
                     writerName = "홍길동",
                     resolutionStatus = ResolutionStatus.IN_PROGRESS
-                )
+                ),
+                maxWidth = 360.dp,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text("해결 전", style = MaterialTheme.typography.titleSmall)
@@ -582,7 +590,8 @@ fun PreviewPatchNoteCardStates() {
                     locationName = "선릉역 사거리",
                     writerName = "익명",
                     resolutionStatus = ResolutionStatus.BEFORE_RESOLUTION
-                )
+                ),
+                maxWidth = 360.dp,
             )
         }
     }
