@@ -532,11 +532,8 @@ class PinRepositoryImpl @Inject constructor(
     }
 
     override suspend fun getIssuePinEditQuota(pinId: Long): Result<PinEditRateLimitQuota> {
-        if (pinId !in 0..Int.MAX_VALUE.toLong()) {
-            return Result.failure(Exception("잘못된 핀 ID입니다."))
-        }
         return try {
-            val response = aiIssueApiService.getIssuePinEditQuota(pinId.toInt())
+            val response = aiIssueApiService.getIssuePinEditQuota(pinId)
             if (response.isSuccess) {
                 val result = response.result
                     ?: return Result.failure(
