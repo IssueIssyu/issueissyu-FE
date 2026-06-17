@@ -43,10 +43,6 @@ class AuthRepositoryImpl @Inject constructor(
         private const val TAG = "AuthRepository"
     }
 
-    private fun safeMessage(rawMessage: String?, fallback: String): String {
-        return rawMessage?.takeIf { it.isNotBlank() } ?: fallback
-    }
-
     private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
         Result.failure(apiErrorMapper.toException(e, fallback))
 
@@ -86,10 +82,7 @@ class AuthRepositoryImpl @Inject constructor(
                     val result = response.result
                         ?: return Result.failure(
                             Exception(
-                                safeMessage(
-                                    response.message as String?,
-                                    "회원가입 응답이 올바르지 않습니다.",
-                                ),
+                                response.message.ifBlank { "회원가입 응답이 올바르지 않습니다." },
                             ),
                         )
                     if (BuildConfig.DEBUG) {
@@ -104,26 +97,20 @@ class AuthRepositoryImpl @Inject constructor(
                 "LOCAL_SIGNUP_409_1" ->
                     Result.failure(
                         Exception(
-                            safeMessage(
-                                response.message as String?,
-                                "이미 가입된 아이디가 존재하여 회원가입에 실패했습니다.",
-                            ),
+                            response.message.ifBlank { "이미 가입된 아이디가 존재하여 회원가입에 실패했습니다." },
                         ),
                     )
 
                 "LOCAL_SIGNUP_400_1" ->
                     Result.failure(
                         Exception(
-                            safeMessage(
-                                response.message as String?,
-                                "비밀번호 형식이 올바르지 않습니다.",
-                            ),
+                            response.message.ifBlank { "비밀번호 형식이 올바르지 않습니다." },
                         ),
                     )
 
                 else ->
                     Result.failure(
-                        Exception(safeMessage(response.message as String?, "회원가입에 실패했습니다.")),
+                        Exception(response.message.ifBlank { "회원가입에 실패했습니다." }),
                     )
             }
         } catch (e: Exception) {
@@ -150,7 +137,7 @@ class AuthRepositoryImpl @Inject constructor(
                     val result = response.result
                         ?: return Result.failure(
                             Exception(
-                                safeMessage(response.message as String?, "네이버 로그인 응답이 올바르지 않습니다."),
+                                response.message.ifBlank { "네이버 로그인 응답이 올바르지 않습니다." },
                             ),
                         )
 
@@ -162,10 +149,7 @@ class AuthRepositoryImpl @Inject constructor(
                     if (result.isNew && resolvedTempUuid == null) {
                         return Result.failure(
                             Exception(
-                                safeMessage(
-                                    response.message as String?,
-                                    "신규 회원 응답(tempUuid)이 올바르지 않습니다.",
-                                ),
+                                response.message.ifBlank { "신규 회원 응답(tempUuid)이 올바르지 않습니다." },
                             ),
                         )
                     }
@@ -173,10 +157,7 @@ class AuthRepositoryImpl @Inject constructor(
                         ?: resolvedTempUuid
                         ?: return Result.failure(
                             Exception(
-                                safeMessage(
-                                    response.message as String?,
-                                    "로그인 응답(사용자 식별자)이 올바르지 않습니다.",
-                                ),
+                                response.message.ifBlank { "로그인 응답(사용자 식별자)이 올바르지 않습니다." },
                             ),
                         )
                     val resolvedUserName = userNameRaw?.takeIf { it.isNotBlank() } ?: "NAVER_USER"
@@ -199,17 +180,17 @@ class AuthRepositoryImpl @Inject constructor(
 
                 "NAVER_LOGIN_401" ->
                     Result.failure(
-                        Exception(safeMessage(response.message as String?, "유효하지 않은 값이 존재합니다.")),
+                        Exception(response.message.ifBlank { "유효하지 않은 값이 존재합니다." }),
                     )
 
                 "COMMON_500" ->
                     Result.failure(
-                        Exception(safeMessage(response.message as String?, "InternalServerError")),
+                        Exception(response.message.ifBlank { "InternalServerError" }),
                     )
 
                 else ->
                     Result.failure(
-                        Exception(safeMessage(response.message as String?, "네이버 로그인에 실패했습니다.")),
+                        Exception(response.message.ifBlank { "네이버 로그인에 실패했습니다." }),
                     )
             }
         } catch (e: Exception) {
@@ -232,14 +213,14 @@ class AuthRepositoryImpl @Inject constructor(
                     val result = response.result
                         ?: return Result.failure(
                             Exception(
-                                safeMessage(response.message as String?, "로그인 응답이 올바르지 않습니다."),
+                                response.message.ifBlank { "로그인 응답이 올바르지 않습니다." },
                             ),
                         )
 
                     val expectedIsNew = response.code == "LOCAL_LOGIN_200_1"
                     if (result.isNew != expectedIsNew) {
                         return Result.failure(
-                            Exception(safeMessage(response.message as String?, "응답이 올바르지 않습니다.")),
+                            Exception(response.message.ifBlank { "응답이 올바르지 않습니다." }),
                         )
                     }
 
@@ -251,10 +232,7 @@ class AuthRepositoryImpl @Inject constructor(
                     if (result.isNew && resolvedTempUuid == null) {
                         return Result.failure(
                             Exception(
-                                safeMessage(
-                                    response.message as String?,
-                                    "신규 회원 응답(tempUuid)이 올바르지 않습니다.",
-                                ),
+                                response.message.ifBlank { "신규 회원 응답(tempUuid)이 올바르지 않습니다." },
                             ),
                         )
                     }
@@ -262,10 +240,7 @@ class AuthRepositoryImpl @Inject constructor(
                         ?: resolvedTempUuid
                         ?: return Result.failure(
                             Exception(
-                                safeMessage(
-                                    response.message as String?,
-                                    "로그인 응답(사용자 식별자)이 올바르지 않습니다.",
-                                ),
+                                response.message.ifBlank { "로그인 응답(사용자 식별자)이 올바르지 않습니다." },
                             ),
                         )
                     val resolvedUserName = userNameRaw?.takeIf { it.isNotBlank() } ?: userName
@@ -295,24 +270,24 @@ class AuthRepositoryImpl @Inject constructor(
 
                 "LOCAL_LOGIN_400_1" ->
                     Result.failure(
-                        Exception(safeMessage(response.message as String?, "유효하지 않은 값이 존재합니다.")),
+                        Exception(response.message.ifBlank { "유효하지 않은 값이 존재합니다." }),
                     )
 
                 "LOCAL_LOGIN_401" ->
                     Result.failure(
                         Exception(
-                            safeMessage(response.message as String?, "아이디 또는 비밀번호가 올바르지 않습니다."),
+                            response.message.ifBlank { "아이디 또는 비밀번호가 올바르지 않습니다." },
                         ),
                     )
 
                 "COMMON_500" ->
                     Result.failure(
-                        Exception(safeMessage(response.message as String?, "InternalServerError")),
+                        Exception(response.message.ifBlank { "InternalServerError" }),
                     )
 
                 else ->
                     Result.failure(
-                        Exception(safeMessage(response.message as String?, "로그인에 실패했습니다.")),
+                        Exception(response.message.ifBlank { "로그인에 실패했습니다." }),
                     )
             }
         } catch (e: Exception) {
@@ -390,14 +365,14 @@ class AuthRepositoryImpl @Inject constructor(
                     } else {
                         Result.failure(
                             Exception(
-                                safeMessage(response.message, "로그아웃에 실패했습니다."),
+                                response.message.ifBlank { "로그아웃에 실패했습니다." },
                             ),
                         )
                     }
             }
         } catch (e: Exception) {
             Result.failure(
-                Exception(safeMessage(e.message, "로그아웃에 실패했습니다.")),
+                Exception(e.message.orEmpty().ifBlank { "로그아웃에 실패했습니다." }),
             )
         }
     }
@@ -413,7 +388,7 @@ class AuthRepositoryImpl @Inject constructor(
                 Result.success(Unit)
             } else {
                 Result.failure(
-                    Exception(safeMessage(response.message, "회원탈퇴에 실패했습니다.")),
+                    Exception(response.message.ifBlank { "회원탈퇴에 실패했습니다." }),
                 )
             }
         } catch (e: Exception) {
@@ -567,13 +542,13 @@ class AuthRepositoryImpl @Inject constructor(
                 "PHONE_SEND_400_1" ->
                     Result.failure(
                         Exception(
-                            safeMessage(response.message, "전화번호 형식이 올바르지 않습니다."),
+                            response.message.ifBlank { "전화번호 형식이 올바르지 않습니다." },
                         ),
                     )
                 "PHONE_SEND_400_2" ->
                     Result.failure(
                         Exception(
-                            safeMessage(response.message, "인증번호 전송에 실패했습니다."),
+                            response.message.ifBlank { "인증번호 전송에 실패했습니다." },
                         ),
                     )
                 else ->
@@ -582,7 +557,7 @@ class AuthRepositoryImpl @Inject constructor(
                     } else {
                         Result.failure(
                             Exception(
-                                safeMessage(response.message, "인증번호 전송에 실패했습니다."),
+                                response.message.ifBlank { "인증번호 전송에 실패했습니다." },
                             ),
                         )
                     }
@@ -612,7 +587,7 @@ class AuthRepositoryImpl @Inject constructor(
                 "PHONE_400_2" ->
                     Result.failure(
                         Exception(
-                            safeMessage(response.message, "인증번호가 올바르지 않습니다."),
+                            response.message.ifBlank { "인증번호가 올바르지 않습니다." },
                         ),
                     )
                 else -> if (response.isSuccess) {
@@ -620,7 +595,7 @@ class AuthRepositoryImpl @Inject constructor(
                 } else {
                     Result.failure(
                         Exception(
-                            safeMessage(response.message, "전화번호 인증에 실패했습니다."),
+                            response.message.ifBlank { "전화번호 인증에 실패했습니다." },
                         ),
                     )
                 }
@@ -671,28 +646,19 @@ class AuthRepositoryImpl @Inject constructor(
                 "LOGIN_LINK_400_1" ->
                     Result.failure(
                         Exception(
-                            safeMessage(
-                                response.message,
-                                "해당 전화번호로 가입된 기존 계정이 없습니다.",
-                            ),
+                            response.message.ifBlank { "해당 전화번호로 가입된 기존 계정이 없습니다." },
                         ),
                     )
                 "LOGIN_LINK_400_2" ->
                     Result.failure(
                         Exception(
-                            safeMessage(
-                                response.message,
-                                "연동 대상이 현재 계정과 동일합니다.",
-                            ),
+                            response.message.ifBlank { "연동 대상이 현재 계정과 동일합니다." },
                         ),
                     )
                 "LOGIN_LINK_400_3" ->
                     Result.failure(
                         Exception(
-                            safeMessage(
-                                response.message,
-                                "해당 소셜 타입은 이미 연동되어 있습니다.",
-                            ),
+                            response.message.ifBlank { "해당 소셜 타입은 이미 연동되어 있습니다." },
                         ),
                     )
                 "LOGIN_LINK_400" -> Result.failure(Exception(failMessage))
