@@ -12,6 +12,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.issueissyu.fe.MainActivity
 import com.issueissyu.fe.R
+import com.issueissyu.fe.domain.model.notification.PushAlarmContext
 
 enum class PushType(
     val serverCode: String,
@@ -136,7 +137,21 @@ fun Intent?.parsePushDestination(): PushDestination? {
     return pushType.resolveDestination(readPinId(), readCommunityId())
 }
 
-fun Intent?.readPushAlarmId(): Long? = PushAlarmIdParser.parseLong(this)
+fun Intent?.readPushAlarmContext(): PushAlarmContext? {
+    if (this == null) return null
+    val pushType = getStringExtra(NotificationHelper.EXTRA_TYPE) ?: getStringExtra("type")
+    val fcmAlarmId = PushAlarmIdParser.parseLong(this)
+    val pinId = readPinId()?.toLongOrNull()
+    val communityId = readCommunityId()?.toLongOrNull()
+    if (fcmAlarmId == null && pushType.isNullOrBlank()) return null
+    if (fcmAlarmId == null && pinId == null && communityId == null) return null
+    return PushAlarmContext(
+        fcmAlarmId = fcmAlarmId,
+        pushType = pushType,
+        pinId = pinId,
+        communityId = communityId,
+    )
+}
 
 fun Intent.clearPushExtras() {
     removeExtra(NotificationHelper.EXTRA_TYPE)

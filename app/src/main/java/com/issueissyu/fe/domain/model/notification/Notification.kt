@@ -16,3 +16,11 @@ data class NotificationPage(
     val hasNext: Boolean,
     val nextCursor: String?,
 )
+
+/** 푸시 탭 시 confirm에 사용. FCM *AlarmId와 목록 alarmId 불일치 시 목록 매칭에 쓴다. */
+data class PushAlarmContext(
+    val fcmAlarmId: Long?,
+    val pushType: String?,
+    val pinId: Long?,
+    val communityId: Long?,
+)

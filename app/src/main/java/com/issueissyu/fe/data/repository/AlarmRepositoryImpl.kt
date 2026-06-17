@@ -1,20 +1,25 @@
 package com.issueissyu.fe.data.repository
 
+import com.google.gson.Gson
 import com.issueissyu.fe.data.remote.api.AlarmApi
 import com.issueissyu.fe.data.remote.dto.request.alarm.StoreTokenRequest
 import com.issueissyu.fe.data.remote.dto.response.alarm.activeFor
 import com.issueissyu.fe.data.remote.dto.response.alarm.toNotificationPage
 import com.issueissyu.fe.data.remote.dto.response.alarm.toAlarmToggleState
 import com.issueissyu.fe.domain.model.notification.AlarmToggleState
+import com.issueissyu.fe.domain.model.notification.Notification
 import com.issueissyu.fe.domain.model.notification.NotificationPage
 import com.issueissyu.fe.domain.model.notification.NotificationType
+import com.issueissyu.fe.domain.model.notification.PushAlarmContext
 import com.issueissyu.fe.domain.repository.AlarmRepository
+import retrofit2.HttpException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AlarmRepositoryImpl @Inject constructor(
-    private val alarmApi: AlarmApi
+    private val alarmApi: AlarmApi,
+    private val gson: Gson,
 ) : AlarmRepository {
 
     //FCM Push Token 저장
@@ -74,18 +79,43 @@ class AlarmRepositoryImpl @Inject constructor(
         when (response.code) {
             "ALARM_CONFIRM_200" -> Result.success(Unit)
             "ALARM_CONFIRM_400" -> Result.failure(
-                Exception(
-                    response.message.takeIf { it.isNotBlank() } ?: "존재하지 않는 알람입니다.",
+                toConfirmAlarmException(
+                    code = response.code,
+                    message = response.message,
+                    fallbackMessage = "존재하지 않는 알람입니다.",
                 ),
             )
             else -> Result.failure(
-                Exception(
-                    response.message.takeIf { it.isNotBlank() } ?: "알람 확인에 실패했습니다.",
+                toConfirmAlarmException(
+                    code = response.code,
+                    message = response.message,
                 ),
             )
         }
+    } catch (e: HttpException) {
+        val errorEnvelope = e.response()?.errorBody()?.string()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { body ->
+                runCatching {
+                    gson.fromJson(body, AlarmErrorEnvelope::class.java)
+                }.getOrNull()
+            }
+
+        Result.failure(
+            toConfirmAlarmException(
+                code = errorEnvelope?.code,
+                message = errorEnvelope?.message ?: e.message(),
+                httpStatus = e.code(),
+            ),
+        )
     } catch (e: Exception) {
         Result.failure(e)
+    }
+
+    override suspend fun confirmPushAlarm(context: PushAlarmContext): Result<Unit> {
+        val alarmId = resolveAlarmIdFromList(context) ?: context.fcmAlarmId
+            ?: return Result.failure(Exception("확인할 알람을 찾을 수 없습니다."))
+        return confirmAlarm(alarmId)
     }
 
     override suspend fun getAlarmToggleState(): Result<AlarmToggleState> = try {
@@ -156,5 +186,59 @@ class AlarmRepositoryImpl @Inject constructor(
         fallback: String,
     ): Exception {
         return Exception(message.takeIf { it.isNotBlank() } ?: fallback)
+    }
+
+    private suspend fun resolveAlarmIdFromList(context: PushAlarmContext): Long? {
+        val type = NotificationType.fromServer(context.pushType) ?: return null
+        val page = getAlarmList(size = PUSH_ALARM_LOOKUP_PAGE_SIZE).getOrNull() ?: return null
+        val candidates = page.items.filter { notification ->
+            matchesPushAlarm(notification, type, context)
+        }
+        return candidates.firstOrNull { it.isUnread }?.alarmId
+            ?: candidates.firstOrNull()?.alarmId
+    }
+
+    private fun matchesPushAlarm(
+        notification: Notification,
+        type: NotificationType,
+        context: PushAlarmContext,
+    ): Boolean {
+        if (notification.type != type) return false
+        return when (type) {
+            NotificationType.LIKE -> {
+                context.pinId != null && notification.pinId == context.pinId
+            }
+            NotificationType.EVENT,
+            NotificationType.HOT,
+            NotificationType.STORE,
+            -> {
+                context.communityId != null && notification.communityId == context.communityId
+            }
+        }
+    }
+
+    private fun toConfirmAlarmException(
+        code: String?,
+        message: String?,
+        fallbackMessage: String = "알람 확인에 실패했습니다.",
+        httpStatus: Int? = null,
+    ): Exception {
+        val body = message?.takeIf { it.isNotBlank() } ?: fallbackMessage
+        val prefix = when {
+            !code.isNullOrBlank() -> "[$code]"
+            httpStatus != null -> "[HTTP $httpStatus]"
+            else -> null
+        }
+        val display = prefix?.let { "$it $body" } ?: body
+        return Exception(display)
+    }
+
+    private data class AlarmErrorEnvelope(
+        val code: String?,
+        val message: String?,
+    )
+
+    companion object {
+        private const val PUSH_ALARM_LOOKUP_PAGE_SIZE = 50
     }
 }

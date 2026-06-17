@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import com.issueissyu.fe.core.notification.PushDestination
 import com.issueissyu.fe.core.notification.clearPushExtras
 import com.issueissyu.fe.core.notification.parsePushDestination
-import com.issueissyu.fe.core.notification.readPushAlarmId
+import com.issueissyu.fe.core.notification.readPushAlarmContext
 import com.issueissyu.fe.domain.repository.AlarmRepository
 import com.issueissyu.fe.ui.App
 import com.issueissyu.fe.domain.repository.BillingRepository
@@ -59,9 +59,9 @@ class MainActivity : FragmentActivity() {
     private fun handlePushIntent(intent: Intent?) {
         if (intent == null) return
         intent.parsePushDestination()?.let { pendingPush = it }
-        intent.readPushAlarmId()?.let { alarmId ->
+        intent.readPushAlarmContext()?.let { context ->
             lifecycleScope.launch {
-                alarmRepository.confirmAlarm(alarmId).onFailure { error ->
+                alarmRepository.confirmPushAlarm(context).onFailure { error ->
                     val message = error.message?.takeIf { it.isNotBlank() }
                         ?: "알림 확인에 실패했습니다."
                     Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
