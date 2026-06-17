@@ -2471,11 +2471,22 @@ private fun LandingIssueDetailGuidePage(
 
         LandingIssueDetailHighlight(
             cutoutBounds = if (showActionGuide) {
-                listOfNotNull(goNowBounds, petitionBounds)
+                val mergedActionBounds = when {
+                    goNowBounds != null && petitionBounds != null -> {
+                        Rect(
+                            left = kotlin.math.min(goNowBounds!!.left, petitionBounds!!.left),
+                            top = kotlin.math.min(goNowBounds!!.top, petitionBounds!!.top),
+                            right = kotlin.math.max(goNowBounds!!.right, petitionBounds!!.right),
+                            bottom = kotlin.math.max(goNowBounds!!.bottom, petitionBounds!!.bottom),
+                        )
+                    }
+                    else -> goNowBounds ?: petitionBounds
+                }
+                listOfNotNull(mergedActionBounds)
             } else {
                 listOfNotNull(reactionBounds, commentBounds)
             },
-            cutoutPadding = if (showActionGuide) 0.dp else 8.dp,
+            cutoutPadding = 8.dp,
             lastCutoutExtraRight = if (showActionGuide) 0.dp else 24.dp,
         )
 
