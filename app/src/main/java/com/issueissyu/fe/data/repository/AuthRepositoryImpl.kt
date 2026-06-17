@@ -3,6 +3,7 @@ package com.issueissyu.fe.data.repository
 import android.util.Log
 import com.issueissyu.fe.BuildConfig
 import com.issueissyu.fe.core.auth.SessionManager
+import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.data.local.TokenManager
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.dto.request.auth.LoginLinkRequest
@@ -31,6 +32,7 @@ class AuthRepositoryImpl @Inject constructor(
     private val tokenManager: TokenManager,
     private val sessionManager: SessionManager,
     private val userCollectionsStore: UserCollectionsStore,
+    private val apiErrorMapper: ApiErrorMapper,
 ) : AuthRepository {
 
     private fun clearUserSession() {
@@ -53,6 +55,9 @@ class AuthRepositoryImpl @Inject constructor(
     private fun safeMessage(rawMessage: String?, fallback: String): String {
         return rawMessage?.takeIf { it.isNotBlank() } ?: fallback
     }
+
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+        Result.failure(apiErrorMapper.toException(e, fallback))
 
     private fun persistAuthTokens(
         accessToken: String,
@@ -131,7 +136,7 @@ class AuthRepositoryImpl @Inject constructor(
                     )
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "회원가입에 실패했습니다.")
         }
     }
 
@@ -217,7 +222,7 @@ class AuthRepositoryImpl @Inject constructor(
                     )
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "네이버 로그인에 실패했습니다.")
         }
     }
     //로컬 로그인
@@ -320,7 +325,7 @@ class AuthRepositoryImpl @Inject constructor(
                     )
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "로그인에 실패했습니다.")
         }
     }
 
@@ -328,7 +333,7 @@ class AuthRepositoryImpl @Inject constructor(
     override suspend fun refreshToken(): Result<Unit> {
         return try {
             val currentRefreshToken = tokenManager.getRefreshToken()
-                ?: return Result.failure(Exception("Refresh token not found"))
+                ?: return Result.failure(Exception("로그인 정보를 확인한 뒤 다시 시도해주세요."))
 
             val request = RefreshTokenRequest(currentRefreshToken)
             val response = authApi.refreshToken(request)
@@ -370,7 +375,7 @@ class AuthRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "토큰 재발급에 실패했습니다.")
         }
     }
 
@@ -424,9 +429,7 @@ class AuthRepositoryImpl @Inject constructor(
             if (BuildConfig.DEBUG) {
                 Log.e(TAG, "withdraw failed", e)
             }
-            Result.failure(
-                Exception(safeMessage(e.message, "회원탈퇴에 실패했습니다.")),
-            )
+            failureFrom(e, "회원탈퇴에 실패했습니다.")
         }
     }
 
@@ -462,7 +465,7 @@ class AuthRepositoryImpl @Inject constructor(
                     )
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "아이디 확인에 실패했습니다.")
         }
     }
 
@@ -518,7 +521,7 @@ class AuthRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "약관 동의에 실패했습니다.")
         }
     }
 
@@ -558,7 +561,7 @@ class AuthRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "닉네임 확인에 실패했습니다.")
         }
     }
 
@@ -570,17 +573,31 @@ class AuthRepositoryImpl @Inject constructor(
             )
             when (response.code) {
                 "PHONE_SEND_200" -> Result.success(Unit)
-                "PHONE_SEND_400_1" -> Result.failure(Exception(response.message))
-                "PHONE_SEND_400_2" -> Result.failure(Exception(response.message))
+                "PHONE_SEND_400_1" ->
+                    Result.failure(
+                        Exception(
+                            safeMessage(response.message, "전화번호 형식이 올바르지 않습니다."),
+                        ),
+                    )
+                "PHONE_SEND_400_2" ->
+                    Result.failure(
+                        Exception(
+                            safeMessage(response.message, "인증번호 전송에 실패했습니다."),
+                        ),
+                    )
                 else ->
                     if (response.isSuccess) {
                         Result.success(Unit)
                     } else {
-                        Result.failure(Exception(response.message))
+                        Result.failure(
+                            Exception(
+                                safeMessage(response.message, "인증번호 전송에 실패했습니다."),
+                            ),
+                        )
                     }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "인증번호 전송에 실패했습니다.")
         }
     }
 
@@ -601,16 +618,24 @@ class AuthRepositoryImpl @Inject constructor(
             when (response.code) {
                 "PHONE_200" -> Result.success(Unit)
                 "PHONE_201" -> Result.failure(ExistingPhoneRequiresLinkException())
-                "PHONE_400_2",
-                -> Result.failure(Exception(response.message))
+                "PHONE_400_2" ->
+                    Result.failure(
+                        Exception(
+                            safeMessage(response.message, "인증번호가 올바르지 않습니다."),
+                        ),
+                    )
                 else -> if (response.isSuccess) {
                     Result.success(Unit)
                 } else {
-                    Result.failure(Exception(response.message))
+                    Result.failure(
+                        Exception(
+                            safeMessage(response.message, "전화번호 인증에 실패했습니다."),
+                        ),
+                    )
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "전화번호 인증에 실패했습니다.")
         }
     }
 
@@ -670,7 +695,7 @@ class AuthRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "로그인 연동에 실패했습니다.")
         }
     }
 
@@ -726,7 +751,7 @@ class AuthRepositoryImpl @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "온보딩에 실패했습니다.")
         }
     }
 

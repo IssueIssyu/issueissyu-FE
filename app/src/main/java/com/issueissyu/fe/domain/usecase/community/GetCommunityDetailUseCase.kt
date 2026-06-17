@@ -8,7 +8,10 @@ import javax.inject.Inject
 class GetCommunityDetailUseCase @Inject constructor(
     private val repository: CommunityRepository
 ) {
-    operator fun invoke(communityId: Long): Flow<CommunityDetail> {
-        return repository.getCommunityDetail(communityId)
+    operator fun invoke(
+        communityId: Long,
+        kind: String? = null,
+    ): Flow<CommunityDetail> {
+        return repository.getCommunityDetail(communityId, kind)
     }
 }

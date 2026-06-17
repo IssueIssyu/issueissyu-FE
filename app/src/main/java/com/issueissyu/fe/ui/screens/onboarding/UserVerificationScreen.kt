@@ -364,15 +364,10 @@ private fun NicknameSection(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                if (nicknameError != null) {
+                nicknameError?.let { error ->
                     Text(
-                        text = nicknameError,
-                        style = IssueTypo.Regular15.copy(color = Issue)
-                    )
-                } else if (!isNicknameChecked && nickname.isNotEmpty()) {
-                    Text(
-                        text = "닉네임 중복을 확인해주세요",
-                        style = IssueTypo.Regular15.copy(color = Issue)
+                        text = error,
+                        style = IssueTypo.Regular15.copy(color = Issue),
                     )
                 }
             }
@@ -558,11 +553,6 @@ private fun PhoneNumberSection(
                 )
             }
         }
-        Text(
-            text = "번호 입력 후 [인증번호]를 누르면 문자로 인증번호가 전송됩니다. (예: 010-1234-5678)",
-            style = IssueTypo.Regular12.copy(color = Gray_5),
-            modifier = Modifier.padding(horizontal = 5.dp),
-        )
     }
 }
 
@@ -592,12 +582,6 @@ private fun VerificationCodeSection(
             value = verificationCode,
             onValueChange = onVerificationCodeChange,
             maxLength = VerificationCodeLength
-        )
-
-        Text(
-            text = "문자로 받은 ${VerificationCodeLength}자리를 입력한 뒤 [확인]을 누르세요.",
-            style = IssueTypo.Regular12.copy(color = Gray_5),
-            modifier = Modifier.padding(horizontal = 5.dp),
         )
 
         Row(

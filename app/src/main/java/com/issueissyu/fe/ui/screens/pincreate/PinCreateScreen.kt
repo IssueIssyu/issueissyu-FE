@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -45,7 +46,11 @@ import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
+import com.issueissyu.fe.ui.components.IssueAiDraftButton
+import com.issueissyu.fe.ui.components.IssueToneSelectionSection
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.RemainingQuotaDialog
+import com.issueissyu.fe.ui.components.toAiDraftConfirmDialogContent
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
@@ -93,20 +98,33 @@ fun PinCreateScreen(
         }
     }
 
-    PinCreateContent(
-        category = category,
-        uiState = uiState,
-        onBackClick = onBackClick,
-        onTitleChange = viewModel::onTitleChange,
-        onDescriptionChange = viewModel::onDescriptionChange,
-        onToneChange = viewModel::onToneChange,
-        onPhotoAddClick = photoSourcePicker.showSourceSheet,
-        onPhotoRemoveClick = viewModel::removeImageUri,
-        onSetMainImageClick = viewModel::setMainImageUri,
-        onAiDraftClick = viewModel::createAiDraft,
-        onSubmit = viewModel::submitPin,
-        modifier = modifier
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        PinCreateContent(
+            category = category,
+            uiState = uiState,
+            onBackClick = onBackClick,
+            onTitleChange = viewModel::onTitleChange,
+            onDescriptionChange = viewModel::onDescriptionChange,
+            onToneChange = viewModel::onToneChange,
+            onPhotoAddClick = photoSourcePicker.showSourceSheet,
+            onPhotoRemoveClick = viewModel::removeImageUri,
+            onSetMainImageClick = viewModel::setMainImageUri,
+            onAiDraftClick = viewModel::createAiDraft,
+            onSubmit = viewModel::submitPin,
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        if (uiState.showAiDraftConfirmDialog) {
+            val dialogContent = uiState.aiDraftRateLimitQuota.toAiDraftConfirmDialogContent()
+            RemainingQuotaDialog(
+                title = dialogContent.title,
+                countLabel = dialogContent.countLabel,
+                description = dialogContent.description,
+                onDismiss = viewModel::dismissAiDraftConfirmDialog,
+                onConfirm = viewModel::confirmAiDraft,
+            )
+        }
+    }
 }
 
 @Composable
@@ -184,7 +202,7 @@ private fun PinCreateContent(
             )
 
             if (category == PinCategory.ISSUE) {
-                ToneSelectionSection(
+                IssueToneSelectionSection(
                     toneOptions = uiState.toneOptions,
                     isLoading = uiState.isLoadingToneOptions,
                     selectedTone = uiState.selectedTone,
@@ -193,11 +211,17 @@ private fun PinCreateContent(
             }
 
             if (category == PinCategory.ISSUE) {
-                AiDraftButton(
-                    isLoading = uiState.isGeneratingAiContent,
+                IssueAiDraftButton(
+                    isLoading = uiState.isGeneratingAiContent || uiState.isLoadingAiDraftQuota,
                     isEnabled = uiState.title.isNotBlank() &&
                         uiState.description.isNotBlank() &&
-                        !uiState.isGeneratingAiContent,
+                        !uiState.isGeneratingAiContent &&
+                        !uiState.isLoadingAiDraftQuota,
+                    loadingText = when {
+                        uiState.isGeneratingAiContent -> "AI 글 작성 중"
+                        uiState.isLoadingAiDraftQuota -> "확인 중"
+                        else -> "AI 글쓰기"
+                    },
                     onClick = onAiDraftClick,
                 )
             }
@@ -371,7 +395,6 @@ private fun SelectedPhotoBox(
     }
 }
 
-// TODO: 좌표 기반 주소 변환 결과를 address/locationName으로 표시 (readonly 유지)
 @Composable
 private fun LocationSection(
     address: String,
@@ -419,80 +442,6 @@ private fun LocationSection(
                 )
             }
         }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ToneSelectionSection(
-    toneOptions: List<String>,
-    isLoading: Boolean,
-    selectedTone: String?,
-    onToneChange: (String) -> Unit,
-) {
-    Column {
-        SectionLabel(text = "말투 설정")
-        if (isLoading && toneOptions.isEmpty()) {
-            Text(
-                text = "말투 목록 불러오는 중…",
-                style = IssueTypo.Regular12.copy(color = Gray_4),
-            )
-            return@Column
-        }
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            toneOptions.forEach { tone ->
-                ToneChip(
-                    label = tone,
-                    selected = selectedTone == tone,
-                    onClick = { onToneChange(tone) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AiDraftButton(
-    isLoading: Boolean,
-    isEnabled: Boolean,
-    onClick: () -> Unit,
-) {
-    CommonButton(
-        onClick = onClick,
-        text = if (isLoading) "AI 글 작성 중" else "AI 글쓰기",
-        isEnabled = isEnabled,
-        textStyle = IssueTypo.Bold18.copy(fontSize = 16.sp),
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-@Composable
-private fun ToneChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val background = if (selected) Orange else White
-    val borderColor = if (selected) Orange else Gray_4
-    val textColor = if (selected) White else Title
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(background)
-            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = IssueTypo.Regular15.copy(color = textColor)
-        )
     }
 }
 

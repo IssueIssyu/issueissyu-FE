@@ -1,15 +1,19 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.core.text.decodePinContentNewlines
 import com.issueissyu.fe.data.remote.api.MapApi
 import com.issueissyu.fe.data.remote.dto.response.map.MapNoticeItemResponse
 import com.issueissyu.fe.data.remote.dto.response.map.MapPinCardResponse
+import com.issueissyu.fe.data.remote.dto.response.map.MapPinClusterResponse
 import com.issueissyu.fe.data.remote.dto.response.map.MapPinItemResponse
 import com.issueissyu.fe.data.remote.dto.response.map.PatchNotePinItemResponse
 import com.issueissyu.fe.data.remote.dto.response.map.PatchNoteResponse
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.MapNotice
+import com.issueissyu.fe.domain.model.MapPinCluster
 import com.issueissyu.fe.domain.model.MapPinMarker
+import com.issueissyu.fe.domain.model.MapPinQueryResult
 import com.issueissyu.fe.domain.model.PatchNote
 import com.issueissyu.fe.domain.model.PatchNotePage
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
@@ -29,23 +33,46 @@ import javax.inject.Singleton
 @Singleton
 class MapRepositoryImpl @Inject constructor(
     private val mapApi: MapApi,
+    private val apiErrorMapper: ApiErrorMapper,
 ) : MapRepository {
+
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+        Result.failure(apiErrorMapper.toException(e, fallback))
 
     override suspend fun getMapPinsInBounds(
         bounds: MapBounds,
+        zoomLevel: Int,
         category: PinCategory?,
-    ): Result<List<MapPinMarker>> {
+    ): Result<MapPinQueryResult> {
         return try {
-            val response = mapApi.getPinsInScreen(
-                swLat = bounds.swLat,
-                swLng = bounds.swLng,
-                neLat = bounds.neLat,
-                neLng = bounds.neLng,
-                category = category?.toApiCategory(),
-            )
+            val apiCategory = category?.toApiCategory()
+            val response = if (zoomLevel <= CLUSTERING_MAX_ZOOM_LEVEL) {
+                mapApi.getClusteredPinsInScreen(
+                    swLat = bounds.swLat,
+                    swLng = bounds.swLng,
+                    neLat = bounds.neLat,
+                    neLng = bounds.neLng,
+                    category = apiCategory,
+                    zoomLevel = zoomLevel,
+                )
+            } else {
+                mapApi.getPinsInScreen(
+                    swLat = bounds.swLat,
+                    swLng = bounds.swLng,
+                    neLat = bounds.neLat,
+                    neLng = bounds.neLng,
+                    category = apiCategory,
+                )
+            }
 
             if (response.isSuccess) {
-                Result.success(response.result?.pins.orEmpty().mapNotNull { it.toMapPinMarker() })
+                val result = response.result
+                Result.success(
+                    MapPinQueryResult(
+                        pins = result?.pins.orEmpty().mapNotNull { it.toMapPinMarker() },
+                        clusters = result?.clusters.orEmpty().mapNotNull { it.toMapPinCluster() },
+                    )
+                )
             } else {
                 Result.failure(Exception(response.message.ifBlank { "지도 핀 목록 조회에 실패했습니다." }))
             }
@@ -87,7 +114,7 @@ class MapRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "패치노트 조회에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "패치노트 조회에 실패했습니다.")
         }
     }
 
@@ -100,7 +127,7 @@ class MapRepositoryImpl @Inject constructor(
                 Result.failure(Exception(response.message.ifBlank { "지도 공지사항 조회에 실패했습니다." }))
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, "지도 공지사항 조회에 실패했습니다.")
         }
     }
 
@@ -116,6 +143,20 @@ class MapRepositoryImpl @Inject constructor(
             coordinate = PinCoordinate(latitude = lat, longitude = lng),
             address = pinDetailAddress.orEmpty(),
             locationName = pinLocation?.takeIf { it.isNotBlank() } ?: pinDetailAddress.orEmpty(),
+        )
+    }
+
+    private fun MapPinClusterResponse.toMapPinCluster(): MapPinCluster? {
+        val id = clusterId?.toString() ?: return null
+        val lat = clusterLatitude ?: return null
+        val lng = clusterLongitude ?: return null
+        val mappedPins = pins.orEmpty().mapNotNull { it.toMapPinMarker() }
+
+        return MapPinCluster(
+            clusterId = id,
+            coordinate = PinCoordinate(latitude = lat, longitude = lng),
+            pinCount = pinCount ?: mappedPins.size,
+            pins = mappedPins,
         )
     }
 
@@ -202,10 +243,10 @@ class MapRepositoryImpl @Inject constructor(
 
     private fun PinCategory.toApiCategory(): String {
         return when (this) {
-            PinCategory.ISSUE -> "ISSUE"
-            PinCategory.COMMUNICATION -> "COMMUNICATION"
-            PinCategory.SHOP -> "STORE"
-            PinCategory.FESTIVAL -> "FESTIVAL"
+            PinCategory.ISSUE -> "issue"
+            PinCategory.COMMUNICATION -> "communication"
+            PinCategory.SHOP -> "store"
+            PinCategory.FESTIVAL -> "festival"
         }
     }
 
@@ -215,5 +256,9 @@ class MapRepositoryImpl @Inject constructor(
             "RESOLVED", "DONE" -> ResolutionStatus.RESOLVED
             else -> ResolutionStatus.BEFORE_RESOLUTION
         }
+    }
+
+    private companion object {
+        const val CLUSTERING_MAX_ZOOM_LEVEL = 10
     }
 }

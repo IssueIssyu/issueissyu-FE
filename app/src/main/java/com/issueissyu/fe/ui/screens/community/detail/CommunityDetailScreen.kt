@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
@@ -58,6 +60,7 @@ import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.CompactSympathyButton
+import com.issueissyu.fe.ui.components.DotPagerIndicator
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
@@ -118,10 +121,17 @@ fun CommunityDetailScreen(
 
     CommunityDetailScreenContent(
         uiState = uiState,
-        onBackClick = onBackClick,
+        onBackClick = {
+            if (viewModel.shouldExitToParentDetail()) {
+                viewModel.exitCardNewsView()
+            } else {
+                onBackClick()
+            }
+        },
         onRetry = viewModel::loadDetail,
         onGoNowClick = viewModel::goNow,
         onPetitionClick = viewModel::submitPetition,
+        onCardNewsClick = viewModel::openCardNews,
         onMapClick = onMapClick,
         onCommentSubmit = viewModel::createComment,
         onCommentUpdate = viewModel::updateComment,
@@ -145,6 +155,7 @@ fun CommunityDetailScreenContent(
     onRetry: () -> Unit = {},
     onGoNowClick: () -> Unit = {},
     onPetitionClick: () -> Unit = {},
+    onCardNewsClick: () -> Unit = {},
     onMapClick: (Long) -> Unit = {},
     onCommentSubmit: (String) -> Unit = {},
     onCommentUpdate: (Long, String) -> Unit = { _, _ -> },
@@ -187,6 +198,7 @@ fun CommunityDetailScreenContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             CommunityDetailTopBar(
                 detail = uiState.detail,
@@ -239,6 +251,7 @@ fun CommunityDetailScreenContent(
                     onReportClick = { onCommunityReportClick(uiState.detail.communityId) },
                     onGoNowClick = onGoNowClick,
                     onPetitionClick = onPetitionClick,
+                    onCardNewsClick = onCardNewsClick,
                         comments = uiState.comments,
                         emojiReactions = uiState.emojiReactions,
                         isCommentLoading = uiState.isCommentLoading,
@@ -302,6 +315,7 @@ private fun CommunityDetailBody(
     onReportClick: () -> Unit,
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
+    onCardNewsClick: () -> Unit,
     comments: List<CommunityComment>,
     emojiReactions: List<PinEmojiReaction>,
     isCommentLoading: Boolean,
@@ -360,6 +374,7 @@ private fun CommunityDetailBody(
                     isDeleting = isCommunityDeleting,
                     onDeleteClick = onCommunityDeleteClick,
                     onTakedownClick = onCommunityTakedownClick,
+                    onCardNewsClick = onCardNewsClick,
                 )
             }
 
@@ -552,6 +567,35 @@ private fun CommunityDetailOutlinedIconButton(
 }
 
 @Composable
+private fun CommunityCardNewsLinkButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandColor)
+            .clickable(onClick = onClick)
+            .padding(start = 12.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "카드뉴스",
+            maxLines = 1,
+            softWrap = false,
+            style = IssueTypo.Bold12.copy(color = White),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = White,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
 private fun CommunityCardNewsTitleSection(title: String) {
     Text(
         text = title,
@@ -606,7 +650,12 @@ private fun CommunityDetailTitleSection(
     isDeleting: Boolean,
     onDeleteClick: () -> Unit,
     onTakedownClick: () -> Unit,
+    onCardNewsClick: () -> Unit,
 ) {
+    val showCardNewsLink = (
+        detail.kind == CommunityItemKind.POLICY || detail.kind == CommunityItemKind.CONTEST
+        ) && !detail.moveCardnews.isNullOrBlank()
+
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -627,7 +676,17 @@ private fun CommunityDetailTitleSection(
                 onTakedownClick = onTakedownClick,
             )
         }
-        
+
+        if (showCardNewsLink) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                CommunityCardNewsLinkButton(onClick = onCardNewsClick)
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         
         Row(
@@ -764,7 +823,38 @@ private fun CommunityDetailImageSection(
     onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    
+    val itemSpacingPx = with(LocalDensity.current) { 8.dp.roundToPx() }
+    val isImageRowScrollable by remember {
+        derivedStateOf {
+            listState.canScrollForward || listState.canScrollBackward
+        }
+    }
+    val scrollProgress by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            if (totalItems <= 1) return@derivedStateOf 0f
+            if (!listState.canScrollBackward) return@derivedStateOf 0f
+            if (!listState.canScrollForward) return@derivedStateOf 1f
+
+            val firstVisibleItem = layoutInfo.visibleItemsInfo.firstOrNull()
+                ?: return@derivedStateOf 0f
+            val itemSizePx = firstVisibleItem.size
+            val spacingPx = itemSpacingPx
+            val viewportWidthPx =
+                (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).coerceAtLeast(1)
+            val totalContentWidthPx = itemSizePx * totalItems +
+                spacingPx * (totalItems - 1) +
+                layoutInfo.beforeContentPadding +
+                layoutInfo.afterContentPadding
+            val maxScrollPx = (totalContentWidthPx - viewportWidthPx).coerceAtLeast(1)
+            val currentScrollPx = listState.firstVisibleItemIndex * (itemSizePx + spacingPx) +
+                listState.firstVisibleItemScrollOffset
+
+            (currentScrollPx.toFloat() / maxScrollPx).coerceIn(0f, 1f)
+        }
+    }
+
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         LazyRow(
             state = listState,
@@ -787,9 +877,9 @@ private fun CommunityDetailImageSection(
             }
         }
         
-        if (imageUrls.size > 1) {
+        if (isImageRowScrollable) {
             Spacer(modifier = Modifier.height(12.dp))
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .width(40.dp)
                     .height(4.dp)
@@ -797,10 +887,16 @@ private fun CommunityDetailImageSection(
                     .clip(RoundedCornerShape(2.dp))
                     .background(Gray_3)
             ) {
-                // TODO: 실제 스크롤 위치에 연동된 인디케이터 구현 필요
+                val density = LocalDensity.current
+                val indicatorWidth = 12.dp
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.3f)
+                        .graphicsLayer {
+                            translationX = with(density) {
+                                (maxWidth - indicatorWidth).toPx() * scrollProgress
+                            }
+                        }
+                        .width(indicatorWidth)
                         .fillMaxHeight()
                         .background(BrandColor)
                 )
@@ -814,23 +910,36 @@ private fun CommunityCardNewsImageSection(
     imageUrls: List<String>,
     onImageClick: (Int) -> Unit,
 ) {
+    if (imageUrls.isEmpty()) return
+
+    val pagerState = rememberPagerState(pageCount = { imageUrls.size })
+
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        imageUrls.forEachIndexed { index, imageUrl ->
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.78f),
+        ) { page ->
             AsyncImage(
-                model = imageUrl,
+                model = imageUrls[page],
                 contentDescription = "카드뉴스 이미지",
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.72f)
-                    .clip(RoundedCornerShape(6.dp))
+                    .fillMaxSize()
                     .background(Gray_2)
-                    .clickable { onImageClick(index) },
-                contentScale = ContentScale.Fit,
+                    .clickable { onImageClick(page) },
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        if (imageUrls.size > 1) {
+            DotPagerIndicator(
+                pageCount = imageUrls.size,
+                currentPage = pagerState.currentPage,
+                modifier = Modifier.padding(vertical = 12.dp),
             )
         }
     }

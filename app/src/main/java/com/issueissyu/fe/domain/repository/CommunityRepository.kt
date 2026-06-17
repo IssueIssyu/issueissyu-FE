@@ -15,7 +15,10 @@ interface CommunityRepository {
         size: Int
     ): Flow<CommunityFeed>
 
-    fun getCommunityDetail(communityId: Long): Flow<CommunityDetail>
+    fun getCommunityDetail(
+        communityId: Long,
+        kind: String? = null,
+    ): Flow<CommunityDetail>
 
     suspend fun deleteCommunity(communityId: Long): Result<Unit>
 

@@ -1,5 +1,6 @@
 package com.issueissyu.fe.data.repository
 
+import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.data.remote.api.CollectionApi
 import com.issueissyu.fe.data.remote.dto.collection.toBookmarkCollectionUpdate
 import com.issueissyu.fe.data.remote.dto.collection.toCollectionPageSummary
@@ -18,7 +19,11 @@ import javax.inject.Singleton
 @Singleton
 class CollectionRepositoryImpl @Inject constructor(
     private val collectionApi: CollectionApi,
+    private val apiErrorMapper: ApiErrorMapper,
 ) : CollectionRepository {
+
+    private suspend fun <T> failureFrom(e: Exception, fallback: String): Result<T> =
+        Result.failure(apiErrorMapper.toException(e, fallback))
 
     override suspend fun getCollections(checkUnlock: Boolean): Result<CollectionPageSummary> {
         return try {
@@ -35,7 +40,7 @@ class CollectionRepositoryImpl @Inject constructor(
                 )
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, LOAD_COLLECTIONS_FAILED_MESSAGE)
         }
     }
 
@@ -113,7 +118,7 @@ class CollectionRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            failureFrom(e, genericFailureMessage)
         }
     }
 

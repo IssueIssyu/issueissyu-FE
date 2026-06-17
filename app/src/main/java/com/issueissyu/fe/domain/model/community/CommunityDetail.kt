@@ -28,4 +28,5 @@ data class CommunityDetail(
     val petitionTargetCount: Int? = null,
     val isPetitionedByMe: Boolean = false,
     val isLikedByMe: Boolean = false,
+    val moveCardnews: String? = null,
 )

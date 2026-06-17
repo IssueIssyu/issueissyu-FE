@@ -6,6 +6,14 @@ object AppDestinations {
     object Onboarding {
         const val SPLASH_ROUTE = "splash_route"
         const val LOGIN_ROUTE = "login_route"
+        const val LOGIN_ROUTE_WITH_ARGS = "login_route?storageWarning={storageWarning}"
+
+        fun loginRoute(showStorageWarning: Boolean = false): String =
+            if (showStorageWarning) {
+                "$LOGIN_ROUTE?storageWarning=true"
+            } else {
+                LOGIN_ROUTE
+            }
         const val SIGNUP_ROUTE = "signup_route"
         const val TERM_ROUTE = "term_route"
         const val TERM_DETAIL_ROUTE = "term_detail_route/{termsType}"
@@ -34,26 +42,30 @@ object AppDestinations {
     const val TOWN_ROUTE = "town_route"
     const val COLLECTION_ROUTE = "collection_route"
     const val COMMUNITY_ROUTE = "community_route"
-    const val COMMUNITY_DETAIL_ROUTE = "community_detail_route/{communityId}"
+    const val COMMUNITY_DETAIL_ROUTE = "community_detail_route/{communityId}?kind={kind}"
     const val COMMUNITY_REPORT_ROUTE = "community_report_route/{communityId}"
 
     // 지도 관련
     const val PATCH_NOTE_ROUTE = "patch_note_route"
     const val NOTIFICATION_ROUTE = "notification_route"
     const val PIN_CREATION_ROUTE = "pin_creation_route"
-    const val PIN_DETAIL_ROUTE = "pin_detail_route/{pinId}"
+    const val PIN_DETAIL_ROUTE = "pin_detail_route/{pinId}?startHomeEdit={startHomeEdit}"
     const val PIN_REPORT_ROUTE = "pin_report_route/{pinId}"
     const val TOWN_ROUTE_WITH_FOCUS_PIN = "town_route?focusPinId={focusPinId}"
-    fun communityDetailRoute(communityId: Long): String {
-        return "community_detail_route/$communityId"
+    fun communityDetailRoute(communityId: Long, kind: String? = null): String {
+        return "community_detail_route/$communityId?kind=${kind.orEmpty()}"
     }
 
     fun communityReportRoute(communityId: Long): String {
         return "community_report_route/$communityId"
     }
 
-    fun pinDetailRoute(pinId: String): String {
-        return "pin_detail_route/$pinId"
+    fun pinDetailRoute(pinId: String, startHomeEdit: Boolean = false): String {
+        return if (startHomeEdit) {
+            "pin_detail_route/$pinId?startHomeEdit=true"
+        } else {
+            "pin_detail_route/$pinId"
+        }
     }
 
     fun townRouteWithFocusPin(pinId: Long): String {

@@ -114,10 +114,6 @@ class PatchNotesViewModel @Inject constructor(
         }
     }
 
-    fun onPatchNoteClick(patchNoteId: String) {
-        // TODO: 패치노트 아이템 클릭 시 상세 화면으로 이동 등의 로직 처리
-    }
-
     private fun PatchNote.toUiItem(): PatchNoteItem {
         return PatchNoteItem(
             id = id,

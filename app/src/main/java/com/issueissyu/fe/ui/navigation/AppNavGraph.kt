@@ -96,7 +96,7 @@ fun AppNavGraph(
 
     LaunchedEffect(sessionViewModel, navController, context) {
         sessionViewModel.sessionExpiredMessages.collect { message ->
-            if (navController.currentDestination?.route != LOGIN_ROUTE) {
+            if (!navController.currentDestination?.route.isLoginRoute()) {
                 navController.navigateToLoginClearingBackStack()
             }
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -116,7 +116,7 @@ fun AppNavGraph(
                     val route = navController.currentDestination?.route ?: return@collect
                     if (
                         route == AppDestinations.Onboarding.SPLASH_ROUTE ||
-                        route == LOGIN_ROUTE
+                        route.isLoginRoute()
                     ) {
                         return@collect
                     }
@@ -138,8 +138,8 @@ fun AppNavGraph(
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
                 },
-                onNavigateToLogin = {
-                    navController.navigateToLoginClearingBackStack()
+                onNavigateToLogin = { showStorageWarning ->
+                    navController.navigateToLoginClearingBackStack(showStorageWarning)
                 },
                 onNavigateToOnboarding = {
                     navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
@@ -149,8 +149,19 @@ fun AppNavGraph(
             )
         }
 
-        composable(LOGIN_ROUTE) {
+        composable(
+            route = AppDestinations.Onboarding.LOGIN_ROUTE_WITH_ARGS,
+            arguments = listOf(
+                navArgument("storageWarning") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { backStackEntry ->
+            val showStorageWarning =
+                backStackEntry.arguments?.getBoolean("storageWarning") ?: false
             LoginScreen(
+                showStorageWarning = showStorageWarning,
                 viewModel = hiltViewModel(),
                 onLoginSuccess = { isNewUser ->
                     if (isNewUser) {
@@ -306,11 +317,13 @@ fun AppNavGraph(
                 removeTopPadding = true
             ) {
                 CommunityScreen(
-                    onBackClick = {
-                        navController.navigateUp()
-                    },
-                    onCommunityClick = { communityId ->
-                        navController.navigate(AppDestinations.communityDetailRoute(communityId))
+                    onCommunityClick = { communityId, detailKind ->
+                        navController.navigate(
+                            AppDestinations.communityDetailRoute(
+                                communityId = communityId,
+                                kind = detailKind,
+                            )
+                        )
                     }
                 )
             }
@@ -320,7 +333,11 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("communityId") {
                     type = NavType.LongType
-                }
+                },
+                navArgument("kind") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
             )
         ) {
             NavScreenWrapper(
@@ -528,10 +545,15 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("pinId") {
                     type = NavType.StringType
-                }
+                },
+                navArgument("startHomeEdit") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
             )
         ) { backStackEntry ->
             val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
+            val startHomeEdit = backStackEntry.arguments?.getBoolean("startHomeEdit") ?: false
 
             NavScreenWrapper(
                 paddingValues = paddingValues,
@@ -539,6 +561,7 @@ fun AppNavGraph(
             ) {
                 PinDetailScreen(
                     pinId = pinId,
+                    startHomeEdit = startHomeEdit,
                     savedStateHandle = backStackEntry.savedStateHandle,
                     onBackClick = { navController.popBackStack() },
                     onReportClick = { reportPinId ->
@@ -585,20 +608,20 @@ fun AppNavGraph(
                     defaultValue = "issue"
                 },
                 navArgument("pinLat") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("pinLng") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("userLat") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("userLng") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("address") {
                     type = NavType.StringType
@@ -607,12 +630,10 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val pinType = backStackEntry.arguments?.getString("type")
-            // route는 Float로 정의되어 있어 Double로 변환해 PinCreateScreen에 넘긴다.
-            // TODO: NavType.Float → 사용자 정의 NavType 또는 String 인코딩으로 정밀도 손실을 줄이는 방안 검토.
-            val pinLat = (backStackEntry.arguments?.getFloat("pinLat") ?: 0f).toDouble()
-            val pinLng = (backStackEntry.arguments?.getFloat("pinLng") ?: 0f).toDouble()
-            val userLat = (backStackEntry.arguments?.getFloat("userLat") ?: 0f).toDouble()
-            val userLng = (backStackEntry.arguments?.getFloat("userLng") ?: 0f).toDouble()
+            val pinLat = backStackEntry.arguments?.getString("pinLat")?.toDoubleOrNull() ?: 0.0
+            val pinLng = backStackEntry.arguments?.getString("pinLng")?.toDoubleOrNull() ?: 0.0
+            val userLat = backStackEntry.arguments?.getString("userLat")?.toDoubleOrNull() ?: 0.0
+            val userLng = backStackEntry.arguments?.getString("userLng")?.toDoubleOrNull() ?: 0.0
             val address = Uri.decode(backStackEntry.arguments?.getString("address").orEmpty())
 
             // 일반 유저 생성 대상은 ISSUE / COMMUNICATION 두 가지. 그 외는 화면 진입을 차단한다.
@@ -698,14 +719,21 @@ private fun canNavigateFromPush(route: String?): Boolean {
 
 private fun NavHostController.navigateToLoginClearingBackStack() {
     navigate(LOGIN_ROUTE) {
+private fun String?.isLoginRoute(): Boolean =
+    this?.startsWith(LOGIN_ROUTE) == true
+
+private fun NavHostController.navigateToLoginClearingBackStack(
+    showStorageWarning: Boolean = false,
+) {
+    navigate(AppDestinations.Onboarding.loginRoute(showStorageWarning)) {
         popUpTo(0) { inclusive = true }
     }
 }
 
 /** 지도 핀 카드·패치노트 등에서 핀 상세 화면으로 이동 */
-fun NavHostController.navigateToPinDetail(pinId: String) {
+fun NavHostController.navigateToPinDetail(pinId: String, startHomeEdit: Boolean = false) {
     if (pinId.isBlank()) return
-    navigate(AppDestinations.pinDetailRoute(pinId))
+    navigate(AppDestinations.pinDetailRoute(pinId, startHomeEdit))
 }
 
 fun NavHostController.navigateToPushDestination(destination: PushDestination) {

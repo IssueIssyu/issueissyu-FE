@@ -41,7 +41,8 @@ import com.issueissyu.fe.ui.theme.Shop
 import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.Gray_8
 
-data class CategoryItem(
+data class CategoryItem<T>(
+    val value: T,
     val name: String,
     val icon: Int,
     val iconColor: Color,
@@ -50,10 +51,10 @@ data class CategoryItem(
 )
 
 @Composable
-fun CategoryButtons(
-    categories: List<CategoryItem>,
-    selectedCategory: String?,
-    onCategorySelected: (String?) -> Unit,
+fun <T> CategoryButtons(
+    categories: List<CategoryItem<T>>,
+    selectedCategory: T?,
+    onCategorySelected: (T?) -> Unit,
     modifier: Modifier = Modifier,
     onNotificationClick: (() -> Unit)? = null
 ) {
@@ -70,13 +71,13 @@ fun CategoryButtons(
             contentPadding = PaddingValues(horizontal = 0.dp)
         ) {
             items(categories) { category ->
-                val isSelected = category.name == selectedCategory
+                val isSelected = category.value == selectedCategory
                 val chipShape = RoundedCornerShape(18.dp)
 
                 FilterChip(
                     selected = isSelected,
                     onClick = {
-                        onCategorySelected(if (isSelected) null else category.name)
+                        onCategorySelected(if (isSelected) null else category.value)
                     },
                     label = {
                         Text(
@@ -149,10 +150,10 @@ fun PreviewCategoryButtons() {
         tertiaryContainer
     ) {
         listOf(
-            CategoryItem("이슈", R.drawable.issue, Issue, errorContainer),
-            CategoryItem("소통", R.drawable.communicate, Communication, secondaryContainer),
-            CategoryItem("가게", R.drawable.shop, Shop, primaryContainer),
-            CategoryItem("축제", R.drawable.festival, Festival, tertiaryContainer)
+            CategoryItem("이슈", "이슈", R.drawable.issue, Issue, errorContainer),
+            CategoryItem("소통", "소통", R.drawable.communicate, Communication, secondaryContainer),
+            CategoryItem("가게", "가게", R.drawable.shop, Shop, primaryContainer),
+            CategoryItem("축제", "축제", R.drawable.festival, Festival, tertiaryContainer)
         )
     }
     var selectedCategory by remember { mutableStateOf<String?>(null) }

@@ -1,10 +1,12 @@
 package com.issueissyu.fe.data.repository
 
 import com.issueissyu.fe.data.remote.api.AiIssueApiService
+import com.issueissyu.fe.data.remote.dto.pin.toPinEditRateLimitQuota
 import com.issueissyu.fe.data.remote.dto.response.issue.toDomain
 import com.issueissyu.fe.domain.model.issue.IssueAiDraft
 import com.issueissyu.fe.domain.model.issue.IssueReliability
 import com.issueissyu.fe.domain.model.issue.IssueToneType
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.repository.IssueRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -63,6 +65,42 @@ class IssueRepositoryImpl @Inject constructor(
                 }
             } else {
                 Result.failure(Exception(response.message.orEmpty().ifBlank { "AI 글쓰기에 실패했습니다." }))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getIssueAiDraftQuota(): Result<PinEditRateLimitQuota> {
+        return try {
+            val response = aiIssueApiService.getIssueAiDraftQuota()
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.orEmpty().ifBlank {
+                                "AI 글쓰기 제한 횟수 응답이 올바르지 않습니다."
+                            },
+                        ),
+                    )
+                Result.success(result.toPinEditRateLimitQuota())
+            } else {
+                when (response.code) {
+                    "JWT_4011", "COMMON_401" ->
+                        Result.failure(
+                            Exception(
+                                response.message.orEmpty().ifBlank { "로그인이 필요합니다." },
+                            ),
+                        )
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.orEmpty().ifBlank {
+                                    "AI 글쓰기 제한 횟수 조회에 실패했습니다."
+                                },
+                            ),
+                        )
+                }
             }
         } catch (e: Exception) {
             Result.failure(e)

@@ -63,7 +63,6 @@ sealed class CollectionEvent {
 
 sealed class CollectionEffect {
     data class ShowToast(val message: String) : CollectionEffect()
-    data class ShowSnackbar(val message: String) : CollectionEffect()
     data class NavigateToPinDetail(val pinId: String) : CollectionEffect()
 }
 
@@ -116,7 +115,9 @@ class CollectionViewModel @Inject constructor(
             userCollectionsStore.refreshForCollectionTab()
                 .onSuccess { summary -> syncFromSnapshot(summary) }
                 .onFailure { error ->
-                    val message = error.message ?: LOAD_COLLECTION_PAGE_ERROR_MESSAGE
+                    val message = error.message?.takeIf { msg ->
+                        msg.isNotBlank() && !msg.startsWith("HTTP ")
+                    } ?: LOAD_COLLECTION_PAGE_ERROR_MESSAGE
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -313,12 +314,6 @@ class CollectionViewModel @Inject constructor(
     private fun emitToast(message: String) {
         viewModelScope.launch {
             _effects.emit(CollectionEffect.ShowToast(message))
-        }
-    }
-
-    private fun emitSnackbar(message: String) {
-        viewModelScope.launch {
-            _effects.emit(CollectionEffect.ShowSnackbar(message))
         }
     }
 

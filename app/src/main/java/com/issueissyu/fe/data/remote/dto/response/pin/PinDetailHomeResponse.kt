@@ -22,10 +22,11 @@ data class PinDetailHomeResponse(
     val isReported: Boolean,
     val isMine: Boolean,
     val communityId: Long?,
+    val rateLimitQuota: RateLimitQuotaResponse? = null,
 )
 
 data class PinImageResponse(
-    val pinImageId: Long,
-    val pinImageUrl: String,
-    val isMain: Boolean,
+    val pinImageId: Long = 0,
+    val pinImageUrl: String = "",
+    val isMain: Boolean = false,
 )
