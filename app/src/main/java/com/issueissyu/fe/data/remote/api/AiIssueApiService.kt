@@ -51,7 +51,7 @@ interface AiIssueApiService {
     //이슈 핀 수정 횟수
     @GET("issues/pin/edit/quota")
     suspend fun getIssuePinEditQuota(
-        @Query("pin_id") pinId: Int,
+        @Query("pin_id") pinId: Long,
     ): BaseResponse<RateLimitQuotaResponse?>
 
     // AI 글쓰기 제한 횟수
