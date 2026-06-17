@@ -2,8 +2,10 @@
 package com.issueissyu.fe.ui.screens.onboarding
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -48,20 +50,15 @@ fun TermScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        viewModel.onMarketingAgreementChanged(granted)
-        onAgreeClick()
     fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+        ) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     fun hasNotificationPermission(): Boolean {
@@ -69,7 +66,14 @@ fun TermScreen(
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.POST_NOTIFICATIONS,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        viewModel.onMarketingAgreementChanged(granted)
+        onAgreeClick()
     }
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
@@ -102,15 +106,32 @@ fun TermScreen(
                     viewModel.submitTerms(
                         onAgreeClick = onAgreeClick,
                         requestLocation = {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                ),
-                            )
+                            if (hasLocationPermission()) {
+                                viewModel.onLocationAgreementChanged(true)
+                                if (
+                                    viewModel.wasMarketingChecked() &&
+                                    !hasNotificationPermission() &&
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                                ) {
+                                    notificationPermissionLauncher.launch(
+                                        Manifest.permission.POST_NOTIFICATIONS,
+                                    )
+                                } else {
+                                    onAgreeClick()
+                                }
+                            } else {
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ),
+                                )
+                            }
                         },
                         requestNotification = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            if (hasNotificationPermission()) {
+                                onAgreeClick()
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 notificationPermissionLauncher.launch(
                                     Manifest.permission.POST_NOTIFICATIONS,
                                 )

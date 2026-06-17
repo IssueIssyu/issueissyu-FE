@@ -714,11 +714,9 @@ private fun OnboardingBackDisabledHandler() {
 
 private fun canNavigateFromPush(route: String?): Boolean {
     if (route == null) return false
-    return route != AppDestinations.Onboarding.SPLASH_ROUTE && route != LOGIN_ROUTE
+    return route != AppDestinations.Onboarding.SPLASH_ROUTE && !route.isLoginRoute()
 }
 
-private fun NavHostController.navigateToLoginClearingBackStack() {
-    navigate(LOGIN_ROUTE) {
 private fun String?.isLoginRoute(): Boolean =
     this?.startsWith(LOGIN_ROUTE) == true
 
