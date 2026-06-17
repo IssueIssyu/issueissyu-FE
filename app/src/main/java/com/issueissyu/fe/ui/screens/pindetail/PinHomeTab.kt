@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -55,6 +57,7 @@ import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.ui.components.CommonTextField
+import com.issueissyu.fe.ui.components.DotPagerIndicator
 import com.issueissyu.fe.ui.components.IssueAiDraftButton
 import com.issueissyu.fe.ui.components.IssueToneSelectionSection
 import com.issueissyu.fe.ui.components.ProfileImageFrame
@@ -254,20 +257,7 @@ fun PinHomeTab(
 
                 if (pin.imageUrls.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        pin.imageUrls.forEach { imageUrl ->
-                            AsyncImage(
-                                model = imageUrl,
-                                contentDescription = "핀 이미지",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 200.dp, max = 320.dp)
-                                    .clip(RoundedCornerShape(20.dp))
-                                    .background(Gray_3),
-                                contentScale = ContentScale.Crop,
-                            )
-                        }
-                    }
+                    PinDetailImageSection(imageUrls = pin.imageUrls)
                 }
             } else {
                 PinHomeEditSectionLabel(
@@ -341,6 +331,45 @@ fun PinHomeTab(
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun PinDetailImageSection(
+    imageUrls: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    if (imageUrls.isEmpty()) return
+
+    val pagerState = rememberPagerState(pageCount = { imageUrls.size })
+
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth(),
+        ) { page ->
+            AsyncImage(
+                model = imageUrls[page],
+                contentDescription = "핀 이미지",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp, max = 320.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Gray_3),
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        if (imageUrls.size > 1) {
+            DotPagerIndicator(
+                pageCount = imageUrls.size,
+                currentPage = pagerState.currentPage,
+                modifier = Modifier.padding(top = 12.dp),
+            )
         }
     }
 }
