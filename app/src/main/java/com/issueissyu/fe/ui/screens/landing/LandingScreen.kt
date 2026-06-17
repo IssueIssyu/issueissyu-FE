@@ -63,6 +63,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
+import androidx.annotation.DrawableRes
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -2686,8 +2687,8 @@ private fun LandingStaticCommentItem(
                         .padding(horizontal = 14.dp, vertical = 8.dp),
                 )
                 if (showActions) {
-                    LandingStaticCommentAction("✎")
-                    LandingStaticCommentAction("×")
+                    LandingStaticCommentAction(R.drawable.ic_edit, "댓글 수정")
+                    LandingStaticCommentAction(R.drawable.ic_delete, "댓글 삭제")
                 }
             }
         }
@@ -2695,17 +2696,21 @@ private fun LandingStaticCommentItem(
 }
 
 @Composable
-private fun LandingStaticCommentAction(text: String) {
+private fun LandingStaticCommentAction(
+    @DrawableRes iconRes: Int,
+    contentDescription: String,
+) {
     Box(
         modifier = Modifier
-            .size(24.dp)
-            .background(White, CircleShape)
-            .border(1.dp, Gray_3, CircleShape),
+            .size(20.dp)
+            .background(White, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = text,
-            style = IssueTypo.Regular12.copy(color = Gray_5),
+        Icon(
+            painter = painterResource(iconRes),
+            contentDescription = contentDescription,
+            modifier = Modifier.size(12.dp),
+            tint = Gray_6,
         )
     }
 }
