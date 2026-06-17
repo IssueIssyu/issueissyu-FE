@@ -2294,173 +2294,178 @@ private fun LandingIssueDetailGuidePage(
 
     Box(
         modifier = modifier
-            .background(White)
-            .statusBarsPadding()
-            .navigationBarsPadding(),
+            .background(White),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp),
+                .statusBarsPadding()
+                .navigationBarsPadding(),
         ) {
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp),
             ) {
-                Text(
-                    text = "#이슈",
-                    style = IssueTypo.Bold12.copy(color = Orange),
+                Row(
                     modifier = Modifier
-                        .background(Orange.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
-                        .padding(horizontal = 12.dp, vertical = 4.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .border(1.dp, Gray_4, CircleShape),
-                    contentAlignment = Alignment.Center,
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_report),
-                        contentDescription = null,
-                        tint = Issue,
-                        modifier = Modifier.size(22.dp),
+                    Text(
+                        text = "#이슈",
+                        style = IssueTypo.Bold12.copy(color = Orange),
+                        modifier = Modifier
+                            .background(Orange.copy(alpha = 0.1f), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .border(1.dp, Gray_4, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_report),
+                            contentDescription = null,
+                            tint = Issue,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1f))
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .border(1.dp, Gray_4, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = null,
+                            tint = BrandColor,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .border(1.dp, Gray_4, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_character_default),
+                        contentDescription = null,
+                        modifier = Modifier.size(42.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text("범티", style = IssueTypo.Bold18.copy(color = Title))
+                        Text(
+                            "04.07 18:24 · 조회 51 · 공감 38",
+                            style = IssueTypo.Regular12.copy(color = Gray_7),
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Text("쓰레기 무단투기", style = IssueTypo.Bold18.copy(color = Title, fontSize = 22.sp))
+                Spacer(modifier = Modifier.height(5.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Default.LocationOn,
                         contentDescription = null,
-                        tint = BrandColor,
-                        modifier = Modifier.size(22.dp),
+                        tint = Color.Black,
+                        modifier = Modifier.size(18.dp),
                     )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("서울 마포구 홍익로 6길 34", style = IssueTypo.Regular15.copy(color = Title))
                 }
-            }
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painter = painterResource(R.drawable.ic_character_default),
-                    contentDescription = null,
-                    modifier = Modifier.size(42.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Column {
-                    Text("범티", style = IssueTypo.Bold18.copy(color = Title))
-                    Text(
-                        "04.07 18:24 · 조회 51 · 공감 38",
-                        style = IssueTypo.Regular12.copy(color = Gray_7),
-                    )
+                Spacer(modifier = Modifier.height(18.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    repeat(3) {
+                        Image(
+                            painter = painterResource(R.drawable.img_landing_issue_trash),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(10.dp)),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("쓰레기 무단투기", style = IssueTypo.Bold18.copy(color = Title, fontSize = 22.sp))
-            Spacer(modifier = Modifier.height(5.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = Color.Black,
-                    modifier = Modifier.size(18.dp),
+                Spacer(modifier = Modifier.height(14.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(7.dp)
+                        .background(Gray_3, RoundedCornerShape(4.dp)),
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("서울 마포구 홍익로 6길 34", style = IssueTypo.Regular15.copy(color = Title))
-            }
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = "최근 홍대입구역 근처 골목에서 쓰레기 무단투기가 지속적으로 발생하고 있습니다.\n" +
+                        "주변 환경이 훼손되고 악취 및 위생 문제로 인해 주민 불편이 커지고 있는 상황입니다.\n" +
+                        "해당 지역에 대한 확인 및 적절한 조치 부탁드립니다.",
+                    style = IssueTypo.Regular15.copy(
+                        color = Title,
+                        lineHeight = 22.sp,
+                    ),
+                )
 
-            Spacer(modifier = Modifier.height(18.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                repeat(3) {
-                    Image(
-                        painter = painterResource(R.drawable.img_landing_issue_trash),
-                        contentDescription = null,
+                Spacer(modifier = Modifier.height(14.dp))
+                LandingStaticReactionSection(
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        reactionBounds = coordinates.boundsInRoot()
+                    },
+                )
+
+                Spacer(
+                    modifier = Modifier.height(
+                        if (showActionGuide) 89.dp else 14.dp,
+                    ),
+                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .background(White, RoundedCornerShape(15.dp))
+                        .padding(7.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    LandingIssueActionButton(
+                        text = "🔥 지금 가요",
+                        backgroundColor = Gray_1,
+                        textColor = Issue,
                         modifier = Modifier
                             .weight(1f)
-                            .height(120.dp)
-                            .clip(RoundedCornerShape(10.dp)),
-                        contentScale = ContentScale.Crop,
+                            .onGloballyPositioned { coordinates ->
+                                goNowBounds = coordinates.boundsInRoot()
+                            },
+                    )
+                    LandingIssueActionButton(
+                        text = "📣 청원 (0)",
+                        backgroundColor = Color(0xFFFF6F35),
+                        textColor = White,
+                        modifier = Modifier
+                            .weight(1f)
+                            .onGloballyPositioned { coordinates ->
+                                petitionBounds = coordinates.boundsInRoot()
+                            },
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(14.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(7.dp)
-                    .background(Gray_3, RoundedCornerShape(4.dp)),
-            )
-            Spacer(modifier = Modifier.height(14.dp))
-            Text(
-                text = "최근 홍대입구역 근처 골목에서 쓰레기 무단투기가 지속적으로 발생하고 있습니다.\n" +
-                    "주변 환경이 훼손되고 악취 및 위생 문제로 인해 주민 불편이 커지고 있는 상황입니다.\n" +
-                    "해당 지역에 대한 확인 및 적절한 조치 부탁드립니다.",
-                style = IssueTypo.Regular15.copy(
-                    color = Title,
-                    lineHeight = 22.sp,
-                ),
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-            LandingStaticReactionSection(
-                modifier = Modifier.onGloballyPositioned { coordinates ->
-                    reactionBounds = coordinates.boundsInRoot()
-                },
-            )
-
-            Spacer(
-                modifier = Modifier.height(
-                    if (showActionGuide) 89.dp else 14.dp,
-                ),
-            )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(White, RoundedCornerShape(15.dp))
-                    .padding(7.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                LandingIssueActionButton(
-                    text = "🔥 지금 가요",
-                    backgroundColor = Gray_1,
-                    textColor = Issue,
+                Spacer(modifier = Modifier.height(28.dp))
+                LandingStaticCommentSection(
+                    onCommentContentBoundsChanged = { commentBounds = it },
                     modifier = Modifier
+                        .fillMaxWidth()
                         .weight(1f)
-                        .onGloballyPositioned { coordinates ->
-                            goNowBounds = coordinates.boundsInRoot()
-                        },
-                )
-                LandingIssueActionButton(
-                    text = "📣 청원 (0)",
-                    backgroundColor = Color(0xFFFF6F35),
-                    textColor = White,
-                    modifier = Modifier
-                        .weight(1f)
-                        .onGloballyPositioned { coordinates ->
-                            petitionBounds = coordinates.boundsInRoot()
-                        },
                 )
             }
-
-            Spacer(modifier = Modifier.height(28.dp))
-            LandingStaticCommentSection(
-                onCommentContentBoundsChanged = { commentBounds = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            )
         }
 
         LandingIssueDetailHighlight(
@@ -2471,26 +2476,33 @@ private fun LandingIssueDetailGuidePage(
             },
         )
 
-        if (showActionGuide) {
-            LandingGuideCallout(
-                text = "이슈 핀에서는\n‘지금 가요’ 버튼으로\n직접 해결에 참여할 수도 있고,",
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(start = 13.dp, top = 455.dp, end = 74.dp),
-            )
-            LandingGuideCallout(
-                text = "‘청원’ 버튼을 눌러\n청원에 동참해 지자체에 목소리를 전달할 수도 있어요.",
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(start = 37.dp, top = 685.dp, end = 16.dp),
-            )
-        } else {
-            LandingGuideCallout(
-                text = "커뮤니티에서는\n이모지와 댓글을 통해\n의견을 공유할 수 있어요.",
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp, end = 71.dp, bottom = 110.dp),
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding(),
+        ) {
+            if (showActionGuide) {
+                LandingGuideCallout(
+                    text = "이슈 핀에서는\n‘지금 가요’ 버튼으로\n직접 해결에 참여할 수도 있고,",
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(start = 13.dp, top = 455.dp, end = 74.dp),
+                )
+                LandingGuideCallout(
+                    text = "‘청원’ 버튼을 눌러\n청원에 동참해 지자체에 목소리를 전달할 수도 있어요.",
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(start = 37.dp, top = 685.dp, end = 16.dp),
+                )
+            } else {
+                LandingGuideCallout(
+                    text = "커뮤니티에서는\n이모지와 댓글을 통해\n의견을 공유할 수 있어요.",
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 16.dp, end = 71.dp, bottom = 110.dp),
+                )
+            }
         }
     }
 }
