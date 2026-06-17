@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
@@ -821,7 +822,38 @@ private fun CommunityDetailImageSection(
     onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    
+    val itemSpacingPx = with(LocalDensity.current) { 8.dp.roundToPx() }
+    val isImageRowScrollable by remember {
+        derivedStateOf {
+            listState.canScrollForward || listState.canScrollBackward
+        }
+    }
+    val scrollProgress by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            if (totalItems <= 1) return@derivedStateOf 0f
+            if (!listState.canScrollBackward) return@derivedStateOf 0f
+            if (!listState.canScrollForward) return@derivedStateOf 1f
+
+            val firstVisibleItem = layoutInfo.visibleItemsInfo.firstOrNull()
+                ?: return@derivedStateOf 0f
+            val itemSizePx = firstVisibleItem.size
+            val spacingPx = itemSpacingPx
+            val viewportWidthPx =
+                (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).coerceAtLeast(1)
+            val totalContentWidthPx = itemSizePx * totalItems +
+                spacingPx * (totalItems - 1) +
+                layoutInfo.beforeContentPadding +
+                layoutInfo.afterContentPadding
+            val maxScrollPx = (totalContentWidthPx - viewportWidthPx).coerceAtLeast(1)
+            val currentScrollPx = listState.firstVisibleItemIndex * (itemSizePx + spacingPx) +
+                listState.firstVisibleItemScrollOffset
+
+            (currentScrollPx.toFloat() / maxScrollPx).coerceIn(0f, 1f)
+        }
+    }
+
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         LazyRow(
             state = listState,
@@ -844,9 +876,9 @@ private fun CommunityDetailImageSection(
             }
         }
         
-        if (imageUrls.size > 1) {
+        if (isImageRowScrollable) {
             Spacer(modifier = Modifier.height(12.dp))
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
                     .width(40.dp)
                     .height(4.dp)
@@ -854,10 +886,16 @@ private fun CommunityDetailImageSection(
                     .clip(RoundedCornerShape(2.dp))
                     .background(Gray_3)
             ) {
-                // TODO: 실제 스크롤 위치에 연동된 인디케이터 구현 필요
+                val density = LocalDensity.current
+                val indicatorWidth = 12.dp
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.3f)
+                        .graphicsLayer {
+                            translationX = with(density) {
+                                (maxWidth - indicatorWidth).toPx() * scrollProgress
+                            }
+                        }
+                        .width(indicatorWidth)
                         .fillMaxHeight()
                         .background(BrandColor)
                 )

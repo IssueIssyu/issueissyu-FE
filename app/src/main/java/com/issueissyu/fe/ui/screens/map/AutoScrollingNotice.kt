@@ -84,7 +84,7 @@ fun AutoScrollingNotice(
                     color = Color.White.copy(alpha = 0.7f),
                     shape = RoundedCornerShape(18.dp)
                 )
-                .padding(start = 58.dp, end = 16.dp),
+                .padding(start = 36.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             AnimatedContent(
