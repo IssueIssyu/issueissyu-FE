@@ -628,7 +628,7 @@ private fun EmojiReactionRow(
         // 이모지 추가 버튼
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(34.dp)
                 .then(
                     if (enabled) {
                         Modifier.clickable { onEmojiClick(pin.id) }
