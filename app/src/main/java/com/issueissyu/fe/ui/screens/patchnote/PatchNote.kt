@@ -24,13 +24,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Issue
 import com.issueissyu.fe.ui.theme.IssueTypo
@@ -43,6 +46,108 @@ import com.issueissyu.fe.ui.theme.White
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.ProfileImageFrame
+
+private enum class PatchNoteWidthClass {
+    Compact, Medium, Expanded
+}
+
+private data class PatchNoteCardLayoutSpec(
+    val cardHorizontalPadding: Dp,
+    val cardVerticalPadding: Dp,
+    val cardCornerRadius: Dp,
+    val rowSpacing: Dp,
+    val titleFontSize: TextUnit,
+    val viewCountFontSize: TextUnit,
+    val writerNameFontSize: TextUnit,
+    val profileSize: Dp,
+    val profileBorderWidth: Dp,
+    val locationIconSize: Dp,
+    val locationBadgeGap: Dp,
+    val writerSectionMaxWidth: Dp,
+    val writerNameMaxWidth: Dp,
+    val badgeMinWidth: Dp,
+    val badgeHorizontalPadding: Dp,
+    val badgeVerticalPadding: Dp,
+    val badgeFontSize: TextUnit,
+    val badgeLineHeight: TextUnit,
+)
+
+@Composable
+private fun rememberPatchNoteCardLayoutSpec(maxWidth: Dp): PatchNoteCardLayoutSpec {
+    val widthClass = when {
+        maxWidth < 360.dp -> PatchNoteWidthClass.Compact
+        maxWidth < 600.dp -> PatchNoteWidthClass.Medium
+        else -> PatchNoteWidthClass.Expanded
+    }
+
+    return remember(widthClass) {
+        when (widthClass) {
+            PatchNoteWidthClass.Compact -> PatchNoteCardLayoutSpec(
+                cardHorizontalPadding = 20.dp,
+                cardVerticalPadding = 16.dp,
+                cardCornerRadius = 22.dp,
+                rowSpacing = 8.dp,
+                titleFontSize = 18.sp,
+                viewCountFontSize = 11.sp,
+                writerNameFontSize = 11.sp,
+                profileSize = 22.dp,
+                profileBorderWidth = 1.dp,
+                locationIconSize = 20.dp,
+                locationBadgeGap = 12.dp,
+                writerSectionMaxWidth = 132.dp,
+                writerNameMaxWidth = 88.dp,
+                badgeMinWidth = 72.dp,
+                badgeHorizontalPadding = 14.dp,
+                badgeVerticalPadding = 8.dp,
+                badgeFontSize = 13.sp,
+                badgeLineHeight = 20.sp,
+            )
+
+            PatchNoteWidthClass.Medium -> PatchNoteCardLayoutSpec(
+                cardHorizontalPadding = 24.dp,
+                cardVerticalPadding = 20.dp,
+                cardCornerRadius = 26.dp,
+                rowSpacing = 10.dp,
+                titleFontSize = 20.sp,
+                viewCountFontSize = 12.sp,
+                writerNameFontSize = 12.sp,
+                profileSize = 24.dp,
+                profileBorderWidth = 1.5.dp,
+                locationIconSize = 23.dp,
+                locationBadgeGap = 16.dp,
+                writerSectionMaxWidth = 168.dp,
+                writerNameMaxWidth = 120.dp,
+                badgeMinWidth = 80.dp,
+                badgeHorizontalPadding = 18.dp,
+                badgeVerticalPadding = 10.dp,
+                badgeFontSize = 14.sp,
+                badgeLineHeight = 22.sp,
+            )
+
+            PatchNoteWidthClass.Expanded -> PatchNoteCardLayoutSpec(
+                cardHorizontalPadding = 28.dp,
+                cardVerticalPadding = 22.dp,
+                cardCornerRadius = 28.dp,
+                rowSpacing = 12.dp,
+                titleFontSize = 22.sp,
+                viewCountFontSize = 13.sp,
+                writerNameFontSize = 13.sp,
+                profileSize = 28.dp,
+                profileBorderWidth = 2.dp,
+                locationIconSize = 26.dp,
+                locationBadgeGap = 20.dp,
+                writerSectionMaxWidth = 220.dp,
+                writerNameMaxWidth = 160.dp,
+                badgeMinWidth = 88.dp,
+                badgeHorizontalPadding = 20.dp,
+                badgeVerticalPadding = 11.dp,
+                badgeFontSize = 15.sp,
+                badgeLineHeight = 24.sp,
+            )
+        }
+    }
+}
 
 @Composable
 fun PatchNotesRoute(
@@ -96,24 +201,36 @@ fun getPatchNoteBadgeColor(status: ResolutionStatus): Color {
 }
 
 @Composable
-fun PatchNoteStatusBadge(
+private fun PatchNoteStatusBadge(
     resolutionStatus: ResolutionStatus,
+    layout: PatchNoteCardLayoutSpec,
     modifier: Modifier = Modifier
 ) {
     val badgeColor = getPatchNoteBadgeColor(resolutionStatus)
 
     Box(
         modifier = modifier
-            .defaultMinSize(minWidth = 80.dp, minHeight = 30.dp)
-            .height(40.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .heightIn(min = layout.badgeVerticalPadding * 2 + 18.dp)
+            .defaultMinSize(minWidth = layout.badgeMinWidth)
+            .clip(RoundedCornerShape(50))
             .background(badgeColor)
-            .padding(horizontal = 20.dp),
+            .padding(
+                horizontal = layout.badgeHorizontalPadding,
+                vertical = layout.badgeVerticalPadding,
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = getResolutionStatusText(resolutionStatus),
-            style = IssueTypo.Bold18,
+            style = IssueTypo.Bold12.copy(
+                fontSize = layout.badgeFontSize,
+                lineHeight = layout.badgeLineHeight,
+                platformStyle = PlatformTextStyle(includeFontPadding = true),
+                lineHeightStyle = LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Center,
+                    trim = LineHeightStyle.Trim.None,
+                ),
+            ),
             color = White,
             maxLines = 1
         )
@@ -121,106 +238,119 @@ fun PatchNoteStatusBadge(
 }
 
 
+private const val LoadMoreThreshold = 3
+private val ExpandedPatchNoteCardMaxWidth = 560.dp
+
 @Composable
 fun PatchNoteCard(
     patchNote: PatchNoteItem,
-    modifier: Modifier = Modifier
+    maxWidth: Dp,
+    modifier: Modifier = Modifier,
 ) {
     val cardBackgroundColor = getPatchNoteCardColor(patchNote.resolutionStatus)
-    val cardShape = RoundedCornerShape(26.dp)
+    val layout = rememberPatchNoteCardLayoutSpec(maxWidth)
+    val cardShape = RoundedCornerShape(layout.cardCornerRadius)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(128.dp)
+            .wrapContentHeight()
             .shadow(elevation = 4.dp, shape = cardShape)
             .clip(cardShape)
             .background(cardBackgroundColor)
-            .padding(horizontal = 26.dp, vertical = 20.dp)
+            .padding(
+                horizontal = layout.cardHorizontalPadding,
+                vertical = layout.cardVerticalPadding,
+            )
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            Column(
+                verticalArrangement = Arrangement.spacedBy(layout.rowSpacing)
             ) {
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = patchNote.title,
-                        style = IssueTypo.Bold18.copy(color = Title),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "조회 ${patchNote.viewCount}",
-                        style = IssueTypo.Regular15,
-                        color = Gray_6
-                    )
-                }
-                Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.widthIn(max = 168.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    ProfileImageFrame(
-                        size = 32.dp,
-                        imageUrl = patchNote.writerImageUrl,
-                        contentDescription = "작성자 프로필",
-                        borderWidth = 1.dp,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = patchNote.writerName,
-                        style = IssueTypo.Bold12,
-                        fontSize = 14.sp,
-                        color = Gray_7,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.widthIn(max = 120.dp)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = patchNote.title,
+                            style = IssueTypo.Bold18.copy(
+                                color = Title,
+                                fontSize = layout.titleFontSize,
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "조회 ${patchNote.viewCount}",
+                            style = IssueTypo.Regular15,
+                            color = Gray_6,
+                            fontSize = layout.viewCountFontSize
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.End,
+                        modifier = Modifier.widthIn(max = layout.writerSectionMaxWidth)
+                    ) {
+                        ProfileImageFrame(
+                            size = layout.profileSize,
+                            imageUrl = patchNote.writerImageUrl,
+                            borderWidth = layout.profileBorderWidth,
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = patchNote.writerName,
+                            style = IssueTypo.Bold12,
+                            fontSize = layout.writerNameFontSize,
+                            color = Gray_7,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = layout.writerNameMaxWidth)
+                        )
+                    }
                 }
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
                 Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(end = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = "Location",
-                        modifier = Modifier.size(30.dp),
-                        tint = Gray_7
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = patchNote.locationName,
-                        style = IssueTypo.Regular16,
-                        color = Gray_7,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = layout.locationBadgeGap),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.LocationOn,
+                            contentDescription = "Location",
+                            modifier = Modifier.size(layout.locationIconSize),
+                            tint = Gray_7
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = patchNote.locationName,
+                            style = IssueTypo.Regular16,
+                            color = Gray_7,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    PatchNoteStatusBadge(
+                        resolutionStatus = patchNote.resolutionStatus,
+                        layout = layout,
                     )
                 }
-                PatchNoteStatusBadge(resolutionStatus = patchNote.resolutionStatus)
             }
-        }
     }
 }
 
@@ -300,22 +430,45 @@ fun PatchNotesScreen(
                 }
 
                 else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp, vertical = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    BoxWithConstraints(
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        items(items = uiState.patchNotes, key = { it.id }) { patchNote ->
-                            PatchNoteCard(
-                                patchNote = patchNote,
-                                modifier = Modifier.clickable {
-                                    onPatchNoteClick(patchNote.id)
-                                }
-                            )
+                        val isExpanded = maxWidth >= 600.dp
+                        val listHorizontalPadding = if (isExpanded) 24.dp else 16.dp
+                        val contentWidth = maxWidth - (listHorizontalPadding * 2)
+                        val cardLayoutWidth = if (isExpanded) {
+                            minOf(contentWidth, ExpandedPatchNoteCardMaxWidth)
+                        } else {
+                            contentWidth
                         }
+                        val cardWidthModifier = if (isExpanded) {
+                            Modifier
+                                .widthIn(max = ExpandedPatchNoteCardMaxWidth)
+                                .fillMaxWidth()
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    horizontal = listHorizontalPadding,
+                                    vertical = 16.dp,
+                                ),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            items(items = uiState.patchNotes, key = { it.id }) { patchNote ->
+                                PatchNoteCard(
+                                    patchNote = patchNote,
+                                    maxWidth = cardLayoutWidth,
+                                    modifier = cardWidthModifier.clickable {
+                                        onPatchNoteClick(patchNote.id)
+                                    }
+                                )
+                            }
 
                         if (uiState.isLoadingMore) {
                             item(key = "patch_note_loading_more") {
@@ -343,6 +496,7 @@ fun PatchNotesScreen(
                                     }
                                 }
                             }
+                        }
                         }
                     }
                 }
@@ -392,8 +546,6 @@ fun PreviewPatchNotesScreenContent() {
     }
 }
 
-private const val LoadMoreThreshold = 3
-
 @Preview(showBackground = true)
 @Composable
 fun PreviewPatchNoteCardStates() {
@@ -412,7 +564,8 @@ fun PreviewPatchNoteCardStates() {
                     locationName = "역삼동 테헤란로 123",
                     writerName = "관리자",
                     resolutionStatus = ResolutionStatus.RESOLVED
-                )
+                ),
+                maxWidth = 360.dp,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text("진행 중", style = MaterialTheme.typography.titleSmall)
@@ -424,7 +577,8 @@ fun PreviewPatchNoteCardStates() {
                     locationName = "강남대로 456",
                     writerName = "홍길동",
                     resolutionStatus = ResolutionStatus.IN_PROGRESS
-                )
+                ),
+                maxWidth = 360.dp,
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text("해결 전", style = MaterialTheme.typography.titleSmall)
@@ -436,7 +590,8 @@ fun PreviewPatchNoteCardStates() {
                     locationName = "선릉역 사거리",
                     writerName = "익명",
                     resolutionStatus = ResolutionStatus.BEFORE_RESOLUTION
-                )
+                ),
+                maxWidth = 360.dp,
             )
         }
     }
