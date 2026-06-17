@@ -3,10 +3,13 @@ package com.issueissyu.fe.ui.screens.community
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.LocationRegionItem
+import com.issueissyu.fe.domain.model.community.CommunityFeedItem
+import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.community.CommunityTab
 import com.issueissyu.fe.domain.repository.LocationRepository
 import com.issueissyu.fe.domain.usecase.community.GetCommunityFeedUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +28,7 @@ class CommunityViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CommunityUiState())
     val uiState: StateFlow<CommunityUiState> = _uiState.asStateFlow()
+    private var feedLoadJob: Job? = null
 
     init {
         loadInitialRegionAndFeed()
@@ -76,10 +80,12 @@ class CommunityViewModel @Inject constructor(
     }
 
     private fun loadFeed(isRefreshing: Boolean = false) {
-        val locationId = _uiState.value.locationId
-        viewModelScope.launch {
+        val tab = _uiState.value.selectedCategory
+        val locationId = tab.feedLocationId(_uiState.value.locationId)
+        feedLoadJob?.cancel()
+        feedLoadJob = viewModelScope.launch {
             getCommunityFeedUseCase(
-                tab = _uiState.value.selectedCategory,
+                tab = tab,
                 locationId = locationId
             )
                 .onStart {
@@ -90,11 +96,12 @@ class CommunityViewModel @Inject constructor(
                 }
                 .collect { feed ->
                     _uiState.update {
+                        if (it.selectedCategory != tab) return@update it
                         if (it.selectedCategory == CommunityTab.ALL) {
                             it.copy(
-                                storePromotions = feed.storePromotions,
-                                hotPreviews = feed.hotPreviews,
-                                recentNews = feed.recentNews,
+                                storePromotions = feed.storePromotions.withoutCardNews(),
+                                hotPreviews = feed.hotPreviews.withoutCardNews(),
+                                recentNews = feed.recentNews.withoutCardNews(),
                                 feedItems = emptyList(),
                                 region = feed.region.ifBlank { it.region },
                                 nextCursor = feed.nextCursor,
@@ -187,5 +194,18 @@ class CommunityViewModel @Inject constructor(
                     }
                 }
         }
+    }
+}
+
+private fun List<CommunityFeedItem>.withoutCardNews(): List<CommunityFeedItem> {
+    return filter { it.kind != CommunityItemKind.CARDNEWS }
+}
+
+private fun CommunityTab.feedLocationId(locationId: Long?): Long? {
+    return when (this) {
+        CommunityTab.POLICY,
+        CommunityTab.CONTEST,
+        CommunityTab.CARDNEWS -> null
+        else -> locationId
     }
 }

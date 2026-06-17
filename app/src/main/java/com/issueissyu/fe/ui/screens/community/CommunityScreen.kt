@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -80,7 +81,7 @@ import androidx.compose.material3.TextButton
 fun CommunityScreen(
     viewModel: CommunityViewModel = hiltViewModel(),
     onBackClick: (() -> Unit)? = null,
-    onCommunityClick: (Long) -> Unit = {}
+    onCommunityClick: (communityId: Long, detailKind: String?) -> Unit = { _, _ -> }
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -99,7 +100,7 @@ fun CommunityScreen(
 fun CommunityScreenContent(
     uiState: CommunityUiState,
     onBackClick: (() -> Unit)? = null,
-    onCommunityClick: (Long) -> Unit = {},
+    onCommunityClick: (communityId: Long, detailKind: String?) -> Unit = { _, _ -> },
     onCategorySelected: (CommunityTab) -> Unit = {},
     onRefresh: () -> Unit = {},
     onRegionSelected: (LocationRegionItem) -> Unit = {}
@@ -180,6 +181,7 @@ fun CommunityScreenContent(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             Column(
                 modifier = Modifier
@@ -194,6 +196,9 @@ fun CommunityScreenContent(
                     }
                 )
 
+                val showsRegionSelector = uiState.selectedCategory.showsRegionSelector()
+
+                if (onBackClick != null || showsRegionSelector) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -212,10 +217,13 @@ fun CommunityScreenContent(
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    RegionDropdownPill(
-                        region = uiState.region.toRegionDisplayName(),
-                        onClick = { showRegionSelector = true }
-                    )
+                    if (showsRegionSelector) {
+                        RegionDropdownPill(
+                            region = uiState.region.toRegionDisplayName(),
+                            onClick = { showRegionSelector = true }
+                        )
+                    }
+                }
                 }
             }
         }
@@ -290,45 +298,79 @@ fun CommunityScreenContent(
                 }
 
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp)
-                    ) {
-                        if (uiState.selectedCategory == CommunityTab.ALL) {
-                            // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
-                            uiState.storePromotions.firstOrNull()?.let { storePromotion ->
-                                item {
-                                    RepresentativeFeedCard(
-                                        item = storePromotion,
-                                        onClick = { onCommunityClick(storePromotion.communityId) },
-                                        modifier = Modifier.padding(16.dp)
-                                    )
+                    if (uiState.selectedCategory == CommunityTab.CARDNEWS) {
+                        CardNewsFeedGrid(
+                            items = uiState.feedItems,
+                            onItemClick = { onCommunityClick(it.communityId, "CARDNEWS") },
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            if (uiState.selectedCategory == CommunityTab.ALL) {
+                                // 대표 카드 영역 (자체적으로 둥근 모서리를 가짐)
+                                uiState.storePromotions.firstOrNull()?.let { storePromotion ->
+                                    item {
+                                        RepresentativeFeedCard(
+                                            item = storePromotion,
+                                            onClick = { onCommunityClick(storePromotion.communityId, null) },
+                                            modifier = Modifier.padding(16.dp)
+                                        )
+                                    }
                                 }
-                            }
 
-                            // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
-                            if (uiState.hotPreviews.isNotEmpty()) {
+                                // 우리 동네 인기 소식 섹션 (컨테이너를 둥글게 처리)
+                                if (uiState.hotPreviews.isNotEmpty()) {
+                                    item {
+                                        SectionHeaderWithAction(
+                                            title = "우리 동네 인기 소식 🔥",
+                                            actionText = "더보기",
+                                            onActionClick = { onCategorySelected(CommunityTab.HOT) }
+                                        )
+                                        Column(
+                                            modifier = Modifier
+                                                .padding(horizontal = 16.dp)
+                                                .clip(RoundedCornerShape(16.dp))
+                                                .background(Color.White)
+                                        ) {
+                                            uiState.hotPreviews.take(3).forEachIndexed { index, item ->
+                                                CommunityFeedCard(
+                                                    item = item,
+                                                    onClick = {
+                                                        onCommunityClick(item.communityId, null)
+                                                    }
+                                                )
+
+                                                if (index < uiState.hotPreviews.take(3).lastIndex) {
+                                                    HorizontalDivider(
+                                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                                        thickness = 1.dp
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
                                 item {
-                                    SectionHeaderWithAction(
-                                        title = "우리 동네 인기 소식 🔥",
-                                        actionText = "더보기",
-                                        onActionClick = { onCategorySelected(CommunityTab.HOT) }
-                                    )
+                                    SectionHeader(title = "우리 동네 최근 소식 🆕")
+
                                     Column(
                                         modifier = Modifier
                                             .padding(horizontal = 16.dp)
                                             .clip(RoundedCornerShape(16.dp))
                                             .background(Color.White)
                                     ) {
-                                        uiState.hotPreviews.take(3).forEachIndexed { index, item ->
+                                        uiState.recentNews.forEachIndexed { index, item ->
                                             CommunityFeedCard(
                                                 item = item,
                                                 onClick = {
-                                                    onCommunityClick(item.communityId)
+                                                    onCommunityClick(item.communityId, null)
                                                 }
                                             )
 
-                                            if (index < uiState.hotPreviews.take(3).lastIndex) {
+                                            if (index < uiState.recentNews.lastIndex) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(horizontal = 16.dp),
                                                     color = MaterialTheme.colorScheme.surfaceVariant,
@@ -338,52 +380,24 @@ fun CommunityScreenContent(
                                         }
                                     }
                                 }
-                            }
-
-                            item {
-                                SectionHeader(title = "우리 동네 최근 소식 🆕")
-
-                                Column(
-                                    modifier = Modifier
-                                        .padding(horizontal = 16.dp)
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(Color.White)
-                                ) {
-                                    uiState.recentNews.forEachIndexed { index, item ->
+                            } else {
+                                itemsIndexed(uiState.feedItems) { index, item ->
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color.White)
+                                    ) {
                                         CommunityFeedCard(
                                             item = item,
-                                            onClick = {
-                                                onCommunityClick(item.communityId)
-                                            }
+                                            onClick = { onCommunityClick(item.communityId, null) }
                                         )
-
-                                        if (index < uiState.recentNews.lastIndex) {
+                                        if (index < uiState.feedItems.lastIndex) {
                                             HorizontalDivider(
                                                 modifier = Modifier.padding(horizontal = 16.dp),
                                                 color = MaterialTheme.colorScheme.surfaceVariant,
                                                 thickness = 1.dp
                                             )
                                         }
-                                    }
-                                }
-                            }
-                        } else {
-                            itemsIndexed(uiState.feedItems) { index, item ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(Color.White)
-                                ) {
-                                    CommunityFeedCard(
-                                        item = item,
-                                        onClick = { onCommunityClick(item.communityId) }
-                                    )
-                                    if (index < uiState.feedItems.lastIndex) {
-                                        HorizontalDivider(
-                                            modifier = Modifier.padding(horizontal = 16.dp),
-                                            color = MaterialTheme.colorScheme.surfaceVariant,
-                                            thickness = 1.dp
-                                        )
                                     }
                                 }
                             }
@@ -420,6 +434,14 @@ private fun CommunityUiState.isCurrentCategoryEmpty(): Boolean {
 
 private fun String?.toCommunityTab(): CommunityTab {
     return CommunityTab.entries.find { it.displayName == this } ?: CommunityTab.ALL
+}
+
+private fun CommunityTab.showsRegionSelector(): Boolean {
+    return this !in setOf(
+        CommunityTab.POLICY,
+        CommunityTab.CONTEST,
+        CommunityTab.CARDNEWS,
+    )
 }
 
 @Composable
@@ -915,7 +937,7 @@ fun PreviewCommunityScreenEmpty() {
             region = "서대문구"
         ),
         onBackClick = {},
-        onCommunityClick = {}
+        onCommunityClick = { _, _ -> }
     )
 }
 
@@ -930,7 +952,7 @@ fun PreviewCommunityScreenLoading() {
             region = "마포구"
         ),
         onBackClick = {},
-        onCommunityClick = {}
+        onCommunityClick = { _, _ -> }
     )
 }
 
@@ -945,7 +967,7 @@ fun PreviewCommunityScreenError() {
             region = "마포구"
         ),
         onBackClick = {},
-        onCommunityClick = {},
+        onCommunityClick = { _, _ -> },
         onRegionSelected = {}
     )
 }

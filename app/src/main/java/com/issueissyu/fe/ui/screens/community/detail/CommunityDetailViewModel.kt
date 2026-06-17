@@ -68,14 +68,48 @@ class CommunityDetailViewModel @Inject constructor(
     private val _deleteCompleted = MutableSharedFlow<Unit>()
     val deleteCompleted: SharedFlow<Unit> = _deleteCompleted.asSharedFlow()
 
+    private var detailLoadJob: Job? = null
+    private var cardNewsOpenedFromParentDetail = false
+
+    private companion object {
+        const val DETAIL_KIND_CARDNEWS = "CARDNEWS"
+    }
+
+    private val initialDetailKind: String? = savedStateHandle.get<String>("kind")?.takeIf { it.isNotBlank() }
+
     init {
-        loadDetail()
+        if (initialDetailKind == DETAIL_KIND_CARDNEWS) {
+            loadDetail(kind = DETAIL_KIND_CARDNEWS, markAsCardNewsView = true)
+        } else {
+            loadDetail()
+        }
         observeBillingPurchaseEvents()
     }
 
     fun loadDetail() {
-        if (_uiState.value.isLoading) return
+        loadDetail(kind = null, markAsCardNewsView = false)
+    }
 
+    fun openCardNews() {
+        val detail = _uiState.value.detail ?: return
+        if (detail.moveCardnews.isNullOrBlank()) return
+        if (detail.kind != CommunityItemKind.POLICY && detail.kind != CommunityItemKind.CONTEST) return
+
+        cardNewsOpenedFromParentDetail = true
+        loadDetail(kind = DETAIL_KIND_CARDNEWS, markAsCardNewsView = true)
+    }
+
+    fun shouldExitToParentDetail(): Boolean {
+        return _uiState.value.isCardNewsView && cardNewsOpenedFromParentDetail
+    }
+
+    fun exitCardNewsView() {
+        if (!_uiState.value.isCardNewsView) return
+        cardNewsOpenedFromParentDetail = false
+        loadDetail(kind = null, markAsCardNewsView = false)
+    }
+
+    private fun loadDetail(kind: String?, markAsCardNewsView: Boolean) {
         if (communityId == 0L) {
             _uiState.update {
                 it.copy(
@@ -86,13 +120,14 @@ class CommunityDetailViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
-            getCommunityDetailUseCase(communityId)
+        detailLoadJob?.cancel()
+        detailLoadJob = viewModelScope.launch {
+            getCommunityDetailUseCase(communityId, kind)
                 .onStart {
                     _uiState.update {
                         it.copy(
                             isLoading = true,
-                            errorMessage = null
+                            errorMessage = null,
                         )
                     }
                 }
@@ -100,7 +135,11 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = "게시글을 불러오지 못했습니다.\n잠시 후 다시 시도해주세요."
+                            errorMessage = if (markAsCardNewsView) {
+                                "카드뉴스를 불러오지 못했습니다.\n잠시 후 다시 시도해주세요."
+                            } else {
+                                "게시글을 불러오지 못했습니다.\n잠시 후 다시 시도해주세요."
+                            },
                         )
                     }
                 }
@@ -123,6 +162,7 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            isCardNewsView = markAsCardNewsView,
                             detail = detail.copy(
                                 petitionCount = petitionStatus?.petitionCount ?: detail.petitionCount,
                                 petitionTargetCount = petitionStatus?.targetPetition ?: detail.petitionTargetCount,
@@ -145,6 +185,9 @@ class CommunityDetailViewModel @Inject constructor(
                     }
                     if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
                         startIssueReliabilityObservation(pinId)
+                    } else {
+                        issueReliabilityJob?.cancel()
+                        observedReliabilityPinId = null
                     }
                 }
         }

@@ -45,9 +45,13 @@ class CommunityRepositoryImpl @Inject constructor(
     }
 
     override fun getCommunityDetail(
-        communityId: Long
+        communityId: Long,
+        kind: String?,
     ): Flow<CommunityDetail> = flow {
-        val response = communityApi.getCommunityDetail(communityId)
+        val response = communityApi.getCommunityDetail(
+            communityId = communityId,
+            kind = kind,
+        )
 
         if (!response.isSuccess) {
             throw IllegalStateException(response.message.orEmpty().ifBlank { "게시글을 불러오지 못했습니다." })
