@@ -2,7 +2,7 @@ package com.issueissyu.fe.domain.repository
 
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.MapNotice
-import com.issueissyu.fe.domain.model.MapPinMarker
+import com.issueissyu.fe.domain.model.MapPinQueryResult
 import com.issueissyu.fe.domain.model.PatchNotePage
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
@@ -10,8 +10,9 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 interface MapRepository {
     suspend fun getMapPinsInBounds(
         bounds: MapBounds,
+        zoomLevel: Int,
         category: PinCategory? = null,
-    ): Result<List<MapPinMarker>>
+    ): Result<MapPinQueryResult>
 
     suspend fun getPinCard(pinId: String): Result<Pin>
 

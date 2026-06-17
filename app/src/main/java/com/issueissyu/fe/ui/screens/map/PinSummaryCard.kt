@@ -135,9 +135,9 @@ fun PinSummaryCard(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(start = 8.dp, top = 10.dp),
                         )
-    
+
                         Spacer(modifier = Modifier.height(16.dp))
-    
+
                         // 2. 장소 + 해결 상태
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -157,7 +157,7 @@ fun PinSummaryCard(
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.weight(1f),
                             )
-    
+
                             val issueDetail = pin.detail as? IssuePinDetail
                             if (issueDetail != null) {
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -166,9 +166,9 @@ fun PinSummaryCard(
                                 )
                             }
                         }
-    
+
                         Spacer(modifier = Modifier.height(16.dp))
-    
+
                         // 3. 사용자 프로필 + 사용자 이름 + 액션 버튼 + 공감 버튼
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -188,9 +188,9 @@ fun PinSummaryCard(
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.widthIn(max = 80.dp)
                                     )
-    
+
                                     Spacer(modifier = Modifier.width(8.dp))
-    
+
                                     if (canEdit) {
                                         CompactCircleIconButton(
                                             imageVector = Icons.Filled.Edit,
@@ -198,19 +198,19 @@ fun PinSummaryCard(
                                             enabled = interactionsEnabled,
                                             onClick = { onEditClick(pin.id) }
                                         )
-    
+
                                         Spacer(modifier = Modifier.width(3.dp))
-    
+
                                         CompactCircleIconButton(
                                             imageVector = Icons.Filled.Delete,
                                             contentDescription = "삭제",
                                             enabled = interactionsEnabled,
                                             onClick = { onDeleteClick(pin.id) }
                                         )
-    
+
                                         Spacer(modifier = Modifier.width(3.dp))
                                     }
-    
+
                                     CompactSympathyButton(
                                         sympathyCount = pin.sympathyCount,
                                         isSympathizedByMe = pin.isSympathizedByMe,
@@ -243,9 +243,9 @@ fun PinSummaryCard(
                                         overflow = TextOverflow.Ellipsis,
                                         modifier = Modifier.widthIn(max = 80.dp)
                                     )
-    
+
                                     Spacer(modifier = Modifier.width(4.dp))
-    
+
                                     if (canEdit) {
                                         CompactCircleIconButton(
                                             imageVector = Icons.Filled.Edit,
@@ -253,19 +253,19 @@ fun PinSummaryCard(
                                             enabled = interactionsEnabled,
                                             onClick = { onEditClick(pin.id) }
                                         )
-    
+
                                         Spacer(modifier = Modifier.width(3.dp))
-    
+
                                         CompactCircleIconButton(
                                             imageVector = Icons.Filled.Delete,
                                             contentDescription = "삭제",
                                             enabled = interactionsEnabled,
                                             onClick = { onDeleteClick(pin.id) }
                                         )
-    
+
                                         Spacer(modifier = Modifier.width(3.dp))
                                     }
-    
+
                                     CompactSympathyButton(
                                         sympathyCount = pin.sympathyCount,
                                         isSympathizedByMe = pin.isSympathizedByMe,
@@ -285,27 +285,27 @@ fun PinSummaryCard(
                             }
                         }
                     }
-    
+
                     Spacer(modifier = Modifier.width(12.dp))
-    
+
                     PinThumbnail(
                         imageUrl = pin.imageUrls.firstOrNull(),
                         modifier = Modifier.size(96.dp)
                     )
                 }
-    
+
                 Spacer(modifier = Modifier.height(12.dp))
-    
+
                 // 4) Divider
                 HorizontalDivider(color = Gray_3, thickness = 1.dp)
-    
+
                 val categorySectionTopSpacing = if (pin.category == PinCategory.SHOP && hasCategoryInfo) {
                     4.dp
                 } else {
                     12.dp
                 }
                 Spacer(modifier = Modifier.height(categorySectionTopSpacing))
-    
+
                 // 3) CategoryInfoRow 또는 CategoryInfoBox
                 when (val detail = pin.detail) {
                     is ShopPinDetail -> {
@@ -320,7 +320,7 @@ fun PinSummaryCard(
                     is FestivalPinDetail -> {
                         val startDateText = detail.startDate?.take(10)
                         val endDateText = detail.endDate?.take(10)
-    
+
                         if (startDateText != null || endDateText != null) {
                             CategoryInfoBox(
                                 text = "기간: ${startDateText ?: "시작일 미정"} ~ ${endDateText ?: "종료일 미정"}",
@@ -329,13 +329,13 @@ fun PinSummaryCard(
                             Spacer(modifier = Modifier.height(6.dp))
                         }
                     }
-    
+
                     is IssuePinDetail,
                     is CommunicationPinDetail -> {
                         // 이슈/소통 핀은 이 영역에 추가 정보 표시 없음
                     }
                 }
-    
+
                 // 4) DescriptionArea: 본문 + "더보기"
                 DescriptionWithSeeMore(
                     description = pin.description,
@@ -343,9 +343,9 @@ fun PinSummaryCard(
                     interactionsEnabled = interactionsEnabled,
                     onSeeMoreClick = { onDetailClick(pin.id) },
                 )
-    
+
                 Spacer(modifier = Modifier.weight(1f))
-    
+
                 // 6) BottomActionRow: 이모지/반응 영역 + 커뮤니티 버튼
                 Row(
                     modifier = Modifier
@@ -362,9 +362,9 @@ fun PinSummaryCard(
                         enabled = interactionsEnabled,
                         modifier = Modifier.weight(1f)
                     )
-    
+
                     Spacer(modifier = Modifier.width(12.dp))
-    
+
                     // 커뮤니티 버튼 (pin.communityPostId가 있을 때만 표시)
                     if (pin.communityPostId != null) {
                         CommunityLinkButton(

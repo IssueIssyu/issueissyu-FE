@@ -371,7 +371,6 @@ private fun SelectedPhotoBox(
     }
 }
 
-// TODO: 좌표 기반 주소 변환 결과를 address/locationName으로 표시 (readonly 유지)
 @Composable
 private fun LocationSection(
     address: String,
