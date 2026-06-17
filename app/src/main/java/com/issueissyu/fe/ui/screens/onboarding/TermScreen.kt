@@ -2,6 +2,7 @@
 package com.issueissyu.fe.ui.screens.onboarding
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,7 +60,7 @@ fun TermScreen(
     fun hasLocationPermission(): Boolean {
         return termLocationPermissions.any { permission ->
             ContextCompat.checkSelfPermission(context, permission) ==
-                android.content.pm.PackageManager.PERMISSION_GRANTED
+                PackageManager.PERMISSION_GRANTED
         }
     }
 
@@ -68,7 +69,7 @@ fun TermScreen(
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.POST_NOTIFICATIONS,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     var pendingNotificationPermission by remember { mutableStateOf(false) }
