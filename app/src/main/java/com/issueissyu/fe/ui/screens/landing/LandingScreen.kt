@@ -1326,7 +1326,7 @@ private fun LandingIssuePinGuideOverlay(
         } else if (highlightCommunity) {
             LandingDimOverlayWithCutout(
                 cutoutBounds = highlightBounds,
-                cornerRadius = 12.dp,
+                cornerRadius = 16.dp,
             )
         }
 
