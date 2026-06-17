@@ -871,7 +871,7 @@ fun MapScreen(
                     tertiaryContainer
                 ) {
                     listOf(
-                        CategoryItem(PinCategory.ISSUE, "이슈", R.drawable.issue, Issue, errorContainer),
+                        CategoryItem(PinCategory.ISSUE, "이슈", R.drawable.ic_issue, Issue, errorContainer),
                         CategoryItem(PinCategory.COMMUNICATION, "소통", R.drawable.communicate, Communication, secondaryContainer),
                         CategoryItem(PinCategory.SHOP, "가게", R.drawable.shop, Shop, primaryContainer),
                         CategoryItem(PinCategory.FESTIVAL, "축제", R.drawable.festival, Festival, tertiaryContainer)

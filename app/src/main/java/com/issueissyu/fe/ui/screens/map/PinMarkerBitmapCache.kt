@@ -21,7 +21,7 @@ data class PinMarkerBitmapStyle(
 
 object PinMarkerBitmapCache {
     private const val MAX_ENTRIES = 24
-    private const val STYLE_VERSION = 7
+    private const val STYLE_VERSION = 12
     private const val SALE_BADGE_SIZE_RATIO = 0.62f
     private const val SALE_BADGE_OVERLAP_RATIO = 0.52f
 
@@ -76,7 +76,7 @@ object PinMarkerBitmapCache {
         val sourceHeight = iconHeight + (sourceInset * 2)
         val outlineRadiusPx = (0.85f * density).coerceAtLeast(1f)
         val outlineRadiusInt = outlineRadiusPx.roundToInt().coerceAtLeast(1)
-        val outlinePadding = ceil(outlineRadiusPx + 2f * density).toInt()
+        val outlinePadding = ceil(2f * density).toInt()
         val minBadgeSize = (12f * density).roundToInt().coerceAtLeast(1)
         val badgeSize = if (shouldDrawSaleBadge) {
             max((sourceWidth * SALE_BADGE_SIZE_RATIO).roundToInt(), minBadgeSize)
@@ -110,24 +110,19 @@ object PinMarkerBitmapCache {
         )
         drawable.draw(iconCanvas)
 
-        // Draw a crisp dark outline (without blur).
-        val outlineMask = iconBitmap.extractAlpha()
+        // Inside-aligned stroke per alpha island so internal gaps stay visible.
         val outlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.parseColor("#3A3A3A")
         }
-        val angleSteps = 32
-        for (radius in 1..outlineRadiusInt) {
-            for (step in 0 until angleSteps) {
-                val angle = (step.toDouble() / angleSteps.toDouble()) * (Math.PI * 2.0)
-                val dx = (cos(angle) * radius).toFloat()
-                val dy = (sin(angle) * radius).toFloat()
-                canvas.drawBitmap(
-                    outlineMask,
-                    contentLeft + dx,
-                    contentTop + dy,
-                    outlinePaint,
-                )
-            }
+        iconBitmap.extractAlphaComponents().forEach { componentMask ->
+            drawInsideOutline(
+                canvas = canvas,
+                outlineMask = componentMask.extractAlpha(),
+                left = contentLeft.toFloat(),
+                top = contentTop.toFloat(),
+                outlineRadiusInt = outlineRadiusInt,
+                paint = outlinePaint,
+            )
         }
         canvas.drawBitmap(
             iconBitmap,
@@ -152,5 +147,81 @@ object PinMarkerBitmapCache {
 
         val anchorY = (contentTop + sourceInset + iconHeight).toFloat() / bitmapHeight.toFloat()
         return PinMarkerBitmapStyle(bitmap = bitmap, anchorY = anchorY)
+    }
+
+    private fun drawInsideOutline(
+        canvas: Canvas,
+        outlineMask: Bitmap,
+        left: Float,
+        top: Float,
+        outlineRadiusInt: Int,
+        paint: Paint,
+    ) {
+        val angleSteps = 32
+        for (radius in -outlineRadiusInt..-1) {
+            for (step in 0 until angleSteps) {
+                val angle = (step.toDouble() / angleSteps.toDouble()) * (Math.PI * 2.0)
+                val dx = (cos(angle) * radius).toFloat()
+                val dy = (sin(angle) * radius).toFloat()
+                canvas.drawBitmap(
+                    outlineMask,
+                    left + dx,
+                    top + dy,
+                    paint,
+                )
+            }
+        }
+    }
+
+    private fun Bitmap.extractAlphaComponents(alphaThreshold: Int = 128): List<Bitmap> {
+        val width = width
+        val height = height
+        if (width == 0 || height == 0) return emptyList()
+
+        val sourcePixels = IntArray(width * height)
+        getPixels(sourcePixels, 0, width, 0, 0, width, height)
+        val visited = BooleanArray(width * height)
+        val components = mutableListOf<Bitmap>()
+
+        fun index(x: Int, y: Int) = y * width + x
+        fun isOpaque(x: Int, y: Int) = (sourcePixels[index(x, y)] ushr 24) >= alphaThreshold
+
+        for (y in 0 until height) {
+            for (x in 0 until width) {
+                val startIndex = index(x, y)
+                if (visited[startIndex] || !isOpaque(x, y)) continue
+
+                val componentPixels = IntArray(width * height)
+                val queue = ArrayDeque<Pair<Int, Int>>()
+                queue.add(x to y)
+                visited[startIndex] = true
+
+                while (queue.isNotEmpty()) {
+                    val (currentX, currentY) = queue.removeFirst()
+                    val currentIndex = index(currentX, currentY)
+                    componentPixels[currentIndex] = sourcePixels[currentIndex]
+
+                    val neighbors = listOf(
+                        currentX - 1 to currentY,
+                        currentX + 1 to currentY,
+                        currentX to currentY - 1,
+                        currentX to currentY + 1,
+                    )
+                    for ((neighborX, neighborY) in neighbors) {
+                        if (neighborX !in 0 until width || neighborY !in 0 until height) continue
+                        val neighborIndex = index(neighborX, neighborY)
+                        if (visited[neighborIndex] || !isOpaque(neighborX, neighborY)) continue
+                        visited[neighborIndex] = true
+                        queue.add(neighborX to neighborY)
+                    }
+                }
+
+                val component = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                component.setPixels(componentPixels, 0, width, 0, 0, width, height)
+                components.add(component)
+            }
+        }
+
+        return components
     }
 }
