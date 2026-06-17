@@ -2,7 +2,9 @@ package com.issueissyu.fe.ui.screens.onboarding
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -92,6 +94,9 @@ fun OnboardingSwitchAccountAction(
                 modifier = Modifier.size(18.dp),
                 tint = Gray_5,
             )
+
+            Spacer(modifier=Modifier.width(5.dp))
+
             Text(
                 text = "다른 계정으로 로그인",
                 style = IssueTypo.Regular12.copy(color = Gray_5),
