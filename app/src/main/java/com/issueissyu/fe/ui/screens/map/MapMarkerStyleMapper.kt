@@ -11,3 +11,10 @@ fun PinCategory.toMarkerIconRes(): Int {
         PinCategory.FESTIVAL -> R.drawable.festival
     }
 }
+
+fun PinCategory.markerScaleMultiplier(): Float {
+    return when (this) {
+        PinCategory.SHOP -> 0.9f
+        else -> 1f
+    }
+}

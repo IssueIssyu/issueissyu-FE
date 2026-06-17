@@ -104,8 +104,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
 private const val INITIAL_USER_LOCATION_ZOOM = 16.0
-private const val DEFAULT_MARKER_SCALE = 1.5f
-private const val SELECTED_MARKER_SCALE = 2f
+private const val DEFAULT_MARKER_SCALE = 1.3f
+private const val SELECTED_MARKER_SCALE = 1.7f
 private const val SELECTED_MARKER_Z_INDEX = 3
 private const val CLUSTER_MARKER_Z_INDEX = 2
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
@@ -209,23 +209,22 @@ private fun createSinglePinClusterMarker(
     onClick: () -> Unit,
 ): Marker {
     val iconRes = pin.category.toMarkerIconRes()
-    val markerScale = if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE
+    val markerStyle = PinMarkerBitmapCache.get(context, iconRes)
+    val categoryScale = pin.category.markerScaleMultiplier()
+    val markerScale = (if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE) * categoryScale
     return Marker().apply {
         position = cluster.coordinate.toLatLng()
-        icon = OverlayImage.fromResource(iconRes)
-        ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-            width = (drawable.intrinsicWidth * markerScale).toInt()
-            height = (drawable.intrinsicHeight * markerScale).toInt()
-        }
+        icon = OverlayImage.fromBitmap(markerStyle.bitmap)
+        anchor = PointF(0.5f, markerStyle.anchorY)
+        width = (markerStyle.bitmap.width * markerScale).toInt()
+        height = (markerStyle.bitmap.height * markerScale).toInt()
         if (isSelected) {
             zIndex = SELECTED_MARKER_Z_INDEX
         }
         map = naverMap
         setOnClickListener {
-            ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-                width = (drawable.intrinsicWidth * SELECTED_MARKER_SCALE).toInt()
-                height = (drawable.intrinsicHeight * SELECTED_MARKER_SCALE).toInt()
-            }
+            width = (markerStyle.bitmap.width * SELECTED_MARKER_SCALE * categoryScale).toInt()
+            height = (markerStyle.bitmap.height * SELECTED_MARKER_SCALE * categoryScale).toInt()
             zIndex = SELECTED_MARKER_Z_INDEX
             onClick()
             true
@@ -543,24 +542,23 @@ fun MapScreen(
 
         visibleMapPins.forEach { mapPin ->
             val iconRes = mapPin.category.toMarkerIconRes()
+            val markerStyle = PinMarkerBitmapCache.get(context, iconRes)
             val isSelected = mapPin.pinId == selectedPin?.id
+            val categoryScale = mapPin.category.markerScaleMultiplier()
             val marker = Marker().apply {
                 position = mapPin.coordinate.toLatLng()
-                icon = OverlayImage.fromResource(iconRes)
-                val markerScale = if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE
-                ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-                    width = (drawable.intrinsicWidth * markerScale).toInt()
-                    height = (drawable.intrinsicHeight * markerScale).toInt()
-                }
+                icon = OverlayImage.fromBitmap(markerStyle.bitmap)
+                anchor = PointF(0.5f, markerStyle.anchorY)
+                val markerScale = (if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE) * categoryScale
+                width = (markerStyle.bitmap.width * markerScale).toInt()
+                height = (markerStyle.bitmap.height * markerScale).toInt()
                 if (isSelected) {
                     zIndex = SELECTED_MARKER_Z_INDEX
                 }
                 this.map = naverMap
                 setOnClickListener {
-                    ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-                        width = (drawable.intrinsicWidth * SELECTED_MARKER_SCALE).toInt()
-                        height = (drawable.intrinsicHeight * SELECTED_MARKER_SCALE).toInt()
-                    }
+                    width = (markerStyle.bitmap.width * SELECTED_MARKER_SCALE * categoryScale).toInt()
+                    height = (markerStyle.bitmap.height * SELECTED_MARKER_SCALE * categoryScale).toInt()
                     zIndex = SELECTED_MARKER_Z_INDEX
                     viewModel.selectPinById(mapPin.pinId)
                     naverMap.moveCamera(
