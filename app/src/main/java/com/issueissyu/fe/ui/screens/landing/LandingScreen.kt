@@ -28,10 +28,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChatBubbleOutline
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -88,7 +85,6 @@ import com.issueissyu.fe.ui.theme.Communication
 import com.issueissyu.fe.ui.theme.Festival
 import com.issueissyu.fe.ui.theme.FestivalContainer
 import com.issueissyu.fe.ui.theme.Gray_1
-import com.issueissyu.fe.ui.theme.Gray_2
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -182,81 +178,80 @@ private fun LandingPage(
                     showActionGuide = page == 12,
                     modifier = Modifier.fillMaxSize(),
                 )
-                return@Box
-            }
-
-            Image(
-                painter = painterResource(
-                    if (isCompletePage) {
-                        R.drawable.img_landing_complete_background
-                    } else {
-                        R.drawable.img_landing_guide_background
-                    }
-                ),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
-
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(
-                        start = 27.dp,
-                        top = 58.dp,
-                        end = 27.dp,
-                        bottom = 20.dp,
+            } else {
+                Image(
+                    painter = painterResource(
+                        if (isCompletePage) {
+                            R.drawable.img_landing_complete_background
+                        } else {
+                            R.drawable.img_landing_guide_background
+                        }
                     ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                LandingProgress(
-                    currentPage = page.toProgressIndex(),
-                    modifier = Modifier.width(320.dp),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
                 )
 
-                Spacer(modifier = Modifier.height(95.dp))
-
-                Box(
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.TopCenter,
+                        .align(Alignment.TopCenter)
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
+                        .padding(
+                            start = 27.dp,
+                            top = 58.dp,
+                            end = 27.dp,
+                            bottom = 20.dp,
+                        ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    if (isCompletePage) {
-                        LandingCompleteContent(
-                            onComplete = onComplete,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        LandingGuideContent(
-                            page = page,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                    LandingProgress(
+                        currentPage = page.toProgressIndex(),
+                        modifier = Modifier.width(320.dp),
+                    )
+
+                    Spacer(modifier = Modifier.height(95.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.TopCenter,
+                    ) {
+                        if (isCompletePage) {
+                            LandingCompleteContent(
+                                onComplete = onComplete,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        } else {
+                            LandingGuideContent(
+                                page = page,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     }
                 }
-            }
 
-            if (page in 2..4) {
-                LandingIssuePinGuideOverlay(
-                    highlightSympathy = page == 3,
-                    highlightCommunity = page == 4,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else if (page == 5) {
-                LandingFestivalPinGuideOverlay(
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else if (page == 6) {
-                LandingShopPinGuideOverlay(
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else if (page == 7) {
-                LandingCommunicationPinGuideOverlay(
-                    modifier = Modifier.fillMaxSize(),
-                )
+                if (page in 2..4) {
+                    LandingIssuePinGuideOverlay(
+                        highlightSympathy = page == 3,
+                        highlightCommunity = page == 4,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else if (page == 5) {
+                    LandingFestivalPinGuideOverlay(
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else if (page == 6) {
+                    LandingShopPinGuideOverlay(
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else if (page == 7) {
+                    LandingCommunicationPinGuideOverlay(
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
     }
@@ -668,6 +663,7 @@ private fun LandingFestivalPinGuideOverlay(modifier: Modifier = Modifier) {
     }
 }
 
+@Suppress("unused")
 @Composable
 private fun LandingFestivalGuideCard(modifier: Modifier = Modifier) {
     Box(
@@ -848,6 +844,7 @@ private fun LandingShopPinGuideOverlay(modifier: Modifier = Modifier) {
     }
 }
 
+@Suppress("unused")
 @Composable
 private fun LandingShopGuideCard(modifier: Modifier = Modifier) {
     Box(
@@ -1093,6 +1090,7 @@ private fun LandingCommunicationPinGuideOverlay(modifier: Modifier = Modifier) {
     }
 }
 
+@Suppress("unused")
 @Composable
 private fun LandingCommunicationGuideCard(modifier: Modifier = Modifier) {
     Box(
@@ -1409,6 +1407,7 @@ private fun LandingDimOverlayWithCutout(
     }
 }
 
+@Suppress("unused")
 @Composable
 private fun LandingIssueGuideCard(modifier: Modifier = Modifier) {
     Box(
