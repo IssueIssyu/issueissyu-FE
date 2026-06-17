@@ -10,6 +10,7 @@ import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
 import com.issueissyu.fe.domain.model.pin.UpdateIssuePinRequest
 import com.issueissyu.fe.domain.model.pin.IssuePinEditResult
 import com.issueissyu.fe.domain.model.pin.PinDetailHomeResult
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
@@ -34,6 +35,8 @@ interface PinRepository {
     suspend fun createPin(request: CreatePinRequest): Result<Pin>
     suspend fun updatePin(pinId: String, request: UpdatePinRequest): Pin
     suspend fun updateIssuePin(pinId: Long, request: UpdateIssuePinRequest): Result<IssuePinEditResult>
+
+    suspend fun getIssuePinEditQuota(pinId: Long): Result<PinEditRateLimitQuota>
 
     suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker>
 

@@ -562,7 +562,9 @@ fun MapScreen(
                     viewModel.clearSelectedPin()
                     navController.navigate(AppDestinations.communityDetailRoute(numericCommunityId))
                 },
-                onEditClick = { _ ->
+                onEditClick = { pinId ->
+                    viewModel.clearSelectedPin()
+                    navController.navigateToPinDetail(pinId, startHomeEdit = true)
                 },
                 onDeleteClick = { pinId ->
                     viewModel.deletePin(pinId)

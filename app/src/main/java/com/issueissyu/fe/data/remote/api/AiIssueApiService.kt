@@ -6,6 +6,7 @@ import com.issueissyu.fe.data.remote.dto.response.issue.IssueReliabilityResponse
 import com.issueissyu.fe.data.remote.dto.response.issue.IssueToneTypeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.IssuePinEditResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinImportResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.RateLimitQuotaResponse
 import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
@@ -16,6 +17,7 @@ import retrofit2.http.Part
 import retrofit2.http.Path
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import retrofit2.http.Query
 
 interface AiIssueApiService {
     @GET("issues/tone-types")
@@ -45,6 +47,16 @@ interface AiIssueApiService {
         @Part("request") request: RequestBody,
         @Part photos: List<MultipartBody.Part>,
     ): BaseResponse<IssuePinEditResponse?>
+
+    //이슈 핀 수정 횟수
+    @GET("issues/pin/edit/quota")
+    suspend fun getIssuePinEditQuota(
+        @Query("pin_id") pinId: Int,
+    ): BaseResponse<RateLimitQuotaResponse?>
+
+    //ai 글쓰기 수정 횟수
+    @GET("issues/pin/ai/quota")
+    suspend fun getAiDraft(): BaseResponse<RateLimitQuotaResponse?>
 
     @GET("issues/pin/{pin_id}/reliability")
     suspend fun getIssueReliability(

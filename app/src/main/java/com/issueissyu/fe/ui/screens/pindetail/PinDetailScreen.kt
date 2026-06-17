@@ -55,7 +55,7 @@ import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
 import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
-import com.issueissyu.fe.ui.components.Dialog as IssueDialog
+import com.issueissyu.fe.ui.components.RemainingQuotaDialog
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -73,6 +73,7 @@ fun PinDetailScreen(
     onReportClick: (String) -> Unit,
     onCommunityClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    startHomeEdit: Boolean = false,
     savedStateHandle: SavedStateHandle? = null,
     viewModel: PinDetailViewModel = hiltViewModel(),
 ) {
@@ -106,8 +107,8 @@ fun PinDetailScreen(
     )
     homeEditPhotoPicker.PhotoSourceBottomSheet()
 
-    LaunchedEffect(pinId) {
-        viewModel.loadPin(pinId)
+    LaunchedEffect(pinId, startHomeEdit) {
+        viewModel.loadPin(pinId, startHomeEditAfterLoad = startHomeEdit)
     }
 
     LaunchedEffect(savedStateHandle, pinId) {
@@ -187,7 +188,7 @@ fun PinDetailScreen(
                         homeEditExistingImages = uiState.homeEditExistingImages,
                         homeEditNewImageUris = uiState.homeEditNewImageUris,
                         homeEditMainImageKey = uiState.homeEditMainImageKey,
-                        isSubmittingHomeEdit = uiState.isSubmittingHomeEdit,
+                        isSubmittingHomeEdit = uiState.isSubmittingHomeEdit || uiState.isLoadingHomeEditQuota,
                         homeEditSubmitFailed = uiState.homeEditSubmitFailed,
                         onHomeEditTitleChange = viewModel::onHomeEditTitleChange,
                         onHomeEditDescriptionChange = viewModel::onHomeEditDescriptionChange,
@@ -234,12 +235,11 @@ fun PinDetailScreen(
                     }
 
                     if (uiState.showHomeEditConfirmDialog) {
-                        IssueDialog(
-                            title = "이슈 핀 수정",
-                            message = uiState.homeEditRateLimitQuota.toHomeEditConfirmMessage(),
-                            confirmText = "수정",
-                            dismissText = "취소",
-                            isWarning = true,
+                        val dialogContent = uiState.homeEditRateLimitQuota.toHomeEditConfirmDialogContent()
+                        RemainingQuotaDialog(
+                            title = dialogContent.title,
+                            countLabel = dialogContent.countLabel,
+                            description = dialogContent.description,
                             onDismiss = viewModel::dismissHomeEditConfirmDialog,
                             onConfirm = viewModel::confirmHomeEditSubmit,
                         )
@@ -568,20 +568,25 @@ private fun PinDetailTab.label(): String = when (this) {
     PinDetailTab.RESOLUTION -> "해결하기"
 }
 
-private fun PinEditRateLimitQuota?.toHomeEditConfirmMessage(): String {
-    if (this == null) {
-        return buildString {
-            appendLine("이슈 핀은 하루에 제한된 횟수만 수정할 수 있습니다.")
-            appendLine()
-            append("이대로 수정하시겠습니까?")
-        }
+private data class HomeEditConfirmDialogContent(
+    val title: String,
+    val countLabel: String?,
+    val description: String,
+)
+
+private fun PinEditRateLimitQuota?.toHomeEditConfirmDialogContent(): HomeEditConfirmDialogContent {
+    if (this == null || !enabled) {
+        return HomeEditConfirmDialogContent(
+            title = "이슈 핀 수정",
+            countLabel = null,
+            description = "이대로 수정하시겠습니까?",
+        )
     }
-    return buildString {
-        appendLine("하루 최대 ${dailyLimit}회까지 수정할 수 있습니다.")
-        appendLine("오늘 남은 수정 횟수는 ${remainingCount}회입니다.")
-        appendLine()
-        append("이대로 수정하시겠습니까?")
-    }
+    return HomeEditConfirmDialogContent(
+        title = "남은 이슈 핀 수정 횟수",
+        countLabel = "$remainingCount/$dailyLimit",
+        description = "이슈 핀 수정은 정해진 일일 한도 내에서만 사용 가능합니다!",
+    )
 }
 
 @Preview(showBackground = true, heightDp = 900)

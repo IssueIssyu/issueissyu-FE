@@ -507,10 +507,15 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("pinId") {
                     type = NavType.StringType
-                }
+                },
+                navArgument("startHomeEdit") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
             )
         ) { backStackEntry ->
             val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
+            val startHomeEdit = backStackEntry.arguments?.getBoolean("startHomeEdit") ?: false
 
             NavScreenWrapper(
                 paddingValues = paddingValues,
@@ -518,6 +523,7 @@ fun AppNavGraph(
             ) {
                 PinDetailScreen(
                     pinId = pinId,
+                    startHomeEdit = startHomeEdit,
                     savedStateHandle = backStackEntry.savedStateHandle,
                     onBackClick = { navController.popBackStack() },
                     onReportClick = { reportPinId ->
@@ -682,7 +688,7 @@ private fun NavHostController.navigateToLoginClearingBackStack(
 }
 
 /** 지도 핀 카드·패치노트 등에서 핀 상세 화면으로 이동 */
-fun NavHostController.navigateToPinDetail(pinId: String) {
+fun NavHostController.navigateToPinDetail(pinId: String, startHomeEdit: Boolean = false) {
     if (pinId.isBlank()) return
-    navigate(AppDestinations.pinDetailRoute(pinId))
+    navigate(AppDestinations.pinDetailRoute(pinId, startHomeEdit))
 }

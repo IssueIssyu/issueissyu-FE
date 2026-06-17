@@ -61,6 +61,7 @@ import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinEditResult
 import com.issueissyu.fe.domain.model.pin.PinDetailHomeResult
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.model.MapBounds
 import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PetitionSubmit
@@ -450,6 +451,49 @@ class PinRepositoryImpl @Inject constructor(
                 )
             }
             failureFrom(e, "이슈 핀 수정에 실패했습니다.")
+        }
+    }
+
+    override suspend fun getIssuePinEditQuota(pinId: Long): Result<PinEditRateLimitQuota> {
+        if (pinId !in 0..Int.MAX_VALUE.toLong()) {
+            return Result.failure(Exception("잘못된 핀 ID입니다."))
+        }
+        return try {
+            val response = aiIssueApiService.getIssuePinEditQuota(pinId.toInt())
+            if (response.isSuccess) {
+                val result = response.result
+                    ?: return Result.failure(
+                        Exception(
+                            response.message.ifBlank { "이슈 핀 수정 제한 횟수 응답이 올바르지 않습니다." },
+                        ),
+                    )
+                Result.success(result.toPinEditRateLimitQuota())
+            } else {
+                when (response.code) {
+                    "COMMON_403" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "본인이 작성한 핀만 수정할 수 있습니다." },
+                            ),
+                        )
+
+                    "ISSUE_4041" ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "존재하지 않는 핀이거나 이슈 핀이 아닙니다." },
+                            ),
+                        )
+
+                    else ->
+                        Result.failure(
+                            Exception(
+                                response.message.ifBlank { "이슈 핀 수정 제한 횟수 조회에 실패했습니다." },
+                            ),
+                        )
+                }
+            }
+        } catch (e: Exception) {
+            failureFrom(e, "이슈 핀 수정 제한 횟수 조회에 실패했습니다.")
         }
     }
 
