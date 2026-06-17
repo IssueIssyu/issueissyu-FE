@@ -209,7 +209,11 @@ private fun createSinglePinClusterMarker(
     onClick: () -> Unit,
 ): Marker {
     val iconRes = pin.category.toMarkerIconRes()
-    val markerStyle = PinMarkerBitmapCache.get(context, iconRes)
+    val markerStyle = PinMarkerBitmapCache.get(
+        context = context,
+        iconRes = iconRes,
+        hasDiscount = pin.hasDiscount,
+    )
     val categoryScale = pin.category.markerScaleMultiplier()
     val markerScale = (if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE) * categoryScale
     return Marker().apply {
@@ -542,7 +546,11 @@ fun MapScreen(
 
         visibleMapPins.forEach { mapPin ->
             val iconRes = mapPin.category.toMarkerIconRes()
-            val markerStyle = PinMarkerBitmapCache.get(context, iconRes)
+            val markerStyle = PinMarkerBitmapCache.get(
+                context = context,
+                iconRes = iconRes,
+                hasDiscount = mapPin.hasDiscount,
+            )
             val isSelected = mapPin.pinId == selectedPin?.id
             val categoryScale = mapPin.category.markerScaleMultiplier()
             val marker = Marker().apply {
