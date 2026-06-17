@@ -1,11 +1,5 @@
 package com.issueissyu.fe.ui.screens.mypage
 
-import android.Manifest
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
-import android.os.Build
-import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +19,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -40,15 +35,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.issueissyu.fe.core.notification.DeviceNotificationStatus
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.BrandColor
+import com.issueissyu.fe.ui.theme.Gray_2
+import com.issueissyu.fe.ui.theme.Gray_5
 import com.issueissyu.fe.ui.theme.Gray_6
+import com.issueissyu.fe.ui.theme.Gray_8
 import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
@@ -62,6 +60,9 @@ fun AlarmSettingScreen(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
+    var isDeviceNotificationEnabled by remember {
+        mutableStateOf(DeviceNotificationStatus.canReceive(context))
+    }
     // 권한이 없어 설정 앱으로 보낸 토글 동작을 보관했다가 복귀 후 권한이 허용되면 이어서 처리
     var pendingEnable by remember { mutableStateOf<(() -> Unit)?>(null) }
 
@@ -75,39 +76,27 @@ fun AlarmSettingScreen(
         }
     }
 
-    fun hasNotificationPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) == PackageManager.PERMISSION_GRANTED
-    }
-
-    //권한 x -> 설정 앱으로 이동
-    fun openAppSettings() {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = Uri.fromParts("package", context.packageName, null)
-        }
-        context.startActivity(intent)
+    fun openNotificationSettings() {
+        DeviceNotificationStatus.openSettings(context)
     }
 
     // 토글 켤 때 권한 체크
     fun onToggle(current: Boolean, update: (Boolean) -> Unit) {
-        if (!current && !hasNotificationPermission()) {
-            pendingEnable = { update(true) }  // 복귀 후 권한 허용되면 이어서 켜기
-            openAppSettings()  // 권한 없으면 설정으로
+        if (!current && !DeviceNotificationStatus.canReceive(context)) {
+            pendingEnable = { update(true) }
+            openNotificationSettings()
         } else {
             update(!current)
         }
     }
 
-    // 설정 앱에서 권한을 허용하고 돌아온 경우, 보류해둔 토글을 자동으로 처리
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                isDeviceNotificationEnabled = DeviceNotificationStatus.canReceive(context)
                 val action = pendingEnable
                 pendingEnable = null
-                if (action != null && hasNotificationPermission()) {
+                if (action != null && DeviceNotificationStatus.canReceive(context)) {
                     action()
                 }
             }
@@ -121,11 +110,16 @@ fun AlarmSettingScreen(
         .fillMaxSize()
         .background(White)
     ) {
-        // 상단 바
         IssueissyuTopAppBar(
             titleText = "알림 설정",
             onBackClick = onBackClick
         )
+
+        if (!isDeviceNotificationEnabled) {
+            DeviceNotificationDisabledBanner(
+                onOpenSettings = ::openNotificationSettings,
+            )
+        }
 
         when {
             uiState.isLoading -> {
@@ -170,11 +164,8 @@ fun AlarmSettingScreen(
                         .padding(31.dp, 20.dp),
                 ){
                     Text(
-                        text = "여기서 끄면 비슷한 내용의 알림은 보내지 않아요",
-                        fontFamily = suiteFontFamily,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp,
-                        color = Gray_6,
+                        text = "여기서 끄면 해당 내용의 알림은 보내지 않아요.",
+                        style = IssueTypo.Regular15.copy(color = Gray_5)
                     )
 
                     Spacer(modifier = Modifier.height(50.dp))
@@ -212,6 +203,44 @@ fun AlarmSettingScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceNotificationDisabledBanner(
+    onOpenSettings: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Gray_2),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = "기기 알림이 꺼져 있어요.\n설정에서 켜야 알림을 받을 수 있어요.",
+                modifier = Modifier.weight(1f),
+                fontFamily = suiteFontFamily,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                color = Gray_8,
+            )
+            TextButton(onClick = onOpenSettings) {
+                Text(
+                    text = "설정 열기",
+                    style = IssueTypo.Bold12.copy(color = BrandColor),
+                )
             }
         }
     }
