@@ -380,6 +380,7 @@ class PinRepositoryImpl @Inject constructor(
         pinId: Long,
         category: PinCategory,
         request: UpdatePinEditRequest,
+        existingPin: Pin?,
     ): Result<PinHomeEditSubmitResult> = withContext(Dispatchers.IO) {
         when (category) {
             PinCategory.ISSUE -> executePinHomeEditUpload(
@@ -441,7 +442,7 @@ class PinRepositoryImpl @Inject constructor(
                             message = response.message.ifBlank { "소통 핀 수정 응답이 올바르지 않습니다." },
                         ),
                     )
-                val pin = result.toPinOrNull()
+                val pin = result.toPinOrNull(preserveFrom = existingPin)
                     ?: return@executePinHomeEditUpload Result.failure(
                         pinEditException(
                             isCommunicationPin = true,
@@ -491,9 +492,11 @@ class PinRepositoryImpl @Inject constructor(
             )
             submit(payload).also { result ->
                 if (result.isFailure && request.newImageUris.isNotEmpty()) {
+                    val error = result.exceptionOrNull()
                     PinImageUploadDiagnostics.logUploadFailure(
                         httpStatus = null,
-                        serverCode = result.exceptionOrNull()?.message,
+                        serverCode = (error as? PinEditApiException)?.serverCode
+                            ?: error?.javaClass?.simpleName,
                         metas = uploadMetas,
                     )
                 }
@@ -1455,11 +1458,16 @@ private fun petitionStatusException(code: String, message: String): Exception {
     )
 }
 
+private class PinEditApiException(
+    val serverCode: String?,
+    message: String,
+) : Exception(message)
+
 private fun pinEditException(
     isCommunicationPin: Boolean,
     code: String?,
     message: String?,
-): Exception {
+): PinEditApiException {
     val normalizedCode = code?.takeIf { it.isNotBlank() }
     val normalizedMessage = message?.takeIf { it.isNotBlank() }
     val userMessage = when (normalizedCode) {
@@ -1498,7 +1506,7 @@ private fun pinEditException(
                 "이슈 핀 수정에 실패했습니다."
             }
     }
-    return Exception(userMessage)
+    return PinEditApiException(normalizedCode, userMessage)
 }
 
 private fun petitionJoinException(code: String, message: String): Exception {

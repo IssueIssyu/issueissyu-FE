@@ -39,9 +39,9 @@ fun UpdatePinEditRequest.toIssuePinEditRequest(): IssuePinEditRequest {
     if (!hasImageChanges()) {
         return IssuePinEditRequest(pinTitle = title, pinContent = description)
     }
-    val mainNewUri = mainNewImageUri?.takeIf { newImageUris.contains(it) } ?: newImageUris.firstOrNull()
+    val mainNewUri = mainNewImageUri?.takeIf { newImageUris.contains(it) }
     val pinImages = newImageUris.takeIf { it.isNotEmpty() }?.map { uri ->
-        PinImageItemRequest(isMain = uri == mainNewUri)
+        PinImageItemRequest(isMain = mainNewUri != null && uri == mainNewUri)
     }
     val pinImageUrls = when {
         existingImages.isNotEmpty() -> existingImages.map { image ->

@@ -74,6 +74,7 @@ import com.issueissyu.fe.ui.theme.White
 @Composable
 fun PinHomeTab(
     pin: Pin,
+    currentUserId: String? = null,
     onReportClick: (String) -> Unit,
     onEditClick: (String) -> Unit,
     onDeleteClick: (String) -> Unit,
@@ -105,7 +106,7 @@ fun PinHomeTab(
     modifier: Modifier = Modifier,
 ) {
     val displayProfile = pin.detailDisplayProfile()
-    val canEdit = pin.canEditBy()
+    val canEdit = pin.canEditBy(currentUserId)
     val issueDetail = pin.detail as? IssuePinDetail
     val shopDetail = pin.detail as? ShopPinDetail
 

@@ -10,6 +10,7 @@ import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCreateException
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
 import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
+import com.issueissyu.fe.ui.components.IssueAiDraftDefaults
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -114,9 +115,10 @@ class PinCreateViewModel @Inject constructor(
                 .onFailure {
                     _uiState.update { state ->
                         state.copy(
-                            toneOptions = FALLBACK_TONE_OPTIONS,
-                            selectedTone = state.selectedTone?.takeIf { it in FALLBACK_TONE_OPTIONS }
-                                ?: DEFAULT_AI_TONE,
+                            toneOptions = IssueAiDraftDefaults.FALLBACK_TONE_OPTIONS,
+                            selectedTone = state.selectedTone?.takeIf {
+                                it in IssueAiDraftDefaults.FALLBACK_TONE_OPTIONS
+                            } ?: IssueAiDraftDefaults.DEFAULT_TONE,
                             isLoadingToneOptions = false,
                         )
                     }
@@ -303,7 +305,7 @@ class PinCreateViewModel @Inject constructor(
             issueRepository.createIssueAiDraft(
                 title = state.title,
                 content = state.description,
-                tone = state.selectedTone ?: DEFAULT_AI_TONE,
+                tone = state.selectedTone ?: IssueAiDraftDefaults.DEFAULT_TONE,
                 latitude = pinLat,
                 longitude = pinLng,
             ).onSuccess { draft ->
@@ -395,7 +397,7 @@ class PinCreateViewModel @Inject constructor(
                     locationName = state.locationName,
                     imageUris = state.imageUris,
                     mainImageUri = state.mainImageUri,
-                    tone = state.selectedTone ?: DEFAULT_AI_TONE,
+                    tone = state.selectedTone ?: IssueAiDraftDefaults.DEFAULT_TONE,
                 )
             ).onSuccess { createdPin ->
                 clearImageUploadFailureTracking()
@@ -434,17 +436,5 @@ class PinCreateViewModel @Inject constructor(
 
     private fun clearImageUploadFailureTracking() {
         lastFailedImageFingerprint = null
-    }
-
-    companion object {
-        private const val DEFAULT_AI_TONE = "없음"
-        private val FALLBACK_TONE_OPTIONS = listOf(
-            "없음",
-            "한줄요약형",
-            "상황설명형",
-            "개선요청형",
-            "긴급요청형",
-            "불편호소형",
-        )
     }
 }

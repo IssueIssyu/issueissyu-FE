@@ -24,6 +24,18 @@ import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
 
+object IssueAiDraftDefaults {
+    const val DEFAULT_TONE = "없음"
+    val FALLBACK_TONE_OPTIONS = listOf(
+        "없음",
+        "한줄요약형",
+        "상황설명형",
+        "개선요청형",
+        "긴급요청형",
+        "불편호소형",
+    )
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun IssueToneSelectionSection(

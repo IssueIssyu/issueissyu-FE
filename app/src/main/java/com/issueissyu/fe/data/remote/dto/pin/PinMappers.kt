@@ -19,6 +19,7 @@ import com.issueissyu.fe.data.remote.dto.response.pin.ProblemSolverVerificationR
 import com.issueissyu.fe.data.remote.dto.response.pin.RateLimitQuotaResponse
 import com.issueissyu.fe.core.text.decodePinContentNewlines
 import com.issueissyu.fe.data.remote.dto.response.pin.PinLikeResponse
+import com.issueissyu.fe.domain.model.pin.AuthoredPinDetail
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
 import com.issueissyu.fe.domain.model.pin.FestivalPinDetail
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
@@ -117,7 +118,10 @@ fun PinDetailHomeResponse.toPinOrNull(
 
 fun CommunicationPinEditResponse.toPinOrNull(
     coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
-): Pin? = toPinDetailMappingSource().toPinOrNull(coordinate)
+    preserveFrom: Pin? = null,
+): Pin? = toPinDetailMappingSource()
+    .preserveEditablePinFields(preserveFrom)
+    .toPinOrNull(coordinate)
 
 fun IssuePinEditResponse.toIssuePinEditResult(
     coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
@@ -314,6 +318,23 @@ private fun CommunicationPinEditResponse.toPinDetailMappingSource(): PinDetailMa
         isReported = false,
         isMine = true,
         communityId = null,
+    )
+}
+
+private fun PinDetailMappingSource.preserveEditablePinFields(prior: Pin?): PinDetailMappingSource {
+    if (prior == null) return this
+    val writer = (prior.detail as? AuthoredPinDetail)?.writer
+        ?: prior.author
+    return copy(
+        likeCount = prior.sympathyCount,
+        isLike = prior.isSympathizedByMe,
+        viewCount = prior.viewCount,
+        isReported = prior.isReported,
+        isMine = prior.isMine ?: isMine,
+        communityId = prior.communityPostId?.toLongOrNull() ?: communityId,
+        pinUserId = writer?.id?.takeIf { it.isNotBlank() } ?: pinUserId,
+        pinUserNickname = writer?.name?.takeIf { it.isNotBlank() } ?: pinUserNickname,
+        pinUserProfile = writer?.imageUrl?.takeIf { it.isNotBlank() } ?: pinUserProfile,
     )
 }
 

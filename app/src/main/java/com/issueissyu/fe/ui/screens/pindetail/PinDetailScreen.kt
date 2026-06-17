@@ -321,6 +321,7 @@ private fun PinDetailContent(
         when (effectiveTab) {
             PinDetailTab.HOME -> PinHomeTab(
                 pin = pin,
+                currentUserId = currentUserId,
                 onReportClick = onReportClick,
                 onEditClick = onEditClick,
                 onDeleteClick = onDeleteClick,
@@ -333,7 +334,6 @@ private fun PinDetailContent(
                 editNewImageUris = homeEdit.newImageUris,
                 editMainImageKey = homeEdit.mainImageKey,
                 isSubmittingEdit = isSubmittingHomeEdit,
-                showEditCancel = !homeEdit.submitFailed,
                 onEditTitleChange = onHomeEditTitleChange,
                 onEditDescriptionChange = onHomeEditDescriptionChange,
                 onEditCancelClick = onHomeEditCancel,

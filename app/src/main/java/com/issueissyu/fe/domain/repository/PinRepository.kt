@@ -40,6 +40,7 @@ interface PinRepository {
         pinId: Long,
         category: PinCategory,
         request: UpdatePinEditRequest,
+        existingPin: Pin? = null,
     ): Result<PinHomeEditSubmitResult>
 
     suspend fun getIssuePinEditQuota(pinId: Long): Result<PinEditRateLimitQuota>

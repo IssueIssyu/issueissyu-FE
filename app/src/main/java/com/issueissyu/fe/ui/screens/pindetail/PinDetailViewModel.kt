@@ -37,6 +37,7 @@ import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.usecase.issue.GetIssueReliabilityUseCase
+import com.issueissyu.fe.ui.components.IssueAiDraftDefaults
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -69,7 +70,6 @@ data class PinHomeEditUiState(
     val isLoadingQuota: Boolean = false,
     val showConfirmDialog: Boolean = false,
     val rateLimitQuota: PinEditRateLimitQuota? = null,
-    val submitFailed: Boolean = false,
     val toneOptions: List<String> = emptyList(),
     val selectedTone: String? = null,
     val isLoadingToneOptions: Boolean = false,
@@ -103,7 +103,7 @@ data class PinHomeEditUiState(
     fun openedFrom(pin: Pin): PinHomeEditUiState {
         val attachments = pin.homeEditImageAttachments()
         val mainKey = attachments.homeEditMainImageKey()
-        return copy(
+        return PinHomeEditUiState(
             isActive = true,
             title = pin.title,
             description = pin.description,
@@ -112,11 +112,6 @@ data class PinHomeEditUiState(
             mainImageKey = mainKey,
             baselineExistingImages = attachments,
             baselineMainImageKey = mainKey,
-            isSubmitting = false,
-            isLoadingQuota = false,
-            showConfirmDialog = false,
-            rateLimitQuota = null,
-            submitFailed = false,
         )
     }
 
@@ -207,7 +202,6 @@ class PinDetailViewModel @Inject constructor(
     private var issueReliabilityJob: Job? = null
     private var observedReliabilityPinId: Long? = null
     private var observedBillingProductId = billingRepository.pendingBillingProductId.value
-    private val homeEditQuotaByPinId = mutableMapOf<Long, PinEditRateLimitQuota>()
 
     init {
         observeBillingPurchaseEvents()
@@ -252,9 +246,6 @@ class PinDetailViewModel @Inject constructor(
 
             pinRepository.getPinDetailHome(id)
                 .onSuccess { homeResult ->
-                    homeResult.editRateLimitQuota?.let { quota ->
-                        homeEditQuotaByPinId[id] = quota
-                    }
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -726,7 +717,7 @@ class PinDetailViewModel @Inject constructor(
 
         _uiState.update {
             it.copy(
-                homeEdit = it.homeEdit.openedFrom(pin),
+                homeEdit = PinHomeEditUiState().openedFrom(pin),
                 selectedTab = PinDetailTab.HOME,
             )
         }
@@ -758,9 +749,10 @@ class PinDetailViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             homeEdit = state.homeEdit.copy(
-                                toneOptions = FALLBACK_AI_TONE_OPTIONS,
-                                selectedTone = state.homeEdit.selectedTone?.takeIf { it in FALLBACK_AI_TONE_OPTIONS }
-                                    ?: DEFAULT_AI_TONE,
+                                toneOptions = IssueAiDraftDefaults.FALLBACK_TONE_OPTIONS,
+                                selectedTone = state.homeEdit.selectedTone?.takeIf {
+                                    it in IssueAiDraftDefaults.FALLBACK_TONE_OPTIONS
+                                } ?: IssueAiDraftDefaults.DEFAULT_TONE,
                                 isLoadingToneOptions = false,
                             ),
                         )
@@ -803,7 +795,11 @@ class PinDetailViewModel @Inject constructor(
     fun requestHomeEditAiDraft() {
         val state = _uiState.value
         val homeEdit = state.homeEdit
-        if (!homeEdit.isActive || homeEdit.isGeneratingAiContent || homeEdit.isLoadingAiDraftQuota) {
+        if (state.pin?.detail !is IssuePinDetail ||
+            !homeEdit.isActive ||
+            homeEdit.isGeneratingAiContent ||
+            homeEdit.isLoadingAiDraftQuota
+        ) {
             return
         }
 
@@ -854,12 +850,14 @@ class PinDetailViewModel @Inject constructor(
 
     fun confirmHomeEditAiDraft() {
         val state = _uiState.value
-        if (!state.homeEdit.isActive || state.homeEdit.isGeneratingAiContent) return
-
-        val pin = state.pin ?: run {
-            showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
+        if (state.pin?.detail !is IssuePinDetail ||
+            !state.homeEdit.isActive ||
+            state.homeEdit.isGeneratingAiContent
+        ) {
             return
         }
+
+        val pin = state.pin
 
         viewModelScope.launch {
             _uiState.update {
@@ -873,7 +871,7 @@ class PinDetailViewModel @Inject constructor(
             issueRepository.createIssueAiDraft(
                 title = state.homeEdit.title.trim(),
                 content = state.homeEdit.description.trim(),
-                tone = state.homeEdit.selectedTone ?: DEFAULT_AI_TONE,
+                tone = state.homeEdit.selectedTone ?: IssueAiDraftDefaults.DEFAULT_TONE,
                 latitude = pin.coordinate.latitude,
                 longitude = pin.coordinate.longitude,
             ).onSuccess { draft ->
@@ -936,8 +934,11 @@ class PinDetailViewModel @Inject constructor(
             return
         }
 
-        val pinId = resolvePinId() ?: return
-        val pin = state.pin ?: return
+        val pinId = resolvePinIdOrNotify() ?: return
+        val pin = state.pin ?: run {
+            showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
+            return
+        }
 
         if (pin.category == PinCategory.COMMUNICATION) {
             confirmHomeEditSubmit()
@@ -950,7 +951,6 @@ class PinDetailViewModel @Inject constructor(
             }
             pinRepository.getIssuePinEditQuota(pinId)
                 .onSuccess { quota ->
-                    homeEditQuotaByPinId[pinId] = quota
                     if (quota.enabled && quota.remainingCount <= 0) {
                         _uiState.update {
                             it.copy(homeEdit = it.homeEdit.copy(isLoadingQuota = false))
@@ -981,8 +981,11 @@ class PinDetailViewModel @Inject constructor(
         val state = _uiState.value
         val homeEdit = state.homeEdit
         if (!homeEdit.isActive || homeEdit.isSubmitting) return
-        val pinId = resolvePinId() ?: return
-        val pin = state.pin ?: return
+        val pinId = resolvePinIdOrNotify() ?: return
+        val pin = state.pin ?: run {
+            showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
+            return
+        }
         val editRequest = homeEdit.toUpdateRequest() ?: run {
             showToast("제목과 상세 설명을 입력해주세요.")
             return
@@ -1002,12 +1005,10 @@ class PinDetailViewModel @Inject constructor(
                 pinId = pinId,
                 category = pin.category,
                 request = editRequest,
+                existingPin = pin,
             ).onSuccess { result ->
                 when (result) {
                     is PinHomeEditSubmitResult.Issue -> {
-                        result.result.rateLimitQuota?.let { quota ->
-                            homeEditQuotaByPinId[pinId] = quota
-                        }
                         finishHomeEditSuccess(
                             pinId = pinId,
                             isCommunicationPin = false,
@@ -1051,7 +1052,6 @@ class PinDetailViewModel @Inject constructor(
                 homeEdit = it.homeEdit.copy(
                     isSubmitting = false,
                     showConfirmDialog = false,
-                    submitFailed = true,
                 ),
             )
         }
@@ -1072,9 +1072,6 @@ class PinDetailViewModel @Inject constructor(
         viewModelScope.launch {
             pinRepository.getPinDetailHome(pinId)
                 .onSuccess { homeResult ->
-                    homeResult.editRateLimitQuota?.let { quota ->
-                        homeEditQuotaByPinId[pinId] = quota
-                    }
                     _uiState.update {
                         it.copy(
                             pin = homeResult.pin,
@@ -1348,20 +1345,15 @@ class PinDetailViewModel @Inject constructor(
             ?: _uiState.value.pin?.id?.toLongOrNull()
     }
 
-    private fun showToast(message: String) {
-        _effect.tryEmit(PinDetailEffect.ShowToast(message))
+    private fun resolvePinIdOrNotify(): Long? {
+        return resolvePinId() ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            null
+        }
     }
 
-    companion object {
-        private const val DEFAULT_AI_TONE = "없음"
-        private val FALLBACK_AI_TONE_OPTIONS = listOf(
-            "없음",
-            "한줄요약형",
-            "상황설명형",
-            "개선요청형",
-            "긴급요청형",
-            "불편호소형",
-        )
+    private fun showToast(message: String) {
+        _effect.tryEmit(PinDetailEffect.ShowToast(message))
     }
 }
 

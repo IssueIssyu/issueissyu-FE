@@ -419,5 +419,9 @@ fun Pin.supportsHomeEdit(): Boolean {
 
 fun Pin.canEditBy(userId: String? = null): Boolean {
     if (communityPostId != null) return false
-    return isMine==true
+    if (isMine != true) return false
+    if (userId.isNullOrBlank()) return true
+    val authorId = author?.id?.takeIf { it.isNotBlank() }
+        ?: (detail as? AuthoredPinDetail)?.writer?.id?.takeIf { it.isNotBlank() }
+    return authorId == null || authorId == userId
 }
