@@ -15,7 +15,6 @@ import com.issueissyu.fe.data.remote.dto.request.auth.AuthLocalRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.NaverLoginRequest
 import com.issueissyu.fe.data.remote.dto.request.auth.TermRequest
 import com.issueissyu.fe.data.remote.dto.response.auth.OnboardingResponse
-import com.issueissyu.fe.domain.auth.AccountAlreadyLinkedException
 import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
 import com.issueissyu.fe.domain.auth.RefreshTokenUnauthorizedException
 import com.issueissyu.fe.domain.model.auth.AuthUser
@@ -42,14 +41,6 @@ class AuthRepositoryImpl @Inject constructor(
 
     companion object {
         private const val TAG = "AuthRepository"
-    }
-
-    private fun isAlreadyLinkedLinkMessage(code: String, message: String): Boolean {
-        if (code == "LOGIN_LINK_409" || code == "LOGIN_LINK_409_1" || code == "LOGIN_LINK_409_2") {
-            return true
-        }
-        val m = message
-        return m.contains("이미") && (m.contains("연동") || m.contains("연결"))
     }
 
     private fun safeMessage(rawMessage: String?, fallback: String): String {
@@ -667,21 +658,39 @@ class AuthRepositoryImpl @Inject constructor(
             val failMessage = response.message.ifBlank { "로그인 연동에 실패했습니다." }
             when (response.code) {
                 "LOGIN_LINK_200" -> persistLinkedSession()
-                "LOGIN_LINK_400" ->
-                    if (isAlreadyLinkedLinkMessage(response.code, failMessage)) {
-                        Result.failure(AccountAlreadyLinkedException(failMessage))
-                    } else {
-                        Result.failure(Exception(failMessage))
-                    }
+                "LOGIN_LINK_400_1" ->
+                    Result.failure(
+                        Exception(
+                            safeMessage(
+                                response.message,
+                                "해당 전화번호로 가입된 기존 계정이 없습니다.",
+                            ),
+                        ),
+                    )
+                "LOGIN_LINK_400_2" ->
+                    Result.failure(
+                        Exception(
+                            safeMessage(
+                                response.message,
+                                "연동 대상이 현재 계정과 동일합니다.",
+                            ),
+                        ),
+                    )
+                "LOGIN_LINK_400_3" ->
+                    Result.failure(
+                        Exception(
+                            safeMessage(
+                                response.message,
+                                "해당 소셜 타입은 이미 연동되어 있습니다.",
+                            ),
+                        ),
+                    )
+                "LOGIN_LINK_400" -> Result.failure(Exception(failMessage))
                 else ->
                     if (response.isSuccess) {
                         persistLinkedSession()
                     } else {
-                        if (isAlreadyLinkedLinkMessage(response.code, failMessage)) {
-                            Result.failure(AccountAlreadyLinkedException(failMessage))
-                        } else {
-                            Result.failure(Exception(failMessage))
-                        }
+                        Result.failure(Exception(failMessage))
                     }
             }
         } catch (e: Exception) {

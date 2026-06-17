@@ -8,12 +8,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import android.widget.Toast
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -33,68 +35,17 @@ fun UserVerificationScreen(
     onNavigateToLogin: () -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val emailDomains = listOf("선택", "naver.com", "gmail.com", "daum.net", "직접 입력")
 
-    if (uiState.showLocalPhoneRegisteredDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissLocalPhoneRegisteredDialog() },
-            title = {
-                Text(
-                    text = "이미 가입된 번호예요",
-                    style = IssueTypo.Bold18,
-                )
-            },
-            text = {
-                Text(
-                    text = "이 번호는 이미 로컬(아이디) 계정으로 가입되어 있어요. " +
-                        "새로 가입하는 대신, 기존에 쓰던 아이디로 로그인해 주세요.",
-                    style = IssueTypo.Regular15.copy(color = Text),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.onLocalPhoneRegisteredGoToLogin(onNavigateToLogin) },
-                ) {
-                    Text("로그인으로", style = IssueTypo.Bold12.copy(color = BrandColor))
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is UserVerificationViewModel.UiEvent.ShowToast -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissLocalPhoneRegisteredDialog() }) {
-                    Text("닫기", style = IssueTypo.Regular12.copy(color = Gray_5))
-                }
-            },
-        )
-    }
-
-    if (uiState.showAlreadyLinkedDialog) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dismissAlreadyLinkedDialog() },
-            title = {
-                Text(
-                    text = "연동할 수 없어요",
-                    style = IssueTypo.Bold18,
-                )
-            },
-            text = {
-                Text(
-                    text = uiState.alreadyLinkedMessage
-                        ?: "이미 연동된 계정이에요. 로그인 화면에서 다시 시도해 주세요.",
-                    style = IssueTypo.Regular15.copy(color = Text),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.onAlreadyLinkedGoToLogin(onNavigateToLogin) },
-                ) {
-                    Text("로그인으로", style = IssueTypo.Bold12.copy(color = BrandColor))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.dismissAlreadyLinkedDialog() }) {
-                    Text("닫기", style = IssueTypo.Regular12.copy(color = Gray_5))
-                }
-            },
-        )
+            }
+        }
     }
 
     if (uiState.showLinkCompletedDialog) {
@@ -129,18 +80,10 @@ fun UserVerificationScreen(
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "이 전화번호로 가입된 계정이 있습니다. 지금 로그인한 계정과 연동할까요?",
-                        style = IssueTypo.Regular15.copy(color = Text),
-                    )
-                    uiState.accountLinkError?.let { err ->
-                        Text(
-                            text = err,
-                            style = IssueTypo.Regular12.copy(color = Issue),
-                        )
-                    }
-                }
+                Text(
+                    text = "이 전화번호로 가입된 계정이 있습니다. 지금 로그인한 계정과 연동할까요?",
+                    style = IssueTypo.Regular15.copy(color = Text),
+                )
             },
             confirmButton = {
                 TextButton(
