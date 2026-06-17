@@ -32,7 +32,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -56,7 +55,7 @@ fun Dialog(
     val messageMaxHeight = (configuration.screenHeightDp * 0.25f).dp
     val dialogMaxWidth = (configuration.screenWidthDp * 0.92f).dp
 
-    Dialog(onDismissRequest = onDismiss) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier
