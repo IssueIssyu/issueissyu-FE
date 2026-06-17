@@ -39,6 +39,11 @@ import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.suiteFontFamily
 
+private val termLocationPermissions = arrayOf(
+    Manifest.permission.ACCESS_FINE_LOCATION,
+    Manifest.permission.ACCESS_COARSE_LOCATION,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TermScreen(
@@ -49,15 +54,13 @@ fun TermScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val onAgreeNavigate = rememberUpdatedState(onAgreeClick)
+
     fun hasLocationPermission(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        return termLocationPermissions.any { permission ->
+            ContextCompat.checkSelfPermission(context, permission) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
     }
 
     fun hasNotificationPermission(): Boolean {
@@ -68,17 +71,42 @@ fun TermScreen(
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
     }
 
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { permissions ->
-        val granted = permissions.values.any { it }
-        viewModel.onLocationAgreementChanged(granted)
-    }
+    var pendingNotificationPermission by remember { mutableStateOf(false) }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        viewModel.onMarketingAgreementChanged(granted)
+    ) {
+        onAgreeNavigate.value()
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) {
+        if (pendingNotificationPermission) {
+            pendingNotificationPermission = false
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            onAgreeNavigate.value()
+        }
+    }
+
+    fun runOptionalPermissionFlow(
+        requestLocationPermission: Boolean,
+        requestNotificationPermission: Boolean,
+    ) {
+        val needLocation = requestLocationPermission && !hasLocationPermission()
+        val needNotification = requestNotificationPermission && !hasNotificationPermission()
+
+        when {
+            needLocation -> {
+                pendingNotificationPermission = needNotification
+                locationPermissionLauncher.launch(termLocationPermissions)
+            }
+            needNotification -> {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            else -> onAgreeNavigate.value()
+        }
     }
 
     LaunchedEffect(uiState.submitError) {
@@ -100,12 +128,16 @@ fun TermScreen(
         },
         bottomBar = {
             CommonButton(
-                onClick = { viewModel.submitTerms(onAgreeClick) },
-                modifier =Modifier
+                onClick = {
+                    viewModel.submitTerms { requestLocation, requestNotification ->
+                        runOptionalPermissionFlow(requestLocation, requestNotification)
+                    }
+                },
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(31.dp, 45.dp),
                 text = "동의",
-                isEnabled = uiState.isServiceAgreed && uiState.isPrivacyAgreed && !uiState.isSubmitting
+                isEnabled = uiState.isServiceAgreed && uiState.isPrivacyAgreed,
             )
         },
         containerColor = Color.White
@@ -118,18 +150,15 @@ fun TermScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(32.dp)
         ) {
-            // Logo
             Image(
                 painterResource(R.drawable.img_logo_circle),
                 contentDescription = "로고",
                 modifier = Modifier.size(130.dp)
-
             )
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Title
                 Text(
                     text = "환영합니다!",
                     style = IssueTypo.Bold18.copy(fontSize = 22.sp)
@@ -142,35 +171,12 @@ fun TermScreen(
                     style = IssueTypo.Regular16.copy(color = Gray_5),
                     textAlign = TextAlign.Center
                 )
-
             }
 
-            //전체 동의
             TermsCheckboxItem(
                 text = "전체 동의",
                 isChecked = uiState.isAllAgreed,
-                onCheckedChange = { checked ->
-                    if (!checked) {
-                        viewModel.onAllAgreementChanged(false)
-                    } else {
-                        viewModel.onAllAgreementChanged(true)
-                        if (hasLocationPermission()) {
-                            viewModel.onLocationAgreementChanged(true)
-                        } else {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                ),
-                            )
-                        }
-                        if (hasNotificationPermission()) {
-                            viewModel.onMarketingAgreementChanged(true)
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    }
-                },
+                onCheckedChange = viewModel::onAllAgreementChanged,
                 labelType = null,
                 showArrow = false,
                 modifier = Modifier
@@ -182,7 +188,6 @@ fun TermScreen(
                     .padding(10.dp)
             )
 
-            // Individual Terms
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -206,19 +211,7 @@ fun TermScreen(
                 TermsCheckboxItem(
                     text = "위치기반 서비스 이용약관 동의",
                     isChecked = uiState.isLocationAgreed,
-                    onCheckedChange = { checked ->
-                        if (!checked) return@TermsCheckboxItem
-                        if (hasLocationPermission()) {
-                            viewModel.onLocationAgreementChanged(true)
-                        } else {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                ),
-                            )
-                        }
-                    },
+                    onCheckedChange = { viewModel.onLocationChanged(it) },
                     labelType = LabelType.OPTIONAL,
                     onArrowClick = { onTermsDetailClick(TermsType.LOCATION) }
                 )
@@ -226,16 +219,7 @@ fun TermScreen(
                 TermsCheckboxItem(
                     text = "푸시 알림 수신 동의",
                     isChecked = uiState.isMarketingAgreed,
-                    onCheckedChange = { checked ->
-                        if (!checked) return@TermsCheckboxItem
-                        if (hasNotificationPermission()) {
-                            viewModel.onMarketingAgreementChanged(true)
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            viewModel.onMarketingAgreementChanged(true)
-                        }
-                    },
+                    onCheckedChange = { viewModel.onMarketingChanged(it) },
                     labelType = LabelType.OPTIONAL,
                     showArrow = false
                 )
@@ -244,7 +228,6 @@ fun TermScreen(
     }
 }
 
-//약관 동의 체크 박스
 @Composable
 fun TermsCheckboxItem(
     text: String,
@@ -259,7 +242,6 @@ fun TermsCheckboxItem(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Checkbox
         Checkbox(
             checked = isChecked,
             onCheckedChange = onCheckedChange,
@@ -271,17 +253,16 @@ fun TermsCheckboxItem(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-
         Row(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically
         ) {
             labelType?.let {
-                val labelText = when(it){
+                val labelText = when (it) {
                     LabelType.REQUIRED -> "(필수)"
                     LabelType.OPTIONAL -> "(선택)"
                 }
-                val labelColor = when(it){
+                val labelColor = when (it) {
                     LabelType.REQUIRED -> Issue
                     LabelType.OPTIONAL -> Gray_5
                 }
@@ -289,22 +270,21 @@ fun TermsCheckboxItem(
                 Text(
                     text = "$labelText ",
                     fontFamily = suiteFontFamily,
-                    fontWeight= FontWeight.Medium,
+                    fontWeight = FontWeight.Medium,
                     fontSize = 16.sp,
                     color = labelColor
-                    )
+                )
             }
 
             Text(
                 text = text,
                 fontFamily = suiteFontFamily,
-                fontSize = if(labelType == null) 18.sp else 14.sp,
-                fontWeight = if(labelType == null) FontWeight.ExtraBold else FontWeight.Bold,
+                fontSize = if (labelType == null) 18.sp else 14.sp,
+                fontWeight = if (labelType == null) FontWeight.ExtraBold else FontWeight.Bold,
                 color = Text
             )
         }
 
-        // Arrow Icon
         if (showArrow && labelType != null) {
             IconButton(onClick = onArrowClick) {
                 Icon(
@@ -325,9 +305,8 @@ enum class TermsType {
     SERVICE, PRIVACY, LOCATION
 }
 
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun TermScreenPreview(){
+fun TermScreenPreview() {
     TermScreen()
 }

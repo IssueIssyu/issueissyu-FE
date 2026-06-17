@@ -17,7 +17,6 @@ data class TermUiState(
     val isPrivacyAgreed: Boolean = false,
     val isLocationAgreed: Boolean = false,
     val isMarketingAgreed: Boolean = false,
-    val isSubmitting: Boolean = false,
     val submitError: String? = null,
 )
 
@@ -33,12 +32,14 @@ class TermViewModel @Inject constructor(
         _uiState.update { it.copy(submitError = null) }
     }
 
-    fun submitTerms(onSuccess: () -> Unit) {
+    fun submitTerms(
+        onSuccess: (requestLocationPermission: Boolean, requestNotificationPermission: Boolean) -> Unit,
+    ) {
         val s = _uiState.value
-        if (!s.isServiceAgreed || !s.isPrivacyAgreed || s.isSubmitting) return
+        if (!s.isServiceAgreed || !s.isPrivacyAgreed) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmitting = true, submitError = null) }
+            _uiState.update { it.copy(submitError = null) }
 
             authRepository.submitTermsAgreement(
                 serviceTerm = s.isServiceAgreed,
@@ -47,15 +48,11 @@ class TermViewModel @Inject constructor(
                 marketingTerm = s.isMarketingAgreed,
             ).fold(
                 onSuccess = {
-                    _uiState.update { it.copy(isSubmitting = false) }
-                    onSuccess()
+                    onSuccess(s.isLocationAgreed, s.isMarketingAgreed)
                 },
                 onFailure = { e ->
                     _uiState.update {
-                        it.copy(
-                            isSubmitting = false,
-                            submitError = e.message ?: "약관 동의에 실패했습니다",
-                        )
+                        it.copy(submitError = e.message ?: "약관 동의에 실패했습니다")
                     }
                 },
             )
@@ -63,8 +60,8 @@ class TermViewModel @Inject constructor(
     }
 
     fun onAllAgreementChanged(checked: Boolean) {
-        if (!checked) {
-            _uiState.update {
+        _uiState.update {
+            if (!checked) {
                 it.copy(
                     isAllAgreed = false,
                     isServiceAgreed = false,
@@ -72,29 +69,25 @@ class TermViewModel @Inject constructor(
                     isLocationAgreed = false,
                     isMarketingAgreed = false,
                 )
+            } else {
+                it.copy(
+                    isAllAgreed = true,
+                    isServiceAgreed = true,
+                    isPrivacyAgreed = true,
+                    isLocationAgreed = true,
+                    isMarketingAgreed = true,
+                )
             }
-            return
         }
+    }
 
-        // 전체 동의 on: 필수는 즉시 체크, 선택은 권한 승인 결과에 따라 별도로 반영
-        _uiState.update { s ->
-            s.copy(
-                isServiceAgreed = true,
-                isPrivacyAgreed = true,
-            )
-        }
+    fun onLocationChanged(checked: Boolean) {
+        _uiState.update { it.copy(isLocationAgreed = checked) }
         updateAllAgreementsState()
     }
 
-    /** 위치 선택 약관 체크 상태 갱신 (권한 승인 결과로만 true). */
-    fun onLocationAgreementChanged(agreed: Boolean) {
-        _uiState.update { it.copy(isLocationAgreed = agreed) }
-        updateAllAgreementsState()
-    }
-
-    /** 알림 선택 약관 체크 상태 갱신 (권한 승인 결과로만 true). */
-    fun onMarketingAgreementChanged(agreed: Boolean) {
-        _uiState.update { it.copy(isMarketingAgreed = agreed) }
+    fun onMarketingChanged(checked: Boolean) {
+        _uiState.update { it.copy(isMarketingAgreed = checked) }
         updateAllAgreementsState()
     }
 
