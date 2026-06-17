@@ -2470,16 +2470,18 @@ private fun LandingIssueDetailGuidePage(
 
         LandingIssueDetailHighlight(
             cutoutBounds = if (showActionGuide) {
+                val currentGoNowBounds = goNowBounds
+                val currentPetitionBounds = petitionBounds
                 val mergedActionBounds = when {
-                    goNowBounds != null && petitionBounds != null -> {
+                    currentGoNowBounds != null && currentPetitionBounds != null -> {
                         Rect(
-                            left = kotlin.math.min(goNowBounds!!.left, petitionBounds!!.left),
-                            top = kotlin.math.min(goNowBounds!!.top, petitionBounds!!.top),
-                            right = kotlin.math.max(goNowBounds!!.right, petitionBounds!!.right),
-                            bottom = kotlin.math.max(goNowBounds!!.bottom, petitionBounds!!.bottom),
+                            left = kotlin.math.min(currentGoNowBounds.left, currentPetitionBounds.left),
+                            top = kotlin.math.min(currentGoNowBounds.top, currentPetitionBounds.top),
+                            right = kotlin.math.max(currentGoNowBounds.right, currentPetitionBounds.right),
+                            bottom = kotlin.math.max(currentGoNowBounds.bottom, currentPetitionBounds.bottom),
                         )
                     }
-                    else -> goNowBounds ?: petitionBounds
+                    else -> currentGoNowBounds ?: currentPetitionBounds
                 }
                 listOfNotNull(mergedActionBounds)
             } else {
@@ -2724,9 +2726,10 @@ private fun LandingStaticCommentItem(
 private fun LandingStaticCommentAction(
     @DrawableRes iconRes: Int,
     contentDescription: String,
+    modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(20.dp)
             .background(White, CircleShape),
         contentAlignment = Alignment.Center,
