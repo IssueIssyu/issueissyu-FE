@@ -25,6 +25,7 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.App">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -40,6 +41,16 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
+
+        <!-- 기본 알림 채널 ID -> channel_like -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="channel_like"/>
+
+        <!-- 기본 알림 아이콘 -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher"/>
     </application>
 
 </manifest>

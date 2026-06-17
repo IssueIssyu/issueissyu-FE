@@ -2,7 +2,7 @@ package com.issueissyu.fe.domain.repository
 
 import com.issueissyu.fe.domain.model.auth.AuthUser
 import com.issueissyu.fe.domain.model.auth.OnboardingProfile
-import com.issueissyu.fe.domain.model.TermsAgreementResult
+import com.issueissyu.fe.domain.model.notification.AlarmToggleState
 
 interface AuthRepository {
 
@@ -40,7 +40,7 @@ interface AuthRepository {
         privacyTerm: Boolean,
         locationTerm: Boolean,
         marketingTerm: Boolean,
-    ): Result<TermsAgreementResult>
+    ): Result<AlarmToggleState>
 
     //닉네임 중복 확인
     suspend fun checkNicknameAvailable(nickname: String): Result<Boolean>
