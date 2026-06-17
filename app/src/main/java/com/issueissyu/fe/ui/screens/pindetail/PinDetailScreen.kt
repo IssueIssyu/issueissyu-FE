@@ -49,13 +49,14 @@ import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinImageRef
-import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
 import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.components.RemainingQuotaDialog
+import com.issueissyu.fe.ui.components.toAiDraftConfirmDialogContent
+import com.issueissyu.fe.ui.components.toHomeEditConfirmDialogContent
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -188,8 +189,18 @@ fun PinDetailScreen(
                         homeEditExistingImages = uiState.homeEditExistingImages,
                         homeEditNewImageUris = uiState.homeEditNewImageUris,
                         homeEditMainImageKey = uiState.homeEditMainImageKey,
-                        isSubmittingHomeEdit = uiState.isSubmittingHomeEdit || uiState.isLoadingHomeEditQuota,
+                        isSubmittingHomeEdit = uiState.isSubmittingHomeEdit ||
+                            uiState.isLoadingHomeEditQuota ||
+                            uiState.isGeneratingHomeEditAiContent ||
+                            uiState.isLoadingHomeEditAiDraftQuota,
                         homeEditSubmitFailed = uiState.homeEditSubmitFailed,
+                        homeEditToneOptions = uiState.homeEditToneOptions,
+                        isLoadingHomeEditToneOptions = uiState.isLoadingHomeEditToneOptions,
+                        homeEditSelectedTone = uiState.homeEditSelectedTone,
+                        isGeneratingHomeEditAiContent = uiState.isGeneratingHomeEditAiContent,
+                        isLoadingHomeEditAiDraftQuota = uiState.isLoadingHomeEditAiDraftQuota,
+                        onHomeEditToneChange = viewModel::onHomeEditToneChange,
+                        onHomeEditAiDraftClick = viewModel::requestHomeEditAiDraft,
                         onHomeEditTitleChange = viewModel::onHomeEditTitleChange,
                         onHomeEditDescriptionChange = viewModel::onHomeEditDescriptionChange,
                         onHomeEditCancel = viewModel::cancelHomeEdit,
@@ -244,6 +255,17 @@ fun PinDetailScreen(
                             onConfirm = viewModel::confirmHomeEditSubmit,
                         )
                     }
+
+                    if (uiState.showHomeEditAiDraftConfirmDialog) {
+                        val dialogContent = uiState.homeEditAiDraftRateLimitQuota.toAiDraftConfirmDialogContent()
+                        RemainingQuotaDialog(
+                            title = dialogContent.title,
+                            countLabel = dialogContent.countLabel,
+                            description = dialogContent.description,
+                            onDismiss = viewModel::dismissHomeEditAiDraftConfirmDialog,
+                            onConfirm = viewModel::confirmHomeEditAiDraft,
+                        )
+                    }
                 }
             }
 
@@ -294,6 +316,13 @@ private fun PinDetailContent(
     onHomeEditExistingImageRemove: (String) -> Unit = {},
     onHomeEditNewImageRemove: (String) -> Unit = {},
     onHomeEditMainImageSelect: (String) -> Unit = {},
+    homeEditToneOptions: List<String> = emptyList(),
+    isLoadingHomeEditToneOptions: Boolean = false,
+    homeEditSelectedTone: String? = null,
+    isGeneratingHomeEditAiContent: Boolean = false,
+    isLoadingHomeEditAiDraftQuota: Boolean = false,
+    onHomeEditToneChange: (String) -> Unit = {},
+    onHomeEditAiDraftClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val tabs = buildList {
@@ -337,6 +366,13 @@ private fun PinDetailContent(
                 onEditExistingImageRemove = onHomeEditExistingImageRemove,
                 onEditNewImageRemove = onHomeEditNewImageRemove,
                 onEditMainImageSelect = onHomeEditMainImageSelect,
+                editToneOptions = homeEditToneOptions,
+                isLoadingEditToneOptions = isLoadingHomeEditToneOptions,
+                editSelectedTone = homeEditSelectedTone,
+                isGeneratingEditAiContent = isGeneratingHomeEditAiContent,
+                isLoadingEditAiDraftQuota = isLoadingHomeEditAiDraftQuota,
+                onEditToneChange = onHomeEditToneChange,
+                onEditAiDraftClick = onHomeEditAiDraftClick,
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -566,27 +602,6 @@ private fun PinDetailTab.label(): String = when (this) {
     PinDetailTab.HOME -> "홈"
     PinDetailTab.POST -> "포스트"
     PinDetailTab.RESOLUTION -> "해결하기"
-}
-
-private data class HomeEditConfirmDialogContent(
-    val title: String,
-    val countLabel: String?,
-    val description: String,
-)
-
-private fun PinEditRateLimitQuota?.toHomeEditConfirmDialogContent(): HomeEditConfirmDialogContent {
-    if (this == null || !enabled) {
-        return HomeEditConfirmDialogContent(
-            title = "이슈 핀 수정",
-            countLabel = null,
-            description = "이대로 수정하시겠습니까?",
-        )
-    }
-    return HomeEditConfirmDialogContent(
-        title = "남은 이슈 핀 수정 횟수",
-        countLabel = "$remainingCount/$dailyLimit",
-        description = "이슈 핀 수정은 정해진 일일 한도 내에서만 사용 가능합니다!",
-    )
 }
 
 @Preview(showBackground = true, heightDp = 900)

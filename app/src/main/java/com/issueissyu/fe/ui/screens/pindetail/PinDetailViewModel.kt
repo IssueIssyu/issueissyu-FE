@@ -29,6 +29,7 @@ import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.withHomeFallback
 import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.repository.BillingRepository
+import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.core.issue.IssueReliabilityPolling
 import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.domain.usecase.issue.GetIssueReliabilityUseCase
@@ -81,6 +82,13 @@ data class PinDetailUiState(
     val showHomeEditConfirmDialog: Boolean = false,
     val homeEditRateLimitQuota: PinEditRateLimitQuota? = null,
     val homeEditSubmitFailed: Boolean = false,
+    val homeEditToneOptions: List<String> = emptyList(),
+    val homeEditSelectedTone: String? = null,
+    val isLoadingHomeEditToneOptions: Boolean = false,
+    val isGeneratingHomeEditAiContent: Boolean = false,
+    val isLoadingHomeEditAiDraftQuota: Boolean = false,
+    val showHomeEditAiDraftConfirmDialog: Boolean = false,
+    val homeEditAiDraftRateLimitQuota: PinEditRateLimitQuota? = null,
 )
 
 data class PinDetailEmojiPickerUiState(
@@ -99,6 +107,7 @@ sealed interface PinDetailEffect {
 @HiltViewModel
 class PinDetailViewModel @Inject constructor(
     private val pinRepository: PinRepository,
+    private val issueRepository: IssueRepository,
     private val billingRepository: BillingRepository,
     private val getIssueReliabilityUseCase: GetIssueReliabilityUseCase,
     private val tokenManager: TokenManager,
@@ -168,6 +177,13 @@ class PinDetailViewModel @Inject constructor(
                     showHomeEditConfirmDialog = false,
                     homeEditRateLimitQuota = null,
                     homeEditSubmitFailed = false,
+                    homeEditToneOptions = emptyList(),
+                    homeEditSelectedTone = null,
+                    isLoadingHomeEditToneOptions = false,
+                    isGeneratingHomeEditAiContent = false,
+                    isLoadingHomeEditAiDraftQuota = false,
+                    showHomeEditAiDraftConfirmDialog = false,
+                    homeEditAiDraftRateLimitQuota = null,
                 )
             }
 
@@ -672,6 +688,35 @@ class PinDetailViewModel @Inject constructor(
                 selectedTab = PinDetailTab.HOME,
             )
         }
+        loadHomeEditToneTypes()
+    }
+
+    private fun loadHomeEditToneTypes() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingHomeEditToneOptions = true) }
+            issueRepository.getIssueToneTypes()
+                .onSuccess { tones ->
+                    val labels = tones.map { it.label }
+                    _uiState.update { state ->
+                        state.copy(
+                            homeEditToneOptions = labels,
+                            homeEditSelectedTone = state.homeEditSelectedTone?.takeIf { it in labels }
+                                ?: labels.firstOrNull(),
+                            isLoadingHomeEditToneOptions = false,
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { state ->
+                        state.copy(
+                            homeEditToneOptions = FALLBACK_AI_TONE_OPTIONS,
+                            homeEditSelectedTone = state.homeEditSelectedTone?.takeIf { it in FALLBACK_AI_TONE_OPTIONS }
+                                ?: DEFAULT_AI_TONE,
+                            isLoadingHomeEditToneOptions = false,
+                        )
+                    }
+                }
+        }
     }
 
     fun cancelHomeEdit() {
@@ -688,6 +733,13 @@ class PinDetailViewModel @Inject constructor(
                 showHomeEditConfirmDialog = false,
                 homeEditRateLimitQuota = null,
                 homeEditSubmitFailed = false,
+                homeEditToneOptions = emptyList(),
+                homeEditSelectedTone = null,
+                isLoadingHomeEditToneOptions = false,
+                isGeneratingHomeEditAiContent = false,
+                isLoadingHomeEditAiDraftQuota = false,
+                showHomeEditAiDraftConfirmDialog = false,
+                homeEditAiDraftRateLimitQuota = null,
             )
         }
     }
@@ -706,6 +758,101 @@ class PinDetailViewModel @Inject constructor(
     fun onHomeEditDescriptionChange(value: String) {
         if (!_uiState.value.isHomeEditing) return
         _uiState.update { it.copy(homeEditDescription = value) }
+    }
+
+    fun onHomeEditToneChange(value: String) {
+        if (!_uiState.value.isHomeEditing) return
+        _uiState.update { it.copy(homeEditSelectedTone = value) }
+    }
+
+    fun dismissHomeEditAiDraftConfirmDialog() {
+        val state = _uiState.value
+        if (state.isGeneratingHomeEditAiContent || state.isLoadingHomeEditAiDraftQuota) return
+        _uiState.update { it.copy(showHomeEditAiDraftConfirmDialog = false) }
+    }
+
+    fun requestHomeEditAiDraft() {
+        val state = _uiState.value
+        if (!state.isHomeEditing ||
+            state.isGeneratingHomeEditAiContent ||
+            state.isLoadingHomeEditAiDraftQuota
+        ) {
+            return
+        }
+
+        val title = state.homeEditTitle.trim()
+        val description = state.homeEditDescription.trim()
+        when {
+            title.isBlank() -> {
+                showToast("제목을 먼저 입력해주세요.")
+                return
+            }
+            description.isBlank() -> {
+                showToast("상세 설명을 먼저 입력해주세요.")
+                return
+            }
+        }
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingHomeEditAiDraftQuota = true) }
+            issueRepository.getIssueAiDraftQuota()
+                .onSuccess { quota ->
+                    if (quota.enabled && quota.remainingCount <= 0) {
+                        _uiState.update { it.copy(isLoadingHomeEditAiDraftQuota = false) }
+                        showToast("AI 글쓰기 일일 횟수를 초과했습니다.")
+                        return@launch
+                    }
+                    _uiState.update {
+                        it.copy(
+                            isLoadingHomeEditAiDraftQuota = false,
+                            homeEditAiDraftRateLimitQuota = quota,
+                            showHomeEditAiDraftConfirmDialog = true,
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isLoadingHomeEditAiDraftQuota = false) }
+                    showToast(error.message ?: "AI 글쓰기 제한 횟수 조회에 실패했습니다.")
+                }
+        }
+    }
+
+    fun confirmHomeEditAiDraft() {
+        val state = _uiState.value
+        if (!state.isHomeEditing || state.isGeneratingHomeEditAiContent) return
+
+        val pin = state.pin ?: run {
+            showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isGeneratingHomeEditAiContent = true,
+                    showHomeEditAiDraftConfirmDialog = false,
+                )
+            }
+            issueRepository.createIssueAiDraft(
+                title = state.homeEditTitle.trim(),
+                content = state.homeEditDescription.trim(),
+                tone = state.homeEditSelectedTone ?: DEFAULT_AI_TONE,
+                latitude = pin.coordinate.latitude,
+                longitude = pin.coordinate.longitude,
+            ).onSuccess { draft ->
+                _uiState.update {
+                    it.copy(
+                        homeEditTitle = draft.title?.takeIf { title -> title.isNotBlank() } ?: it.homeEditTitle,
+                        homeEditDescription = draft.content.orEmpty(),
+                        isGeneratingHomeEditAiContent = false,
+                        homeEditAiDraftRateLimitQuota = null,
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { it.copy(isGeneratingHomeEditAiContent = false) }
+                showToast(error.message ?: "AI 글쓰기에 실패했습니다.")
+            }
+        }
     }
 
     fun addHomeEditImageUris(uris: List<String>) {
@@ -1151,6 +1298,18 @@ class PinDetailViewModel @Inject constructor(
 
     private fun showToast(message: String) {
         _effect.tryEmit(PinDetailEffect.ShowToast(message))
+    }
+
+    companion object {
+        private const val DEFAULT_AI_TONE = "없음"
+        private val FALLBACK_AI_TONE_OPTIONS = listOf(
+            "없음",
+            "한줄요약형",
+            "상황설명형",
+            "개선요청형",
+            "긴급요청형",
+            "불편호소형",
+        )
     }
 }
 

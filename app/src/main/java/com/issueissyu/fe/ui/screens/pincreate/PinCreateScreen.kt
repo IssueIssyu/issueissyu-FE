@@ -44,11 +44,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
 import com.issueissyu.fe.domain.model.pin.PinCategory
-import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
+import com.issueissyu.fe.ui.components.IssueAiDraftButton
+import com.issueissyu.fe.ui.components.IssueToneSelectionSection
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.components.RemainingQuotaDialog
+import com.issueissyu.fe.ui.components.toAiDraftConfirmDialogContent
 import com.issueissyu.fe.ui.theme.Gray_1
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_4
@@ -200,7 +202,7 @@ private fun PinCreateContent(
             )
 
             if (category == PinCategory.ISSUE) {
-                ToneSelectionSection(
+                IssueToneSelectionSection(
                     toneOptions = uiState.toneOptions,
                     isLoading = uiState.isLoadingToneOptions,
                     selectedTone = uiState.selectedTone,
@@ -209,7 +211,7 @@ private fun PinCreateContent(
             }
 
             if (category == PinCategory.ISSUE) {
-                AiDraftButton(
+                IssueAiDraftButton(
                     isLoading = uiState.isGeneratingAiContent || uiState.isLoadingAiDraftQuota,
                     isEnabled = uiState.title.isNotBlank() &&
                         uiState.description.isNotBlank() &&
@@ -441,102 +443,6 @@ private fun LocationSection(
                 )
             }
         }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ToneSelectionSection(
-    toneOptions: List<String>,
-    isLoading: Boolean,
-    selectedTone: String?,
-    onToneChange: (String) -> Unit,
-) {
-    Column {
-        SectionLabel(text = "말투 설정")
-        if (isLoading && toneOptions.isEmpty()) {
-            Text(
-                text = "말투 목록 불러오는 중…",
-                style = IssueTypo.Regular12.copy(color = Gray_4),
-            )
-            return@Column
-        }
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            toneOptions.forEach { tone ->
-                ToneChip(
-                    label = tone,
-                    selected = selectedTone == tone,
-                    onClick = { onToneChange(tone) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AiDraftButton(
-    isLoading: Boolean,
-    isEnabled: Boolean,
-    loadingText: String,
-    onClick: () -> Unit,
-) {
-    CommonButton(
-        onClick = onClick,
-        text = if (isLoading) loadingText else "AI 글쓰기",
-        isEnabled = isEnabled,
-        textStyle = IssueTypo.Bold18.copy(fontSize = 16.sp),
-        modifier = Modifier.fillMaxWidth()
-    )
-}
-
-private data class AiDraftConfirmDialogContent(
-    val title: String,
-    val countLabel: String?,
-    val description: String,
-)
-
-private fun PinEditRateLimitQuota?.toAiDraftConfirmDialogContent(): AiDraftConfirmDialogContent {
-    if (this == null || !enabled) {
-        return AiDraftConfirmDialogContent(
-            title = "AI 글쓰기",
-            countLabel = null,
-            description = "이대로 AI 글쓰기를 진행하시겠습니까?",
-        )
-    }
-    return AiDraftConfirmDialogContent(
-        title = "남은 자동 글쓰기 횟수",
-        countLabel = "$remainingCount/$dailyLimit",
-        description = "자동 글쓰기는 정해진 일일 한도 내에서만 사용 가능합니다!",
-    )
-}
-
-@Composable
-private fun ToneChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    val background = if (selected) Orange else White
-    val borderColor = if (selected) Orange else Gray_4
-    val textColor = if (selected) White else Title
-
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(background)
-            .border(1.dp, borderColor, RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = IssueTypo.Regular15.copy(color = textColor)
-        )
     }
 }
 

@@ -55,6 +55,8 @@ import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.domain.model.pin.canEditBy
 import com.issueissyu.fe.ui.components.CommonTextField
+import com.issueissyu.fe.ui.components.IssueAiDraftButton
+import com.issueissyu.fe.ui.components.IssueToneSelectionSection
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_1
@@ -93,6 +95,13 @@ fun PinHomeTab(
     onEditExistingImageRemove: (String) -> Unit = {},
     onEditNewImageRemove: (String) -> Unit = {},
     onEditMainImageSelect: (String) -> Unit = {},
+    editToneOptions: List<String> = emptyList(),
+    isLoadingEditToneOptions: Boolean = false,
+    editSelectedTone: String? = null,
+    isGeneratingEditAiContent: Boolean = false,
+    isLoadingEditAiDraftQuota: Boolean = false,
+    onEditToneChange: (String) -> Unit = {},
+    onEditAiDraftClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val displayProfile = pin.detailDisplayProfile()
@@ -260,6 +269,31 @@ fun PinHomeTab(
                     }
                 }
             } else {
+                PinHomeEditSectionLabel(
+                    text = "사진",
+                    trailing = {
+                        Text(
+                            text = "${editExistingImages.size + editNewImageUris.size}/${PinImageUploadConstraints.MAX_COUNT}",
+                            style = IssueTypo.Regular12.copy(color = Gray_6),
+                        )
+                    },
+                )
+
+                PinHomeEditPhotoSection(
+                    existingImages = editExistingImages,
+                    newImageUris = editNewImageUris,
+                    mainImageKey = editMainImageKey,
+                    onPhotoAddClick = onEditPhotoAddClick,
+                    onExistingImageRemove = onEditExistingImageRemove,
+                    onNewImageRemove = onEditNewImageRemove,
+                    onSetMainImage = onEditMainImageSelect,
+                    showHeader = false,
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                PinHomeEditSectionLabel(text = "상세 설명")
+
                 CommonTextField(
                     value = editDescription,
                     onValueChange = onEditDescriptionChange,
@@ -270,20 +304,76 @@ fun PinHomeTab(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                if (issueDetail != null) {
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                PinHomeEditPhotoSection(
-                    existingImages = editExistingImages,
-                    newImageUris = editNewImageUris,
-                    mainImageKey = editMainImageKey,
-                    onPhotoAddClick = onEditPhotoAddClick,
-                    onExistingImageRemove = onEditExistingImageRemove,
-                    onNewImageRemove = onEditNewImageRemove,
-                    onSetMainImage = onEditMainImageSelect,
-                )
+                    PinHomeEditSectionLabel(
+                        text = "AI 글쓰기",
+                        description = "원하시는 말투를 누르면 상세 설명이 변경됩니다.",
+                    )
+
+                    IssueToneSelectionSection(
+                        toneOptions = editToneOptions,
+                        isLoading = isLoadingEditToneOptions,
+                        selectedTone = editSelectedTone,
+                        onToneChange = onEditToneChange,
+                        showTitle = false,
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    IssueAiDraftButton(
+                        isLoading = isGeneratingEditAiContent || isLoadingEditAiDraftQuota,
+                        isEnabled = editTitle.isNotBlank() &&
+                            editDescription.isNotBlank() &&
+                            !isSubmittingEdit &&
+                            !isGeneratingEditAiContent &&
+                            !isLoadingEditAiDraftQuota,
+                        loadingText = when {
+                            isGeneratingEditAiContent -> "AI 글 작성 중"
+                            isLoadingEditAiDraftQuota -> "확인 중"
+                            else -> "AI 글쓰기"
+                        },
+                        onClick = onEditAiDraftClick,
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
+        }
+    }
+}
+
+@Composable
+private fun PinHomeEditSectionLabel(
+    text: String,
+    trailing: (@Composable () -> Unit)? = null,
+    description: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 10.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = text,
+                style = IssueTypo.Regular18.copy(color = Title),
+            )
+            if (trailing != null) {
+                Spacer(modifier = Modifier.width(10.dp))
+                trailing()
+            }
+        }
+        description?.let {
+            Text(
+                text = it,
+                style = IssueTypo.Regular15.copy(color = Gray_5),
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -298,24 +388,20 @@ private fun PinHomeEditPhotoSection(
     onExistingImageRemove: (String) -> Unit,
     onNewImageRemove: (String) -> Unit,
     onSetMainImage: (String) -> Unit,
+    showHeader: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val totalCount = existingImages.size + newImageUris.size
-    Column(modifier = modifier) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 10.dp, end = 10.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (showHeader) {
+            PinHomeEditSectionLabel(
                 text = "사진",
-                style = IssueTypo.Regular18.copy(color = Title),
-                modifier = Modifier.weight(1f),
-            )
-            Text(
-                text = "$totalCount/${PinImageUploadConstraints.MAX_COUNT}",
-                style = IssueTypo.Regular12.copy(color = Gray_6),
+                trailing = {
+                    Text(
+                        text = "$totalCount/${PinImageUploadConstraints.MAX_COUNT}",
+                        style = IssueTypo.Regular12.copy(color = Gray_6),
+                    )
+                },
             )
         }
         FlowRow(
