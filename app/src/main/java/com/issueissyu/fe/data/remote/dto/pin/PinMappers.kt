@@ -1,6 +1,7 @@
 package com.issueissyu.fe.data.remote.dto.pin
 
 import com.issueissyu.fe.data.remote.dto.response.pin.PinCommentDto
+import com.issueissyu.fe.data.remote.dto.response.pin.CommunicationPinEditResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.IssuePinEditResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailPostResponse
@@ -111,6 +112,10 @@ fun PinDetailPostResponse.toPostSympathyContentOrNull(): PinPostSympathyContent?
 }
 
 fun PinDetailHomeResponse.toPinOrNull(
+    coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
+): Pin? = toPinDetailMappingSource().toPinOrNull(coordinate)
+
+fun CommunicationPinEditResponse.toPinOrNull(
     coordinate: PinCoordinate = PinCoordinate(latitude = 0.0, longitude = 0.0),
 ): Pin? = toPinDetailMappingSource().toPinOrNull(coordinate)
 
@@ -283,6 +288,32 @@ private fun IssuePinEditResponse.toPinDetailMappingSource(): PinDetailMappingSou
         isReported = isReported,
         isMine = isMine,
         communityId = communityId,
+    )
+}
+
+private fun CommunicationPinEditResponse.toPinDetailMappingSource(): PinDetailMappingSource {
+    return PinDetailMappingSource(
+        pinId = pinId,
+        pinType = pinType,
+        pinTitle = pinTitle,
+        pinContent = pinContent,
+        issuePinState = null,
+        pinDetailAddress = pinDetailAddress,
+        pinImageUrls = pinImageUrls,
+        likeCount = 0,
+        isLike = false,
+        pinUserId = null,
+        pinUserProfile = null,
+        pinUserNickname = null,
+        discount = null,
+        storeImageUrl = null,
+        isUpdated = true,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
+        viewCount = 0,
+        isReported = false,
+        isMine = true,
+        communityId = null,
     )
 }
 

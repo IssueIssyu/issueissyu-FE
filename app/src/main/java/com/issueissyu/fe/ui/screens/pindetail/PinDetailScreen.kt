@@ -95,8 +95,8 @@ fun PinDetailScreen(
     )
     resolutionProofPhotoPicker.PhotoSourceBottomSheet()
 
-    val homeEditPhotoCount = if (uiState.isHomeEditing) {
-        uiState.homeEditExistingImages.size + uiState.homeEditNewImageUris.size
+    val homeEditPhotoCount = if (uiState.homeEdit.isActive) {
+        uiState.homeEdit.photoCount
     } else {
         0
     }
@@ -183,22 +183,6 @@ fun PinDetailScreen(
                         onGoNowClick = viewModel::joinProblemSolver,
                         onPetitionClick = viewModel::joinPetition,
                         onConfirmResolverClick = viewModel::verifyProblemSolver,
-                        isHomeEditing = uiState.isHomeEditing,
-                        homeEditTitle = uiState.homeEditTitle,
-                        homeEditDescription = uiState.homeEditDescription,
-                        homeEditExistingImages = uiState.homeEditExistingImages,
-                        homeEditNewImageUris = uiState.homeEditNewImageUris,
-                        homeEditMainImageKey = uiState.homeEditMainImageKey,
-                        isSubmittingHomeEdit = uiState.isSubmittingHomeEdit ||
-                            uiState.isLoadingHomeEditQuota ||
-                            uiState.isGeneratingHomeEditAiContent ||
-                            uiState.isLoadingHomeEditAiDraftQuota,
-                        homeEditSubmitFailed = uiState.homeEditSubmitFailed,
-                        homeEditToneOptions = uiState.homeEditToneOptions,
-                        isLoadingHomeEditToneOptions = uiState.isLoadingHomeEditToneOptions,
-                        homeEditSelectedTone = uiState.homeEditSelectedTone,
-                        isGeneratingHomeEditAiContent = uiState.isGeneratingHomeEditAiContent,
-                        isLoadingHomeEditAiDraftQuota = uiState.isLoadingHomeEditAiDraftQuota,
                         onHomeEditToneChange = viewModel::onHomeEditToneChange,
                         onHomeEditAiDraftClick = viewModel::requestHomeEditAiDraft,
                         onHomeEditTitleChange = viewModel::onHomeEditTitleChange,
@@ -245,8 +229,8 @@ fun PinDetailScreen(
                         )
                     }
 
-                    if (uiState.showHomeEditConfirmDialog) {
-                        val dialogContent = uiState.homeEditRateLimitQuota.toHomeEditConfirmDialogContent()
+                    if (uiState.homeEdit.showConfirmDialog) {
+                        val dialogContent = uiState.homeEdit.rateLimitQuota.toHomeEditConfirmDialogContent()
                         RemainingQuotaDialog(
                             title = dialogContent.title,
                             countLabel = dialogContent.countLabel,
@@ -256,8 +240,8 @@ fun PinDetailScreen(
                         )
                     }
 
-                    if (uiState.showHomeEditAiDraftConfirmDialog) {
-                        val dialogContent = uiState.homeEditAiDraftRateLimitQuota.toAiDraftConfirmDialogContent()
+                    if (uiState.homeEdit.showAiDraftConfirmDialog) {
+                        val dialogContent = uiState.homeEdit.aiDraftRateLimitQuota.toAiDraftConfirmDialogContent()
                         RemainingQuotaDialog(
                             title = dialogContent.title,
                             countLabel = dialogContent.countLabel,
@@ -300,14 +284,6 @@ private fun PinDetailContent(
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
     onConfirmResolverClick: (Long) -> Unit,
-    isHomeEditing: Boolean = false,
-    homeEditTitle: String = "",
-    homeEditDescription: String = "",
-    homeEditExistingImages: List<PinImageRef> = emptyList(),
-    homeEditNewImageUris: List<String> = emptyList(),
-    homeEditMainImageKey: String? = null,
-    isSubmittingHomeEdit: Boolean = false,
-    homeEditSubmitFailed: Boolean = false,
     onHomeEditTitleChange: (String) -> Unit = {},
     onHomeEditDescriptionChange: (String) -> Unit = {},
     onHomeEditCancel: () -> Unit = {},
@@ -316,15 +292,15 @@ private fun PinDetailContent(
     onHomeEditExistingImageRemove: (String) -> Unit = {},
     onHomeEditNewImageRemove: (String) -> Unit = {},
     onHomeEditMainImageSelect: (String) -> Unit = {},
-    homeEditToneOptions: List<String> = emptyList(),
-    isLoadingHomeEditToneOptions: Boolean = false,
-    homeEditSelectedTone: String? = null,
-    isGeneratingHomeEditAiContent: Boolean = false,
-    isLoadingHomeEditAiDraftQuota: Boolean = false,
     onHomeEditToneChange: (String) -> Unit = {},
     onHomeEditAiDraftClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val homeEdit = uiState.homeEdit
+    val isSubmittingHomeEdit = homeEdit.isSubmitting ||
+        homeEdit.isLoadingQuota ||
+        homeEdit.isGeneratingAiContent ||
+        homeEdit.isLoadingAiDraftQuota
     val tabs = buildList {
         add(PinDetailTab.HOME)
         add(PinDetailTab.POST)
@@ -339,7 +315,7 @@ private fun PinDetailContent(
             tabs = tabs,
             selectedTab = effectiveTab,
             onSelectTab = onSelectTab,
-            enabled = !isHomeEditing,
+            enabled = !homeEdit.isActive,
         )
 
         when (effectiveTab) {
@@ -350,14 +326,14 @@ private fun PinDetailContent(
                 onDeleteClick = onDeleteClick,
                 onCommunityClick = onCommunityClick,
                 isDeleting = uiState.isDeleting,
-                isEditing = isHomeEditing,
-                editTitle = homeEditTitle,
-                editDescription = homeEditDescription,
-                editExistingImages = homeEditExistingImages,
-                editNewImageUris = homeEditNewImageUris,
-                editMainImageKey = homeEditMainImageKey,
+                isEditing = homeEdit.isActive,
+                editTitle = homeEdit.title,
+                editDescription = homeEdit.description,
+                editExistingImages = homeEdit.existingImages,
+                editNewImageUris = homeEdit.newImageUris,
+                editMainImageKey = homeEdit.mainImageKey,
                 isSubmittingEdit = isSubmittingHomeEdit,
-                showEditCancel = !homeEditSubmitFailed,
+                showEditCancel = !homeEdit.submitFailed,
                 onEditTitleChange = onHomeEditTitleChange,
                 onEditDescriptionChange = onHomeEditDescriptionChange,
                 onEditCancelClick = onHomeEditCancel,
@@ -366,11 +342,11 @@ private fun PinDetailContent(
                 onEditExistingImageRemove = onHomeEditExistingImageRemove,
                 onEditNewImageRemove = onHomeEditNewImageRemove,
                 onEditMainImageSelect = onHomeEditMainImageSelect,
-                editToneOptions = homeEditToneOptions,
-                isLoadingEditToneOptions = isLoadingHomeEditToneOptions,
-                editSelectedTone = homeEditSelectedTone,
-                isGeneratingEditAiContent = isGeneratingHomeEditAiContent,
-                isLoadingEditAiDraftQuota = isLoadingHomeEditAiDraftQuota,
+                editToneOptions = homeEdit.toneOptions,
+                isLoadingEditToneOptions = homeEdit.isLoadingToneOptions,
+                editSelectedTone = homeEdit.selectedTone,
+                isGeneratingEditAiContent = homeEdit.isGeneratingAiContent,
+                isLoadingEditAiDraftQuota = homeEdit.isLoadingAiDraftQuota,
                 onEditToneChange = onHomeEditToneChange,
                 onEditAiDraftClick = onHomeEditAiDraftClick,
                 modifier = Modifier.fillMaxSize(),

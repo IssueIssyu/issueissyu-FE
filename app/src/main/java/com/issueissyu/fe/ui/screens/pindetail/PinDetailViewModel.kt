@@ -11,7 +11,6 @@ import com.issueissyu.fe.domain.model.pin.PinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinComment
-import com.issueissyu.fe.domain.model.pin.PinImageRef
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.PinSolveInfo
@@ -22,16 +21,21 @@ import com.issueissyu.fe.domain.model.pin.ProblemSolverParticipantInfo
 import com.issueissyu.fe.domain.model.issue.IssueReliability
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
-import com.issueissyu.fe.domain.model.pin.UpdateIssuePinRequest
+import com.issueissyu.fe.core.constants.PinImageUploadConstraints
+import com.issueissyu.fe.core.issue.IssueReliabilityPolling
 import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
+import com.issueissyu.fe.domain.model.pin.PinHomeEditSubmitResult
+import com.issueissyu.fe.domain.model.pin.PinImageRef
+import com.issueissyu.fe.domain.model.pin.UpdatePinEditRequest
 import com.issueissyu.fe.domain.model.pin.canEditBy
+import com.issueissyu.fe.domain.model.pin.homeEditImageAttachments
+import com.issueissyu.fe.domain.model.pin.homeEditMainImageKey
+import com.issueissyu.fe.domain.model.pin.supportsHomeEdit
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.withHomeFallback
 import com.issueissyu.fe.domain.repository.PinRepository
 import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.domain.repository.IssueRepository
-import com.issueissyu.fe.core.issue.IssueReliabilityPolling
-import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.domain.usecase.issue.GetIssueReliabilityUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -50,6 +54,99 @@ enum class PinDetailTab {
     HOME,
     POST,
     RESOLUTION,
+}
+
+data class PinHomeEditUiState(
+    val isActive: Boolean = false,
+    val title: String = "",
+    val description: String = "",
+    val existingImages: List<PinImageRef> = emptyList(),
+    val newImageUris: List<String> = emptyList(),
+    val mainImageKey: String? = null,
+    val baselineExistingImages: List<PinImageRef> = emptyList(),
+    val baselineMainImageKey: String? = null,
+    val isSubmitting: Boolean = false,
+    val isLoadingQuota: Boolean = false,
+    val showConfirmDialog: Boolean = false,
+    val rateLimitQuota: PinEditRateLimitQuota? = null,
+    val submitFailed: Boolean = false,
+    val toneOptions: List<String> = emptyList(),
+    val selectedTone: String? = null,
+    val isLoadingToneOptions: Boolean = false,
+    val isGeneratingAiContent: Boolean = false,
+    val isLoadingAiDraftQuota: Boolean = false,
+    val showAiDraftConfirmDialog: Boolean = false,
+    val aiDraftRateLimitQuota: PinEditRateLimitQuota? = null,
+) {
+    val photoCount: Int get() = existingImages.size + newImageUris.size
+
+    fun toUpdateRequest(): UpdatePinEditRequest? {
+        val trimmedTitle = title.trim()
+        val trimmedDescription = description.trim()
+        if (trimmedTitle.isBlank() || trimmedDescription.isBlank()) return null
+        val mainKey = mainImageKey
+        return UpdatePinEditRequest(
+            title = trimmedTitle,
+            description = trimmedDescription,
+            existingImages = existingImages.map { image ->
+                image.copy(isMain = image.imageUrl == mainKey)
+            },
+            newImageUris = newImageUris,
+            mainNewImageUri = newImageUris.firstOrNull { it == mainKey },
+            baselineExistingImages = baselineExistingImages,
+            baselineMainImageKey = baselineMainImageKey,
+        )
+    }
+
+    fun cleared(quota: PinEditRateLimitQuota? = null) = PinHomeEditUiState(rateLimitQuota = quota)
+
+    fun openedFrom(pin: Pin): PinHomeEditUiState {
+        val attachments = pin.homeEditImageAttachments()
+        val mainKey = attachments.homeEditMainImageKey()
+        return copy(
+            isActive = true,
+            title = pin.title,
+            description = pin.description,
+            existingImages = attachments,
+            newImageUris = emptyList(),
+            mainImageKey = mainKey,
+            baselineExistingImages = attachments,
+            baselineMainImageKey = mainKey,
+            isSubmitting = false,
+            isLoadingQuota = false,
+            showConfirmDialog = false,
+            rateLimitQuota = null,
+            submitFailed = false,
+        )
+    }
+
+    fun withAddedImageUris(uris: List<String>): PinHomeEditUiState {
+        if (uris.isEmpty()) return this
+        val maxNew = (PinImageUploadConstraints.MAX_COUNT - existingImages.size).coerceAtLeast(0)
+        val merged = (newImageUris + uris).distinct().take(maxNew)
+        val resolvedMainKey = mainImageKey
+            ?: existingImages.homeEditMainImageKey()
+            ?: merged.firstOrNull()
+        return copy(newImageUris = merged, mainImageKey = resolvedMainKey)
+    }
+
+    fun withRemovedExistingImage(imageUrl: String): PinHomeEditUiState {
+        val remaining = existingImages.filterNot { it.imageUrl == imageUrl }
+        val resolvedMainKey = when (mainImageKey) {
+            imageUrl -> remaining.homeEditMainImageKey() ?: newImageUris.firstOrNull()
+            else -> mainImageKey
+        }
+        return copy(existingImages = remaining, mainImageKey = resolvedMainKey)
+    }
+
+    fun withRemovedNewImageUri(uri: String): PinHomeEditUiState {
+        val remaining = newImageUris.filterNot { it == uri }
+        val resolvedMainKey = when (mainImageKey) {
+            uri -> existingImages.homeEditMainImageKey() ?: remaining.firstOrNull()
+            else -> mainImageKey
+        }
+        return copy(newImageUris = remaining, mainImageKey = resolvedMainKey)
+    }
 }
 
 data class PinDetailUiState(
@@ -71,24 +168,7 @@ data class PinDetailUiState(
     val reliabilityReason: String? = null,
     val reliabilityStatus: IssueReliabilityStatus? = null,
     val errorMessage: String? = null,
-    val isHomeEditing: Boolean = false,
-    val homeEditTitle: String = "",
-    val homeEditDescription: String = "",
-    val homeEditExistingImages: List<PinImageRef> = emptyList(),
-    val homeEditNewImageUris: List<String> = emptyList(),
-    val homeEditMainImageKey: String? = null,
-    val isSubmittingHomeEdit: Boolean = false,
-    val isLoadingHomeEditQuota: Boolean = false,
-    val showHomeEditConfirmDialog: Boolean = false,
-    val homeEditRateLimitQuota: PinEditRateLimitQuota? = null,
-    val homeEditSubmitFailed: Boolean = false,
-    val homeEditToneOptions: List<String> = emptyList(),
-    val homeEditSelectedTone: String? = null,
-    val isLoadingHomeEditToneOptions: Boolean = false,
-    val isGeneratingHomeEditAiContent: Boolean = false,
-    val isLoadingHomeEditAiDraftQuota: Boolean = false,
-    val showHomeEditAiDraftConfirmDialog: Boolean = false,
-    val homeEditAiDraftRateLimitQuota: PinEditRateLimitQuota? = null,
+    val homeEdit: PinHomeEditUiState = PinHomeEditUiState(),
 )
 
 data class PinDetailEmojiPickerUiState(
@@ -166,24 +246,7 @@ class PinDetailViewModel @Inject constructor(
                     reliabilityScore = null,
                     reliabilityReason = null,
                     reliabilityStatus = null,
-                    isHomeEditing = false,
-                    homeEditTitle = "",
-                    homeEditDescription = "",
-                    homeEditExistingImages = emptyList(),
-                    homeEditNewImageUris = emptyList(),
-                    homeEditMainImageKey = null,
-                    isSubmittingHomeEdit = false,
-                    isLoadingHomeEditQuota = false,
-                    showHomeEditConfirmDialog = false,
-                    homeEditRateLimitQuota = null,
-                    homeEditSubmitFailed = false,
-                    homeEditToneOptions = emptyList(),
-                    homeEditSelectedTone = null,
-                    isLoadingHomeEditToneOptions = false,
-                    isGeneratingHomeEditAiContent = false,
-                    isLoadingHomeEditAiDraftQuota = false,
-                    showHomeEditAiDraftConfirmDialog = false,
-                    homeEditAiDraftRateLimitQuota = null,
+                    homeEdit = PinHomeEditUiState(),
                 )
             }
 
@@ -273,7 +336,7 @@ class PinDetailViewModel @Inject constructor(
     private fun lookupEmojiImage(emojiId: Long): String? = emojiImageById[emojiId]
 
     fun selectTab(tab: PinDetailTab) {
-        if (_uiState.value.isHomeEditing) return
+        if (_uiState.value.homeEdit.isActive) return
         _uiState.update { it.copy(selectedTab = tab) }
         if (tab == PinDetailTab.POST) {
             resolvePinId()?.let { pinId ->
@@ -652,8 +715,8 @@ class PinDetailViewModel @Inject constructor(
             showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
             return
         }
-        if (pin.detail !is IssuePinDetail) {
-            showToast("이슈 핀만 수정할 수 있습니다.")
+        if (!pin.supportsHomeEdit()) {
+            showToast("수정할 수 없는 핀 유형입니다.")
             return
         }
         if (!pin.canEditBy(currentUserId)) {
@@ -661,58 +724,45 @@ class PinDetailViewModel @Inject constructor(
             return
         }
 
-        val attachments = pin.imageAttachments.takeIf { it.isNotEmpty() }
-            ?: pin.imageUrls.mapIndexed { index, url ->
-                PinImageRef(
-                    pinImageId = 0,
-                    imageUrl = url,
-                    isMain = index == 0,
-                )
-            }
-        val mainKey = attachments.firstOrNull { it.isMain }?.imageUrl
-            ?: attachments.firstOrNull()?.imageUrl
-
         _uiState.update {
             it.copy(
-                isHomeEditing = true,
-                homeEditTitle = pin.title,
-                homeEditDescription = pin.description,
-                homeEditExistingImages = attachments,
-                homeEditNewImageUris = emptyList(),
-                homeEditMainImageKey = mainKey,
-                isSubmittingHomeEdit = false,
-                isLoadingHomeEditQuota = false,
-                showHomeEditConfirmDialog = false,
-                homeEditRateLimitQuota = null,
-                homeEditSubmitFailed = false,
+                homeEdit = it.homeEdit.openedFrom(pin),
                 selectedTab = PinDetailTab.HOME,
             )
         }
-        loadHomeEditToneTypes()
+        if (pin.detail is IssuePinDetail) {
+            loadHomeEditToneTypes()
+        }
     }
 
     private fun loadHomeEditToneTypes() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingHomeEditToneOptions = true) }
+            _uiState.update {
+                it.copy(homeEdit = it.homeEdit.copy(isLoadingToneOptions = true))
+            }
             issueRepository.getIssueToneTypes()
                 .onSuccess { tones ->
                     val labels = tones.map { it.label }
                     _uiState.update { state ->
                         state.copy(
-                            homeEditToneOptions = labels,
-                            homeEditSelectedTone = state.homeEditSelectedTone?.takeIf { it in labels }
-                                ?: labels.firstOrNull(),
-                            isLoadingHomeEditToneOptions = false,
+                            homeEdit = state.homeEdit.copy(
+                                toneOptions = labels,
+                                selectedTone = state.homeEdit.selectedTone?.takeIf { it in labels }
+                                    ?: labels.firstOrNull(),
+                                isLoadingToneOptions = false,
+                            ),
                         )
                     }
                 }
                 .onFailure {
                     _uiState.update { state ->
                         state.copy(
-                            homeEditToneOptions = FALLBACK_AI_TONE_OPTIONS,
-                            homeEditSelectedTone = state.homeEditSelectedTone?.takeIf { it in FALLBACK_AI_TONE_OPTIONS }
-                                ?: DEFAULT_AI_TONE,
-                            isLoadingHomeEditToneOptions = false,
+                            homeEdit = state.homeEdit.copy(
+                                toneOptions = FALLBACK_AI_TONE_OPTIONS,
+                                selectedTone = state.homeEdit.selectedTone?.takeIf { it in FALLBACK_AI_TONE_OPTIONS }
+                                    ?: DEFAULT_AI_TONE,
+                                isLoadingToneOptions = false,
+                            ),
                         )
                     }
                 }
@@ -720,68 +770,45 @@ class PinDetailViewModel @Inject constructor(
     }
 
     fun cancelHomeEdit() {
-        _uiState.update {
-            it.copy(
-                isHomeEditing = false,
-                homeEditTitle = "",
-                homeEditDescription = "",
-                homeEditExistingImages = emptyList(),
-                homeEditNewImageUris = emptyList(),
-                homeEditMainImageKey = null,
-                isSubmittingHomeEdit = false,
-                isLoadingHomeEditQuota = false,
-                showHomeEditConfirmDialog = false,
-                homeEditRateLimitQuota = null,
-                homeEditSubmitFailed = false,
-                homeEditToneOptions = emptyList(),
-                homeEditSelectedTone = null,
-                isLoadingHomeEditToneOptions = false,
-                isGeneratingHomeEditAiContent = false,
-                isLoadingHomeEditAiDraftQuota = false,
-                showHomeEditAiDraftConfirmDialog = false,
-                homeEditAiDraftRateLimitQuota = null,
-            )
-        }
+        _uiState.update { it.copy(homeEdit = PinHomeEditUiState()) }
     }
 
     fun dismissHomeEditConfirmDialog() {
-        val state = _uiState.value
-        if (state.isSubmittingHomeEdit || state.isLoadingHomeEditQuota) return
-        _uiState.update { it.copy(showHomeEditConfirmDialog = false) }
+        val homeEdit = _uiState.value.homeEdit
+        if (homeEdit.isSubmitting || homeEdit.isLoadingQuota) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(showConfirmDialog = false)) }
     }
 
     fun onHomeEditTitleChange(value: String) {
-        if (!_uiState.value.isHomeEditing) return
-        _uiState.update { it.copy(homeEditTitle = value) }
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(title = value)) }
     }
 
     fun onHomeEditDescriptionChange(value: String) {
-        if (!_uiState.value.isHomeEditing) return
-        _uiState.update { it.copy(homeEditDescription = value) }
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(description = value)) }
     }
 
     fun onHomeEditToneChange(value: String) {
-        if (!_uiState.value.isHomeEditing) return
-        _uiState.update { it.copy(homeEditSelectedTone = value) }
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(selectedTone = value)) }
     }
 
     fun dismissHomeEditAiDraftConfirmDialog() {
-        val state = _uiState.value
-        if (state.isGeneratingHomeEditAiContent || state.isLoadingHomeEditAiDraftQuota) return
-        _uiState.update { it.copy(showHomeEditAiDraftConfirmDialog = false) }
+        val homeEdit = _uiState.value.homeEdit
+        if (homeEdit.isGeneratingAiContent || homeEdit.isLoadingAiDraftQuota) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(showAiDraftConfirmDialog = false)) }
     }
 
     fun requestHomeEditAiDraft() {
         val state = _uiState.value
-        if (!state.isHomeEditing ||
-            state.isGeneratingHomeEditAiContent ||
-            state.isLoadingHomeEditAiDraftQuota
-        ) {
+        val homeEdit = state.homeEdit
+        if (!homeEdit.isActive || homeEdit.isGeneratingAiContent || homeEdit.isLoadingAiDraftQuota) {
             return
         }
 
-        val title = state.homeEditTitle.trim()
-        val description = state.homeEditDescription.trim()
+        val title = homeEdit.title.trim()
+        val description = homeEdit.description.trim()
         when {
             title.isBlank() -> {
                 showToast("제목을 먼저 입력해주세요.")
@@ -794,24 +821,32 @@ class PinDetailViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingHomeEditAiDraftQuota = true) }
+            _uiState.update {
+                it.copy(homeEdit = it.homeEdit.copy(isLoadingAiDraftQuota = true))
+            }
             issueRepository.getIssueAiDraftQuota()
                 .onSuccess { quota ->
                     if (quota.enabled && quota.remainingCount <= 0) {
-                        _uiState.update { it.copy(isLoadingHomeEditAiDraftQuota = false) }
+                        _uiState.update {
+                            it.copy(homeEdit = it.homeEdit.copy(isLoadingAiDraftQuota = false))
+                        }
                         showToast("AI 글쓰기 일일 횟수를 초과했습니다.")
                         return@launch
                     }
                     _uiState.update {
                         it.copy(
-                            isLoadingHomeEditAiDraftQuota = false,
-                            homeEditAiDraftRateLimitQuota = quota,
-                            showHomeEditAiDraftConfirmDialog = true,
+                            homeEdit = it.homeEdit.copy(
+                                isLoadingAiDraftQuota = false,
+                                aiDraftRateLimitQuota = quota,
+                                showAiDraftConfirmDialog = true,
+                            ),
                         )
                     }
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(isLoadingHomeEditAiDraftQuota = false) }
+                    _uiState.update {
+                        it.copy(homeEdit = it.homeEdit.copy(isLoadingAiDraftQuota = false))
+                    }
                     showToast(error.message ?: "AI 글쓰기 제한 횟수 조회에 실패했습니다.")
                 }
         }
@@ -819,7 +854,7 @@ class PinDetailViewModel @Inject constructor(
 
     fun confirmHomeEditAiDraft() {
         val state = _uiState.value
-        if (!state.isHomeEditing || state.isGeneratingHomeEditAiContent) return
+        if (!state.homeEdit.isActive || state.homeEdit.isGeneratingAiContent) return
 
         val pin = state.pin ?: run {
             showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
@@ -829,123 +864,114 @@ class PinDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                    isGeneratingHomeEditAiContent = true,
-                    showHomeEditAiDraftConfirmDialog = false,
+                    homeEdit = it.homeEdit.copy(
+                        isGeneratingAiContent = true,
+                        showAiDraftConfirmDialog = false,
+                    ),
                 )
             }
             issueRepository.createIssueAiDraft(
-                title = state.homeEditTitle.trim(),
-                content = state.homeEditDescription.trim(),
-                tone = state.homeEditSelectedTone ?: DEFAULT_AI_TONE,
+                title = state.homeEdit.title.trim(),
+                content = state.homeEdit.description.trim(),
+                tone = state.homeEdit.selectedTone ?: DEFAULT_AI_TONE,
                 latitude = pin.coordinate.latitude,
                 longitude = pin.coordinate.longitude,
             ).onSuccess { draft ->
                 _uiState.update {
                     it.copy(
-                        homeEditTitle = draft.title?.takeIf { title -> title.isNotBlank() } ?: it.homeEditTitle,
-                        homeEditDescription = draft.content.orEmpty(),
-                        isGeneratingHomeEditAiContent = false,
-                        homeEditAiDraftRateLimitQuota = null,
+                        homeEdit = it.homeEdit.copy(
+                            title = draft.title?.takeIf { title -> title.isNotBlank() } ?: it.homeEdit.title,
+                            description = draft.content.orEmpty(),
+                            isGeneratingAiContent = false,
+                            aiDraftRateLimitQuota = null,
+                        ),
                     )
                 }
             }.onFailure { error ->
-                _uiState.update { it.copy(isGeneratingHomeEditAiContent = false) }
+                _uiState.update {
+                    it.copy(homeEdit = it.homeEdit.copy(isGeneratingAiContent = false))
+                }
                 showToast(error.message ?: "AI 글쓰기에 실패했습니다.")
             }
         }
     }
 
     fun addHomeEditImageUris(uris: List<String>) {
-        if (!_uiState.value.isHomeEditing || uris.isEmpty()) return
+        if (!_uiState.value.homeEdit.isActive || uris.isEmpty()) return
         _uiState.update { state ->
-            val maxNew = (PinImageUploadConstraints.MAX_COUNT - state.homeEditExistingImages.size)
-                .coerceAtLeast(0)
-            val merged = (state.homeEditNewImageUris + uris).distinct().take(maxNew)
-            val mainKey = state.homeEditMainImageKey
-                ?: state.homeEditExistingImages.firstOrNull { it.isMain }?.imageUrl
-                ?: state.homeEditExistingImages.firstOrNull()?.imageUrl
-                ?: merged.firstOrNull()
-            state.copy(
-                homeEditNewImageUris = merged,
-                homeEditMainImageKey = mainKey,
-            )
+            state.copy(homeEdit = state.homeEdit.withAddedImageUris(uris))
         }
     }
 
     fun removeHomeEditExistingImage(imageUrl: String) {
-        if (!_uiState.value.isHomeEditing) return
+        if (!_uiState.value.homeEdit.isActive) return
         _uiState.update { state ->
-            val remaining = state.homeEditExistingImages.filterNot { it.imageUrl == imageUrl }
-            val mainKey = when (state.homeEditMainImageKey) {
-                imageUrl -> remaining.firstOrNull()?.imageUrl ?: state.homeEditNewImageUris.firstOrNull()
-                else -> state.homeEditMainImageKey
-            }
-            state.copy(
-                homeEditExistingImages = remaining,
-                homeEditMainImageKey = mainKey,
-            )
+            state.copy(homeEdit = state.homeEdit.withRemovedExistingImage(imageUrl))
         }
     }
 
     fun removeHomeEditNewImageUri(uri: String) {
-        if (!_uiState.value.isHomeEditing) return
+        if (!_uiState.value.homeEdit.isActive) return
         _uiState.update { state ->
-            val remaining = state.homeEditNewImageUris.filterNot { it == uri }
-            val mainKey = when (state.homeEditMainImageKey) {
-                uri -> state.homeEditExistingImages.firstOrNull { it.isMain }?.imageUrl
-                    ?: state.homeEditExistingImages.firstOrNull()?.imageUrl
-                    ?: remaining.firstOrNull()
-                else -> state.homeEditMainImageKey
-            }
-            state.copy(
-                homeEditNewImageUris = remaining,
-                homeEditMainImageKey = mainKey,
-            )
+            state.copy(homeEdit = state.homeEdit.withRemovedNewImageUri(uri))
         }
     }
 
     fun setHomeEditMainImage(key: String) {
-        if (!_uiState.value.isHomeEditing) return
-        _uiState.update { it.copy(homeEditMainImageKey = key) }
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(mainImageKey = key)) }
     }
 
     fun requestHomeEditSubmit() {
         val state = _uiState.value
-        if (!state.isHomeEditing || state.isSubmittingHomeEdit || state.isLoadingHomeEditQuota) return
+        val homeEdit = state.homeEdit
+        if (!homeEdit.isActive || homeEdit.isSubmitting || homeEdit.isLoadingQuota) return
 
-        val title = state.homeEditTitle.trim()
-        val description = state.homeEditDescription.trim()
-        if (title.isBlank()) {
+        if (homeEdit.title.trim().isBlank()) {
             showToast("제목을 입력해주세요.")
             return
         }
-        if (description.isBlank()) {
+        if (homeEdit.description.trim().isBlank()) {
             showToast("상세 설명을 입력해주세요.")
             return
         }
 
         val pinId = resolvePinId() ?: return
+        val pin = state.pin ?: return
+
+        if (pin.category == PinCategory.COMMUNICATION) {
+            confirmHomeEditSubmit()
+            return
+        }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingHomeEditQuota = true) }
+            _uiState.update {
+                it.copy(homeEdit = it.homeEdit.copy(isLoadingQuota = true))
+            }
             pinRepository.getIssuePinEditQuota(pinId)
                 .onSuccess { quota ->
                     homeEditQuotaByPinId[pinId] = quota
                     if (quota.enabled && quota.remainingCount <= 0) {
-                        _uiState.update { it.copy(isLoadingHomeEditQuota = false) }
+                        _uiState.update {
+                            it.copy(homeEdit = it.homeEdit.copy(isLoadingQuota = false))
+                        }
                         showToast("이 핀의 일일 수정 횟수를 초과했습니다.")
                         return@launch
                     }
                     _uiState.update {
                         it.copy(
-                            isLoadingHomeEditQuota = false,
-                            homeEditRateLimitQuota = quota,
-                            showHomeEditConfirmDialog = true,
+                            homeEdit = it.homeEdit.copy(
+                                isLoadingQuota = false,
+                                rateLimitQuota = quota,
+                                showConfirmDialog = true,
+                            ),
                         )
                     }
                 }
                 .onFailure { error ->
-                    _uiState.update { it.copy(isLoadingHomeEditQuota = false) }
+                    _uiState.update {
+                        it.copy(homeEdit = it.homeEdit.copy(isLoadingQuota = false))
+                    }
                     showToast(error.message ?: "이슈 핀 수정 제한 횟수 조회에 실패했습니다.")
                 }
         }
@@ -953,63 +979,89 @@ class PinDetailViewModel @Inject constructor(
 
     fun confirmHomeEditSubmit() {
         val state = _uiState.value
-        if (!state.isHomeEditing || state.isSubmittingHomeEdit) return
+        val homeEdit = state.homeEdit
+        if (!homeEdit.isActive || homeEdit.isSubmitting) return
         val pinId = resolvePinId() ?: return
-
-        val title = state.homeEditTitle.trim()
-        val description = state.homeEditDescription.trim()
-        val mainKey = state.homeEditMainImageKey
-        val existingImages = state.homeEditExistingImages.map { image ->
-            image.copy(isMain = image.imageUrl == mainKey)
+        val pin = state.pin ?: return
+        val editRequest = homeEdit.toUpdateRequest() ?: run {
+            showToast("제목과 상세 설명을 입력해주세요.")
+            return
         }
-        val mainNewUri = state.homeEditNewImageUris.firstOrNull { it == mainKey }
 
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                    isSubmittingHomeEdit = true,
-                    showHomeEditConfirmDialog = false,
+                    homeEdit = it.homeEdit.copy(
+                        isSubmitting = true,
+                        showConfirmDialog = false,
+                    ),
                 )
             }
-            pinRepository.updateIssuePin(
+
+            pinRepository.updatePinHomeEdit(
                 pinId = pinId,
-                request = UpdateIssuePinRequest(
-                    title = title,
-                    description = description,
-                    existingImages = existingImages,
-                    newImageUris = state.homeEditNewImageUris,
-                    mainNewImageUri = mainNewUri,
-                ),
+                category = pin.category,
+                request = editRequest,
             ).onSuccess { result ->
-                val quota = result.rateLimitQuota
-                quota?.let { homeEditQuotaByPinId[pinId] = it }
-                _uiState.update {
-                    it.copy(
-                        isHomeEditing = false,
-                        isSubmittingHomeEdit = false,
-                        homeEditTitle = "",
-                        homeEditDescription = "",
-                        homeEditExistingImages = emptyList(),
-                        homeEditNewImageUris = emptyList(),
-                        homeEditMainImageKey = null,
-                        showHomeEditConfirmDialog = false,
-                        homeEditRateLimitQuota = quota,
-                        homeEditSubmitFailed = false,
-                    )
+                when (result) {
+                    is PinHomeEditSubmitResult.Issue -> {
+                        result.result.rateLimitQuota?.let { quota ->
+                            homeEditQuotaByPinId[pinId] = quota
+                        }
+                        finishHomeEditSuccess(
+                            pinId = pinId,
+                            isCommunicationPin = false,
+                            rateLimitQuota = result.result.rateLimitQuota,
+                        )
+                    }
+
+                    is PinHomeEditSubmitResult.Communication -> {
+                        finishHomeEditSuccess(pinId, isCommunicationPin = true)
+                    }
                 }
-                refreshPinDetail(pinId)
-                showToast("이슈 핀이 수정되었습니다.")
             }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isSubmittingHomeEdit = false,
-                        showHomeEditConfirmDialog = false,
-                        homeEditSubmitFailed = true,
-                    )
-                }
-                showToast(error.message ?: "이슈 핀 수정에 실패했습니다.")
+                finishHomeEditFailure(
+                    error = error,
+                    isCommunicationPin = pin.category == PinCategory.COMMUNICATION,
+                )
             }
         }
+    }
+
+    private fun finishHomeEditSuccess(
+        pinId: Long,
+        isCommunicationPin: Boolean,
+        rateLimitQuota: PinEditRateLimitQuota? = null,
+    ) {
+        _uiState.update {
+            it.copy(homeEdit = it.homeEdit.cleared(quota = rateLimitQuota))
+        }
+        refreshPinDetail(pinId)
+        showToast(
+            if (isCommunicationPin) "소통 핀이 수정되었습니다." else "이슈 핀이 수정되었습니다.",
+        )
+    }
+
+    private fun finishHomeEditFailure(
+        error: Throwable,
+        isCommunicationPin: Boolean,
+    ) {
+        _uiState.update {
+            it.copy(
+                homeEdit = it.homeEdit.copy(
+                    isSubmitting = false,
+                    showConfirmDialog = false,
+                    submitFailed = true,
+                ),
+            )
+        }
+        showToast(
+            error.message ?: if (isCommunicationPin) {
+                "소통 핀 수정에 실패했습니다."
+            } else {
+                "이슈 핀 수정에 실패했습니다."
+            },
+        )
     }
 
     fun submitHomeEdit() {

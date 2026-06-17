@@ -354,14 +354,6 @@ data class UpdatePinRequest(
     val imageUrls: List<String> = emptyList()
 )
 
-data class UpdateIssuePinRequest(
-    val title: String,
-    val description: String,
-    val existingImages: List<PinImageRef> = emptyList(),
-    val newImageUris: List<String> = emptyList(),
-    val mainNewImageUri: String? = null,
-)
-
 data class PinEditRateLimitQuota(
     val enabled: Boolean,
     val dailyLimit: Int,
@@ -382,6 +374,48 @@ data class PinDetailHomeResult(
     val pin: Pin,
     val editRateLimitQuota: PinEditRateLimitQuota?,
 )
+
+data class UpdatePinEditRequest(
+    val title: String,
+    val description: String,
+    val existingImages: List<PinImageRef> = emptyList(),
+    val newImageUris: List<String> = emptyList(),
+    val mainNewImageUri: String? = null,
+    val baselineExistingImages: List<PinImageRef> = emptyList(),
+    val baselineMainImageKey: String? = null,
+)
+
+sealed class PinHomeEditSubmitResult {
+    data class Issue(val result: IssuePinEditResult) : PinHomeEditSubmitResult()
+
+    data class Communication(val pin: Pin) : PinHomeEditSubmitResult()
+}
+
+fun UpdatePinEditRequest.hasImageChanges(): Boolean {
+    if (newImageUris.isNotEmpty()) return true
+    val baselineUrls = baselineExistingImages.map { it.imageUrl }
+    val currentUrls = existingImages.map { it.imageUrl }
+    if (baselineUrls != currentUrls) return true
+    return baselineExistingImages.homeEditMainImageKey(baselineMainImageKey) !=
+        existingImages.homeEditMainImageKey()
+}
+
+fun Pin.homeEditImageAttachments(): List<PinImageRef> {
+    return imageAttachments.takeIf { it.isNotEmpty() }
+        ?: imageUrls.mapIndexed { index, url ->
+            PinImageRef(pinImageId = 0, imageUrl = url, isMain = index == 0)
+        }
+}
+
+fun List<PinImageRef>.homeEditMainImageKey(explicitKey: String? = null): String? {
+    return explicitKey?.takeIf { key -> any { it.imageUrl == key } }
+        ?: firstOrNull { it.isMain }?.imageUrl
+        ?: firstOrNull()?.imageUrl
+}
+
+fun Pin.supportsHomeEdit(): Boolean {
+    return detail is IssuePinDetail || detail is CommunicationPinDetail
+}
 
 fun Pin.canEditBy(userId: String? = null): Boolean {
     if (communityPostId != null) return false
