@@ -92,6 +92,7 @@ import com.naver.maps.map.NaverMap
 import com.naver.maps.map.CameraAnimation
 import com.naver.maps.map.CameraPosition
 import com.naver.maps.map.CameraUpdate
+import com.naver.maps.map.overlay.CircleOverlay
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
 import com.naver.maps.map.util.FusedLocationSource
@@ -108,6 +109,7 @@ private const val DEFAULT_MARKER_SCALE = 1.3f
 private const val SELECTED_MARKER_SCALE = 1.7f
 private const val SELECTED_MARKER_Z_INDEX = 3
 private const val CLUSTER_MARKER_Z_INDEX = 2
+private const val PIN_CREATION_AVAILABLE_RADIUS_METERS = 100.0
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
 const val MAP_FOCUS_USER_LOCATION_KEY = "map_focus_user_location"
@@ -280,6 +282,8 @@ fun MapScreen(
     val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
+    val currentLocation by viewModel.currentLocation.collectAsStateWithLifecycle()
+    val isInCertifiedNeighborhood by viewModel.isInCertifiedNeighborhood.collectAsStateWithLifecycle()
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId
     val context = LocalContext.current
@@ -319,6 +323,11 @@ fun MapScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
+    val pinCreationRangeOverlay = remember {
+        CircleOverlay().apply {
+            zIndex = -1
+        }
+    }
 
     val locationSource = remember(activity) {
         activity?.let {
@@ -329,6 +338,7 @@ fun MapScreen(
     DisposableEffect(Unit) {
         onDispose {
             locationCts?.cancel()
+            pinCreationRangeOverlay.map = null
         }
     }
 
@@ -526,6 +536,30 @@ fun MapScreen(
         locationSource?.let { map.locationSource = it }
         map.locationOverlay.isVisible = true
         map.locationTrackingMode = LocationTrackingMode.None
+    }
+
+    LaunchedEffect(
+        naverMapInstance,
+        isLocationSelectionMode,
+        currentLocation,
+        isInCertifiedNeighborhood,
+    ) {
+        val map = naverMapInstance
+        val location = currentLocation
+        val shouldShowPinCreationRange =
+            isLocationSelectionMode &&
+                location != null &&
+                isInCertifiedNeighborhood == false
+        if (map == null || !shouldShowPinCreationRange) {
+            pinCreationRangeOverlay.map = null
+            return@LaunchedEffect
+        }
+
+        pinCreationRangeOverlay.center = LatLng(location.latitude, location.longitude)
+        pinCreationRangeOverlay.radius = PIN_CREATION_AVAILABLE_RADIUS_METERS
+        pinCreationRangeOverlay.color = android.graphics.Color.argb(48, 255, 72, 0)
+        pinCreationRangeOverlay.outlineWidth = 0
+        pinCreationRangeOverlay.map = map
     }
 
     LaunchedEffect(Unit) {
