@@ -327,7 +327,14 @@ class UserVerificationViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(showLinkCompletedDialog = false) }
             exitOnboardingUseCase()
-            onNavigateToLogin()
+                .onSuccess { onNavigateToLogin() }
+                .onFailure { error ->
+                    _events.emit(
+                        UiEvent.ShowToast(
+                            error.message ?: "로그아웃에 실패했습니다.",
+                        ),
+                    )
+                }
         }
     }
 

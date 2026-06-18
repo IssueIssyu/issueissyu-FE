@@ -8,8 +8,9 @@ class ExitOnboardingUseCase @Inject constructor(
     private val authRepository: AuthRepository,
     private val onboardingSessionStore: OnboardingSessionStore,
 ) {
-    suspend operator fun invoke() {
-        authRepository.logout()
-        onboardingSessionStore.clearPendingProfile()
+    suspend operator fun invoke(): Result<Unit> {
+        return authRepository.logout().map {
+            onboardingSessionStore.clearPendingProfile()
+        }
     }
 }

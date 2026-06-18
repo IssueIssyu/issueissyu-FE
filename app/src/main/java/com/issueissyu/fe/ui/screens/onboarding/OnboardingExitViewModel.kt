@@ -27,6 +27,7 @@ class OnboardingExitViewModel @Inject constructor(
 
     sealed interface Effect {
         data object NavigateToLogin : Effect
+        data class ShowError(val message: String) : Effect
     }
 
     private val _uiState = MutableStateFlow(UiState())
@@ -49,12 +50,16 @@ class OnboardingExitViewModel @Inject constructor(
         if (_uiState.value.isExiting) return
         viewModelScope.launch {
             _uiState.update { it.copy(showConfirmDialog = false, isExiting = true) }
-            try {
-                exitOnboardingUseCase()
-                _effects.emit(Effect.NavigateToLogin)
-            } catch (_: Exception) {
-                _uiState.update { it.copy(isExiting = false) }
-            }
+            exitOnboardingUseCase()
+                .onSuccess { _effects.emit(Effect.NavigateToLogin) }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isExiting = false) }
+                    _effects.emit(
+                        Effect.ShowError(
+                            error.message ?: LOGOUT_ERROR_MESSAGE,
+                        ),
+                    )
+                }
         }
     }
 
@@ -69,5 +74,6 @@ class OnboardingExitViewModel @Inject constructor(
 
     companion object {
         private const val NAVIGATION_RESET_DELAY_MS = 500L
+        private const val LOGOUT_ERROR_MESSAGE = "로그아웃에 실패했습니다."
     }
 }

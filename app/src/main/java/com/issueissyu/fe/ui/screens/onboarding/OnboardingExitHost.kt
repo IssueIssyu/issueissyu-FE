@@ -15,12 +15,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +40,7 @@ fun OnboardingExitHost(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val onNavigateToLoginUpdated by rememberUpdatedState(onNavigateToLogin)
+    val context = LocalContext.current
 
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
@@ -45,6 +48,9 @@ fun OnboardingExitHost(
                 OnboardingExitViewModel.Effect.NavigateToLogin -> {
                     onNavigateToLoginUpdated()
                     viewModel.onNavigateToLoginDispatched()
+                }
+                is OnboardingExitViewModel.Effect.ShowError -> {
+                    Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
                 }
             }
         }
