@@ -58,6 +58,7 @@ import com.issueissyu.fe.ui.screens.map.PIN_CREATE_MAP_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.AlarmSettingScreen
 import com.issueissyu.fe.ui.screens.mypage.ChangeLocalScreen
 import com.issueissyu.fe.ui.screens.mypage.MyIssueScreen
+import com.issueissyu.fe.ui.screens.mypage.MySolverParticipationScreen
 import com.issueissyu.fe.ui.screens.mypage.MYPAGE_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
 import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
@@ -406,6 +407,9 @@ fun AppNavGraph(
                             MyPageEvent.NavigateToIssue -> {
                                 navController.navigate(AppDestinations.MyPage.MY_ISSUES_ROUTE)
                             }
+                            MyPageEvent.NavigateToSolverParticipation -> {
+                                navController.navigate(AppDestinations.MyPage.MY_SOLVER_PARTICIPATION_ROUTE)
+                            }
                             MyPageEvent.NavigateToSettingAlarm -> {
                                 navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
                             }
@@ -476,6 +480,26 @@ fun AppNavGraph(
                 removeTopPadding = true,
             ) {
                 MyIssueScreen(
+                    onBackClick = { navController.navigateUp() },
+                    onPinClick = { pinId ->
+                        pinId.toLongOrNull()?.let { id ->
+                            navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
+                                popUpTo(AppDestinations.TOWN_ROUTE) {
+                                    inclusive = true
+                                }
+                            }
+                        }
+                    },
+                )
+            }
+        }
+
+        composable(AppDestinations.MyPage.MY_SOLVER_PARTICIPATION_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                MySolverParticipationScreen(
                     onBackClick = { navController.navigateUp() },
                     onPinClick = { pinId ->
                         pinId.toLongOrNull()?.let { id ->
