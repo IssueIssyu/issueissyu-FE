@@ -36,6 +36,7 @@ import com.issueissyu.fe.ui.theme.White
 fun CompleteScreen(
     onNavigateToMain: () -> Unit,
     onNavigateToLanding: () -> Unit,
+    onSwitchAccountClick: (() -> Unit)? = null,
 ) {
     Box(
         modifier = Modifier
@@ -44,7 +45,11 @@ fun CompleteScreen(
     ) {
         Scaffold(
             topBar = {
-                IssueissyuTopAppBar()
+                IssueissyuTopAppBar(
+                    navigationContent = {
+                        OnboardingSwitchAccountNavigationContent(onSwitchAccountClick)
+                    },
+                )
             },
             bottomBar = {
                 CommonButton(

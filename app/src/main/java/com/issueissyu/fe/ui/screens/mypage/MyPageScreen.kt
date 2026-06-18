@@ -49,14 +49,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.widget.Toast
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.SavedStateHandle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.Dialog
+import com.issueissyu.fe.ui.components.InfoDialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
@@ -105,20 +104,22 @@ fun MyPageScreen(
         }
     }
 
-    val context = LocalContext.current
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }
+    var actionErrorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(authActionState) {
         when (val state = authActionState) {
             MyPageViewModel.AuthActionState.Success -> {
+                showLogoutDialog = false
+                showWithdrawDialog = false
                 // 세션 해제 시 AppNavGraph가 로그인 화면으로 이동함
                 viewModel.resetAuthActionState()
             }
             is MyPageViewModel.AuthActionState.Error -> {
                 showLogoutDialog = false
                 showWithdrawDialog = false
-                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
+                actionErrorMessage = state.message
                 viewModel.resetAuthActionState()
             }
             else -> Unit
@@ -160,30 +161,44 @@ fun MyPageScreen(
         }
 
         if (showLogoutDialog) {
-        Dialog(
-            title = "로그아웃",
-            message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
-            confirmText = "로그아웃",
-            onDismiss = { showLogoutDialog = false },
-            onConfirm = {
-                showLogoutDialog = false
-                viewModel.logout()
-            },
-        )
+            Dialog(
+                title = "로그아웃",
+                message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
+                confirmText = "로그아웃",
+                onDismiss = {
+                    if (!isAuthActionLoading) {
+                        showLogoutDialog = false
+                    }
+                },
+                onConfirm = {
+                    viewModel.logout()
+                },
+            )
         }
 
         if (showWithdrawDialog) {
-        Dialog(
-            title = "회원탈퇴",
-            message = "정말 탈퇴하시겠어요?\n그동안 모은 핀과 활동 기록이\n모두 삭제돼요",
-            confirmText = "탈퇴하기",
-            isWarning = true,
-            onDismiss = { showWithdrawDialog = false },
-            onConfirm = {
-                showWithdrawDialog = false
-                viewModel.withdraw()
-            },
-        )
+            Dialog(
+                title = "회원탈퇴",
+                message = "정말 탈퇴하시겠어요?\n그동안 모은 핀과 활동 기록이\n모두 삭제돼요",
+                confirmText = "탈퇴하기",
+                isWarning = true,
+                onDismiss = {
+                    if (!isAuthActionLoading) {
+                        showWithdrawDialog = false
+                    }
+                },
+                onConfirm = {
+                    viewModel.withdraw()
+                },
+            )
+        }
+
+        actionErrorMessage?.let { message ->
+            InfoDialog(
+                title = "안내",
+                message = message,
+                onConfirm = { actionErrorMessage = null },
+            )
         }
 
         if (isAuthActionLoading) {

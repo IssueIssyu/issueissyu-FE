@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -27,7 +27,7 @@ fun SplashScreen(
     onNavigateToOnboarding: () -> Unit,
     viewModel: SplashViewModel = hiltViewModel(),
 ) {
-    val destination by viewModel.destination.collectAsState()
+    val destination by viewModel.destination.collectAsStateWithLifecycle()
 
     LaunchedEffect(destination) {
         when (val current = destination) {

@@ -17,7 +17,6 @@ data class TermUiState(
     val isPrivacyAgreed: Boolean = false,
     val isLocationAgreed: Boolean = false,
     val isMarketingAgreed: Boolean = false,
-    val isSubmitting: Boolean = false,
     val submitError: String? = null,
 )
 
@@ -34,15 +33,13 @@ class TermViewModel @Inject constructor(
     }
 
     fun submitTerms(
-        onAgreeClick: () -> Unit,
-        requestLocation: () -> Unit,
-        requestNotification: () -> Unit,
+        onSuccess: (requestLocationPermission: Boolean, requestNotificationPermission: Boolean) -> Unit,
     ) {
         val s = _uiState.value
-        if (!s.isServiceAgreed || !s.isPrivacyAgreed || s.isSubmitting) return
+        if (!s.isServiceAgreed || !s.isPrivacyAgreed) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmitting = true, submitError = null) }
+            _uiState.update { it.copy(submitError = null) }
 
             authRepository.submitTermsAgreement(
                 serviceTerm = s.isServiceAgreed,
@@ -51,19 +48,11 @@ class TermViewModel @Inject constructor(
                 marketingTerm = s.isMarketingAgreed,
             ).fold(
                 onSuccess = {
-                    _uiState.update { it.copy(isSubmitting = false) }
-                    when {
-                        s.isLocationAgreed -> requestLocation()
-                        s.isMarketingAgreed -> requestNotification()
-                        else -> onAgreeClick()
-                    }
+                    onSuccess(s.isLocationAgreed, s.isMarketingAgreed)
                 },
                 onFailure = { e ->
                     _uiState.update {
-                        it.copy(
-                            isSubmitting = false,
-                            submitError = e.message ?: "약관 동의에 실패했습니다",
-                        )
+                        it.copy(submitError = e.message ?: "약관 동의에 실패했습니다")
                     }
                 },
             )
@@ -72,26 +61,33 @@ class TermViewModel @Inject constructor(
 
     fun onAllAgreementChanged(checked: Boolean) {
         _uiState.update {
-            it.copy(
-                isAllAgreed = checked,
-                isServiceAgreed = checked,
-                isPrivacyAgreed = checked,
-                isLocationAgreed = checked,
-                isMarketingAgreed = checked,
-            )
+            if (!checked) {
+                it.copy(
+                    isAllAgreed = false,
+                    isServiceAgreed = false,
+                    isPrivacyAgreed = false,
+                    isLocationAgreed = false,
+                    isMarketingAgreed = false,
+                )
+            } else {
+                it.copy(
+                    isAllAgreed = true,
+                    isServiceAgreed = true,
+                    isPrivacyAgreed = true,
+                    isLocationAgreed = true,
+                    isMarketingAgreed = true,
+                )
+            }
         }
     }
 
-    fun wasMarketingChecked(): Boolean = _uiState.value.isMarketingAgreed
-
-    fun onLocationAgreementChanged(agreed: Boolean) {
-        _uiState.update { it.copy(isLocationAgreed = agreed) }
+    fun onLocationChanged(checked: Boolean) {
+        _uiState.update { it.copy(isLocationAgreed = checked) }
         updateAllAgreementsState()
     }
 
-    // 알림 선택 약관 체크 상태 갱신
-    fun onMarketingAgreementChanged(agreed: Boolean) {
-        _uiState.update { it.copy(isMarketingAgreed = agreed) }
+    fun onMarketingChanged(checked: Boolean) {
+        _uiState.update { it.copy(isMarketingAgreed = checked) }
         updateAllAgreementsState()
     }
 

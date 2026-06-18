@@ -81,6 +81,7 @@ fun LocalAreaPickerContent(
     onLocationUnavailable: () -> Unit,
     modifier: Modifier = Modifier,
     onBackClick: (() -> Unit)? = null,
+    navigationContent: (@Composable () -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -173,6 +174,7 @@ fun LocalAreaPickerContent(
             IssueissyuTopAppBar(
                 titleText = titleText,
                 onBackClick = onBackClick,
+                navigationContent = navigationContent,
             )
         },
         containerColor = White,

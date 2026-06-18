@@ -39,6 +39,7 @@ import com.issueissyu.fe.ui.screens.onboarding.LocalVerificationScreen
 import com.issueissyu.fe.ui.screens.onboarding.LoginScreen
 import com.issueissyu.fe.ui.screens.onboarding.SignUpScreen
 import com.issueissyu.fe.ui.screens.onboarding.SplashScreen
+import com.issueissyu.fe.ui.screens.onboarding.OnboardingExitHost
 import com.issueissyu.fe.ui.screens.onboarding.TermDetailScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermScreen
 import com.issueissyu.fe.ui.screens.onboarding.TermsType
@@ -198,16 +199,17 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.TERM_ROUTE) {
-            OnboardingBackDisabledHandler()
-
-            TermScreen(
-                onAgreeClick = { navController.navigate(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) },
-                onTermsDetailClick = { termsType ->
-                    navController.navigate(
-                        AppDestinations.Onboarding.termDetailRoute(termsType.name)
-                    )
-                }
-            )
+            OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
+                TermScreen(
+                    onAgreeClick = { navController.navigate(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) },
+                    onTermsDetailClick = { termsType ->
+                        navController.navigate(
+                            AppDestinations.Onboarding.termDetailRoute(termsType.name)
+                        )
+                    },
+                    onSwitchAccountClick = onSwitchAccountClick,
+                )
+            }
         }
 
         composable(
@@ -227,59 +229,64 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.Onboarding.USER_VERIFICATION_ROUTE) {
-            OnboardingBackDisabledHandler()
-
-            UserVerificationScreen(
-                onVerificationComplete = { _, _, _ ->
-                    navController.navigate(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE)
-                },
-                onNavigateToLogin = {
-                    navController.navigateToLoginClearingBackStack()
-                },
-            )
+            OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
+                UserVerificationScreen(
+                    onVerificationComplete = { _, _, _ ->
+                        navController.navigate(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE)
+                    },
+                    onNavigateToLogin = {
+                        navController.navigateToLoginClearingBackStack()
+                    },
+                    onSwitchAccountClick = onSwitchAccountClick,
+                )
+            }
         }
 
         composable(AppDestinations.Onboarding.LOCAL_VERIFICATION_ROUTE) {
-            OnboardingBackDisabledHandler()
-
-            LocalVerificationScreen(
-                onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE) }
-            )
+            OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
+                LocalVerificationScreen(
+                    onCompleteRegisterClick = { navController.navigate(AppDestinations.Onboarding.COMPLETE_ROUTE) },
+                    onSwitchAccountClick = onSwitchAccountClick,
+                )
+            }
         }
 
         composable(AppDestinations.Onboarding.COMPLETE_ROUTE) {
-            OnboardingBackDisabledHandler()
-
-            CompleteScreen(
-                onNavigateToMain = {
-                    navController.navigate(AppDestinations.TOWN_ROUTE) {
-                        popUpTo(0) { inclusive = true }
-                    }
-                },
-                onNavigateToLanding = {
-                    navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
-                },
-            )
+            OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
+                CompleteScreen(
+                    onNavigateToMain = {
+                        navController.navigate(AppDestinations.TOWN_ROUTE) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    onNavigateToLanding = {
+                        navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                    },
+                    onSwitchAccountClick = onSwitchAccountClick,
+                )
+            }
         }
 
         composable(AppDestinations.Onboarding.LANDING_ROUTE) {
             val previousRoute =
                 navController.previousBackStackEntry?.destination?.route
-            if (previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE) {
-                OnboardingBackDisabledHandler()
+            val isOnboardingLanding = previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE
+            if (isOnboardingLanding) {
+                OnboardingRouteWithExit(navController) { onSwitchAccountClick ->
+                    LandingScreen(
+                        onSwitchAccountClick = onSwitchAccountClick,
+                        onComplete = {
+                            navController.navigate(AppDestinations.TOWN_ROUTE) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        },
+                    )
+                }
+            } else {
+                LandingScreen(
+                    onComplete = { navController.popBackStack() },
+                )
             }
-
-            LandingScreen(
-                onComplete = {
-                    if (previousRoute == AppDestinations.MyPage.MYPAGE_ROUTE) {
-                        navController.popBackStack()
-                    } else {
-                        navController.navigate(AppDestinations.TOWN_ROUTE) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    }
-                },
-            )
         }
 
         composable(AppDestinations.COLLECTION_ROUTE) {
@@ -737,6 +744,18 @@ private fun NavScreenWrapper(
 @Composable
 private fun OnboardingBackDisabledHandler() {
     BackHandler { }
+}
+
+@Composable
+private fun OnboardingRouteWithExit(
+    navController: NavHostController,
+    content: @Composable (onSwitchAccountClick: () -> Unit) -> Unit,
+) {
+    OnboardingBackDisabledHandler()
+    OnboardingExitHost(
+        onNavigateToLogin = { navController.navigateToLoginClearingBackStack() },
+        content = content,
+    )
 }
 
 private fun canNavigateFromPush(route: String?): Boolean {

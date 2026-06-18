@@ -4,12 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.data.local.OnboardingSessionStore
 import com.issueissyu.fe.data.local.TokenManager
-import com.issueissyu.fe.domain.auth.AccountAlreadyLinkedException
 import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
 import com.issueissyu.fe.domain.repository.AuthRepository
+import com.issueissyu.fe.domain.usecase.onboarding.ExitOnboardingUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -40,12 +43,6 @@ data class UserVerificationUiState(
 
     val showAccountLinkDialog: Boolean = false,
     val isLinkingAccount: Boolean = false,
-    val accountLinkError: String? = null,
-
-    val showLocalPhoneRegisteredDialog: Boolean = false,
-
-    val showAlreadyLinkedDialog: Boolean = false,
-    val alreadyLinkedMessage: String? = null,
 
     val showLinkCompletedDialog: Boolean = false,
 )
@@ -54,11 +51,19 @@ data class UserVerificationUiState(
 class UserVerificationViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val onboardingSessionStore: OnboardingSessionStore,
+    private val exitOnboardingUseCase: ExitOnboardingUseCase,
     private val tokenManager: TokenManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UserVerificationUiState())
     val uiState: StateFlow<UserVerificationUiState> = _uiState.asStateFlow()
+
+    private val _events = MutableSharedFlow<UiEvent>(extraBufferCapacity = 1)
+    val events: SharedFlow<UiEvent> = _events.asSharedFlow()
+
+    sealed interface UiEvent {
+        data class ShowToast(val message: String) : UiEvent
+    }
 
     companion object {
         const val MIN_NICKNAME_LENGTH = 2
@@ -84,45 +89,8 @@ class UserVerificationViewModel @Inject constructor(
         }
     }
 
-    private fun sessionSocialTypeForUi(): String =
-        tokenManager.getLoginSocialType()?.takeIf { it.isNotBlank() } ?: "LOCAL"
-
-    fun dismissLocalPhoneRegisteredDialog() {
-        _uiState.update {
-            it.copy(showLocalPhoneRegisteredDialog = false)
-        }
-    }
-
-    fun onLocalPhoneRegisteredGoToLogin(onNavigateToLogin: () -> Unit) {
-        viewModelScope.launch {
-            exitToLogin()
-            _uiState.update { it.copy(showLocalPhoneRegisteredDialog = false) }
-            onNavigateToLogin()
-        }
-    }
-
-    fun dismissAlreadyLinkedDialog() {
-        _uiState.update {
-            it.copy(
-                showAlreadyLinkedDialog = false,
-                alreadyLinkedMessage = null,
-            )
-        }
-    }
-
-    fun onAlreadyLinkedGoToLogin(onNavigateToLogin: () -> Unit) {
-        viewModelScope.launch {
-            exitToLogin()
-            _uiState.update {
-                it.copy(
-                    showAlreadyLinkedDialog = false,
-                    alreadyLinkedMessage = null,
-                    showAccountLinkDialog = false,
-                    accountLinkError = null,
-                )
-            }
-            onNavigateToLogin()
-        }
+    fun dismissAccountLinkDialog() {
+        _uiState.update { it.copy(showAccountLinkDialog = false) }
     }
 
     fun onNicknameChange(nickname: String) {
@@ -228,10 +196,6 @@ class UserVerificationViewModel @Inject constructor(
                 isCodeVerified = false,
                 verificationCode = "",
                 showAccountLinkDialog = false,
-                accountLinkError = null,
-                showLocalPhoneRegisteredDialog = false,
-                showAlreadyLinkedDialog = false,
-                alreadyLinkedMessage = null,
                 showLinkCompletedDialog = false,
             )
         }
@@ -313,13 +277,11 @@ class UserVerificationViewModel @Inject constructor(
                 },
                 onFailure = { e ->
                     if (e is ExistingPhoneRequiresLinkException) {
-                        val isLocalSession = sessionSocialTypeForUi().equals("LOCAL", ignoreCase = true)
                         _uiState.update {
                             it.copy(
                                 isCodeVerified = false,
                                 isVerifyingCode = false,
-                                showAccountLinkDialog = !isLocalSession,
-                                showLocalPhoneRegisteredDialog = isLocalSession,
+                                showAccountLinkDialog = true,
                             )
                         }
                     } else {
@@ -337,20 +299,11 @@ class UserVerificationViewModel @Inject constructor(
         }
     }
 
-    fun dismissAccountLinkDialog() {
-        _uiState.update {
-            it.copy(
-                showAccountLinkDialog = false,
-                accountLinkError = null,
-            )
-        }
-    }
-
     fun confirmAccountLink() {
         val phone = _uiState.value.phoneNumber
         val socialType = tokenManager.getLoginSocialType()?.takeIf { it.isNotBlank() } ?: "LOCAL"
         viewModelScope.launch {
-            _uiState.update { it.copy(isLinkingAccount = true, accountLinkError = null) }
+            _uiState.update { it.copy(isLinkingAccount = true) }
             authRepository.linkLogin(phone, socialType).fold(
                 onSuccess = {
                     onboardingSessionStore.clearPendingProfile()
@@ -358,33 +311,13 @@ class UserVerificationViewModel @Inject constructor(
                         it.copy(
                             showAccountLinkDialog = false,
                             isLinkingAccount = false,
-                            accountLinkError = null,
                             showLinkCompletedDialog = true,
                         )
                     }
                 },
                 onFailure = { e ->
-                    when (e) {
-                        is AccountAlreadyLinkedException -> {
-                            _uiState.update {
-                                it.copy(
-                                    isLinkingAccount = false,
-                                    showAccountLinkDialog = false,
-                                    accountLinkError = null,
-                                    showAlreadyLinkedDialog = true,
-                                    alreadyLinkedMessage = e.message,
-                                )
-                            }
-                        }
-                        else -> {
-                            _uiState.update {
-                                it.copy(
-                                    isLinkingAccount = false,
-                                    accountLinkError = e.message ?: "연동에 실패했습니다",
-                                )
-                            }
-                        }
-                    }
+                    _uiState.update { it.copy(isLinkingAccount = false) }
+                    _events.emit(UiEvent.ShowToast(e.message ?: "연동에 실패했습니다"))
                 },
             )
         }
@@ -393,14 +326,16 @@ class UserVerificationViewModel @Inject constructor(
     fun onLinkCompletedAcknowledged(onNavigateToLogin: () -> Unit) {
         viewModelScope.launch {
             _uiState.update { it.copy(showLinkCompletedDialog = false) }
-            exitToLogin()
-            onNavigateToLogin()
+            exitOnboardingUseCase()
+                .onSuccess { onNavigateToLogin() }
+                .onFailure { error ->
+                    _events.emit(
+                        UiEvent.ShowToast(
+                            error.message ?: "로그아웃에 실패했습니다.",
+                        ),
+                    )
+                }
         }
-    }
-
-    private suspend fun exitToLogin() {
-        authRepository.logout()
-        onboardingSessionStore.clearPendingProfile()
     }
 
     fun onSignupClick(onComplete: (nickname: String, email: String, phoneNumber: String) -> Unit) {

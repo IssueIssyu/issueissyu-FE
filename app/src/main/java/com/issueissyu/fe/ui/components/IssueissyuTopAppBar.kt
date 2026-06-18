@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.components
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -22,7 +23,9 @@ import androidx.compose.ui.unit.sp
 fun IssueissyuTopAppBar(
     modifier: Modifier = Modifier,
     onBackClick: (() -> Unit)? = null,
-    titleText: String? = null
+    titleText: String? = null,
+    navigationContent: (@Composable () -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {},
 ) {
     CenterAlignedTopAppBar(
         title = {
@@ -42,15 +45,19 @@ fun IssueissyuTopAppBar(
             scrolledContainerColor = Color.Transparent
         ),
         navigationIcon = {
-            onBackClick?.let { onClickAction ->
-                IconButton(onClick = onClickAction) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "뒤로가기"
-                    )
+            when {
+                navigationContent != null -> navigationContent()
+                onBackClick != null -> {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "뒤로가기"
+                        )
+                    }
                 }
             }
-        }
+        },
+        actions = actions,
     )
 }
 
