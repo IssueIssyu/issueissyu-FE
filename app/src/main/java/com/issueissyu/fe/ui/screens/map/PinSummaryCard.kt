@@ -61,10 +61,7 @@ import com.issueissyu.fe.ui.theme.*
 
 internal val PinSummaryCardHeight = 275.dp
 
-private fun PinCategory.hasFireBadge(): Boolean =
-    this == PinCategory.ISSUE ||
-        this == PinCategory.COMMUNICATION ||
-        this == PinCategory.FESTIVAL
+private const val FireBadgeSympathyThreshold = 10
 
 enum class PinSummaryCardHighlight {
     NONE,
@@ -95,6 +92,7 @@ fun PinSummaryCard(
     }
 
     val canEdit = pin.canEditBy(currentUserId)
+    val showFireBadge = pin.sympathyCount >= FireBadgeSympathyThreshold
     val hasCategoryInfo = when (val detail = pin.detail) {
         is ShopPinDetail -> !detail.currentNews.isNullOrBlank()
         is FestivalPinDetail -> detail.startDate != null || detail.endDate != null
@@ -133,7 +131,10 @@ fun PinSummaryCard(
                             style = IssueTypo.Bold18.copy(color = Gray_7, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(start = 8.dp, top = 10.dp),
+                            modifier = Modifier.padding(
+                                start = if (showFireBadge) 8.dp else 0.dp,
+                                top = 10.dp,
+                            ),
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -382,7 +383,7 @@ fun PinSummaryCard(
             }
         }
 
-        if (pin.category.hasFireBadge()) {
+        if (showFireBadge) {
             Image(
                 painter = painterResource(R.drawable.fire),
                 contentDescription = null,
