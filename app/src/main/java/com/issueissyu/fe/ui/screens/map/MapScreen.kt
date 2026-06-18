@@ -299,9 +299,14 @@ fun MapScreen(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val activity = context.findActivity()
+    var shouldRefreshUnreadOnResume by remember { mutableStateOf(false) }
 
     LaunchedEffect(isLocationSelectionMode) {
         onLocationSelectionModeChanged(isLocationSelectionMode)
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.refreshUnreadNotificationState()
     }
 
     DisposableEffect(Unit) {
@@ -312,8 +317,15 @@ fun MapScreen(
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.refreshUnreadNotificationState()
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> shouldRefreshUnreadOnResume = true
+                Lifecycle.Event.ON_RESUME -> {
+                    if (shouldRefreshUnreadOnResume) {
+                        shouldRefreshUnreadOnResume = false
+                        viewModel.refreshUnreadNotificationState()
+                    }
+                }
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
