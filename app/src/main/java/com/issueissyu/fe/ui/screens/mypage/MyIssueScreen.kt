@@ -68,7 +68,6 @@ fun MyIssueScreen(
     MyPinListContent(
         title = "내 이슈",
         uiState = uiState,
-        showPinType = true,
         emptyTitle = "아직 생성한 핀이 없어요",
         emptyDescription = "지도에서 우리 동네를 기록해보세요!",
         loadMoreThreshold = MyIssueViewModel.LOAD_MORE_THRESHOLD,
@@ -91,7 +90,6 @@ fun MySolverParticipationScreen(
     MyPinListContent(
         title = "해결 참여",
         uiState = uiState,
-        showPinType = false,
         emptyTitle = "아직 참여한 이슈가 없어요",
         emptyDescription = "시민해결사로 이웃의 이슈를 함께 해결해보세요!",
         loadMoreThreshold = MySolverParticipationViewModel.LOAD_MORE_THRESHOLD,
@@ -107,7 +105,6 @@ fun MySolverParticipationScreen(
 internal fun MyPinListContent(
     title: String,
     uiState: MyIssueUiState,
-    showPinType: Boolean,
     emptyTitle: String,
     emptyDescription: String,
     loadMoreThreshold: Int,
@@ -186,7 +183,6 @@ internal fun MyPinListContent(
                     items(uiState.issues, key = { it.pinId }) { issue ->
                         MyIssueCard(
                             issue = issue,
-                            showPinType = showPinType,
                             onClick = { onPinClick(issue.pinId.toString()) },
                         )
                     }
