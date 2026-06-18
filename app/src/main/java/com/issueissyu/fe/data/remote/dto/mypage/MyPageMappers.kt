@@ -1,9 +1,13 @@
 package com.issueissyu.fe.data.remote.dto.mypage
 
 import com.issueissyu.fe.data.remote.dto.response.mypage.GetMyIssueResponse
+import com.issueissyu.fe.data.remote.dto.response.mypage.GetMySolverPinResponse
 import com.issueissyu.fe.data.remote.dto.response.mypage.PinInfo
+import com.issueissyu.fe.data.remote.dto.response.mypage.SolverPinInfo
 import com.issueissyu.fe.domain.model.mypage.MyIssuePage
 import com.issueissyu.fe.domain.model.mypage.MyIssuePin
+import com.issueissyu.fe.domain.model.mypage.MySolverPin
+import com.issueissyu.fe.domain.model.mypage.MySolverPinPage
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 
@@ -13,6 +17,28 @@ fun GetMyIssueResponse.toMyIssuePage(): MyIssuePage {
         hasNext = pageInfo.hasNext,
         nextCursor = pageInfo.nextCursor,
     )
+}
+
+fun GetMySolverPinResponse.toMySolverPinPage(): MySolverPinPage {
+    return MySolverPinPage(
+        items = pins.map { it.toMySolverPin() },
+        hasNext = pageInfo.hasNext,
+        nextCursor = pageInfo.nextCursor,
+    )
+}
+
+private fun SolverPinInfo.toMySolverPin(): MySolverPin {
+    return MySolverPin(
+        pinId = pinId,
+        title = pinTitle,
+        address = pinDetailAddress,
+        createdAt = createdAt,
+        resolutionStatus = issuePinState.toSolverResolutionStatus(),
+    )
+}
+
+private fun String.toSolverResolutionStatus(): ResolutionStatus {
+    return trim().uppercase().toMyIssueResolutionStatus()
 }
 
 private fun PinInfo.toMyIssuePin(): MyIssuePin {

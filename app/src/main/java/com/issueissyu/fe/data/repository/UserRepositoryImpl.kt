@@ -4,8 +4,10 @@ import com.issueissyu.fe.core.network.ApiErrorMapper
 import com.issueissyu.fe.data.remote.api.AuthApi
 import com.issueissyu.fe.data.remote.api.MyPageApi
 import com.issueissyu.fe.data.remote.dto.mypage.toMyIssuePage
+import com.issueissyu.fe.data.remote.dto.mypage.toMySolverPinPage
 import com.issueissyu.fe.data.remote.dto.request.mypage.ChangeNickNameRequest
 import com.issueissyu.fe.domain.model.mypage.MyIssuePage
+import com.issueissyu.fe.domain.model.mypage.MySolverPinPage
 import com.issueissyu.fe.domain.repository.UserRepository
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -157,6 +159,33 @@ class UserRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             failureFrom(e, "내 이슈 조회에 실패했습니다.")
+        }
+    }
+
+    override suspend fun getMySolverPins(size: Int, cursor: String?): Result<MySolverPinPage> {
+        return try {
+            val response = myPageApi.getMySolverPins(size = size, cursor = cursor)
+            if (response.isSuccess) {
+                val body = response.result
+                    ?: return Result.failure(
+                        Exception(response.message.ifBlank { "해결 참여 응답이 올바르지 않습니다." }),
+                    )
+                Result.success(body.toMySolverPinPage())
+            } else {
+                when (response.code) {
+                    "USER_SOLVER_400_1" -> Result.failure(
+                        Exception(response.message.ifBlank { "조회 불가능한 사이즈 입니다." }),
+                    )
+                    "USER_SOLVER_400_2" -> Result.failure(
+                        Exception(response.message.ifBlank { "조회 불가능한 cursor 입니다." }),
+                    )
+                    else -> Result.failure(
+                        Exception(response.message.ifBlank { "해결 참여 조회에 실패했습니다." }),
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            failureFrom(e, "해결 참여 조회에 실패했습니다.")
         }
     }
 }

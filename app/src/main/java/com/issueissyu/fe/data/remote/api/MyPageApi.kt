@@ -4,6 +4,7 @@ import com.issueissyu.fe.data.remote.dto.request.mypage.ChangeNickNameRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
 import com.issueissyu.fe.data.remote.dto.response.location.LocationVerificationResponse
 import com.issueissyu.fe.data.remote.dto.response.mypage.GetMyIssueResponse
+import com.issueissyu.fe.data.remote.dto.response.mypage.GetMySolverPinResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.PATCH
@@ -28,5 +29,10 @@ interface MyPageApi {
         @Query("cursor") cursor: String? = null,
     ): BaseResponse<GetMyIssueResponse?>
 
-    //알람 설정 토글
+    //내 시민해결사 참여 현황 조회
+    @GET("api/users/me/solvers")
+    suspend fun getMySolverPins(
+        @Query("size") size: Int = 10,
+        @Query("cursor") cursor: String? = null,
+    ): BaseResponse<GetMySolverPinResponse?>
 }
