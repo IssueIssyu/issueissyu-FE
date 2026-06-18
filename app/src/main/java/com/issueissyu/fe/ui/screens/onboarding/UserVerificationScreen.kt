@@ -28,6 +28,7 @@ import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
 import com.issueissyu.fe.ui.components.Dialog
+import com.issueissyu.fe.ui.components.InfoDialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.*
 import com.issueissyu.fe.ui.screens.onboarding.UserVerificationViewModel.Companion.PHONE_NUMBER_LENGTH
@@ -55,12 +56,9 @@ fun UserVerificationScreen(
     }
 
     if (uiState.showLinkCompletedDialog) {
-        Dialog(
+        InfoDialog(
             title = "연동 완료",
             message = "계정 연동이 완료되었어요. 확인을 누르면 로그아웃 후 로그인 화면으로 이동합니다.",
-            confirmText = "확인",
-            dismissText = "확인",
-            onDismiss = { viewModel.onLinkCompletedAcknowledged(onNavigateToLogin) },
             onConfirm = { viewModel.onLinkCompletedAcknowledged(onNavigateToLogin) },
         )
     }
@@ -84,12 +82,9 @@ fun UserVerificationScreen(
     }
 
     errorMessage?.let { message ->
-        Dialog(
+        InfoDialog(
             title = "안내",
             message = message,
-            confirmText = "확인",
-            dismissText = "확인",
-            onDismiss = { errorMessage = null },
             onConfirm = { errorMessage = null },
         )
     }

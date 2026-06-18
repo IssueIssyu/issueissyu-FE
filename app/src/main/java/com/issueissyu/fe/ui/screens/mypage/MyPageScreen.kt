@@ -53,6 +53,7 @@ import androidx.lifecycle.SavedStateHandle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.Dialog
+import com.issueissyu.fe.ui.components.InfoDialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.CommunicationContainerLight
@@ -180,12 +181,9 @@ fun MyPageScreen(
         }
 
         actionErrorMessage?.let { message ->
-            Dialog(
+            InfoDialog(
                 title = "안내",
                 message = message,
-                confirmText = "확인",
-                dismissText = "확인",
-                onDismiss = { actionErrorMessage = null },
                 onConfirm = { actionErrorMessage = null },
             )
         }

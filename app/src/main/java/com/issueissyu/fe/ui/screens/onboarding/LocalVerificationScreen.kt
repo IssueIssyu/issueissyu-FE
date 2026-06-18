@@ -9,7 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.issueissyu.fe.ui.components.Dialog
+import com.issueissyu.fe.ui.components.InfoDialog
 import com.issueissyu.fe.ui.components.location.LocalAreaPickerContent
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 
@@ -34,12 +34,9 @@ fun LocalVerificationScreen(
     }
 
     errorMessage?.let { message ->
-        Dialog(
+        InfoDialog(
             title = "안내",
             message = message,
-            confirmText = "확인",
-            dismissText = "확인",
-            onDismiss = { errorMessage = null },
             onConfirm = { errorMessage = null },
         )
     }
