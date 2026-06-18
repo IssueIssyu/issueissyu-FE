@@ -281,7 +281,10 @@ fun AppNavGraph(
         }
 
         composable(AppDestinations.COLLECTION_ROUTE) {
-            NavScreenWrapper(paddingValues = paddingValues) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
                 CollectionScreen(
                     onNavigateToPinDetail = { pinId ->
                         navController.navigateToPinDetail(pinId)
@@ -390,7 +393,10 @@ fun AppNavGraph(
             }
         }
         composable(AppDestinations.MyPage.MYPAGE_ROUTE) { backStackEntry ->
-            NavScreenWrapper(paddingValues = paddingValues) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
                 MyPageScreen(
                     modifier = Modifier,
                     savedStateHandle = backStackEntry.savedStateHandle,

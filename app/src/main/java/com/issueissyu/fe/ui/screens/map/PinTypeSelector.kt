@@ -46,7 +46,7 @@ fun PinTypeSelector(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         PinTypeSelectorItem(
-            iconResId = R.drawable.issue,
+            iconResId = R.drawable.ic_issue,
             label = "이슈 생성",
             backgroundColor = IssueContainer,
             onClick = onIssueClick

@@ -164,6 +164,10 @@ class MapViewModel @Inject constructor(
     private val _currentLocation = MutableStateFlow<PinCoordinate?>(null)
     val currentLocation: StateFlow<PinCoordinate?> = _currentLocation.asStateFlow()
 
+    private val _isInCertifiedNeighborhood = MutableStateFlow<Boolean?>(null)
+    val isInCertifiedNeighborhood: StateFlow<Boolean?> = _isInCertifiedNeighborhood.asStateFlow()
+    private var certifiedNeighborhoodStatusJob: Job? = null
+
     private val _navigateToPinCreation = MutableSharedFlow<PinCreationNavigationEvent>()
     val navigateToPinCreation = _navigateToPinCreation.asSharedFlow()
 
@@ -621,12 +625,15 @@ class MapViewModel @Inject constructor(
         _selectedPinCoordinate.value = null
         _selectedPin.value = null
         _selectedPinPages.value = emptyList()
+        _currentLocation.value?.let(::refreshCertifiedNeighborhoodStatus)
     }
 
     fun exitLocationSelectionMode() {
         _isLocationSelectionMode.value = false
         _selectedPinCategory.value = null
         _selectedPinCoordinate.value = null
+        certifiedNeighborhoodStatusJob?.cancel()
+        _isInCertifiedNeighborhood.value = null
         closePinTypeSelector()
     }
 
@@ -661,7 +668,36 @@ class MapViewModel @Inject constructor(
     }
 
     fun updateCurrentLocation(latLng: LatLng) {
-        _currentLocation.value = PinCoordinate(latitude = latLng.latitude, longitude = latLng.longitude)
+        val coordinate = PinCoordinate(latitude = latLng.latitude, longitude = latLng.longitude)
+        _currentLocation.value = coordinate
+        if (_isLocationSelectionMode.value) {
+            refreshCertifiedNeighborhoodStatus(coordinate)
+        }
+    }
+
+    private fun refreshCertifiedNeighborhoodStatus(coordinate: PinCoordinate) {
+        certifiedNeighborhoodStatusJob?.cancel()
+        certifiedNeighborhoodStatusJob = viewModelScope.launch {
+            val certifiedLocationId = locationRepository.getRegionList()
+                .getOrNull()
+                ?.userRegion
+                ?.locationId
+                ?: run {
+                    _isInCertifiedNeighborhood.value = false
+                    return@launch
+                }
+
+            val currentLocationId = locationRepository.resolveAddressAndLocationId(
+                lat = coordinate.latitude,
+                lng = coordinate.longitude,
+            ).getOrNull()?.locationId
+                ?: run {
+                    _isInCertifiedNeighborhood.value = null
+                    return@launch
+                }
+
+            _isInCertifiedNeighborhood.value = currentLocationId == certifiedLocationId
+        }
     }
 
     fun saveCameraPosition(latitude: Double, longitude: Double, zoom: Double) {

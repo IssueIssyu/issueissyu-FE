@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -62,6 +61,8 @@ import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Text as TextColor
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import coil.compose.AsyncImage
 
@@ -79,6 +80,7 @@ fun PinCreateScreen(
     viewModel: PinCreateViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     val photoSourcePicker = rememberPhotoSourcePicker(
         currentCount = uiState.imageUris.size,
@@ -95,6 +97,12 @@ fun PinCreateScreen(
     LaunchedEffect(Unit) {
         viewModel.createdEvents.collect { createdPinId ->
             onCreated(createdPinId)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.toastMessage.collect { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
     }
 
