@@ -371,9 +371,7 @@ class AuthRepositoryImpl @Inject constructor(
                     }
             }
         } catch (e: Exception) {
-            Result.failure(
-                Exception(e.message.orEmpty().ifBlank { "로그아웃에 실패했습니다." }),
-            )
+            failureFrom(e, "로그아웃에 실패했습니다.")
         }
     }
 
