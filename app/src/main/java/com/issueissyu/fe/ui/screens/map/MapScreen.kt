@@ -5,8 +5,10 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.PointF
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -33,8 +35,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -51,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -93,6 +94,7 @@ import com.naver.maps.map.NaverMap
 import com.naver.maps.map.CameraAnimation
 import com.naver.maps.map.CameraPosition
 import com.naver.maps.map.CameraUpdate
+import com.naver.maps.map.overlay.CircleOverlay
 import com.naver.maps.map.overlay.Marker
 import com.naver.maps.map.overlay.OverlayImage
 import com.naver.maps.map.util.FusedLocationSource
@@ -105,10 +107,11 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 // 위치 권한 요청 코드 상수
 private const val LOCATION_PERMISSION_REQUEST_CODE = 1000
 private const val INITIAL_USER_LOCATION_ZOOM = 16.0
-private const val DEFAULT_MARKER_SCALE = 1.5f
-private const val SELECTED_MARKER_SCALE = 2f
+private const val DEFAULT_MARKER_SCALE = 1.3f
+private const val SELECTED_MARKER_SCALE = 1.7f
 private const val SELECTED_MARKER_Z_INDEX = 3
 private const val CLUSTER_MARKER_Z_INDEX = 2
+private const val PIN_CREATION_AVAILABLE_RADIUS_METERS = 100.0
 const val PIN_CREATE_MAP_REFRESH_KEY = "pin_create_map_refresh"
 const val PIN_CREATE_FOCUS_PIN_ID_KEY = "pin_create_focus_pin_id"
 const val MAP_FOCUS_USER_LOCATION_KEY = "map_focus_user_location"
@@ -210,23 +213,26 @@ private fun createSinglePinClusterMarker(
     onClick: () -> Unit,
 ): Marker {
     val iconRes = pin.category.toMarkerIconRes()
-    val markerScale = if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE
+    val markerStyle = PinMarkerBitmapCache.get(
+        context = context,
+        iconRes = iconRes,
+        hasDiscount = pin.hasDiscount,
+    )
+    val categoryScale = pin.category.markerScaleMultiplier()
+    val markerScale = (if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE) * categoryScale
     return Marker().apply {
         position = cluster.coordinate.toLatLng()
-        icon = OverlayImage.fromResource(iconRes)
-        ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-            width = (drawable.intrinsicWidth * markerScale).toInt()
-            height = (drawable.intrinsicHeight * markerScale).toInt()
-        }
+        icon = OverlayImage.fromBitmap(markerStyle.bitmap)
+        anchor = PointF(0.5f, markerStyle.anchorY)
+        width = (markerStyle.bitmap.width * markerScale).toInt()
+        height = (markerStyle.bitmap.height * markerScale).toInt()
         if (isSelected) {
             zIndex = SELECTED_MARKER_Z_INDEX
         }
         map = naverMap
         setOnClickListener {
-            ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-                width = (drawable.intrinsicWidth * SELECTED_MARKER_SCALE).toInt()
-                height = (drawable.intrinsicHeight * SELECTED_MARKER_SCALE).toInt()
-            }
+            width = (markerStyle.bitmap.width * SELECTED_MARKER_SCALE * categoryScale).toInt()
+            height = (markerStyle.bitmap.height * SELECTED_MARKER_SCALE * categoryScale).toInt()
             zIndex = SELECTED_MARKER_Z_INDEX
             onClick()
             true
@@ -278,6 +284,8 @@ fun MapScreen(
     val notices by viewModel.notices.collectAsStateWithLifecycle()
     val isLocationSelectionMode by viewModel.isLocationSelectionMode.collectAsStateWithLifecycle()
     val selectedPinCategory by viewModel.selectedPinCategory.collectAsStateWithLifecycle()
+    val currentLocation by viewModel.currentLocation.collectAsStateWithLifecycle()
+    val isInCertifiedNeighborhood by viewModel.isInCertifiedNeighborhood.collectAsStateWithLifecycle()
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId
     val context = LocalContext.current
@@ -317,8 +325,11 @@ fun MapScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
-
-    val snackbarHostState = remember { SnackbarHostState() }
+    val pinCreationRangeOverlay = remember {
+        CircleOverlay().apply {
+            zIndex = -1
+        }
+    }
 
     val locationSource = remember(activity) {
         activity?.let {
@@ -329,6 +340,7 @@ fun MapScreen(
     DisposableEffect(Unit) {
         onDispose {
             locationCts?.cancel()
+            pinCreationRangeOverlay.map = null
         }
     }
 
@@ -528,6 +540,30 @@ fun MapScreen(
         map.locationTrackingMode = LocationTrackingMode.None
     }
 
+    LaunchedEffect(
+        naverMapInstance,
+        isLocationSelectionMode,
+        currentLocation,
+        isInCertifiedNeighborhood,
+    ) {
+        val map = naverMapInstance
+        val location = currentLocation
+        val shouldShowPinCreationRange =
+            isLocationSelectionMode &&
+                location != null &&
+                isInCertifiedNeighborhood == false
+        if (map == null || !shouldShowPinCreationRange) {
+            pinCreationRangeOverlay.map = null
+            return@LaunchedEffect
+        }
+
+        pinCreationRangeOverlay.center = LatLng(location.latitude, location.longitude)
+        pinCreationRangeOverlay.radius = PIN_CREATION_AVAILABLE_RADIUS_METERS
+        pinCreationRangeOverlay.color = android.graphics.Color.argb(48, 255, 72, 0)
+        pinCreationRangeOverlay.outlineWidth = 0
+        pinCreationRangeOverlay.map = map
+    }
+
     LaunchedEffect(Unit) {
         viewModel.focusPin.collectLatest { pin ->
             val map = naverMapInstance ?: return@collectLatest
@@ -546,24 +582,27 @@ fun MapScreen(
 
         visibleMapPins.forEach { mapPin ->
             val iconRes = mapPin.category.toMarkerIconRes()
+            val markerStyle = PinMarkerBitmapCache.get(
+                context = context,
+                iconRes = iconRes,
+                hasDiscount = mapPin.hasDiscount,
+            )
             val isSelected = mapPin.pinId == selectedPin?.id
+            val categoryScale = mapPin.category.markerScaleMultiplier()
             val marker = Marker().apply {
                 position = mapPin.coordinate.toLatLng()
-                icon = OverlayImage.fromResource(iconRes)
-                val markerScale = if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE
-                ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-                    width = (drawable.intrinsicWidth * markerScale).toInt()
-                    height = (drawable.intrinsicHeight * markerScale).toInt()
-                }
+                icon = OverlayImage.fromBitmap(markerStyle.bitmap)
+                anchor = PointF(0.5f, markerStyle.anchorY)
+                val markerScale = (if (isSelected) SELECTED_MARKER_SCALE else DEFAULT_MARKER_SCALE) * categoryScale
+                width = (markerStyle.bitmap.width * markerScale).toInt()
+                height = (markerStyle.bitmap.height * markerScale).toInt()
                 if (isSelected) {
                     zIndex = SELECTED_MARKER_Z_INDEX
                 }
                 this.map = naverMap
                 setOnClickListener {
-                    ContextCompat.getDrawable(context, iconRes)?.let { drawable ->
-                        width = (drawable.intrinsicWidth * SELECTED_MARKER_SCALE).toInt()
-                        height = (drawable.intrinsicHeight * SELECTED_MARKER_SCALE).toInt()
-                    }
+                    width = (markerStyle.bitmap.width * SELECTED_MARKER_SCALE * categoryScale).toInt()
+                    height = (markerStyle.bitmap.height * SELECTED_MARKER_SCALE * categoryScale).toInt()
                     zIndex = SELECTED_MARKER_Z_INDEX
                     viewModel.selectPinById(mapPin.pinId)
                     naverMap.moveCamera(
@@ -628,7 +667,7 @@ fun MapScreen(
 
     LaunchedEffect(Unit) {
         viewModel.messageEvents.collectLatest { message ->
-            snackbarHostState.showSnackbar(message)
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -834,7 +873,7 @@ fun MapScreen(
                     tertiaryContainer
                 ) {
                     listOf(
-                        CategoryItem(PinCategory.ISSUE, "이슈", R.drawable.issue, Issue, errorContainer),
+                        CategoryItem(PinCategory.ISSUE, "이슈", R.drawable.ic_issue, Issue, errorContainer),
                         CategoryItem(PinCategory.COMMUNICATION, "소통", R.drawable.communicate, Communication, secondaryContainer),
                         CategoryItem(PinCategory.SHOP, "가게", R.drawable.shop, Shop, primaryContainer),
                         CategoryItem(PinCategory.FESTIVAL, "축제", R.drawable.festival, Festival, tertiaryContainer)
@@ -846,7 +885,7 @@ fun MapScreen(
                     selectedCategory = selectedCategory,
                     onCategorySelected = viewModel::onCategorySelected,
                     onNotificationClick = {
-                        // TODO: 알림 목록 UI 또는 알림 화면 연결
+                        navController.navigate(AppDestinations.NOTIFICATION_ROUTE)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -912,15 +951,10 @@ fun MapScreen(
                     .padding(end = 16.dp, bottom = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.patchnotebutton),
-                    contentDescription = "패치노트",
-                    modifier = Modifier
-                        .size(70.dp)
-                        .clickable {
-                            navController.navigate(AppDestinations.PATCH_NOTE_ROUTE)
-                        },
-                    tint = Color.Unspecified
+                PatchNoteMapButton(
+                    onClick = {
+                        navController.navigate(AppDestinations.PATCH_NOTE_ROUTE)
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -1007,7 +1041,10 @@ fun MapScreen(
                                 AppDestinations.communityDetailRoute(numericCommunityId)
                             )
                         },
-                        onEditClick = {},
+                        onEditClick = { pinId ->
+                            viewModel.clearSelectedPin()
+                            navController.navigateToPinDetail(pinId, startHomeEdit = true)
+                        },
                         onDeleteClick = viewModel::deletePin,
                         onSympathyClick = viewModel::toggleSympathy,
                         onEmojiClick = viewModel::openEmojiPicker,
@@ -1046,19 +1083,8 @@ fun MapScreen(
                 },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 4.dp, bottom = 88.dp)
+                    .padding(end = 10.dp, bottom = 95.dp)
             )
         }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(
-                    start = 16.dp,
-                    end = 16.dp,
-                    bottom = if (selectedPinPages.isNotEmpty()) 288.dp else 24.dp
-                )
-        )
     }
 }

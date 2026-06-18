@@ -9,6 +9,10 @@ import com.issueissyu.fe.domain.model.pin.CreatePinRequest
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinCreateException
 import com.issueissyu.fe.domain.model.pin.PinCoordinate
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
+import com.issueissyu.fe.ui.components.IssueAiDraftDefaults
+import com.issueissyu.fe.ui.components.IssueAiDraftFlow
+import com.issueissyu.fe.ui.components.IssueAiDraftQuotaResult
 import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.repository.PinRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -41,7 +45,10 @@ data class PinCreateUiState(
     val isLoadingToneOptions: Boolean = false,
     val isSubmitting: Boolean = false,
     val isGeneratingAiContent: Boolean = false,
-    val errorMessage: String? = null
+    val isLoadingAiDraftQuota: Boolean = false,
+    val showAiDraftConfirmDialog: Boolean = false,
+    val aiDraftRateLimitQuota: PinEditRateLimitQuota? = null,
+    val errorMessage: String? = null,
 )
 
 @HiltViewModel
@@ -57,7 +64,14 @@ class PinCreateViewModel @Inject constructor(
     private val _createdEvents = MutableSharedFlow<String>()
     val createdEvents = _createdEvents.asSharedFlow()
 
+    private val _toastMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val toastMessage = _toastMessage.asSharedFlow()
+
     private var lastFailedImageFingerprint: String? = null
+
+    private fun showToast(message: String) {
+        _toastMessage.tryEmit(message)
+    }
 
     fun initialize(
         category: PinCategory,
@@ -110,9 +124,10 @@ class PinCreateViewModel @Inject constructor(
                 .onFailure {
                     _uiState.update { state ->
                         state.copy(
-                            toneOptions = FALLBACK_TONE_OPTIONS,
-                            selectedTone = state.selectedTone?.takeIf { it in FALLBACK_TONE_OPTIONS }
-                                ?: DEFAULT_AI_TONE,
+                            toneOptions = IssueAiDraftDefaults.FALLBACK_TONE_OPTIONS,
+                            selectedTone = state.selectedTone?.takeIf {
+                                it in IssueAiDraftDefaults.FALLBACK_TONE_OPTIONS
+                            } ?: IssueAiDraftDefaults.DEFAULT_TONE,
                             isLoadingToneOptions = false,
                         )
                     }
@@ -138,9 +153,7 @@ class PinCreateViewModel @Inject constructor(
         val snapshot = _uiState.value
         val remaining = PinImageUploadConstraints.MAX_COUNT - snapshot.imageUris.size
         if (remaining <= 0) {
-            _uiState.update {
-                it.copy(errorMessage = "사진은 최대 ${PinImageUploadConstraints.MAX_COUNT}장까지 첨부할 수 있습니다.")
-            }
+            showToast("사진은 최대 ${PinImageUploadConstraints.MAX_COUNT}장까지 첨부할 수 있습니다.")
             return
         }
 
@@ -166,12 +179,10 @@ class PinCreateViewModel @Inject constructor(
             }
 
             validation.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
-                            ?: "첨부한 사진을 확인할 수 없습니다.",
-                    )
-                }
+                showToast(
+                    error.message?.takeIf { message -> message.isNotBlank() }
+                        ?: "첨부한 사진을 확인할 수 없습니다.",
+                )
                 return@launch
             }
 
@@ -179,7 +190,6 @@ class PinCreateViewModel @Inject constructor(
                 it.copy(
                     imageUris = merged,
                     mainImageUri = it.mainImageUri?.takeIf { mainUri -> mainUri in merged } ?: merged.firstOrNull(),
-                    errorMessage = null,
                 )
             }
             clearImageUploadFailureTracking()
@@ -205,22 +215,37 @@ class PinCreateViewModel @Inject constructor(
     }
 
     fun createAiDraft() {
+        requestAiDraft()
+    }
+
+    fun dismissAiDraftConfirmDialog() {
         val state = _uiState.value
-        if (state.category != PinCategory.ISSUE || state.isGeneratingAiContent) return
+        if (state.isGeneratingAiContent || state.isLoadingAiDraftQuota) return
+        _uiState.update { it.copy(showAiDraftConfirmDialog = false) }
+    }
+
+    fun requestAiDraft() {
+        val state = _uiState.value
+        if (state.category != PinCategory.ISSUE ||
+            state.isGeneratingAiContent ||
+            state.isLoadingAiDraftQuota
+        ) {
+            return
+        }
 
         val pinLat = state.pinLat
         val pinLng = state.pinLng
         when {
             state.title.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "제목을 먼저 입력해주세요.") }
+                showToast("제목을 먼저 입력해주세요.")
                 return
             }
             state.description.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "상세 설명을 먼저 입력해주세요.") }
+                showToast("상세 설명을 먼저 입력해주세요.")
                 return
             }
             pinLat == null || pinLng == null -> {
-                _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
+                showToast("핀 위치 정보를 확인하지 못했습니다.")
                 return
             }
         }
@@ -228,15 +253,67 @@ class PinCreateViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
+                    isLoadingAiDraftQuota = true,
+                    errorMessage = null,
+                )
+            }
+            when (val result = IssueAiDraftFlow.loadQuota(issueRepository)) {
+                IssueAiDraftQuotaResult.Exceeded -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoadingAiDraftQuota = false,
+                            errorMessage = "AI 글쓰기 일일 횟수를 초과했습니다.",
+                        )
+                    }
+                }
+
+                is IssueAiDraftQuotaResult.Ready -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoadingAiDraftQuota = false,
+                            aiDraftRateLimitQuota = result.quota,
+                            showAiDraftConfirmDialog = true,
+                        )
+                    }
+                }
+
+                is IssueAiDraftQuotaResult.Failed -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoadingAiDraftQuota = false,
+                            errorMessage = result.message,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun confirmAiDraft() {
+        val state = _uiState.value
+        if (state.category != PinCategory.ISSUE || state.isGeneratingAiContent) return
+
+        val pinLat = state.pinLat
+        val pinLng = state.pinLng
+        if (pinLat == null || pinLng == null) {
+            _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
                     isGeneratingAiContent = true,
+                    showAiDraftConfirmDialog = false,
                     errorMessage = null,
                 )
             }
 
-            issueRepository.createIssueAiDraft(
+            IssueAiDraftFlow.createDraft(
+                issueRepository = issueRepository,
                 title = state.title,
                 content = state.description,
-                tone = state.selectedTone ?: DEFAULT_AI_TONE,
+                tone = state.selectedTone ?: IssueAiDraftDefaults.DEFAULT_TONE,
                 latitude = pinLat,
                 longitude = pinLng,
             ).onSuccess { draft ->
@@ -245,16 +322,15 @@ class PinCreateViewModel @Inject constructor(
                         title = draft.title?.takeIf { title -> title.isNotBlank() } ?: it.title,
                         description = draft.content.orEmpty(),
                         isGeneratingAiContent = false,
+                        aiDraftRateLimitQuota = null,
                         errorMessage = null,
                     )
                 }
             }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        isGeneratingAiContent = false,
-                        errorMessage = e.message?.takeIf { message -> message.isNotBlank() } ?: "AI 글쓰기에 실패했습니다.",
-                    )
-                }
+                _uiState.update { it.copy(isGeneratingAiContent = false) }
+                showToast(
+                    e.message?.takeIf { message -> message.isNotBlank() } ?: "AI 글쓰기에 실패했습니다.",
+                )
             }
         }
     }
@@ -268,23 +344,23 @@ class PinCreateViewModel @Inject constructor(
         val pinLng = state.pinLng
         when {
             category == null -> {
-                _uiState.update { it.copy(errorMessage = "핀 종류를 확인하지 못했습니다.") }
+                showToast("핀 종류를 확인하지 못했습니다.")
                 return
             }
             state.title.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "제목을 입력해주세요.") }
+                showToast("제목을 입력해주세요.")
                 return
             }
             state.description.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "상세 설명을 입력해주세요.") }
+                showToast("상세 설명을 입력해주세요.")
                 return
             }
             pinLat == null || pinLng == null -> {
-                _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
+                showToast("핀 위치 정보를 확인하지 못했습니다.")
                 return
             }
             category == PinCategory.ISSUE && state.imageUris.isEmpty() -> {
-                _uiState.update { it.copy(errorMessage = "이슈 핀은 사진을 최소 1장 첨부해야 합니다.") }
+                showToast("이슈 핀은 사진을 최소 1장 첨부해야 합니다.")
                 return
             }
         }
@@ -304,16 +380,14 @@ class PinCreateViewModel @Inject constructor(
             }
 
             validation.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
-                            ?: "첨부한 사진을 확인할 수 없습니다.",
-                    )
-                }
+                showToast(
+                    error.message?.takeIf { message -> message.isNotBlank() }
+                        ?: "첨부한 사진을 확인할 수 없습니다.",
+                )
                 return@launch
             }
 
-            _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+            _uiState.update { it.copy(isSubmitting = true) }
             pinRepository.createPin(
                 CreatePinRequest(
                     category = category,
@@ -327,19 +401,15 @@ class PinCreateViewModel @Inject constructor(
                     locationName = state.locationName,
                     imageUris = state.imageUris,
                     mainImageUri = state.mainImageUri,
-                    tone = state.selectedTone ?: DEFAULT_AI_TONE,
+                    tone = state.selectedTone ?: IssueAiDraftDefaults.DEFAULT_TONE,
                 )
             ).onSuccess { createdPin ->
                 clearImageUploadFailureTracking()
-                _uiState.update { it.copy(isSubmitting = false, errorMessage = null) }
+                _uiState.update { it.copy(isSubmitting = false) }
                 _createdEvents.emit(createdPin.id)
             }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        errorMessage = resolveSubmitErrorMessage(e, state.imageUris),
-                    )
-                }
+                _uiState.update { it.copy(isSubmitting = false) }
+                showToast(resolveSubmitErrorMessage(e, state.imageUris))
             }
         }
     }
@@ -366,17 +436,5 @@ class PinCreateViewModel @Inject constructor(
 
     private fun clearImageUploadFailureTracking() {
         lastFailedImageFingerprint = null
-    }
-
-    companion object {
-        private const val DEFAULT_AI_TONE = "없음"
-        private val FALLBACK_TONE_OPTIONS = listOf(
-            "없음",
-            "한줄요약형",
-            "상황설명형",
-            "개선요청형",
-            "긴급요청형",
-            "불편호소형",
-        )
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,6 +48,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.SavedStateHandle
@@ -100,22 +103,20 @@ fun MyPageScreen(
         }
     }
 
+    val context = LocalContext.current
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }
-    var actionErrorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(authActionState) {
         when (val state = authActionState) {
             MyPageViewModel.AuthActionState.Success -> {
-                showLogoutDialog = false
-                showWithdrawDialog = false
-                onEvent(MyPageEvent.NavigateToLogin)
+                // 세션 해제 시 AppNavGraph가 로그인 화면으로 이동함
                 viewModel.resetAuthActionState()
             }
             is MyPageViewModel.AuthActionState.Error -> {
                 showLogoutDialog = false
                 showWithdrawDialog = false
-                actionErrorMessage = state.message
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
                 viewModel.resetAuthActionState()
             }
             else -> Unit
@@ -161,12 +162,9 @@ fun MyPageScreen(
             title = "로그아웃",
             message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
             confirmText = "로그아웃",
-            onDismiss = {
-                if (!isAuthActionLoading) {
-                    showLogoutDialog = false
-                }
-            },
+            onDismiss = { showLogoutDialog = false },
             onConfirm = {
+                showLogoutDialog = false
                 viewModel.logout()
             },
         )
@@ -178,26 +176,12 @@ fun MyPageScreen(
             message = "정말 탈퇴하시겠어요?\n그동안 모은 핀과 활동 기록이\n모두 삭제돼요",
             confirmText = "탈퇴하기",
             isWarning = true,
-            onDismiss = {
-                if (!isAuthActionLoading) {
-                    showWithdrawDialog = false
-                }
-            },
+            onDismiss = { showWithdrawDialog = false },
             onConfirm = {
+                showWithdrawDialog = false
                 viewModel.withdraw()
             },
         )
-        }
-
-        actionErrorMessage?.let { message ->
-            Dialog(
-                title = "안내",
-                message = message,
-                confirmText = "확인",
-                dismissText = "확인",
-                onDismiss = { actionErrorMessage = null },
-                onConfirm = { actionErrorMessage = null },
-            )
         }
 
         if (isAuthActionLoading) {
@@ -229,6 +213,7 @@ private fun MyPageContent(
         IssueissyuTopAppBar(
             titleText = "마이페이지",
             onBackClick = { onEvent(MyPageEvent.NavigateBack) },
+            modifier = Modifier.statusBarsPadding(),
         )
 
         Column(

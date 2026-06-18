@@ -143,6 +143,7 @@ class MapRepositoryImpl @Inject constructor(
             coordinate = PinCoordinate(latitude = lat, longitude = lng),
             address = pinDetailAddress.orEmpty(),
             locationName = pinLocation?.takeIf { it.isNotBlank() } ?: pinDetailAddress.orEmpty(),
+            discount = discount?.takeIf { it.isNotBlank() },
         )
     }
 

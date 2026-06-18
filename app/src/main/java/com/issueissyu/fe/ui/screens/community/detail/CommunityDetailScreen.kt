@@ -60,6 +60,7 @@ import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.CompactSympathyButton
+import com.issueissyu.fe.ui.components.DotPagerIndicator
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
@@ -822,36 +823,49 @@ private fun CommunityDetailImageSection(
     onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val itemSpacingPx = with(LocalDensity.current) { 8.dp.roundToPx() }
-    val isImageRowScrollable by remember {
-        derivedStateOf {
-            listState.canScrollForward || listState.canScrollBackward
-        }
-    }
-    val scrollProgress by remember {
+    val density = LocalDensity.current
+    val itemSpacingPx = with(density) { 8.dp.roundToPx() }
+    val scrollBarState = remember(imageUrls.size, itemSpacingPx) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
-            val totalItems = layoutInfo.totalItemsCount
-            if (totalItems <= 1) return@derivedStateOf 0f
-            if (!listState.canScrollBackward) return@derivedStateOf 0f
-            if (!listState.canScrollForward) return@derivedStateOf 1f
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty()) {
+                return@derivedStateOf CommunityImageScrollBarMetrics()
+            }
 
-            val firstVisibleItem = layoutInfo.visibleItemsInfo.firstOrNull()
-                ?: return@derivedStateOf 0f
-            val itemSizePx = firstVisibleItem.size
-            val spacingPx = itemSpacingPx
-            val viewportWidthPx =
-                (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).coerceAtLeast(1)
-            val totalContentWidthPx = itemSizePx * totalItems +
-                spacingPx * (totalItems - 1) +
-                layoutInfo.beforeContentPadding +
-                layoutInfo.afterContentPadding
-            val maxScrollPx = (totalContentWidthPx - viewportWidthPx).coerceAtLeast(1)
-            val currentScrollPx = listState.firstVisibleItemIndex * (itemSizePx + spacingPx) +
-                listState.firstVisibleItemScrollOffset
+            val itemSize = visibleItems.first().size
+            val beforePadding = layoutInfo.beforeContentPadding
+            val afterPadding = layoutInfo.afterContentPadding
+            val viewportSize = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+            val totalContentSize = beforePadding +
+                imageUrls.size * itemSize +
+                (imageUrls.size - 1).coerceAtLeast(0) * itemSpacingPx +
+                afterPadding
+            val maxScroll = (totalContentSize - viewportSize).coerceAtLeast(0)
+            val scrollable = maxScroll > 0 &&
+                (listState.canScrollForward || listState.canScrollBackward)
 
-            (currentScrollPx.toFloat() / maxScrollPx).coerceIn(0f, 1f)
+            if (!scrollable) {
+                return@derivedStateOf CommunityImageScrollBarMetrics()
+            }
+
+            val currentScroll = (
+                listState.firstVisibleItemIndex * (itemSize + itemSpacingPx) +
+                    listState.firstVisibleItemScrollOffset
+                ).coerceIn(0, maxScroll)
+
+            CommunityImageScrollBarMetrics(
+                scrollable = true,
+                thumbFraction = (viewportSize.toFloat() / totalContentSize).coerceIn(0.15f, 1f),
+                offsetFraction = (currentScroll.toFloat() / maxScroll.coerceAtLeast(1)).coerceIn(0f, 1f),
+            )
         }
+    }
+    val isScrollable by remember {
+        derivedStateOf { scrollBarState.value.scrollable }
+    }
+    val thumbFraction by remember {
+        derivedStateOf { scrollBarState.value.thumbFraction }
     }
 
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
@@ -859,50 +873,61 @@ private fun CommunityDetailImageSection(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             itemsIndexed(imageUrls) { index, imageUrl ->
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "게시글 이미지",
+                Box(
                     modifier = Modifier
-                        .width(110.dp)
-                        .height(110.dp)
+                        .size(width = 110.dp, height = 110.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Gray_3)
                         .clickable { onImageClick(index) },
-                    contentScale = ContentScale.Crop
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "게시글 이미지",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
             }
         }
-        
-        if (isImageRowScrollable) {
+
+        if (isScrollable) {
             Spacer(modifier = Modifier.height(12.dp))
             BoxWithConstraints(
                 modifier = Modifier
-                    .width(40.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
                     .height(4.dp)
                     .align(Alignment.CenterHorizontally)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Gray_3)
+                    .background(Gray_3),
             ) {
-                val density = LocalDensity.current
-                val indicatorWidth = 12.dp
+                val thumbWidth = maxWidth * thumbFraction
                 Box(
                     modifier = Modifier
                         .graphicsLayer {
                             translationX = with(density) {
-                                (maxWidth - indicatorWidth).toPx() * scrollProgress
+                                (maxWidth - thumbWidth).toPx() * scrollBarState.value.offsetFraction
                             }
                         }
-                        .width(indicatorWidth)
+                        .width(thumbWidth)
                         .fillMaxHeight()
-                        .background(BrandColor)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(BrandColor),
                 )
             }
         }
     }
 }
+
+private data class CommunityImageScrollBarMetrics(
+    val scrollable: Boolean = false,
+    val thumbFraction: Float = 1f,
+    val offsetFraction: Float = 0f,
+)
 
 @Composable
 private fun CommunityCardNewsImageSection(
@@ -935,33 +960,10 @@ private fun CommunityCardNewsImageSection(
         }
 
         if (imageUrls.size > 1) {
-            CardNewsPagerIndicator(
+            DotPagerIndicator(
                 pageCount = imageUrls.size,
                 currentPage = pagerState.currentPage,
                 modifier = Modifier.padding(vertical = 12.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun CardNewsPagerIndicator(
-    pageCount: Int,
-    currentPage: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(pageCount) { index ->
-            val isSelected = index == currentPage
-            Box(
-                modifier = Modifier
-                    .size(if (isSelected) 7.dp else 6.dp)
-                    .clip(CircleShape)
-                    .background(if (isSelected) BrandColor else Gray_3),
             )
         }
     }

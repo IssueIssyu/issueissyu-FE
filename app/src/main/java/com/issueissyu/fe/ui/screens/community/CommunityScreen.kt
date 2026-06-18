@@ -120,7 +120,7 @@ fun CommunityScreenContent(
                 CommunityTab.ISSUE -> CategoryItem(
                     tab,
                     tab.displayName,
-                    R.drawable.issue,
+                    R.drawable.ic_issue,
                     Issue,
                     colorScheme.errorContainer
                 )

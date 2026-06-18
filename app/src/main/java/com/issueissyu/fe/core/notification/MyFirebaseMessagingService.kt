@@ -1,25 +1,39 @@
 package com.issueissyu.fe.core.notification
 
-import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class MyFirebaseMessagingService : FirebaseMessagingService() {
+
+    @Inject
+    lateinit var fcmTokenSyncManager: FcmTokenSyncManager
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d("FCM", "NEW 토큰: $token")
-        // TODO: 백엔드에 토큰 업데이트
+        fcmTokenSyncManager.syncToken(token)
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
         val type = message.data["type"]
-        val targetId = message.data["targetId"]
+        val pinId = message.data["pinId"]
+        val communityId = message.data["communityId"]
+        val alarmId = PushAlarmIdParser.parseRaw(message.data)
         val title = message.data["title"] ?: message.notification?.title ?: "이슈이슈 알림"
         val body = message.data["body"] ?: message.notification?.body ?: ""
 
-        NotificationHelper.show(this, type, targetId, title, body)
+        NotificationHelper.show(
+            context = this,
+            type = type,
+            pinId = pinId,
+            communityId = communityId,
+            title = title,
+            body = body,
+            alarmId = alarmId,
+        )
     }
 }

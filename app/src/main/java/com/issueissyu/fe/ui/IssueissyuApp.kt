@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.issueissyu.fe.core.notification.PushDestination
 import com.issueissyu.fe.ui.components.BottomNavigationBar
 import com.issueissyu.fe.ui.navigation.AppDestinations
 import com.issueissyu.fe.ui.navigation.AppNavGraph
@@ -26,7 +27,10 @@ private fun shouldShowBottomBar(route: String?): Boolean {
 }
 
 @Composable
-fun App() {
+fun App(
+    pendingPush: PushDestination? = null,
+    onPendingPushHandled: () -> Unit = {},
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -46,6 +50,8 @@ fun App() {
             navController = navController,
             paddingValues = paddingValues,
             onMapLocationSelectionModeChanged = { isMapLocationSelectionMode = it },
+            pendingPush = pendingPush,
+            onPendingPushHandled = onPendingPushHandled,
         )
     }
 }
