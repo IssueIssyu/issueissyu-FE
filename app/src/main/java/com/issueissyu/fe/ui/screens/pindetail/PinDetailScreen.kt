@@ -562,8 +562,8 @@ private fun ResolutionProofConfirmDialogButton(
             ButtonDefaults.buttonColors(
                 containerColor = Gray_3,
                 contentColor = Gray_5,
-                disabledContainerColor = Gray_3,
-                disabledContentColor = Gray_5,
+                disabledContainerColor = Gray_3.copy(alpha = 0.5f),
+                disabledContentColor = Gray_5.copy(alpha = 0.5f),
             )
         },
     ) {
