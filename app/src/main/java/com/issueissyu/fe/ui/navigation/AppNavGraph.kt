@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.navigation
 
+import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -58,6 +59,7 @@ import com.issueissyu.fe.ui.screens.map.PIN_CREATE_MAP_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.AlarmSettingScreen
 import com.issueissyu.fe.ui.screens.mypage.ChangeLocalScreen
 import com.issueissyu.fe.ui.screens.mypage.MyIssueScreen
+import com.issueissyu.fe.ui.screens.mypage.MySolverParticipationScreen
 import com.issueissyu.fe.ui.screens.mypage.MYPAGE_REFRESH_KEY
 import com.issueissyu.fe.ui.screens.mypage.MyPageEvent
 import com.issueissyu.fe.ui.screens.mypage.MyPageScreen
@@ -412,6 +414,9 @@ fun AppNavGraph(
                             MyPageEvent.NavigateToIssue -> {
                                 navController.navigate(AppDestinations.MyPage.MY_ISSUES_ROUTE)
                             }
+                            MyPageEvent.NavigateToSolverParticipation -> {
+                                navController.navigate(AppDestinations.MyPage.MY_SOLVER_PARTICIPATION_ROUTE)
+                            }
                             MyPageEvent.NavigateToSettingAlarm -> {
                                 navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
                             }
@@ -484,13 +489,29 @@ fun AppNavGraph(
                 MyIssueScreen(
                     onBackClick = { navController.navigateUp() },
                     onPinClick = { pinId ->
-                        pinId.toLongOrNull()?.let { id ->
-                            navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
-                                popUpTo(AppDestinations.TOWN_ROUTE) {
-                                    inclusive = true
-                                }
-                            }
-                        }
+                        navigateToFocusedPin(
+                            navController = navController,
+                            context = context,
+                            pinId = pinId,
+                        )
+                    },
+                )
+            }
+        }
+
+        composable(AppDestinations.MyPage.MY_SOLVER_PARTICIPATION_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                MySolverParticipationScreen(
+                    onBackClick = { navController.navigateUp() },
+                    onPinClick = { pinId ->
+                        navigateToFocusedPin(
+                            navController = navController,
+                            context = context,
+                            pinId = pinId,
+                        )
                     },
                 )
             }
@@ -725,6 +746,23 @@ private fun canNavigateFromPush(route: String?): Boolean {
 
 private fun String?.isLoginRoute(): Boolean =
     this?.startsWith(LOGIN_ROUTE) == true
+
+private fun navigateToFocusedPin(
+    navController: NavHostController,
+    context: Context,
+    pinId: String,
+) {
+    val id = pinId.toLongOrNull()
+    if (id != null) {
+        navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
+            popUpTo(AppDestinations.TOWN_ROUTE) {
+                inclusive = true
+            }
+        }
+    } else {
+        Toast.makeText(context, "핀 정보를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+    }
+}
 
 private fun NavHostController.navigateToLoginClearingBackStack(
     showStorageWarning: Boolean = false,

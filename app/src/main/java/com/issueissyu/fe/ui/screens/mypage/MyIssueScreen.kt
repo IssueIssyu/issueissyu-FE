@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.screens.mypage
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,11 +35,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.issueissyu.fe.domain.model.mypage.MyIssuePin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
@@ -61,6 +64,56 @@ fun MyIssueScreen(
     viewModel: MyIssueViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    MyPinListContent(
+        title = "내 이슈",
+        uiState = uiState,
+        emptyTitle = "아직 생성한 핀이 없어요",
+        emptyDescription = "지도에서 우리 동네를 기록해보세요!",
+        loadMoreThreshold = MyIssueViewModel.LOAD_MORE_THRESHOLD,
+        onBackClick = onBackClick,
+        onRetry = { viewModel.loadIssues() },
+        onLoadMore = { viewModel.loadIssues(append = true) },
+        onPinClick = onPinClick,
+        onErrorConsumed = viewModel::clearErrorMessage,
+    )
+}
+
+@Composable
+fun MySolverParticipationScreen(
+    onBackClick: () -> Unit,
+    onPinClick: (pinId: String) -> Unit,
+    viewModel: MySolverParticipationViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    MyPinListContent(
+        title = "해결 참여",
+        uiState = uiState,
+        emptyTitle = "아직 참여한 이슈가 없어요",
+        emptyDescription = "시민해결사로 이웃의 이슈를 함께 해결해보세요!",
+        loadMoreThreshold = MySolverParticipationViewModel.LOAD_MORE_THRESHOLD,
+        onBackClick = onBackClick,
+        onRetry = { viewModel.loadIssues() },
+        onLoadMore = { viewModel.loadIssues(append = true) },
+        onPinClick = onPinClick,
+        onErrorConsumed = viewModel::clearErrorMessage,
+    )
+}
+
+@Composable
+internal fun MyPinListContent(
+    title: String,
+    uiState: MyIssueUiState,
+    emptyTitle: String,
+    emptyDescription: String,
+    loadMoreThreshold: Int,
+    onBackClick: () -> Unit,
+    onRetry: () -> Unit,
+    onLoadMore: () -> Unit,
+    onPinClick: (pinId: String) -> Unit,
+    onErrorConsumed: () -> Unit,
+) {
     val listState = rememberLazyListState()
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -70,15 +123,21 @@ fun MyIssueScreen(
             uiState.hasNext &&
                 !uiState.isLoadingMore &&
                 uiState.issues.isNotEmpty() &&
-                lastVisibleIndex >= uiState.issues.lastIndex - MyIssueViewModel.LOAD_MORE_THRESHOLD
+                lastVisibleIndex >= uiState.issues.lastIndex - loadMoreThreshold
         }
     }
 
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore) {
-            viewModel.loadIssues(append = true)
+            onLoadMore()
         }
     }
+
+    ObservePinListLoadMoreError(
+        errorMessage = uiState.errorMessage,
+        hasItems = uiState.issues.isNotEmpty(),
+        onErrorConsumed = onErrorConsumed,
+    )
 
     Column(
         modifier = Modifier
@@ -86,7 +145,7 @@ fun MyIssueScreen(
             .fillMaxSize(),
     ) {
         IssueissyuTopAppBar(
-            titleText = "내 이슈",
+            titleText = title,
             onBackClick = onBackClick,
         )
 
@@ -101,14 +160,17 @@ fun MyIssueScreen(
             }
 
             uiState.errorMessage != null && uiState.issues.isEmpty() -> {
-                MyIssueErrorState(
+                PinListErrorState(
                     message = uiState.errorMessage.orEmpty(),
-                    onRetry = { viewModel.loadIssues() },
+                    onRetry = onRetry,
                 )
             }
 
             uiState.issues.isEmpty() -> {
-                MyIssueEmptyState()
+                PinListEmptyState(
+                    title = emptyTitle,
+                    description = emptyDescription,
+                )
             }
 
             else -> {
@@ -118,10 +180,10 @@ fun MyIssueScreen(
                     contentPadding = PaddingValues(horizontal = 31.dp, vertical = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(uiState.issues, key = { it.id }) { issue ->
+                    items(uiState.issues, key = { it.pinId }) { issue ->
                         MyIssueCard(
                             issue = issue,
-                            onClick = { onPinClick(issue.id) },
+                            onClick = { onPinClick(issue.pinId.toString()) },
                         )
                     }
 
@@ -144,7 +206,23 @@ fun MyIssueScreen(
 }
 
 @Composable
-private fun MyIssueErrorState(
+internal fun ObservePinListLoadMoreError(
+    errorMessage: String?,
+    hasItems: Boolean,
+    onErrorConsumed: () -> Unit,
+) {
+    val context = LocalContext.current
+    LaunchedEffect(errorMessage) {
+        val message = errorMessage ?: return@LaunchedEffect
+        if (hasItems) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            onErrorConsumed()
+        }
+    }
+}
+
+@Composable
+private fun PinListErrorState(
     message: String,
     onRetry: () -> Unit,
 ) {
@@ -167,7 +245,10 @@ private fun MyIssueErrorState(
 }
 
 @Composable
-private fun MyIssueEmptyState() {
+private fun PinListEmptyState(
+    title: String,
+    description: String,
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -177,11 +258,11 @@ private fun MyIssueEmptyState() {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "아직 생성한 핀이 없어요",
+                text = title,
                 style = IssueTypo.Bold18.copy(color = Title),
             )
             Text(
-                text = "지도에서 우리 동네를 기록해보세요!",
+                text = description,
                 style = IssueTypo.Regular15.copy(color = Text),
             )
         }
@@ -190,8 +271,9 @@ private fun MyIssueEmptyState() {
 
 @Composable
 fun MyIssueCard(
-    issue: MyIssueItem,
+    issue: MyIssuePin,
     onClick: () -> Unit,
+    showPinType: Boolean = true,
 ) {
     val cardShape = RoundedCornerShape(15.dp)
     val (pinTypeLabel, pinTypeColor) = when (issue.pinType) {
@@ -236,22 +318,24 @@ fun MyIssueCard(
                 modifier = Modifier.weight(1f),
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
+            if (showPinType) {
+                Spacer(modifier = Modifier.width(8.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.wrapContentWidth(),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = pinTypeLabel,
-                    tint = pinTypeColor,
-                    modifier = Modifier.size(25.dp),
-                )
-                Text(
-                    text = pinTypeLabel,
-                    style = IssueTypo.ExtraBold15.copy(color = Text),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.wrapContentWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = pinTypeLabel,
+                        tint = pinTypeColor,
+                        modifier = Modifier.size(25.dp),
+                    )
+                    Text(
+                        text = pinTypeLabel,
+                        style = IssueTypo.ExtraBold15.copy(color = Text),
+                    )
+                }
             }
         }
 
