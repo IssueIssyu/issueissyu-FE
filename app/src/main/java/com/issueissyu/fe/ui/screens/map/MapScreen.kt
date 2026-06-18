@@ -45,6 +45,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -322,6 +323,7 @@ fun MapScreen(
     var naverMapInstance by remember { mutableStateOf<NaverMap?>(null) }
     var initialLocationState by remember { mutableStateOf<MapInitialLocationState>(MapInitialLocationState.Pending) }
     var locationCts by remember { mutableStateOf<CancellationTokenSource?>(null) }
+    var hasFocusedRoutePin by rememberSaveable(focusPinId) { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     val mapMarkers = remember { mutableStateListOf<Marker>() }
@@ -521,8 +523,9 @@ fun MapScreen(
     }
 
     LaunchedEffect(focusPinId, naverMapInstance) {
-        if (focusPinId != null && naverMapInstance != null) {
+        if (focusPinId != null && naverMapInstance != null && !hasFocusedRoutePin) {
             viewModel.focusPinById(focusPinId)
+            hasFocusedRoutePin = true
         }
     }
 
