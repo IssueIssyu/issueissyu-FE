@@ -186,7 +186,6 @@ class MapViewModel @Inject constructor(
     init {
         loadNotices()
         observeBillingPurchaseEvents()
-        refreshUnreadNotificationState()
     }
 
     private fun loadNotices() {
