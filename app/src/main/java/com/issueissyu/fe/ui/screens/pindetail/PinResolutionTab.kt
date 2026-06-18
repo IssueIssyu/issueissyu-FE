@@ -8,12 +8,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -45,7 +48,9 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight.Companion.SemiBold
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -220,7 +225,7 @@ fun PinResolutionTab(
 
 private val ResolutionBottomBarInset = 92.dp
 private val ResolutionGoNowConfirmCardBottomGap = 12.dp
-private val ResolutionGoNowConfirmButtonHeight = 46.dp
+private val ResolutionGoNowConfirmCompactWidth = 300.dp
 
 @Composable
 private fun SectionCard(
@@ -898,68 +903,141 @@ private fun ResolutionGoNowFloatingConfirmCard(
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(White)
-            .border(1.dp, BrandColor.copy(alpha = 0.22f), RoundedCornerShape(20.dp))
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+    BoxWithConstraints(
+        modifier = modifier.fillMaxWidth(),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(
-                text = "현장에 방문하시겠어요?",
-                style = IssueTypo.Bold18.copy(color = Title)
-            )
-            Text(
-                text = "현장을 방문한 후 사진 인증을 해주세요. 글 작성자가 확인하면 해결 완료 처리됩니다.",
-                style = IssueTypo.Regular12.copy(color = Gray_6),
-                lineHeight = 20.sp
-            )
-        }
+        val stackButtons = maxWidth < ResolutionGoNowConfirmCompactWidth
+        val buttonShape = RoundedCornerShape(999.dp)
+        val buttonContentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(White)
+                .border(1.dp, BrandColor.copy(alpha = 0.22f), RoundedCornerShape(20.dp))
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(ResolutionGoNowConfirmButtonHeight),
-                shape = RoundedCornerShape(999.dp),
-                border = BorderStroke(1.dp, Gray_3),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = White,
-                    contentColor = Gray_5
-                ),
-                elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = "취소",
-                    style = IssueTypo.Bold18.copy(color = Gray_5)
+                    text = "현장에 방문하시겠어요?",
+                    style = IssueTypo.Bold18.copy(color = Title),
+                )
+                Text(
+                    text = "현장을 방문한 후 사진 인증을 해주세요. 글 작성자가 확인하면 해결 완료 처리됩니다.",
+                    style = IssueTypo.Regular12.copy(color = Gray_6, lineHeight = 20.sp),
                 )
             }
 
-            Button(
-                onClick = onConfirm,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(ResolutionGoNowConfirmButtonHeight),
-                shape = RoundedCornerShape(999.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = BrandColor,
-                    contentColor = White
-                )
-            ) {
-                Text(
-                    text = "네, 지금 갈게요!",
-                    style = IssueTypo.Bold18.copy(color = White)
-                )
+            if (stackButtons) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    ResolutionGoNowConfirmDialogButton(
+                        text = "취소",
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth(),
+                        isPrimary = false,
+                        shape = buttonShape,
+                        contentPadding = buttonContentPadding,
+                    )
+                    ResolutionGoNowConfirmDialogButton(
+                        text = "네, 지금 갈게요!",
+                        onClick = onConfirm,
+                        modifier = Modifier.fillMaxWidth(),
+                        isPrimary = true,
+                        shape = buttonShape,
+                        contentPadding = buttonContentPadding,
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    ResolutionGoNowConfirmDialogButton(
+                        text = "취소",
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        isPrimary = false,
+                        shape = buttonShape,
+                        contentPadding = buttonContentPadding,
+                    )
+                    ResolutionGoNowConfirmDialogButton(
+                        text = "네, 지금 갈게요!",
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1f),
+                        isPrimary = true,
+                        shape = buttonShape,
+                        contentPadding = buttonContentPadding,
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun ResolutionGoNowConfirmDialogButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isPrimary: Boolean,
+    shape: RoundedCornerShape,
+    contentPadding: PaddingValues,
+) {
+    val textStyle = IssueTypo.ExtraBold15.copy(
+        color = if (isPrimary) White else Gray_5,
+        lineHeight = 20.sp,
+        textAlign = TextAlign.Center,
+    )
+
+    if (isPrimary) {
+        Button(
+            onClick = onClick,
+            modifier = modifier.defaultMinSize(minHeight = 48.dp),
+            shape = shape,
+            contentPadding = contentPadding,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = BrandColor,
+                contentColor = White,
+            ),
+        ) {
+            ResolutionGoNowConfirmButtonLabel(text = text, style = textStyle)
+        }
+    } else {
+        Button(
+            onClick = onClick,
+            modifier = modifier.defaultMinSize(minHeight = 48.dp),
+            shape = shape,
+            contentPadding = contentPadding,
+            border = BorderStroke(1.dp, Gray_3),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = White,
+                contentColor = Gray_5,
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+        ) {
+            ResolutionGoNowConfirmButtonLabel(text = text, style = textStyle)
+        }
+    }
+}
+
+@Composable
+private fun ResolutionGoNowConfirmButtonLabel(
+    text: String,
+    style: TextStyle,
+) {
+    Text(
+        text = text,
+        style = style,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
