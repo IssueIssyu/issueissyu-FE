@@ -2,8 +2,7 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.domain.model.mypage.MyIssuePage
-import com.issueissyu.fe.domain.model.mypage.MyIssuePin
+import com.issueissyu.fe.domain.model.mypage.MySolverPinPage
 import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -14,17 +13,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class MyIssueUiState(
-    val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val errorMessage: String? = null,
-    val issues: List<MyIssuePin> = emptyList(),
-    val hasNext: Boolean = false,
-    val nextCursor: String? = null,
-)
-
 @HiltViewModel
-class MyIssueViewModel @Inject constructor(
+class MySolverParticipationViewModel @Inject constructor(
     private val userRepository: UserRepository,
 ) : ViewModel() {
 
@@ -60,7 +50,7 @@ class MyIssueViewModel @Inject constructor(
                 }
             }
 
-            userRepository.getMyIssues(cursor = if (append) currentState.nextCursor else null)
+            userRepository.getMySolverPins(cursor = if (append) currentState.nextCursor else null)
                 .onSuccess { page -> applyPage(page, append) }
                 .onFailure { error ->
                     _uiState.update {
@@ -84,7 +74,7 @@ class MyIssueViewModel @Inject constructor(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
-    private fun applyPage(page: MyIssuePage, append: Boolean) {
+    private fun applyPage(page: MySolverPinPage, append: Boolean) {
         _uiState.update {
             it.copy(
                 isLoading = false,
@@ -103,6 +93,6 @@ class MyIssueViewModel @Inject constructor(
 
     companion object {
         const val LOAD_MORE_THRESHOLD = 2
-        private const val DEFAULT_ERROR_MESSAGE = "내 이슈를 불러오는 중 오류가 발생했습니다."
+        private const val DEFAULT_ERROR_MESSAGE = "해결 참여 목록을 불러오는 중 오류가 발생했습니다."
     }
 }

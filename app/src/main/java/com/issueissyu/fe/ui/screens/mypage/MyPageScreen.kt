@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.VolunteerActivism
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -73,6 +75,7 @@ sealed class MyPageEvent {
     data object NavigateToProfile: MyPageEvent()
     data object NavigateToLocal: MyPageEvent()
     data object NavigateToIssue: MyPageEvent()
+    data object NavigateToSolverParticipation: MyPageEvent()
     data object NavigateToSettingAlarm: MyPageEvent()
     data object NavigateToLanding: MyPageEvent()
     data object NavigateToLogin: MyPageEvent()
@@ -227,6 +230,7 @@ private fun MyPageContent(
         IssueissyuTopAppBar(
             titleText = "마이페이지",
             onBackClick = { onEvent(MyPageEvent.NavigateBack) },
+            modifier = Modifier.statusBarsPadding(),
         )
 
         Column(
@@ -279,6 +283,11 @@ private fun MyPageContent(
                 icon = Icons.Default.LocationOn,
                 title = "내 이슈",
                 onNavClick = { onEvent(MyPageEvent.NavigateToIssue) },
+            )
+            NavBar(
+                icon = Icons.Outlined.VolunteerActivism,
+                title = "해결 참여",
+                onNavClick = { onEvent(MyPageEvent.NavigateToSolverParticipation) },
             )
             NavBar(
                 icon = Icons.Outlined.Notifications,

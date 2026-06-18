@@ -34,6 +34,7 @@ object AppDestinations {
         const val LOCAL_CHANGE_ROUTE = "mypage/local_change"
         const val TERMS_ROUTE = "mypage/terms"
         const val MY_ISSUES_ROUTE = "mypage/my_issues"
+        const val MY_SOLVER_PARTICIPATION_ROUTE = "mypage/my_solver_participation"
         const val ALARM_SETTINGS_ROUTE = "mypage/alarm_settings"
     }
 

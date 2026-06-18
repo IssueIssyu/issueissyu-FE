@@ -150,7 +150,7 @@ fun PreviewCategoryButtons() {
         tertiaryContainer
     ) {
         listOf(
-            CategoryItem("이슈", "이슈", R.drawable.issue, Issue, errorContainer),
+            CategoryItem("이슈", "이슈", R.drawable.ic_issue, Issue, errorContainer),
             CategoryItem("소통", "소통", R.drawable.communicate, Communication, secondaryContainer),
             CategoryItem("가게", "가게", R.drawable.shop, Shop, primaryContainer),
             CategoryItem("축제", "축제", R.drawable.festival, Festival, tertiaryContainer)
