@@ -79,6 +79,7 @@ import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.model.pin.ShopPinDetail
 import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.screens.map.PinSummaryCard
+import com.issueissyu.fe.ui.screens.map.PinSummaryCardHeight
 import com.issueissyu.fe.ui.screens.map.PinSummaryCardHighlight
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Communication
@@ -1672,7 +1673,7 @@ private fun LandingPinShowcaseCard(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.height(260.dp),
+        modifier = modifier.height(PinSummaryCardHeight),
     ) {
         PinSummaryCard(
             pin = type.toSamplePin(),
