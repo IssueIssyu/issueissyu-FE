@@ -3,24 +3,37 @@ package com.issueissyu.fe.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -36,80 +49,72 @@ fun Dialog(
     message: String,
     confirmText: String = "확인",
     dismissText: String = "취소",
-    isWarning: Boolean = false, // 경고성 여부 (회원탈퇴 등)
+    isWarning: Boolean = false,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    val configuration = LocalConfiguration.current
+    val messageMaxHeight = (configuration.screenHeightDp * 0.25f).dp
+    val dialogMaxWidth = (configuration.screenWidthDp * 0.92f).dp
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         Card(
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier
+                .widthIn(max = dialogMaxWidth)
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 12.dp),
         ) {
             Column(
                 modifier = Modifier
                     .background(White)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // 타이틀
                 Text(
                     text = title,
+                    modifier = Modifier.fillMaxWidth(),
                     style = IssueTypo.Bold18.copy(
-                        color = if (isWarning) Issue else Title
-                    )
+                        color = if (isWarning) Issue else Title,
+                    ),
+                    textAlign = TextAlign.Center,
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // 메시지
                 Text(
                     text = message,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = messageMaxHeight)
+                        .verticalScroll(rememberScrollState()),
                     style = IssueTypo.Regular16.copy(color = Text),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // 버튼들
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    // 취소 버튼
-                    Button(
+                    DialogActionButton(
+                        text = dismissText,
                         onClick = onDismiss,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Gray_3
-                        )
-                    ) {
-                        Text(
-                            text = dismissText,
-                            style = IssueTypo.Bold18.copy(color = Gray_5)
-                        )
-                    }
-
-                    // 확인 버튼
-                    Button(
+                        containerColor = Gray_3,
+                        textColor = Gray_5,
+                        modifier = Modifier.weight(1f),
+                    )
+                    DialogActionButton(
+                        text = confirmText,
                         onClick = onConfirm,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isWarning) Issue else BrandColor  //기본은 브랜드 컬러,  warning -> 붉은 컬러
-                        )
-                    ) {
-                        Text(
-                            text = confirmText,
-                            style = IssueTypo.Bold18.copy(color = White)
-                        )
-                    }
+                        containerColor = if (isWarning) Issue else BrandColor,
+                        textColor = White,
+                        modifier = Modifier.weight(1f),
+                    )
                 }
             }
         }
@@ -201,6 +206,82 @@ fun RemainingQuotaDialog(
     }
 }
 
+@Composable
+private fun DialogActionButton(
+    text: String,
+    onClick: () -> Unit,
+    containerColor: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 48.dp),
+        shape = RoundedCornerShape(12.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 12.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = containerColor),
+    ) {
+        DialogButtonText(
+            text = text,
+            color = textColor,
+        )
+    }
+}
+
+@Composable
+private fun DialogButtonText(
+    text: String,
+    color: Color,
+) {
+    val baseStyle = IssueTypo.Bold18.copy(color = color)
+    var fontSize by remember(text, color) { mutableStateOf(baseStyle.fontSize) }
+    var readyToDraw by remember(text, color) { mutableStateOf(true) }
+
+    Text(
+        text = text,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp)
+            .drawWithContent { if (readyToDraw) drawContent() },
+        style = baseStyle.copy(fontSize = fontSize),
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+        softWrap = false,
+        onTextLayout = { result ->
+            if (result.didOverflowWidth && fontSize.value > 10f) {
+                readyToDraw = false
+                fontSize = (fontSize.value * 0.92f).sp
+            } else {
+                readyToDraw = true
+            }
+        },
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewLogoutDialog() {
+    Dialog(
+        title = "로그아웃",
+        message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
+        confirmText = "로그아웃",
+        onDismiss = {},
+        onConfirm = {},
+    )
+}
+
+@Preview(showBackground = true, fontScale = 1.5f)
+@Composable
+fun PreviewLogoutDialogLargeFont() {
+    Dialog(
+        title = "로그아웃",
+        message = "정말 로그아웃 하시겠어요?\n언제든지 다시 돌아올 수 있어요!",
+        confirmText = "로그아웃",
+        onDismiss = {},
+        onConfirm = {},
+    )
+}
+
 @Preview(showBackground = true)
 @Composable
 fun PreviewRemainingQuotaDialog() {
@@ -219,7 +300,9 @@ fun PreviewIssueDialog() {
     Dialog(
         title = "회원탈퇴",
         message = "정말로 탈퇴하시겠습니까?\n탈퇴 후에는 복구할 수 없습니다.\n할래말래\n\n할래말래\n할래말래\n할래말래",
+        confirmText = "탈퇴하기",
+        isWarning = true,
         onDismiss = {},
-        onConfirm = {}
+        onConfirm = {},
     )
 }
