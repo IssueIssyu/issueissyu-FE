@@ -1,12 +1,15 @@
 package com.issueissyu.fe.ui.screens.pindetail
 
+import android.app.Activity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.data.local.TokenManager
+import com.issueissyu.fe.domain.model.billing.BillingPurchaseEvent
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.IssueResolverParticipation
 import com.issueissyu.fe.domain.model.pin.PinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.PinComment
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
@@ -18,11 +21,19 @@ import com.issueissyu.fe.domain.model.pin.ProblemSolverParticipantInfo
 import com.issueissyu.fe.domain.model.issue.IssueReliability
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
+import com.issueissyu.fe.core.issue.IssueReliabilityPolling
+import com.issueissyu.fe.domain.model.pin.PinHomeEditSubmitResult
+import com.issueissyu.fe.domain.model.pin.canEditBy
+import com.issueissyu.fe.domain.model.pin.supportsHomeEdit
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.domain.model.pin.withHomeFallback
 import com.issueissyu.fe.domain.repository.PinRepository
-import com.issueissyu.fe.core.issue.IssueReliabilityPolling
+import com.issueissyu.fe.domain.repository.BillingRepository
+import com.issueissyu.fe.domain.repository.IssueRepository
 import com.issueissyu.fe.domain.usecase.issue.GetIssueReliabilityUseCase
+import com.issueissyu.fe.ui.components.IssueAiDraftDefaults
+import com.issueissyu.fe.ui.components.IssueAiDraftFlow
+import com.issueissyu.fe.ui.components.IssueAiDraftQuotaResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -61,6 +72,7 @@ data class PinDetailUiState(
     val reliabilityReason: String? = null,
     val reliabilityStatus: IssueReliabilityStatus? = null,
     val errorMessage: String? = null,
+    val homeEdit: PinHomeEditUiState = PinHomeEditUiState(),
 )
 
 data class PinDetailEmojiPickerUiState(
@@ -79,6 +91,8 @@ sealed interface PinDetailEffect {
 @HiltViewModel
 class PinDetailViewModel @Inject constructor(
     private val pinRepository: PinRepository,
+    private val issueRepository: IssueRepository,
+    private val billingRepository: BillingRepository,
     private val getIssueReliabilityUseCase: GetIssueReliabilityUseCase,
     private val tokenManager: TokenManager,
 ) : ViewModel() {
@@ -96,12 +110,21 @@ class PinDetailViewModel @Inject constructor(
     private var emojiImageById: Map<Long, String> = emptyMap()
     private var issueReliabilityJob: Job? = null
     private var observedReliabilityPinId: Long? = null
+    private var observedBillingProductId = billingRepository.pendingBillingProductId.value
+
+    init {
+        observeBillingPurchaseEvents()
+    }
+
+    private var pendingStartHomeEdit = false
 
     val currentUserId: String?
         get() = tokenManager.getCurrentUserUuid()
 
-    fun loadPin(pinId: String) {
+    fun loadPin(pinId: String, startHomeEditAfterLoad: Boolean = false) {
+        pendingStartHomeEdit = startHomeEditAfterLoad
         val id = pinId.toLongOrNull() ?: run {
+            pendingStartHomeEdit = false
             routePinId = null
             _uiState.update { it.copy(isLoading = false, errorMessage = "잘못된 핀 ID입니다.") }
             return
@@ -126,20 +149,25 @@ class PinDetailViewModel @Inject constructor(
                     reliabilityScore = null,
                     reliabilityReason = null,
                     reliabilityStatus = null,
+                    homeEdit = PinHomeEditUiState(),
                 )
             }
 
             pinRepository.getPinDetailHome(id)
-                .onSuccess { pin ->
+                .onSuccess { homeResult ->
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            pin = pin,
-                            postSympathy = pin.toPostSympathyContent(),
+                            pin = homeResult.pin,
+                            postSympathy = homeResult.pin.toPostSympathyContent(),
                         )
                     }
+                    if (pendingStartHomeEdit) {
+                        pendingStartHomeEdit = false
+                        startHomeEdit()
+                    }
                     loadPostTab(id)
-                    if (pin.detail is IssuePinDetail) {
+                    if (homeResult.pin.detail is IssuePinDetail) {
                         startIssueReliabilityObservation(id)
                         viewModelScope.launch {
                             refreshResolutionTab(id, currentUserId)
@@ -147,7 +175,15 @@ class PinDetailViewModel @Inject constructor(
                     }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, errorMessage = e.message) }
+                    pendingStartHomeEdit = false
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = e.message?.takeIf { msg ->
+                                msg.isNotBlank() && !msg.startsWith("HTTP ")
+                            } ?: "핀 정보를 불러오지 못했습니다.",
+                        )
+                    }
                 }
         }
     }
@@ -200,6 +236,7 @@ class PinDetailViewModel @Inject constructor(
     private fun lookupEmojiImage(emojiId: Long): String? = emojiImageById[emojiId]
 
     fun selectTab(tab: PinDetailTab) {
+        if (_uiState.value.homeEdit.isActive) return
         _uiState.update { it.copy(selectedTab = tab) }
         if (tab == PinDetailTab.POST) {
             resolvePinId()?.let { pinId ->
@@ -434,25 +471,7 @@ class PinDetailViewModel @Inject constructor(
         )
 
         viewModelScope.launch {
-            pinRepository.getEmojiCandidates()
-                .onSuccess { candidates ->
-                    emojiImageById = candidates.associate { it.emojiId to it.emojiImageUrl }
-                    _emojiPickerUiState.update {
-                        it.copy(
-                            candidates = candidates,
-                            isLoading = false,
-                            errorMessage = null,
-                        )
-                    }
-                }
-                .onFailure { e ->
-                    _emojiPickerUiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = e.message ?: "이모지 목록을 불러오지 못했습니다.",
-                        )
-                    }
-                }
+            refreshEmojiCandidates()
         }
     }
 
@@ -463,14 +482,85 @@ class PinDetailViewModel @Inject constructor(
     fun pickEmojiInPicker(emojiId: Long) {
         val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
             ?: return
-        if (!candidate.canReact) {
-            showToast("구매가 필요한 이모지입니다.")
-            return
-        }
+        if (!candidate.canReact) return
         _emojiPickerUiState.update { state ->
             val nextSelection = if (state.pickedEmojiId == emojiId) null else emojiId
             state.copy(pickedEmojiId = nextSelection)
         }
+    }
+
+    fun purchaseEmoji(activity: Activity?, emojiId: Long) {
+        val candidate = _emojiPickerUiState.value.candidates.firstOrNull { it.emojiId == emojiId }
+            ?: return
+        if (candidate.canReact || billingRepository.pendingBillingProductId.value != null) return
+        val productId = candidate.productId ?: run {
+            showToast("구매 정보를 찾을 수 없습니다.")
+            return
+        }
+        if (activity == null) {
+            showToast("결제 화면을 열 수 없습니다.")
+            return
+        }
+        observedBillingProductId = productId
+        viewModelScope.launch {
+            billingRepository.purchaseProduct(activity, productId)
+                .onFailure { error ->
+                    observedBillingProductId = null
+                    showToast(error.message ?: "결제창을 열지 못했습니다.")
+                }
+        }
+    }
+
+    private fun observeBillingPurchaseEvents() {
+        viewModelScope.launch {
+            billingRepository.purchaseEvents.collect { event ->
+                if (event.productId != observedBillingProductId) return@collect
+                when (event) {
+                    is BillingPurchaseEvent.Verified -> {
+                        refreshEmojiCandidates()
+                        showToast("이모지를 구매했습니다.")
+                        finishBillingPurchase(event.productId)
+                    }
+                    is BillingPurchaseEvent.Pending -> {
+                        showToast("결제가 대기 중입니다.")
+                    }
+                    is BillingPurchaseEvent.Canceled -> {
+                        finishBillingPurchase(event.productId)
+                    }
+                    is BillingPurchaseEvent.Failed -> {
+                        showToast(event.message)
+                        finishBillingPurchase(event.productId)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun finishBillingPurchase(productId: String) {
+        observedBillingProductId = null
+        billingRepository.acknowledgePurchaseResult(productId)
+    }
+
+    private suspend fun refreshEmojiCandidates() {
+        pinRepository.getEmojiCandidates()
+            .onSuccess { candidates ->
+                emojiImageById = candidates.associate { it.emojiId to it.emojiImageUrl }
+                _emojiPickerUiState.update {
+                    it.copy(
+                        candidates = candidates,
+                        isLoading = false,
+                        errorMessage = null,
+                    )
+                }
+            }
+            .onFailure { e ->
+                _emojiPickerUiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = e.message ?: "이모지 목록을 불러오지 못했습니다.",
+                    )
+                }
+            }
     }
 
     fun submitPickedEmoji() {
@@ -516,6 +606,398 @@ class PinDetailViewModel @Inject constructor(
                 }
                 .onFailure { e ->
                     showToast(e.message ?: "이모지 반응 처리에 실패했습니다.")
+                }
+        }
+    }
+
+    fun startHomeEdit() {
+        val pin = _uiState.value.pin ?: run {
+            showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
+            return
+        }
+        if (!pin.supportsHomeEdit()) {
+            showToast("수정할 수 없는 핀 유형입니다.")
+            return
+        }
+        if (!pin.canEditBy(currentUserId)) {
+            showToast("본인이 작성한 핀만 수정할 수 있습니다.")
+            return
+        }
+
+        _uiState.update {
+            it.copy(
+                homeEdit = PinHomeEditUiState().openedFrom(pin),
+                selectedTab = PinDetailTab.HOME,
+            )
+        }
+        if (pin.detail is IssuePinDetail) {
+            loadHomeEditToneTypes()
+        }
+    }
+
+    private fun loadHomeEditToneTypes() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(homeEdit = it.homeEdit.copy(isLoadingToneOptions = true))
+            }
+            issueRepository.getIssueToneTypes()
+                .onSuccess { tones ->
+                    val labels = tones.map { it.label }
+                    _uiState.update { state ->
+                        state.copy(
+                            homeEdit = state.homeEdit.copy(
+                                toneOptions = labels,
+                                selectedTone = state.homeEdit.selectedTone?.takeIf { it in labels }
+                                    ?: labels.firstOrNull(),
+                                isLoadingToneOptions = false,
+                            ),
+                        )
+                    }
+                }
+                .onFailure {
+                    _uiState.update { state ->
+                        state.copy(
+                            homeEdit = state.homeEdit.copy(
+                                toneOptions = IssueAiDraftDefaults.FALLBACK_TONE_OPTIONS,
+                                selectedTone = state.homeEdit.selectedTone?.takeIf {
+                                    it in IssueAiDraftDefaults.FALLBACK_TONE_OPTIONS
+                                } ?: IssueAiDraftDefaults.DEFAULT_TONE,
+                                isLoadingToneOptions = false,
+                            ),
+                        )
+                    }
+                }
+        }
+    }
+
+    fun cancelHomeEdit() {
+        _uiState.update { it.copy(homeEdit = PinHomeEditUiState()) }
+    }
+
+    fun dismissHomeEditConfirmDialog() {
+        val homeEdit = _uiState.value.homeEdit
+        if (homeEdit.isSubmitting || homeEdit.isLoadingQuota) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(showConfirmDialog = false)) }
+    }
+
+    fun onHomeEditTitleChange(value: String) {
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(title = value)) }
+    }
+
+    fun onHomeEditDescriptionChange(value: String) {
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(description = value)) }
+    }
+
+    fun onHomeEditToneChange(value: String) {
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(selectedTone = value)) }
+    }
+
+    fun dismissHomeEditAiDraftConfirmDialog() {
+        val homeEdit = _uiState.value.homeEdit
+        if (homeEdit.isGeneratingAiContent || homeEdit.isLoadingAiDraftQuota) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(showAiDraftConfirmDialog = false)) }
+    }
+
+    fun requestHomeEditAiDraft() {
+        val state = _uiState.value
+        val homeEdit = state.homeEdit
+        if (state.pin?.detail !is IssuePinDetail ||
+            !homeEdit.isActive ||
+            homeEdit.isGeneratingAiContent ||
+            homeEdit.isLoadingAiDraftQuota
+        ) {
+            return
+        }
+
+        val title = homeEdit.title.trim()
+        val description = homeEdit.description.trim()
+        when {
+            title.isBlank() -> {
+                showToast("제목을 먼저 입력해주세요.")
+                return
+            }
+            description.isBlank() -> {
+                showToast("상세 설명을 먼저 입력해주세요.")
+                return
+            }
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(homeEdit = it.homeEdit.copy(isLoadingAiDraftQuota = true))
+            }
+            when (val result = IssueAiDraftFlow.loadQuota(issueRepository)) {
+                IssueAiDraftQuotaResult.Exceeded -> {
+                    _uiState.update {
+                        it.copy(homeEdit = it.homeEdit.copy(isLoadingAiDraftQuota = false))
+                    }
+                    showToast("AI 글쓰기 일일 횟수를 초과했습니다.")
+                }
+
+                is IssueAiDraftQuotaResult.Ready -> {
+                    _uiState.update {
+                        it.copy(
+                            homeEdit = it.homeEdit.copy(
+                                isLoadingAiDraftQuota = false,
+                                aiDraftRateLimitQuota = result.quota,
+                                showAiDraftConfirmDialog = true,
+                            ),
+                        )
+                    }
+                }
+
+                is IssueAiDraftQuotaResult.Failed -> {
+                    _uiState.update {
+                        it.copy(homeEdit = it.homeEdit.copy(isLoadingAiDraftQuota = false))
+                    }
+                    showToast(result.message)
+                }
+            }
+        }
+    }
+
+    fun confirmHomeEditAiDraft() {
+        val state = _uiState.value
+        if (state.pin?.detail !is IssuePinDetail ||
+            !state.homeEdit.isActive ||
+            state.homeEdit.isGeneratingAiContent
+        ) {
+            return
+        }
+
+        val pin = state.pin
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    homeEdit = it.homeEdit.copy(
+                        isGeneratingAiContent = true,
+                        showAiDraftConfirmDialog = false,
+                    ),
+                )
+            }
+            IssueAiDraftFlow.createDraft(
+                issueRepository = issueRepository,
+                title = state.homeEdit.title.trim(),
+                content = state.homeEdit.description.trim(),
+                tone = state.homeEdit.selectedTone ?: IssueAiDraftDefaults.DEFAULT_TONE,
+                latitude = pin.coordinate.latitude,
+                longitude = pin.coordinate.longitude,
+            ).onSuccess { draft ->
+                _uiState.update {
+                    it.copy(
+                        homeEdit = it.homeEdit.copy(
+                            title = draft.title?.takeIf { title -> title.isNotBlank() } ?: it.homeEdit.title,
+                            description = draft.content.orEmpty(),
+                            isGeneratingAiContent = false,
+                            aiDraftRateLimitQuota = null,
+                        ),
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(homeEdit = it.homeEdit.copy(isGeneratingAiContent = false))
+                }
+                showToast(error.message ?: "AI 글쓰기에 실패했습니다.")
+            }
+        }
+    }
+
+    fun addHomeEditImageUris(uris: List<String>) {
+        if (!_uiState.value.homeEdit.isActive || uris.isEmpty()) return
+        _uiState.update { state ->
+            state.copy(homeEdit = state.homeEdit.withAddedImageUris(uris))
+        }
+    }
+
+    fun removeHomeEditExistingImage(imageUrl: String) {
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { state ->
+            state.copy(homeEdit = state.homeEdit.withRemovedExistingImage(imageUrl))
+        }
+    }
+
+    fun removeHomeEditNewImageUri(uri: String) {
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { state ->
+            state.copy(homeEdit = state.homeEdit.withRemovedNewImageUri(uri))
+        }
+    }
+
+    fun setHomeEditMainImage(key: String) {
+        if (!_uiState.value.homeEdit.isActive) return
+        _uiState.update { it.copy(homeEdit = it.homeEdit.copy(mainImageKey = key)) }
+    }
+
+    fun requestHomeEditSubmit() {
+        val state = _uiState.value
+        val homeEdit = state.homeEdit
+        if (!homeEdit.isActive || homeEdit.isSubmitting || homeEdit.isLoadingQuota) return
+
+        if (homeEdit.title.trim().isBlank()) {
+            showToast("제목을 입력해주세요.")
+            return
+        }
+        if (homeEdit.description.trim().isBlank()) {
+            showToast("상세 설명을 입력해주세요.")
+            return
+        }
+
+        val pinId = resolvePinIdOrNotify() ?: return
+        val pin = state.pin ?: run {
+            showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
+            return
+        }
+
+        if (pin.category == PinCategory.COMMUNICATION) {
+            confirmHomeEditSubmit()
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(homeEdit = it.homeEdit.copy(isLoadingQuota = true))
+            }
+            pinRepository.getIssuePinEditQuota(pinId)
+                .onSuccess { quota ->
+                    if (quota.enabled && quota.remainingCount <= 0) {
+                        _uiState.update {
+                            it.copy(homeEdit = it.homeEdit.copy(isLoadingQuota = false))
+                        }
+                        showToast("이 핀의 일일 수정 횟수를 초과했습니다.")
+                        return@launch
+                    }
+                    _uiState.update {
+                        it.copy(
+                            homeEdit = it.homeEdit.copy(
+                                isLoadingQuota = false,
+                                rateLimitQuota = quota,
+                                showConfirmDialog = true,
+                            ),
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(homeEdit = it.homeEdit.copy(isLoadingQuota = false))
+                    }
+                    showToast(error.message ?: "이슈 핀 수정 제한 횟수 조회에 실패했습니다.")
+                }
+        }
+    }
+
+    fun confirmHomeEditSubmit() {
+        val state = _uiState.value
+        val homeEdit = state.homeEdit
+        if (!homeEdit.isActive || homeEdit.isSubmitting) return
+        val pinId = resolvePinIdOrNotify() ?: return
+        val pin = state.pin ?: run {
+            showToast("핀 정보를 불러온 뒤 다시 시도해주세요.")
+            return
+        }
+        val editRequest = homeEdit.toUpdateRequest() ?: run {
+            showToast("제목과 상세 설명을 입력해주세요.")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    homeEdit = it.homeEdit.copy(
+                        isSubmitting = true,
+                        showConfirmDialog = false,
+                    ),
+                )
+            }
+
+            pinRepository.updatePinHomeEdit(
+                pinId = pinId,
+                category = pin.category,
+                request = editRequest,
+                existingPin = pin,
+            ).onSuccess { result ->
+                when (result) {
+                    is PinHomeEditSubmitResult.Issue -> {
+                        finishHomeEditSuccess(
+                            pinId = pinId,
+                            isCommunicationPin = false,
+                        )
+                    }
+
+                    is PinHomeEditSubmitResult.Communication -> {
+                        finishHomeEditSuccess(pinId, isCommunicationPin = true)
+                    }
+                }
+            }.onFailure { error ->
+                finishHomeEditFailure(
+                    error = error,
+                    isCommunicationPin = pin.category == PinCategory.COMMUNICATION,
+                )
+            }
+        }
+    }
+
+    private fun finishHomeEditSuccess(
+        pinId: Long,
+        isCommunicationPin: Boolean,
+    ) {
+        _uiState.update {
+            it.copy(homeEdit = it.homeEdit.cleared())
+        }
+        refreshPinDetail(pinId)
+        showToast(
+            if (isCommunicationPin) "소통 핀이 수정되었습니다." else "이슈 핀이 수정되었습니다.",
+        )
+    }
+
+    private fun finishHomeEditFailure(
+        error: Throwable,
+        isCommunicationPin: Boolean,
+    ) {
+        _uiState.update {
+            it.copy(
+                homeEdit = it.homeEdit.copy(
+                    isSubmitting = false,
+                    showConfirmDialog = false,
+                ),
+            )
+        }
+        showToast(
+            error.message ?: if (isCommunicationPin) {
+                "소통 핀 수정에 실패했습니다."
+            } else {
+                "이슈 핀 수정에 실패했습니다."
+            },
+        )
+    }
+
+    fun submitHomeEdit() {
+        requestHomeEditSubmit()
+    }
+
+    private fun refreshPinDetail(pinId: Long) {
+        viewModelScope.launch {
+            pinRepository.getPinDetailHome(pinId)
+                .onSuccess { homeResult ->
+                    _uiState.update {
+                        it.copy(
+                            pin = homeResult.pin,
+                            postSympathy = homeResult.pin.toPostSympathyContent(),
+                        )
+                    }
+                    loadPostTab(pinId)
+                    if (homeResult.pin.detail is IssuePinDetail) {
+                        startIssueReliabilityObservation(pinId, resetUi = false)
+                        viewModelScope.launch {
+                            refreshResolutionTab(pinId, currentUserId)
+                        }
+                    }
+                }
+                .onFailure { error ->
+                    showToast(error.message ?: "핀 정보를 다시 불러오지 못했습니다.")
                 }
         }
     }
@@ -771,6 +1253,13 @@ class PinDetailViewModel @Inject constructor(
         return routePinId
             ?: _uiState.value.postSympathy?.pinId?.takeIf { it > 0L }
             ?: _uiState.value.pin?.id?.toLongOrNull()
+    }
+
+    private fun resolvePinIdOrNotify(): Long? {
+        return resolvePinId() ?: run {
+            showToast("핀 정보를 찾을 수 없습니다.")
+            null
+        }
     }
 
     private fun showToast(message: String) {

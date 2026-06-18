@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -64,6 +63,7 @@ import com.issueissyu.fe.domain.model.pin.PinPostSympathyContent
 import com.issueissyu.fe.core.time.formatPinCommentCreatedAt
 import com.issueissyu.fe.data.sample.PinSamples
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
+import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_1
@@ -230,7 +230,7 @@ private fun ShopSympathyRequestSection(
                     content.discount?.takeIf { it.isNotBlank() }?.let { discount ->
                         ShopDiscountBanner(text = discount)
                     }
-                    SympathyPill(
+                    CompactSympathyButton(
                         sympathyCount = content.sympathyCount,
                         isSympathizedByMe = content.isSympathizedByMe,
                         onClick = onSympathyClick,
@@ -333,47 +333,13 @@ private fun SympathyRequestSection(
                     style = IssueTypo.Regular15.copy(color = Title),
                     lineHeight = 22.sp
                 )
-                SympathyPill(
+                CompactSympathyButton(
                     sympathyCount = content.sympathyCount,
                     isSympathizedByMe = content.isSympathizedByMe,
                     onClick = onSympathyClick
                 )
             }
         }
-    }
-}
-
-// TODO: PinSummaryCard.CompactSympathyButton과 공통 컴포넌트로 통합 검토
-@Composable
-private fun SympathyPill(
-    sympathyCount: Int,
-    isSympathizedByMe: Boolean,
-    onClick: () -> Unit
-) {
-    val backgroundColor = if (isSympathizedByMe) BrandColor else White
-    val contentColor = if (isSympathizedByMe) White else BrandColor
-
-    Row(
-        modifier = Modifier
-            .height(24.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(backgroundColor)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.ThumbUp,
-            contentDescription = "공감",
-            tint = contentColor,
-            modifier = Modifier.size(13.dp)
-        )
-        Spacer(modifier = Modifier.width(3.dp))
-        Text(
-            text = "$sympathyCount",
-            style = IssueTypo.Regular12.copy(color = contentColor),
-            maxLines = 1
-        )
     }
 }
 

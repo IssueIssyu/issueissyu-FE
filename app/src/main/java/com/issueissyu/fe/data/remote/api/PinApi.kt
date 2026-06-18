@@ -4,6 +4,7 @@ import com.issueissyu.fe.data.remote.dto.request.pin.PinDeclarationRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.ApplyPinEmojiRequest
 import com.issueissyu.fe.data.remote.dto.request.pin.PinCommentsRequest
 import com.issueissyu.fe.data.remote.dto.response.BaseResponse
+import com.issueissyu.fe.data.remote.dto.response.pin.CommunicationPinEditResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PinDetailHomeResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.ApplyPinEmojiResponse
 import com.issueissyu.fe.data.remote.dto.response.pin.PetitionsJoinResponse
@@ -53,6 +54,15 @@ interface PinApi {
     suspend fun pinDelete(
         @Path("pinId") pinId: Long
     ): BaseResponse<Unit?>
+
+    //소통 핀 수정
+    @Multipart
+    @PATCH("api/pins/{pinId}/edit/communication")
+    suspend fun pinCommunicationEdit(
+        @Path("pinId") pinId: Long,
+        @Part("request") request: RequestBody,
+        @Part photos: List<MultipartBody.Part>,
+    ): BaseResponse<CommunicationPinEditResponse?>
 
     //핀 공감
     @POST("api/pins/{pinId}/like")

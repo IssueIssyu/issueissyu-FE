@@ -2,6 +2,15 @@ package com.issueissyu.fe.data.remote.dto.response.map
 
 data class MapPinResponse(
     val pins: List<MapPinItemResponse>? = null,
+    val clusters: List<MapPinClusterResponse>? = null,
+)
+
+data class MapPinClusterResponse(
+    val clusterId: Long? = null,
+    val clusterLatitude: Double? = null,
+    val clusterLongitude: Double? = null,
+    val pinCount: Int? = null,
+    val pins: List<MapPinItemResponse>? = null,
 )
 
 data class MapPinItemResponse(
@@ -11,6 +20,7 @@ data class MapPinItemResponse(
     val longitude: Double? = null,
     val pinDetailAddress: String? = null,
     val pinLocation: String? = null,
+    val discount: String? = null,
 )
 
 data class MapPinCardResponse(

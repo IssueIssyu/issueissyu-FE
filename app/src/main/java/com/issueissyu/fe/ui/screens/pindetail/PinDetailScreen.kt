@@ -45,12 +45,18 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.data.sample.PinSamples
+import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.domain.model.pin.IssuePinDetail
 import com.issueissyu.fe.domain.model.pin.Pin
+import com.issueissyu.fe.domain.model.pin.PinImageRef
 import com.issueissyu.fe.domain.model.pin.toPostSympathyContent
 import com.issueissyu.fe.core.media.rememberPhotoSourcePicker
+import com.issueissyu.fe.core.constants.PinImageUploadConstraints
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
+import com.issueissyu.fe.ui.components.RemainingQuotaDialog
+import com.issueissyu.fe.ui.components.toAiDraftConfirmDialogContent
+import com.issueissyu.fe.ui.components.toHomeEditConfirmDialogContent
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -59,7 +65,6 @@ import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.Orange
 import com.issueissyu.fe.ui.theme.Title
 import com.issueissyu.fe.ui.theme.White
-
 internal const val PIN_DETAIL_REFRESH_KEY = "pin_detail_refresh"
 
 @Composable
@@ -69,6 +74,7 @@ fun PinDetailScreen(
     onReportClick: (String) -> Unit,
     onCommunityClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    startHomeEdit: Boolean = false,
     savedStateHandle: SavedStateHandle? = null,
     viewModel: PinDetailViewModel = hiltViewModel(),
 ) {
@@ -76,6 +82,7 @@ fun PinDetailScreen(
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId.orEmpty()
     val context = LocalContext.current
+    val activity = context.findActivity()
     var pendingResolutionProofUri by remember { mutableStateOf<String?>(null) }
 
     val resolutionProofPhotoPicker = rememberPhotoSourcePicker(
@@ -88,8 +95,21 @@ fun PinDetailScreen(
     )
     resolutionProofPhotoPicker.PhotoSourceBottomSheet()
 
-    LaunchedEffect(pinId) {
-        viewModel.loadPin(pinId)
+    val homeEditPhotoCount = if (uiState.homeEdit.isActive) {
+        uiState.homeEdit.photoCount
+    } else {
+        0
+    }
+    val homeEditPhotoPicker = rememberPhotoSourcePicker(
+        currentCount = homeEditPhotoCount,
+        maxCount = PinImageUploadConstraints.MAX_COUNT,
+        onImagesPicked = viewModel::addHomeEditImageUris,
+        cameraFileNamePrefix = "pin-edit",
+    )
+    homeEditPhotoPicker.PhotoSourceBottomSheet()
+
+    LaunchedEffect(pinId, startHomeEdit) {
+        viewModel.loadPin(pinId, startHomeEditAfterLoad = startHomeEdit)
     }
 
     LaunchedEffect(savedStateHandle, pinId) {
@@ -152,7 +172,7 @@ fun PinDetailScreen(
                         onCommentEditCancel = viewModel::cancelEditComment,
                         onCommentDelete = viewModel::deleteComment,
                         onReportClick = onReportClick,
-                        onEditClick = { /* TODO: 핀 수정 화면 */ },
+                        onEditClick = { viewModel.startHomeEdit() },
                         onDeleteClick = { deletePinId ->
                             viewModel.deletePin(deletePinId, onSuccess = onBackClick)
                         },
@@ -163,6 +183,18 @@ fun PinDetailScreen(
                         onGoNowClick = viewModel::joinProblemSolver,
                         onPetitionClick = viewModel::joinPetition,
                         onConfirmResolverClick = viewModel::verifyProblemSolver,
+                        homeEditCallbacks = PinHomeEditCallbacks(
+                            onTitleChange = viewModel::onHomeEditTitleChange,
+                            onDescriptionChange = viewModel::onHomeEditDescriptionChange,
+                            onCancel = viewModel::cancelHomeEdit,
+                            onSubmit = viewModel::requestHomeEditSubmit,
+                            onPhotoAddClick = homeEditPhotoPicker.showSourceSheet,
+                            onExistingImageRemove = viewModel::removeHomeEditExistingImage,
+                            onNewImageRemove = viewModel::removeHomeEditNewImageUri,
+                            onMainImageSelect = viewModel::setHomeEditMainImage,
+                            onToneChange = viewModel::onHomeEditToneChange,
+                            onAiDraftClick = viewModel::requestHomeEditAiDraft,
+                        ),
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -179,6 +211,7 @@ fun PinDetailScreen(
                                 }
                             },
                             onEmojiClick = viewModel::pickEmojiInPicker,
+                            onLockedEmojiClick = { emojiId -> viewModel.purchaseEmoji(activity, emojiId) },
                             onApplyClick = viewModel::submitPickedEmoji,
                             allowApplyWithoutSelection = true,
                         )
@@ -195,6 +228,28 @@ fun PinDetailScreen(
                                     onSuccess = { pendingResolutionProofUri = null }
                                 )
                             }
+                        )
+                    }
+
+                    if (uiState.homeEdit.showConfirmDialog) {
+                        val dialogContent = uiState.homeEdit.rateLimitQuota.toHomeEditConfirmDialogContent()
+                        RemainingQuotaDialog(
+                            title = dialogContent.title,
+                            countLabel = dialogContent.countLabel,
+                            description = dialogContent.description,
+                            onDismiss = viewModel::dismissHomeEditConfirmDialog,
+                            onConfirm = viewModel::confirmHomeEditSubmit,
+                        )
+                    }
+
+                    if (uiState.homeEdit.showAiDraftConfirmDialog) {
+                        val dialogContent = uiState.homeEdit.aiDraftRateLimitQuota.toAiDraftConfirmDialogContent()
+                        RemainingQuotaDialog(
+                            title = dialogContent.title,
+                            countLabel = dialogContent.countLabel,
+                            description = dialogContent.description,
+                            onDismiss = viewModel::dismissHomeEditAiDraftConfirmDialog,
+                            onConfirm = viewModel::confirmHomeEditAiDraft,
                         )
                     }
                 }
@@ -231,8 +286,10 @@ private fun PinDetailContent(
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
     onConfirmResolverClick: (Long) -> Unit,
+    homeEditCallbacks: PinHomeEditCallbacks = PinHomeEditCallbacks(),
     modifier: Modifier = Modifier,
 ) {
+    val homeEdit = uiState.homeEdit
     val tabs = buildList {
         add(PinDetailTab.HOME)
         add(PinDetailTab.POST)
@@ -247,11 +304,15 @@ private fun PinDetailContent(
             tabs = tabs,
             selectedTab = effectiveTab,
             onSelectTab = onSelectTab,
+            enabled = !homeEdit.isActive,
         )
 
         when (effectiveTab) {
             PinDetailTab.HOME -> PinHomeTab(
                 pin = pin,
+                currentUserId = currentUserId,
+                homeEdit = homeEdit,
+                homeEditCallbacks = homeEditCallbacks,
                 onReportClick = onReportClick,
                 onEditClick = onEditClick,
                 onDeleteClick = onDeleteClick,
@@ -313,6 +374,7 @@ private fun PinDetailTabBar(
     tabs: List<PinDetailTab>,
     selectedTab: PinDetailTab,
     onSelectTab: (PinDetailTab) -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val selectedIndex = remember(tabs, selectedTab) {
@@ -325,7 +387,7 @@ private fun PinDetailTabBar(
                 PinDetailTabItem(
                     label = tab.label(),
                     selected = selectedTab == tab,
-                    onClick = { onSelectTab(tab) },
+                    onClick = { if (enabled) onSelectTab(tab) },
                     modifier = Modifier.weight(1f),
                 )
             }

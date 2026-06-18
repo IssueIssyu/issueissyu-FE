@@ -11,6 +11,8 @@ data class CommunityFeedItemResponse(
     val pinImageUrl: String?,
     val thumbnailUrl: String?,
     val storeImageUrl: String?,
+    val imageUrls: List<String>? = null,
+    val moveCardnews: String? = null,
     val pinUserNickname: String?,
     val pinUserProfile: String?,
     val writerNickname: String?,

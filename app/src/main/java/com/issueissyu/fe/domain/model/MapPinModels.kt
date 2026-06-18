@@ -8,5 +8,21 @@ data class MapPinMarker(
     val category: PinCategory,
     val coordinate: PinCoordinate,
     val address: String,
-    val locationName: String
+    val locationName: String,
+    val discount: String? = null,
+) {
+    val hasDiscount: Boolean
+        get() = category == PinCategory.SHOP && !discount.isNullOrBlank()
+}
+
+data class MapPinCluster(
+    val clusterId: String,
+    val coordinate: PinCoordinate,
+    val pinCount: Int,
+    val pins: List<MapPinMarker>,
+)
+
+data class MapPinQueryResult(
+    val pins: List<MapPinMarker>,
+    val clusters: List<MapPinCluster>,
 )

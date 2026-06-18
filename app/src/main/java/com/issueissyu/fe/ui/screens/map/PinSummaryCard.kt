@@ -1,6 +1,8 @@
 package com.issueissyu.fe.ui.screens.map
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -18,12 +20,28 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.pin.CommunicationPinDetail
@@ -41,6 +59,16 @@ import com.issueissyu.fe.ui.components.CompactSympathyButton
 import com.issueissyu.fe.ui.components.ProfileImageFrame
 import com.issueissyu.fe.ui.theme.*
 
+internal val PinSummaryCardHeight = 275.dp
+
+private const val FireBadgeSympathyThreshold = 10
+
+enum class PinSummaryCardHighlight {
+    NONE,
+    SYMPATHY,
+    COMMUNITY,
+}
+
 @Composable
 fun PinSummaryCard(
     pin: Pin,
@@ -51,7 +79,10 @@ fun PinSummaryCard(
     onDeleteClick: (String) -> Unit,
     onSympathyClick: (String) -> Unit,
     onEmojiClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    interactionsEnabled: Boolean = true,
+    highlight: PinSummaryCardHighlight = PinSummaryCardHighlight.NONE,
+    onHighlightBoundsChanged: ((Rect) -> Unit)? = null,
 ) {
     val cardBackgroundColor = when (pin.category) {
         PinCategory.ISSUE -> IssueContainer
@@ -61,6 +92,7 @@ fun PinSummaryCard(
     }
 
     val canEdit = pin.canEditBy(currentUserId)
+    val showFireBadge = pin.sympathyCount >= FireBadgeSympathyThreshold
     val hasCategoryInfo = when (val detail = pin.detail) {
         is ShopPinDetail -> !detail.currentNews.isNullOrBlank()
         is FestivalPinDetail -> detail.startDate != null || detail.endDate != null
@@ -68,265 +100,448 @@ fun PinSummaryCard(
         is CommunicationPinDetail -> false
     }
 
-    Box(
-        modifier = modifier
-            .height(260.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(cardBackgroundColor)
-            .clickable { onDetailClick(pin.id) }
-            .padding(16.dp)
-    ) {
-        Column {
-            // TopRow: 제목/장소/사용자액션 + 이미지
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f)
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(PinSummaryCardHeight)
+                .clip(RoundedCornerShape(24.dp))
+                .background(cardBackgroundColor)
+                .then(
+                    if (interactionsEnabled) {
+                        Modifier.clickable { onDetailClick(pin.id) }
+                    } else {
+                        Modifier
+                    }
+                )
+                .padding(16.dp)
+        ) {
+            Column {
+                // TopRow: 제목/장소/사용자액션 + 이미지
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    // 1. 제목
-                    Text(
-                        text = pin.title,
-                        style = IssueTypo.Bold18.copy(color = Title),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // 2. 장소 + 해결 상태
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.LocationOn,
-                            contentDescription = "위치",
-                            tint = Gray_7,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        // 1. 제목
                         Text(
-                            text = (pin.locationName ?: pin.address).toSummaryAddress(),
-                            style = IssueTypo.Regular12.copy(color = Gray_7),
+                            text = pin.title,
+                            style = IssueTypo.Bold18.copy(color = Gray_7, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.padding(
+                                start = if (showFireBadge) 8.dp else 0.dp,
+                                top = 10.dp,
+                            ),
                         )
 
-                        val issueDetail = pin.detail as? IssuePinDetail
-                        if (issueDetail != null) {
-                            Spacer(modifier = Modifier.width(8.dp))
-                            ResolutionStatusPill(
-                                resolutionStatus = issueDetail.resolutionStatus
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // 2. 장소 + 해결 상태
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.LocationOn,
+                                contentDescription = "위치",
+                                tint = Gray_7,
+                                modifier = Modifier.size(25.dp),
                             )
-                        }
-                    }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = (pin.locationName ?: pin.address).toSummaryAddress(),
+                                style = IssueTypo.Regular12.copy(color = Gray_7, fontSize = 14.sp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // 3. 사용자 프로필 + 사용자 이름 + 액션 버튼 + 공감 버튼
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        when (val detail = pin.detail) {
-                            is IssuePinDetail -> {
-                                ProfileImageFrame(
-                                    size = 24.dp,
-                                    imageUrl = detail.writer.imageUrl,
-                                    borderWidth = 1.dp,
-                                )
+                            val issueDetail = pin.detail as? IssuePinDetail
+                            if (issueDetail != null) {
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = detail.writer.name,
-                                    style = IssueTypo.Regular12.copy(color = Text),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.widthIn(max = 80.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                if (canEdit) {
-                                    CompactCircleIconButton(
-                                        imageVector = Icons.Filled.Edit,
-                                        contentDescription = "수정",
-                                        onClick = { onEditClick(pin.id) }
-                                    )
-
-                                    Spacer(modifier = Modifier.width(3.dp))
-
-                                    CompactCircleIconButton(
-                                        imageVector = Icons.Filled.Delete,
-                                        contentDescription = "삭제",
-                                        onClick = { onDeleteClick(pin.id) }
-                                    )
-
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                }
-
-                                CompactSympathyButton(
-                                    sympathyCount = pin.sympathyCount,
-                                    isSympathizedByMe = pin.isSympathizedByMe,
-                                    onClick = { onSympathyClick(pin.id) },
-                                )
-                            }
-                            is CommunicationPinDetail -> {
-                                ProfileImageFrame(
-                                    size = 24.dp,
-                                    imageUrl = detail.writer.imageUrl,
-                                    borderWidth = 1.dp,
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = detail.writer.name,
-                                    style = IssueTypo.Regular12.copy(color = Text),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.widthIn(max = 80.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(4.dp))
-
-                                if (canEdit) {
-                                    CompactCircleIconButton(
-                                        imageVector = Icons.Filled.Edit,
-                                        contentDescription = "수정",
-                                        onClick = { onEditClick(pin.id) }
-                                    )
-
-                                    Spacer(modifier = Modifier.width(3.dp))
-
-                                    CompactCircleIconButton(
-                                        imageVector = Icons.Filled.Delete,
-                                        contentDescription = "삭제",
-                                        onClick = { onDeleteClick(pin.id) }
-                                    )
-
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                }
-
-                                CompactSympathyButton(
-                                    sympathyCount = pin.sympathyCount,
-                                    isSympathizedByMe = pin.isSympathizedByMe,
-                                    onClick = { onSympathyClick(pin.id) },
-                                )
-                            }
-                            is ShopPinDetail, is FestivalPinDetail -> {
-                                // 상점/축제는 작성자 정보 없음, 공감 버튼만 자연스럽게 배치
-                                CompactSympathyButton(
-                                    sympathyCount = pin.sympathyCount,
-                                    isSympathizedByMe = pin.isSympathizedByMe,
-                                    onClick = { onSympathyClick(pin.id) },
+                                ResolutionStatusPill(
+                                    resolutionStatus = issueDetail.resolutionStatus,
                                 )
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // 3. 사용자 프로필 + 사용자 이름 + 액션 버튼 + 공감 버튼
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            when (val detail = pin.detail) {
+                                is IssuePinDetail -> {
+                                    ProfileImageFrame(
+                                        size = 24.dp,
+                                        imageUrl = detail.writer.imageUrl,
+                                        borderWidth = 0.dp,
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = detail.writer.name,
+                                        style = IssueTypo.Regular12.copy(color = Text, fontSize = 14.sp),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.widthIn(max = 80.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    if (canEdit) {
+                                        CompactCircleIconButton(
+                                            imageVector = Icons.Filled.Edit,
+                                            contentDescription = "수정",
+                                            enabled = interactionsEnabled,
+                                            onClick = { onEditClick(pin.id) }
+                                        )
+
+                                        Spacer(modifier = Modifier.width(3.dp))
+
+                                        CompactCircleIconButton(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "삭제",
+                                            enabled = interactionsEnabled,
+                                            onClick = { onDeleteClick(pin.id) }
+                                        )
+
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                    }
+
+                                    CompactSympathyButton(
+                                        sympathyCount = pin.sympathyCount,
+                                        isSympathizedByMe = pin.isSympathizedByMe,
+                                        onClick = { onSympathyClick(pin.id) },
+                                        enabled = interactionsEnabled,
+                                        modifier = Modifier.then(
+                                            if (highlight == PinSummaryCardHighlight.SYMPATHY &&
+                                                onHighlightBoundsChanged != null
+                                            ) {
+                                                Modifier.onGloballyPositioned { coordinates ->
+                                                    onHighlightBoundsChanged(coordinates.boundsInRoot())
+                                                }
+                                            } else {
+                                                Modifier
+                                            }
+                                        ),
+                                    )
+                                }
+                                is CommunicationPinDetail -> {
+                                    ProfileImageFrame(
+                                        size = 24.dp,
+                                        imageUrl = detail.writer.imageUrl,
+                                        borderWidth = 0.dp,
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = detail.writer.name,
+                                        style = IssueTypo.Regular12.copy(color = Text),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.widthIn(max = 80.dp)
+                                    )
+
+                                    Spacer(modifier = Modifier.width(4.dp))
+
+                                    if (canEdit) {
+                                        CompactCircleIconButton(
+                                            imageVector = Icons.Filled.Edit,
+                                            contentDescription = "수정",
+                                            enabled = interactionsEnabled,
+                                            onClick = { onEditClick(pin.id) }
+                                        )
+
+                                        Spacer(modifier = Modifier.width(3.dp))
+
+                                        CompactCircleIconButton(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "삭제",
+                                            enabled = interactionsEnabled,
+                                            onClick = { onDeleteClick(pin.id) }
+                                        )
+
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                    }
+
+                                    CompactSympathyButton(
+                                        sympathyCount = pin.sympathyCount,
+                                        isSympathizedByMe = pin.isSympathizedByMe,
+                                        onClick = { onSympathyClick(pin.id) },
+                                        enabled = interactionsEnabled,
+                                    )
+                                }
+                                is ShopPinDetail, is FestivalPinDetail -> {
+                                    // 상점/축제는 작성자 정보 없음, 공감 버튼만 자연스럽게 배치
+                                    CompactSympathyButton(
+                                        sympathyCount = pin.sympathyCount,
+                                        isSympathizedByMe = pin.isSympathizedByMe,
+                                        onClick = { onSympathyClick(pin.id) },
+                                        enabled = interactionsEnabled,
+                                    )
+                                }
+                            }
+                        }
                     }
-                }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                PinThumbnail(
-                    imageUrl = pin.imageUrls.firstOrNull(),
-                    modifier = Modifier.size(96.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 4) Divider
-            HorizontalDivider(color = Gray_3, thickness = 1.dp) 
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 3) CategoryInfoRow 또는 CategoryInfoBox
-            when (val detail = pin.detail) {
-                is ShopPinDetail -> {
-                    detail.currentNews?.takeIf { it.isNotBlank() }?.let { news ->
-                        CategoryInfoBox(
-                            text = "최신 소식: $news",
-                            modifier = Modifier.padding(horizontal = 0.dp)
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                    }
-                }
-                is FestivalPinDetail -> {
-                    val startDateText = detail.startDate?.take(10)
-                    val endDateText = detail.endDate?.take(10)
-
-                    if (startDateText != null || endDateText != null) {
-                        CategoryInfoBox(
-                            text = "기간: ${startDateText ?: "시작일 미정"} ~ ${endDateText ?: "종료일 미정"}",
-                            modifier = Modifier.padding(horizontal = 0.dp)
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                    }
-                }
-
-                is IssuePinDetail,
-                is CommunicationPinDetail -> {
-                    // 이슈/소통 핀은 이 영역에 추가 정보 표시 없음
-                }
-            }
-
-            // 4) DescriptionArea: 본문 + "더보기"
-            Column {
-                Text(
-                    text = pin.description,
-                    style = IssueTypo.Regular15.copy(color = Text),
-                    maxLines = if (hasCategoryInfo) 1 else 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "더보기",
-                    style = IssueTypo.Bold12.copy(color = BrandColor),
-                    modifier = Modifier.clickable { onDetailClick(pin.id) }
-                )
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // 6) BottomActionRow: 이모지/반응 영역 + 커뮤니티 버튼
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 이모지/반응 영역
-                EmojiReactionRow(
-                    pin = pin,
-                    onEmojiClick = onEmojiClick,
-                    modifier = Modifier.weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // 커뮤니티 버튼 (pin.communityPostId가 있을 때만 표시)
-                if (pin.communityPostId != null) {
-                    CommunityLinkButton(
-                        communityPostId = pin.communityPostId,
-                        onCommunityClick = onCommunityClick
+                    PinThumbnail(
+                        imageUrl = pin.imageUrls.firstOrNull(),
+                        modifier = Modifier.size(96.dp)
                     )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 4) Divider
+                HorizontalDivider(color = Gray_3, thickness = 1.dp)
+
+                val categorySectionTopSpacing = if (pin.category == PinCategory.SHOP && hasCategoryInfo) {
+                    4.dp
+                } else {
+                    12.dp
+                }
+                Spacer(modifier = Modifier.height(categorySectionTopSpacing))
+
+                // 3) CategoryInfoRow 또는 CategoryInfoBox
+                when (val detail = pin.detail) {
+                    is ShopPinDetail -> {
+                        detail.currentNews?.takeIf { it.isNotBlank() }?.let { news ->
+                            CategoryInfoBox(
+                                text = "최신 소식: $news",
+                                modifier = Modifier.padding(horizontal = 0.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                    }
+                    is FestivalPinDetail -> {
+                        val startDateText = detail.startDate?.take(10)
+                        val endDateText = detail.endDate?.take(10)
+
+                        if (startDateText != null || endDateText != null) {
+                            CategoryInfoBox(
+                                text = "기간: ${startDateText ?: "시작일 미정"} ~ ${endDateText ?: "종료일 미정"}",
+                                modifier = Modifier.padding(horizontal = 0.dp)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                        }
+                    }
+
+                    is IssuePinDetail,
+                    is CommunicationPinDetail -> {
+                        // 이슈/소통 핀은 이 영역에 추가 정보 표시 없음
+                    }
+                }
+
+                // 4) DescriptionArea: 본문 + "더보기"
+                DescriptionWithSeeMore(
+                    description = pin.description,
+                    maxLines = if (hasCategoryInfo) 1 else 2,
+                    interactionsEnabled = interactionsEnabled,
+                    onSeeMoreClick = { onDetailClick(pin.id) },
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // 6) BottomActionRow: 이모지/반응 영역 + 커뮤니티 버튼
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 40.dp)
+                        .padding(top = 8.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 이모지/반응 영역
+                    EmojiReactionRow(
+                        pin = pin,
+                        onEmojiClick = onEmojiClick,
+                        enabled = interactionsEnabled,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    // 커뮤니티 버튼 (pin.communityPostId가 있을 때만 표시)
+                    if (pin.communityPostId != null) {
+                        CommunityLinkButton(
+                            communityPostId = pin.communityPostId,
+                            onCommunityClick = onCommunityClick,
+                            enabled = interactionsEnabled,
+                            onBoundsChanged = if (highlight == PinSummaryCardHighlight.COMMUNITY) {
+                                onHighlightBoundsChanged
+                            } else {
+                                null
+                            },
+                        )
+                    }
                 }
             }
         }
+
+        if (showFireBadge) {
+            Image(
+                painter = painterResource(R.drawable.fire),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(48.dp)
+                    .align(Alignment.TopStart)
+                    .offset(x = 4.dp, y = (-25).dp)
+                    .zIndex(1f),
+            )
+        }
     }
+}
+
+@Composable
+private fun DescriptionWithSeeMore(
+    description: String,
+    maxLines: Int,
+    interactionsEnabled: Boolean,
+    onSeeMoreClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val textStyle = IssueTypo.Regular15.copy(color = Text)
+    val seeMoreSuffix = " 더보기"
+    val seeMoreSpanStyle = SpanStyle(color = Title, fontWeight = FontWeight.Bold)
+
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val textMeasurer = rememberTextMeasurer()
+        val density = LocalDensity.current
+        val maxWidthPx = with(density) { maxWidth.roundToPx() }
+
+        val displayText = remember(description, maxWidthPx, maxLines) {
+            buildDescriptionWithSeeMore(
+                description = description,
+                suffix = seeMoreSuffix,
+                textStyle = textStyle,
+                seeMoreSpanStyle = seeMoreSpanStyle,
+                maxWidthPx = maxWidthPx,
+                maxLines = maxLines,
+                textMeasurer = textMeasurer,
+            )
+        }
+
+        Text(
+            text = displayText,
+            style = textStyle,
+            maxLines = maxLines,
+            overflow = TextOverflow.Clip,
+            modifier = if (interactionsEnabled) {
+                Modifier.clickable(onClick = onSeeMoreClick)
+            } else {
+                Modifier
+            },
+        )
+    }
+}
+
+private fun buildDescriptionWithSeeMore(
+    description: String,
+    suffix: String,
+    textStyle: TextStyle,
+    seeMoreSpanStyle: SpanStyle,
+    maxWidthPx: Int,
+    maxLines: Int,
+    textMeasurer: TextMeasurer,
+): AnnotatedString {
+    val bodySpanStyle = SpanStyle(color = Text)
+
+    fun buildContent(body: String): AnnotatedString = buildAnnotatedString {
+        withStyle(bodySpanStyle) {
+            append(body)
+        }
+        withStyle(seeMoreSpanStyle) {
+            append(suffix)
+        }
+    }
+
+    fun fits(content: AnnotatedString): Boolean {
+        val layout = textMeasurer.measure(
+            text = content,
+            style = textStyle,
+            constraints = Constraints(maxWidth = maxWidthPx),
+            maxLines = maxLines,
+            overflow = TextOverflow.Clip,
+        )
+        return layout.lineCount <= maxLines && !layout.didOverflowHeight
+    }
+
+    val fullContent = buildAnnotatedString {
+        withStyle(bodySpanStyle) {
+            append(description)
+        }
+    }
+
+    if (fits(fullContent)) {
+        return fullContent
+    }
+
+    var low = 0
+    var high = description.length
+    while (low < high) {
+        val mid = (low + high + 1) / 2
+        val candidateBody = description.take(mid).trimEnd() + "…"
+        if (fits(buildContent(candidateBody))) {
+            low = mid
+        } else {
+            high = mid - 1
+        }
+    }
+
+    val safeLow = if (
+        low > 0 &&
+        low < description.length &&
+        description[low].isLowSurrogate() &&
+        description[low - 1].isHighSurrogate()
+    ) {
+        low - 1
+    } else {
+        low
+    }
+
+    val trimmedBody = if (safeLow > 0) {
+        description.take(safeLow).trimEnd() + "…"
+    } else {
+        "…"
+    }
+
+    return buildContent(trimmedBody)
 }
 
 @Composable
 private fun CommunityLinkButton(
     communityPostId: String,
     onCommunityClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onBoundsChanged: ((Rect) -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
             .height(32.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(Orange)
-            .clickable { onCommunityClick(communityPostId) }
+            .then(
+                if (enabled) {
+                    Modifier.clickable { onCommunityClick(communityPostId) }
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (onBoundsChanged != null) {
+                    Modifier.onGloballyPositioned { coordinates ->
+                        onBoundsChanged(coordinates.boundsInRoot())
+                    }
+                } else {
+                    Modifier
+                }
+            )
             .padding(start = 12.dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -351,14 +566,15 @@ private fun CompactCircleIconButton(
     imageVector: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = modifier
             .size(24.dp)
             .clip(CircleShape)
             .background(White)
-            .clickable(onClick = onClick),
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -379,40 +595,55 @@ private fun ResolutionStatusPill(
         ResolutionStatus.IN_PROGRESS -> Orange
         ResolutionStatus.RESOLVED -> BrandColor
     }
+    val pillHeight = 24.dp
 
-    Text(
-        text = resolutionStatus.toDisplayText(),
-        style = IssueTypo.Bold12.copy(color = White),
+    Box(
         modifier = Modifier
-            .background(backgroundColor, RoundedCornerShape(4.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp)
-    )
+            .height(pillHeight)
+            .clip(RoundedCornerShape(pillHeight / 2))
+            .background(backgroundColor)
+            .padding(horizontal = 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = resolutionStatus.toDisplayText(),
+            style = IssueTypo.Bold12.copy(color = White),
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
 }
 
 @Composable
 private fun EmojiReactionRow(
     pin: Pin,
     onEmojiClick: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // 이모지 추가 버튼
         Box(
             modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .clickable { onEmojiClick(pin.id) },
+                .size(34.dp)
+                .then(
+                    if (enabled) {
+                        Modifier.clickable { onEmojiClick(pin.id) }
+                    } else {
+                        Modifier
+                    }
+                ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_add_emoji),
                 contentDescription = "이모지 추가",
                 tint = Color.Unspecified,
-                modifier = Modifier.size(26.dp)
+                modifier = Modifier.size(34.dp)
             )
         }
 
@@ -423,29 +654,21 @@ private fun EmojiReactionRow(
         visibleReactions.forEach { reaction ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(Gray_3, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 if (!reaction.emojiImageUrl.isNullOrBlank()) {
                     AsyncImage(
                         model = reaction.emojiImageUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Color.LightGray)
-                    )
+                    Box(modifier = Modifier.size(24.dp))
                 }
-                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "${reaction.count}",
-                    style = IssueTypo.Regular12.copy(color = Text)
+                    style = IssueTypo.Regular15.copy(color = Text)
                 )
             }
         }
@@ -454,10 +677,7 @@ private fun EmojiReactionRow(
         if (hiddenReactionTypeCount > 0) {
             Text(
                 text = "+${hiddenReactionTypeCount}",
-                style = IssueTypo.Regular12.copy(color = Text),
-                modifier = Modifier
-                    .background(Gray_3, RoundedCornerShape(16.dp))
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
+                style = IssueTypo.Regular15.copy(color = Text),
             )
         }
     }
@@ -495,9 +715,9 @@ private fun PinThumbnail(
 
 private fun ResolutionStatus.toDisplayText(): String {
     return when (this) {
-        ResolutionStatus.BEFORE_RESOLUTION -> "해결 전"
-        ResolutionStatus.IN_PROGRESS -> "해결 중"
-        ResolutionStatus.RESOLVED -> "해결 완료"
+        ResolutionStatus.BEFORE_RESOLUTION -> "해결\u00A0전"
+        ResolutionStatus.IN_PROGRESS -> "해결\u00A0중"
+        ResolutionStatus.RESOLVED -> "해결\u00A0완료"
     }
 }
 

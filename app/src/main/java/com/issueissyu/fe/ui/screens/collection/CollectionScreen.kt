@@ -1,6 +1,5 @@
 package com.issueissyu.fe.ui.screens.collection
 
-import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -9,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
@@ -28,6 +30,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
@@ -42,29 +45,41 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import android.widget.Toast
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.PI
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -85,6 +100,7 @@ import com.issueissyu.fe.ui.theme.IssueTypo
 import com.issueissyu.fe.ui.theme.Text
 import com.issueissyu.fe.ui.theme.IssueissyuTheme
 import com.issueissyu.fe.ui.theme.White
+import kotlinx.coroutines.launch
 
 @Composable
 fun CollectionScreen(
@@ -94,17 +110,12 @@ fun CollectionScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    val snackbarHostState = remember { SnackbarHostState() }
 
-    // 일회성 이벤트
     LaunchedEffect(Unit) {
         viewModel.effects.collect { effect ->
             when (effect) {
                 is CollectionEffect.ShowToast -> {
                     Toast.makeText(context, effect.message, Toast.LENGTH_SHORT).show()
-                }
-                is CollectionEffect.ShowSnackbar -> {
-                    snackbarHostState.showSnackbar(effect.message)
                 }
                 is CollectionEffect.NavigateToPinDetail -> {
                     onNavigateToPinDetail(effect.pinId)
@@ -122,7 +133,9 @@ fun CollectionScreen(
             // 상단 바
             IssueissyuTopAppBar(
                 titleText = "컬렉션",
-                modifier = Modifier.background(color = White)
+                modifier = Modifier
+                    .background(color = White)
+                    .statusBarsPadding(),
             )
 
             when {
@@ -161,13 +174,6 @@ fun CollectionScreen(
                 onDismiss = { viewModel.onEvent(CollectionEvent.DismissNewUnlockNotice) },
             )
         }
-
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-        )
     }
 }
 
@@ -546,13 +552,116 @@ private fun CollectionContent(
     onEvent: (CollectionEvent) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    var expandPx by remember { mutableFloatStateOf(0f) }
+    var isPanelDragging by remember { mutableStateOf(false) }
+    var gridWasScrolled by remember { mutableStateOf(false) }
+    val gridState = rememberLazyGridState()
+    val panelExpandAnim = remember { Animatable(0f) }
 
-    Box(
+    val panelSnapSpec = spring<Float>(
+        stiffness = Spring.StiffnessMediumLow,
+        dampingRatio = Spring.DampingRatioNoBouncy,
+    )
+
+    var wasUpdatingProfile by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.isUpdatingProfile, uiState.canUpdateProfile) {
+        if (wasUpdatingProfile && !uiState.isUpdatingProfile && !uiState.canUpdateProfile) {
+            isPanelDragging = false
+            panelExpandAnim.snapTo(expandPx)
+            panelExpandAnim.animateTo(0f, panelSnapSpec)
+            expandPx = panelExpandAnim.value
+        }
+        wasUpdatingProfile = uiState.isUpdatingProfile
+    }
+
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
+            .clipToBounds()
             .background(CommunicationContainer)
     ) {
-        // 배경 (벚꽃 + 덤불)
+        val basePanelHeightPx = constraints.maxHeight * 0.45f
+        val maxExpandPx = constraints.maxHeight * 0.40f
+        val maxPanelHeightPx = basePanelHeightPx + maxExpandPx
+
+        val nestedScrollConnection = object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                    val delta = available.y
+
+                    // 위로 스크롤: 패널이 완전히 펼쳐질 때까지 그리드 스크롤 대신 패널 확장
+                    if (delta < 0 && expandPx < maxExpandPx) {
+                        if (source == NestedScrollSource.Drag) isPanelDragging = true
+                        val oldOffset = expandPx
+                        expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
+                        return Offset(0f, oldOffset - expandPx)
+                    }
+
+                    if (source != NestedScrollSource.Drag) return Offset.Zero
+
+                    if (delta > 0 && expandPx > 0f) {
+                        val canCollapsePanel = expandPx < maxExpandPx ||
+                            (gridState.firstVisibleItemIndex == 0 &&
+                                gridState.firstVisibleItemScrollOffset == 0)
+                        if (canCollapsePanel) {
+                            isPanelDragging = true
+                            val oldOffset = expandPx
+                            expandPx = (expandPx - delta).coerceIn(0f, maxExpandPx)
+                            return Offset(0f, oldOffset - expandPx)
+                        }
+                    }
+
+                    return Offset.Zero
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    val consumeFling = expandPx < maxExpandPx - 1f
+                    val targetPx = if (consumeFling) {
+                        if (available.y < 0f) maxExpandPx else 0f
+                    } else {
+                        if (expandPx > maxExpandPx / 2f) maxExpandPx else 0f
+                    }
+                    isPanelDragging = false
+                    val startPx = expandPx
+                    scope.launch {
+                        panelExpandAnim.snapTo(startPx)
+                        if (abs(targetPx - startPx) > 0.5f) {
+                            panelExpandAnim.animateTo(targetPx, panelSnapSpec)
+                        }
+                        expandPx = panelExpandAnim.value
+                    }
+                    return if (consumeFling) available else Velocity.Zero
+                }
+            }
+
+        LaunchedEffect(gridState) {
+            snapshotFlow {
+                Triple(
+                    gridState.firstVisibleItemIndex,
+                    gridState.firstVisibleItemScrollOffset,
+                    gridState.isScrollInProgress,
+                )
+            }.collect { (index, scrollOffset, scrolling) ->
+                if (index > 0 || scrollOffset > 0) {
+                    gridWasScrolled = true
+                }
+                if (
+                    !scrolling &&
+                    gridWasScrolled &&
+                    index == 0 &&
+                    scrollOffset == 0 &&
+                    expandPx > 0f
+                ) {
+                    isPanelDragging = false
+                    panelExpandAnim.snapTo(expandPx)
+                    panelExpandAnim.animateTo(0f, panelSnapSpec)
+                    expandPx = panelExpandAnim.value
+                    gridWasScrolled = false
+                }
+            }
+        }
+
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
@@ -569,10 +678,7 @@ private fun CollectionContent(
             )
         }
 
-        // 앞쪽 요소들
         Column(modifier = Modifier.fillMaxSize()) {
-
-            // 공지사항
             AutoScrollingNotice(
                 notices = uiState.notices.map { notice ->
                     NoticeUiModel(
@@ -592,7 +698,6 @@ private fun CollectionContent(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -600,7 +705,6 @@ private fun CollectionContent(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // 말풍선
                 Box {
                     Image(
                         painter = painterResource(id = R.drawable.ic_bubble),
@@ -625,69 +729,74 @@ private fun CollectionContent(
                         .padding(bottom = 20.dp),
                 )
             }
+        }
 
-            // 핀 컬렉션
-            Column(
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .height(with(density) { maxPanelHeightPx.toDp() })
+                .offset {
+                    val currentLayoutExpandPx =
+                        if (isPanelDragging) expandPx else panelExpandAnim.value
+                    IntOffset(0, (maxExpandPx - currentLayoutExpandPx).roundToInt())
+                }
+                .background(
+                    color = White,
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                )
+                .nestedScroll(nestedScrollConnection)
+        ) {
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
                     .padding(horizontal = 24.dp)
-                    .background(
-                        color = White,
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                    )
+                    .padding(top = 20.dp, bottom = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 헤더
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 20.dp, bottom = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(text = "내 핀들", style = IssueTypo.Bold18)
+                Text(text = "내 핀들", style = IssueTypo.Bold18)
 
-                    Button(
-                        onClick = { onEvent(CollectionEvent.UpdateProfile) },
-                        enabled = uiState.canUpdateProfile && !uiState.isUpdatingProfile,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BrandColor,
-                            disabledContainerColor = Gray_4
-                        ),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Text(
-                            text = if (uiState.isUpdatingProfile) "업데이트 중..." else "프로필 업데이트",
-                            style = IssueTypo.Bold12,
-                            color = White
-                        )
-                    }
-                }
-
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 24.dp,
-                        end = 24.dp,
-                        top = 8.dp,
-                        bottom = 16.dp
+                Button(
+                    onClick = { onEvent(CollectionEvent.UpdateProfile) },
+                    enabled = uiState.canUpdateProfile && !uiState.isUpdatingProfile,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandColor,
+                        disabledContainerColor = Gray_4
                     ),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    items(uiState.pins, key = { it.id }) { pin ->
-                        PinCard(
-                            pin = pin,
-                            isSelected = pin.id == uiState.selectedPin?.id,
-                            isCurrentProfile = pin.collectionId == uiState.currentProfilePin?.collectionId,
-                            isBookmarkLoading = pin.collectionId == uiState.bookmarkingCollectionId,
-                            onPinClick = { onEvent(CollectionEvent.SelectPin(pin.id)) },
-                            onBookmarkClick = { onEvent(CollectionEvent.ToggleBookmark(pin.id)) }
-                        )
-                    }
+                    Text(
+                        text = if (uiState.isUpdatingProfile) "업데이트 중..." else "프로필 업데이트",
+                        style = IssueTypo.Bold12,
+                        color = White
+                    )
+                }
+            }
+
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 24.dp,
+                    end = 24.dp,
+                    top = 8.dp,
+                    bottom = 16.dp
+                ),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(uiState.pins, key = { it.id }) { pin ->
+                    PinCard(
+                        pin = pin,
+                        isSelected = pin.id == uiState.selectedPin?.id,
+                        isCurrentProfile = pin.collectionId == uiState.currentProfilePin?.collectionId,
+                        isBookmarkLoading = pin.collectionId == uiState.bookmarkingCollectionId,
+                        onPinClick = { onEvent(CollectionEvent.SelectPin(pin.id)) },
+                        onBookmarkClick = { onEvent(CollectionEvent.ToggleBookmark(pin.id)) }
+                    )
                 }
             }
         }

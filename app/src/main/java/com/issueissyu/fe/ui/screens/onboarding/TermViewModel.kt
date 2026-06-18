@@ -33,7 +33,11 @@ class TermViewModel @Inject constructor(
         _uiState.update { it.copy(submitError = null) }
     }
 
-    fun submitTerms(onSuccess: () -> Unit) {
+    fun submitTerms(
+        onAgreeClick: () -> Unit,
+        requestLocation: () -> Unit,
+        requestNotification: () -> Unit,
+    ) {
         val s = _uiState.value
         if (!s.isServiceAgreed || !s.isPrivacyAgreed || s.isSubmitting) return
 
@@ -48,7 +52,11 @@ class TermViewModel @Inject constructor(
             ).fold(
                 onSuccess = {
                     _uiState.update { it.copy(isSubmitting = false) }
-                    onSuccess()
+                    when {
+                        s.isLocationAgreed -> requestLocation()
+                        s.isMarketingAgreed -> requestNotification()
+                        else -> onAgreeClick()
+                    }
                 },
                 onFailure = { e ->
                     _uiState.update {
@@ -63,36 +71,25 @@ class TermViewModel @Inject constructor(
     }
 
     fun onAllAgreementChanged(checked: Boolean) {
-        if (!checked) {
-            _uiState.update {
-                it.copy(
-                    isAllAgreed = false,
-                    isServiceAgreed = false,
-                    isPrivacyAgreed = false,
-                    isLocationAgreed = false,
-                    isMarketingAgreed = false,
-                )
-            }
-            return
-        }
-
-        // 전체 동의 on: 필수는 즉시 체크, 선택은 권한 승인 결과에 따라 별도로 반영
-        _uiState.update { s ->
-            s.copy(
-                isServiceAgreed = true,
-                isPrivacyAgreed = true,
+        _uiState.update {
+            it.copy(
+                isAllAgreed = checked,
+                isServiceAgreed = checked,
+                isPrivacyAgreed = checked,
+                isLocationAgreed = checked,
+                isMarketingAgreed = checked,
             )
         }
-        updateAllAgreementsState()
     }
 
-    /** 위치 선택 약관 체크 상태 갱신 (권한 승인 결과로만 true). */
+    fun wasMarketingChecked(): Boolean = _uiState.value.isMarketingAgreed
+
     fun onLocationAgreementChanged(agreed: Boolean) {
         _uiState.update { it.copy(isLocationAgreed = agreed) }
         updateAllAgreementsState()
     }
 
-    /** 알림 선택 약관 체크 상태 갱신 (권한 승인 결과로만 true). */
+    // 알림 선택 약관 체크 상태 갱신
     fun onMarketingAgreementChanged(agreed: Boolean) {
         _uiState.update { it.copy(isMarketingAgreed = agreed) }
         updateAllAgreementsState()

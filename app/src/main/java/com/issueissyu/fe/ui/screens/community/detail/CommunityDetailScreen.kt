@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -31,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.ContentScale
@@ -49,6 +51,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.SavedStateHandle
 import coil.compose.AsyncImage
 import com.issueissyu.fe.R
+import com.issueissyu.fe.core.extensions.findActivity
 import com.issueissyu.fe.core.time.formatPinHomeCreatedAt
 import com.issueissyu.fe.domain.model.community.CommunityComment
 import com.issueissyu.fe.domain.model.community.CommunityDetail
@@ -57,6 +60,7 @@ import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.CompactSympathyButton
+import com.issueissyu.fe.ui.components.DotPagerIndicator
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
@@ -94,6 +98,7 @@ fun CommunityDetailScreen(
         ?.collectAsState()
         ?: remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val activity = context.findActivity()
 
     LaunchedEffect(shouldRefresh) {
         if (shouldRefresh) {
@@ -116,10 +121,17 @@ fun CommunityDetailScreen(
 
     CommunityDetailScreenContent(
         uiState = uiState,
-        onBackClick = onBackClick,
+        onBackClick = {
+            if (viewModel.shouldExitToParentDetail()) {
+                viewModel.exitCardNewsView()
+            } else {
+                onBackClick()
+            }
+        },
         onRetry = viewModel::loadDetail,
         onGoNowClick = viewModel::goNow,
         onPetitionClick = viewModel::submitPetition,
+        onCardNewsClick = viewModel::openCardNews,
         onMapClick = onMapClick,
         onCommentSubmit = viewModel::createComment,
         onCommentUpdate = viewModel::updateComment,
@@ -131,6 +143,7 @@ fun CommunityDetailScreen(
         onEmojiAddClick = viewModel::openEmojiPicker,
         onEmojiPickerDismiss = viewModel::closeEmojiPicker,
         onEmojiCandidateClick = viewModel::selectEmojiCandidate,
+        onLockedEmojiCandidateClick = { emojiId -> viewModel.purchaseEmoji(activity, emojiId) },
         onEmojiApplyClick = viewModel::applySelectedEmoji,
     )
 }
@@ -142,6 +155,7 @@ fun CommunityDetailScreenContent(
     onRetry: () -> Unit = {},
     onGoNowClick: () -> Unit = {},
     onPetitionClick: () -> Unit = {},
+    onCardNewsClick: () -> Unit = {},
     onMapClick: (Long) -> Unit = {},
     onCommentSubmit: (String) -> Unit = {},
     onCommentUpdate: (Long, String) -> Unit = { _, _ -> },
@@ -153,6 +167,7 @@ fun CommunityDetailScreenContent(
     onEmojiAddClick: () -> Unit = {},
     onEmojiPickerDismiss: () -> Unit = {},
     onEmojiCandidateClick: (Long) -> Unit = {},
+    onLockedEmojiCandidateClick: (Long) -> Unit = {},
     onEmojiApplyClick: () -> Unit = {},
 ) {
     var editingComment by remember { mutableStateOf<CommunityComment?>(null) }
@@ -176,11 +191,14 @@ fun CommunityDetailScreenContent(
             errorMessage = uiState.emojiPicker.errorMessage,
             onDismiss = onEmojiPickerDismiss,
             onEmojiClick = onEmojiCandidateClick,
+            onLockedEmojiClick = onLockedEmojiCandidateClick,
             onApplyClick = onEmojiApplyClick,
+            allowApplyWithoutSelection = true,
         )
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0.dp),
         topBar = {
             CommunityDetailTopBar(
                 detail = uiState.detail,
@@ -233,6 +251,7 @@ fun CommunityDetailScreenContent(
                     onReportClick = { onCommunityReportClick(uiState.detail.communityId) },
                     onGoNowClick = onGoNowClick,
                     onPetitionClick = onPetitionClick,
+                    onCardNewsClick = onCardNewsClick,
                         comments = uiState.comments,
                         emojiReactions = uiState.emojiReactions,
                         isCommentLoading = uiState.isCommentLoading,
@@ -296,6 +315,7 @@ private fun CommunityDetailBody(
     onReportClick: () -> Unit,
     onGoNowClick: () -> Unit,
     onPetitionClick: () -> Unit,
+    onCardNewsClick: () -> Unit,
     comments: List<CommunityComment>,
     emojiReactions: List<PinEmojiReaction>,
     isCommentLoading: Boolean,
@@ -354,6 +374,7 @@ private fun CommunityDetailBody(
                     isDeleting = isCommunityDeleting,
                     onDeleteClick = onCommunityDeleteClick,
                     onTakedownClick = onCommunityTakedownClick,
+                    onCardNewsClick = onCardNewsClick,
                 )
             }
 
@@ -546,6 +567,35 @@ private fun CommunityDetailOutlinedIconButton(
 }
 
 @Composable
+private fun CommunityCardNewsLinkButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(BrandColor)
+            .clickable(onClick = onClick)
+            .padding(start = 12.dp, end = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "카드뉴스",
+            maxLines = 1,
+            softWrap = false,
+            style = IssueTypo.Bold12.copy(color = White),
+        )
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = White,
+            modifier = Modifier.size(18.dp),
+        )
+    }
+}
+
+@Composable
 private fun CommunityCardNewsTitleSection(title: String) {
     Text(
         text = title,
@@ -600,7 +650,12 @@ private fun CommunityDetailTitleSection(
     isDeleting: Boolean,
     onDeleteClick: () -> Unit,
     onTakedownClick: () -> Unit,
+    onCardNewsClick: () -> Unit,
 ) {
+    val showCardNewsLink = (
+        detail.kind == CommunityItemKind.POLICY || detail.kind == CommunityItemKind.CONTEST
+        ) && !detail.moveCardnews.isNullOrBlank()
+
     Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -621,7 +676,17 @@ private fun CommunityDetailTitleSection(
                 onTakedownClick = onTakedownClick,
             )
         }
-        
+
+        if (showCardNewsLink) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                CommunityCardNewsLinkButton(onClick = onCardNewsClick)
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
         
         Row(
@@ -758,73 +823,147 @@ private fun CommunityDetailImageSection(
     onImageClick: (Int) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    
+    val density = LocalDensity.current
+    val itemSpacingPx = with(density) { 8.dp.roundToPx() }
+    val scrollBarState = remember(imageUrls.size, itemSpacingPx) {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty()) {
+                return@derivedStateOf CommunityImageScrollBarMetrics()
+            }
+
+            val itemSize = visibleItems.first().size
+            val beforePadding = layoutInfo.beforeContentPadding
+            val afterPadding = layoutInfo.afterContentPadding
+            val viewportSize = layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset
+            val totalContentSize = beforePadding +
+                imageUrls.size * itemSize +
+                (imageUrls.size - 1).coerceAtLeast(0) * itemSpacingPx +
+                afterPadding
+            val maxScroll = (totalContentSize - viewportSize).coerceAtLeast(0)
+            val scrollable = maxScroll > 0 &&
+                (listState.canScrollForward || listState.canScrollBackward)
+
+            if (!scrollable) {
+                return@derivedStateOf CommunityImageScrollBarMetrics()
+            }
+
+            val currentScroll = (
+                listState.firstVisibleItemIndex * (itemSize + itemSpacingPx) +
+                    listState.firstVisibleItemScrollOffset
+                ).coerceIn(0, maxScroll)
+
+            CommunityImageScrollBarMetrics(
+                scrollable = true,
+                thumbFraction = (viewportSize.toFloat() / totalContentSize).coerceIn(0.15f, 1f),
+                offsetFraction = (currentScroll.toFloat() / maxScroll.coerceAtLeast(1)).coerceIn(0f, 1f),
+            )
+        }
+    }
+    val isScrollable by remember {
+        derivedStateOf { scrollBarState.value.scrollable }
+    }
+    val thumbFraction by remember {
+        derivedStateOf { scrollBarState.value.thumbFraction }
+    }
+
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         LazyRow(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             itemsIndexed(imageUrls) { index, imageUrl ->
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "게시글 이미지",
+                Box(
                     modifier = Modifier
-                        .width(110.dp)
-                        .height(110.dp)
+                        .size(width = 110.dp, height = 110.dp)
                         .clip(RoundedCornerShape(8.dp))
                         .background(Gray_3)
                         .clickable { onImageClick(index) },
-                    contentScale = ContentScale.Crop
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = "게시글 이미지",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
             }
         }
-        
-        if (imageUrls.size > 1) {
+
+        if (isScrollable) {
             Spacer(modifier = Modifier.height(12.dp))
-            Box(
+            BoxWithConstraints(
                 modifier = Modifier
-                    .width(40.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
                     .height(4.dp)
                     .align(Alignment.CenterHorizontally)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Gray_3)
+                    .background(Gray_3),
             ) {
-                // TODO: 실제 스크롤 위치에 연동된 인디케이터 구현 필요
+                val thumbWidth = maxWidth * thumbFraction
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.3f)
+                        .graphicsLayer {
+                            translationX = with(density) {
+                                (maxWidth - thumbWidth).toPx() * scrollBarState.value.offsetFraction
+                            }
+                        }
+                        .width(thumbWidth)
                         .fillMaxHeight()
-                        .background(BrandColor)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(BrandColor),
                 )
             }
         }
     }
 }
 
+private data class CommunityImageScrollBarMetrics(
+    val scrollable: Boolean = false,
+    val thumbFraction: Float = 1f,
+    val offsetFraction: Float = 0f,
+)
+
 @Composable
 private fun CommunityCardNewsImageSection(
     imageUrls: List<String>,
     onImageClick: (Int) -> Unit,
 ) {
+    if (imageUrls.isEmpty()) return
+
+    val pagerState = rememberPagerState(pageCount = { imageUrls.size })
+
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        imageUrls.forEachIndexed { index, imageUrl ->
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(0.78f),
+        ) { page ->
             AsyncImage(
-                model = imageUrl,
+                model = imageUrls[page],
                 contentDescription = "카드뉴스 이미지",
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.72f)
-                    .clip(RoundedCornerShape(6.dp))
+                    .fillMaxSize()
                     .background(Gray_2)
-                    .clickable { onImageClick(index) },
-                contentScale = ContentScale.Fit,
+                    .clickable { onImageClick(page) },
+                contentScale = ContentScale.Crop,
+            )
+        }
+
+        if (imageUrls.size > 1) {
+            DotPagerIndicator(
+                pageCount = imageUrls.size,
+                currentPage = pagerState.currentPage,
+                modifier = Modifier.padding(vertical = 12.dp),
             )
         }
     }

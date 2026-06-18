@@ -6,43 +6,109 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.issueissyu.fe.MainActivity
 import com.issueissyu.fe.R
+import com.issueissyu.fe.domain.model.notification.PushAlarmContext
+
+enum class PushType(
+    val serverCode: String,
+    val channelId: String,
+    val channelName: String,
+) {
+    PIN_LIKED("PIN_LIKED", "channel_like", "내 핀 좋아요"),
+    PIN_EVENT("PIN_EVENT", "channel_event", "이벤트"),
+    PIN_POPULAR("PIN_POPULAR", "channel_popular", "인기 게시글"),
+    PIN_STORE_AD("PIN_STORE_AD", "channel_store_ad", "가게 홍보"),
+    ;
+
+    fun resolveDestination(pinId: String?, communityId: String?): PushDestination? = when (this) {
+        PIN_LIKED -> pinId?.takeIf { it.isNotBlank() }?.let { PushDestination.PinDetail(it) }
+        PIN_EVENT, PIN_STORE_AD, PIN_POPULAR ->
+            communityId?.toLongOrNull()?.let { PushDestination.CommunityDetail(it) }
+    }
+
+    fun notificationId(pinId: String?, alarmId: String?): Int {
+        alarmId?.toLongOrNull()?.let { return stableId("$serverCode:$it") }
+        if (this == PIN_LIKED) {
+            pinId?.takeIf { it.isNotBlank() }?.let { return stableId("$serverCode:$it") }
+        }
+        return randomId()
+    }
+
+    companion object {
+        fun fromServer(value: String?): PushType? =
+            entries.find { it.serverCode.equals(value, ignoreCase = true) }
+
+        private fun stableId(key: String): Int =
+            key.hashCode() and 0x7FFFFFFF
+
+        private fun randomId(): Int =
+            (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
+    }
+}
 
 object NotificationHelper {
 
-    const val CHANNEL_ID = "issueissyu_channel"
+    private const val TAG = "NotificationHelper"
 
-    //앱 시작 -> 알림 채널 생성 (1회)
+    const val EXTRA_TYPE = "type"
+    const val EXTRA_PIN_ID = "pinId"
+    const val EXTRA_COMMUNITY_ID = "communityId"
+    const val EXTRA_ALARM_ID = "alarmId"
+    private val defaultSmallIcon = R.mipmap.ic_launcher
+
     fun createChannel(context: Context) {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "이슈이슈 알림",
-            NotificationManager.IMPORTANCE_DEFAULT
-        )
-        context.getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(channel)
+        val manager = context.getSystemService(NotificationManager::class.java)
+        PushType.entries.forEach { type ->
+            manager.createNotificationChannel(
+                NotificationChannel(type.channelId, type.channelName, NotificationManager.IMPORTANCE_HIGH)
+            )
+        }
     }
 
-    //화면에 띄우는 알림 팝업
-    fun show(context: Context, type: String?, targetId: String?, title: String, body: String) {
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("type", type)
-            putExtra("targetId", targetId)
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+    fun show(
+        context: Context,
+        type: String?,
+        pinId: String?,
+        communityId: String?,
+        title: String,
+        body: String,
+        alarmId: String? = null,
+    ) {
+        val pushType = PushType.fromServer(type) ?: run {
+            Log.w(TAG, "Unknown push type=$type — notification skipped")
+            return
         }
-        val pendingIntent = PendingIntent.getActivity(
-            context, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        val notificationId = pushType.notificationId(
+            pinId = pinId,
+            alarmId = alarmId,
         )
 
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra(EXTRA_TYPE, pushType.serverCode)
+            putExtra(EXTRA_PIN_ID, pinId)
+            putExtra(EXTRA_COMMUNITY_ID, communityId)
+            putExtra(EXTRA_ALARM_ID, alarmId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val notification = NotificationCompat.Builder(context, pushType.channelId)
             .setContentTitle(title)
             .setContentText(body)
-            .setSmallIcon(R.drawable.ic_report) // 나중에 아이콘 교체
+            .setSmallIcon(defaultSmallIcon)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
@@ -53,16 +119,52 @@ object NotificationHelper {
             ) != PackageManager.PERMISSION_GRANTED
         ) return
 
-        NotificationManagerCompat.from(context).notify(getNotificationId(type), notification)
-    }
-
-    //핀 좋아요 -> 덮어씌워서 보여주기
-    private fun getNotificationId(type: String?): Int{
-        return when(type){
-
-            //TODO: 타입값은 백엔드랑 맞춰야 함
-            "PIN_LIKED" -> 1001
-            else -> (System.currentTimeMillis() and 0x7FFFFFFF).toInt()
-        }
+        NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
 }
+
+sealed interface PushDestination {
+    data class PinDetail(val pinId: String) : PushDestination
+    data class CommunityDetail(val communityId: Long) : PushDestination
+}
+
+fun Intent?.parsePushDestination(): PushDestination? {
+    if (this == null) return null
+    val pushType = PushType.fromServer(
+        getStringExtra(NotificationHelper.EXTRA_TYPE) ?: getStringExtra("type")
+    ) ?: return null
+
+    return pushType.resolveDestination(readPinId(), readCommunityId())
+}
+
+fun Intent?.readPushAlarmContext(): PushAlarmContext? {
+    if (this == null) return null
+    val pushType = getStringExtra(NotificationHelper.EXTRA_TYPE) ?: getStringExtra("type")
+    val fcmAlarmId = PushAlarmIdParser.parseLong(this)
+    val pinId = readPinId()?.toLongOrNull()
+    val communityId = readCommunityId()?.toLongOrNull()
+    if (fcmAlarmId == null && pushType.isNullOrBlank()) return null
+    if (fcmAlarmId == null && pinId == null && communityId == null) return null
+    return PushAlarmContext(
+        fcmAlarmId = fcmAlarmId,
+        pushType = pushType,
+        pinId = pinId,
+        communityId = communityId,
+    )
+}
+
+fun Intent.clearPushExtras() {
+    removeExtra(NotificationHelper.EXTRA_TYPE)
+    removeExtra(NotificationHelper.EXTRA_PIN_ID)
+    removeExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
+    PushAlarmIdParser.clearFromIntent(this)
+}
+
+private fun Intent.readPinId(): String? = (
+    getStringExtra(NotificationHelper.EXTRA_PIN_ID)
+        ?: getStringExtra("pinId")
+    )?.takeIf { it.isNotBlank() }
+
+private fun Intent.readCommunityId(): String? =
+    getStringExtra(NotificationHelper.EXTRA_COMMUNITY_ID)
+        ?: getStringExtra("communityId")

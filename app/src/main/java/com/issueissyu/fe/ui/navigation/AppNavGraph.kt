@@ -12,20 +12,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.issueissyu.fe.core.auth.AuthSessionState
+import com.issueissyu.fe.core.notification.PushDestination
 import com.issueissyu.fe.ui.navigation.AppDestinations.Onboarding.LOGIN_ROUTE
+import com.issueissyu.fe.domain.model.notification.Notification
+import com.issueissyu.fe.domain.model.notification.NotificationType
 import com.issueissyu.fe.ui.screens.map.MapScreen
+import com.issueissyu.fe.ui.screens.map.NotificationRoute
+import com.issueissyu.fe.ui.screens.landing.LandingScreen
 import com.issueissyu.fe.ui.screens.onboarding.CompleteScreen
 import com.issueissyu.fe.ui.screens.onboarding.LocalVerificationScreen
 import com.issueissyu.fe.ui.screens.onboarding.LoginScreen
@@ -58,19 +65,38 @@ import com.issueissyu.fe.ui.screens.mypage.MyPageTermScreen
 import com.issueissyu.fe.ui.screens.mypage.ProfileChangeScreen
 import com.issueissyu.fe.ui.screens.mypage.TermsType as MyPageTermsType
 import com.issueissyu.fe.ui.screens.onboarding.TermsType as OnboardingTermsType
+import kotlinx.coroutines.delay
 
 @Composable
 fun AppNavGraph(
     navController: NavHostController,
     paddingValues: PaddingValues,
     onMapLocationSelectionModeChanged: (Boolean) -> Unit = {},
+    pendingPush: PushDestination? = null,
+    onPendingPushHandled: () -> Unit = {},
 ) {
     val sessionViewModel: AppSessionViewModel = hiltViewModel()
     val context = LocalContext.current
+    val authState by sessionViewModel.authState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(pendingPush, authState) {
+        val destination = pendingPush ?: return@LaunchedEffect
+        if (authState != AuthSessionState.Authenticated) return@LaunchedEffect
+
+        repeat(30) {
+            val route = navController.currentDestination?.route
+            if (canNavigateFromPush(route)) {
+                navController.navigateToPushDestination(destination)
+                onPendingPushHandled()
+                return@LaunchedEffect
+            }
+            delay(100)
+        }
+    }
 
     LaunchedEffect(sessionViewModel, navController, context) {
         sessionViewModel.sessionExpiredMessages.collect { message ->
-            if (navController.currentDestination?.route != LOGIN_ROUTE) {
+            if (!navController.currentDestination?.route.isLoginRoute()) {
                 navController.navigateToLoginClearingBackStack()
             }
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
@@ -90,7 +116,7 @@ fun AppNavGraph(
                     val route = navController.currentDestination?.route ?: return@collect
                     if (
                         route == AppDestinations.Onboarding.SPLASH_ROUTE ||
-                        route == LOGIN_ROUTE
+                        route.isLoginRoute()
                     ) {
                         return@collect
                     }
@@ -112,8 +138,8 @@ fun AppNavGraph(
                         popUpTo(AppDestinations.Onboarding.SPLASH_ROUTE) { inclusive = true }
                     }
                 },
-                onNavigateToLogin = {
-                    navController.navigateToLoginClearingBackStack()
+                onNavigateToLogin = { showStorageWarning ->
+                    navController.navigateToLoginClearingBackStack(showStorageWarning)
                 },
                 onNavigateToOnboarding = {
                     navController.navigate(AppDestinations.Onboarding.TERM_ROUTE) {
@@ -123,8 +149,19 @@ fun AppNavGraph(
             )
         }
 
-        composable(LOGIN_ROUTE) {
+        composable(
+            route = AppDestinations.Onboarding.LOGIN_ROUTE_WITH_ARGS,
+            arguments = listOf(
+                navArgument("storageWarning") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
+            ),
+        ) { backStackEntry ->
+            val showStorageWarning =
+                backStackEntry.arguments?.getBoolean("storageWarning") ?: false
             LoginScreen(
+                showStorageWarning = showStorageWarning,
                 viewModel = hiltViewModel(),
                 onLoginSuccess = { isNewUser ->
                     if (isNewUser) {
@@ -217,11 +254,37 @@ fun AppNavGraph(
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                onNavigateToLanding = {}
+                onNavigateToLanding = {
+                    navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                },
             )
         }
+
+        composable(AppDestinations.Onboarding.LANDING_ROUTE) {
+            val previousRoute =
+                navController.previousBackStackEntry?.destination?.route
+            if (previousRoute != AppDestinations.MyPage.MYPAGE_ROUTE) {
+                OnboardingBackDisabledHandler()
+            }
+
+            LandingScreen(
+                onComplete = {
+                    if (previousRoute == AppDestinations.MyPage.MYPAGE_ROUTE) {
+                        navController.popBackStack()
+                    } else {
+                        navController.navigate(AppDestinations.TOWN_ROUTE) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+            )
+        }
+
         composable(AppDestinations.COLLECTION_ROUTE) {
-            NavScreenWrapper(paddingValues = paddingValues) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
                 CollectionScreen(
                     onNavigateToPinDetail = { pinId ->
                         navController.navigateToPinDetail(pinId)
@@ -257,11 +320,13 @@ fun AppNavGraph(
                 removeTopPadding = true
             ) {
                 CommunityScreen(
-                    onBackClick = {
-                        navController.navigateUp()
-                    },
-                    onCommunityClick = { communityId ->
-                        navController.navigate(AppDestinations.communityDetailRoute(communityId))
+                    onCommunityClick = { communityId, detailKind ->
+                        navController.navigate(
+                            AppDestinations.communityDetailRoute(
+                                communityId = communityId,
+                                kind = detailKind,
+                            )
+                        )
                     }
                 )
             }
@@ -271,7 +336,11 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("communityId") {
                     type = NavType.LongType
-                }
+                },
+                navArgument("kind") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
             )
         ) {
             NavScreenWrapper(
@@ -324,7 +393,10 @@ fun AppNavGraph(
             }
         }
         composable(AppDestinations.MyPage.MYPAGE_ROUTE) { backStackEntry ->
-            NavScreenWrapper(paddingValues = paddingValues) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
                 MyPageScreen(
                     modifier = Modifier,
                     savedStateHandle = backStackEntry.savedStateHandle,
@@ -344,6 +416,9 @@ fun AppNavGraph(
                                 navController.navigate(AppDestinations.MyPage.ALARM_SETTINGS_ROUTE)
                             }
                             MyPageEvent.NavigateToLanding -> {
+                                navController.navigate(AppDestinations.Onboarding.LANDING_ROUTE)
+                            }
+                            MyPageEvent.NavigateToLogin -> {
                                 navController.navigateToLoginClearingBackStack()
                             }
                             MyPageEvent.NavigateToTerm -> {
@@ -443,6 +518,19 @@ fun AppNavGraph(
                 )
             }
         }
+        composable(AppDestinations.NOTIFICATION_ROUTE) {
+            NavScreenWrapper(
+                paddingValues = paddingValues,
+                removeTopPadding = true,
+            ) {
+                NotificationRoute(
+                    onBack = { navController.popBackStack() },
+                    onItemClick = { notification ->
+                        navController.navigateFromNotification(notification)
+                    },
+                )
+            }
+        }
         composable(AppDestinations.PATCH_NOTE_ROUTE) {
             NavScreenWrapper(
                 paddingValues = paddingValues,
@@ -463,10 +551,15 @@ fun AppNavGraph(
             arguments = listOf(
                 navArgument("pinId") {
                     type = NavType.StringType
-                }
+                },
+                navArgument("startHomeEdit") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                },
             )
         ) { backStackEntry ->
             val pinId = backStackEntry.arguments?.getString("pinId").orEmpty()
+            val startHomeEdit = backStackEntry.arguments?.getBoolean("startHomeEdit") ?: false
 
             NavScreenWrapper(
                 paddingValues = paddingValues,
@@ -474,6 +567,7 @@ fun AppNavGraph(
             ) {
                 PinDetailScreen(
                     pinId = pinId,
+                    startHomeEdit = startHomeEdit,
                     savedStateHandle = backStackEntry.savedStateHandle,
                     onBackClick = { navController.popBackStack() },
                     onReportClick = { reportPinId ->
@@ -520,20 +614,20 @@ fun AppNavGraph(
                     defaultValue = "issue"
                 },
                 navArgument("pinLat") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("pinLng") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("userLat") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("userLng") {
-                    type = NavType.FloatType
-                    defaultValue = 0f
+                    type = NavType.StringType
+                    defaultValue = "0.0"
                 },
                 navArgument("address") {
                     type = NavType.StringType
@@ -542,12 +636,10 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val pinType = backStackEntry.arguments?.getString("type")
-            // route는 Float로 정의되어 있어 Double로 변환해 PinCreateScreen에 넘긴다.
-            // TODO: NavType.Float → 사용자 정의 NavType 또는 String 인코딩으로 정밀도 손실을 줄이는 방안 검토.
-            val pinLat = (backStackEntry.arguments?.getFloat("pinLat") ?: 0f).toDouble()
-            val pinLng = (backStackEntry.arguments?.getFloat("pinLng") ?: 0f).toDouble()
-            val userLat = (backStackEntry.arguments?.getFloat("userLat") ?: 0f).toDouble()
-            val userLng = (backStackEntry.arguments?.getFloat("userLng") ?: 0f).toDouble()
+            val pinLat = backStackEntry.arguments?.getString("pinLat")?.toDoubleOrNull() ?: 0.0
+            val pinLng = backStackEntry.arguments?.getString("pinLng")?.toDoubleOrNull() ?: 0.0
+            val userLat = backStackEntry.arguments?.getString("userLat")?.toDoubleOrNull() ?: 0.0
+            val userLng = backStackEntry.arguments?.getString("userLng")?.toDoubleOrNull() ?: 0.0
             val address = Uri.decode(backStackEntry.arguments?.getString("address").orEmpty())
 
             // 일반 유저 생성 대상은 ISSUE / COMMUNICATION 두 가지. 그 외는 화면 진입을 차단한다.
@@ -626,14 +718,43 @@ private fun OnboardingBackDisabledHandler() {
     BackHandler { }
 }
 
-private fun NavHostController.navigateToLoginClearingBackStack() {
-    navigate(LOGIN_ROUTE) {
+private fun canNavigateFromPush(route: String?): Boolean {
+    if (route == null) return false
+    return route != AppDestinations.Onboarding.SPLASH_ROUTE && !route.isLoginRoute()
+}
+
+private fun String?.isLoginRoute(): Boolean =
+    this?.startsWith(LOGIN_ROUTE) == true
+
+private fun NavHostController.navigateToLoginClearingBackStack(
+    showStorageWarning: Boolean = false,
+) {
+    navigate(AppDestinations.Onboarding.loginRoute(showStorageWarning)) {
         popUpTo(0) { inclusive = true }
     }
 }
 
 /** 지도 핀 카드·패치노트 등에서 핀 상세 화면으로 이동 */
-fun NavHostController.navigateToPinDetail(pinId: String) {
+fun NavHostController.navigateToPinDetail(pinId: String, startHomeEdit: Boolean = false) {
     if (pinId.isBlank()) return
-    navigate(AppDestinations.pinDetailRoute(pinId))
+    navigate(AppDestinations.pinDetailRoute(pinId, startHomeEdit))
+}
+
+fun NavHostController.navigateToPushDestination(destination: PushDestination) {
+    when (destination) {
+        is PushDestination.PinDetail -> navigateToPinDetail(destination.pinId)
+        is PushDestination.CommunityDetail ->
+            navigate(AppDestinations.communityDetailRoute(destination.communityId))
+    }
+}
+
+/** 알람 목록 탭 → 상세 (LIKE → 핀, HOT/EVENT/STORE → 커뮤니티) */
+fun NavHostController.navigateFromNotification(notification: Notification) {
+    val destination = when (notification.type) {
+        NotificationType.LIKE -> PushDestination.PinDetail(notification.pinId.toString())
+        NotificationType.HOT,
+        NotificationType.EVENT,
+        NotificationType.STORE -> notification.communityId?.let { PushDestination.CommunityDetail(it) }
+    } ?: return
+    navigateToPushDestination(destination)
 }

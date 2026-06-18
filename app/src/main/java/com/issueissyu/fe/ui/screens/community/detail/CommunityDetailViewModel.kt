@@ -1,15 +1,18 @@
 package com.issueissyu.fe.ui.screens.community.detail
 
+import android.app.Activity
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.core.issue.IssueReliabilityPolling
+import com.issueissyu.fe.domain.model.billing.BillingPurchaseEvent
 import com.issueissyu.fe.domain.model.community.CommunityItemKind
 import com.issueissyu.fe.domain.model.issue.IssueReliability
 import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.repository.PinRepository
+import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.domain.usecase.community.CreateCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.DeleteCommunityCommentUseCase
 import com.issueissyu.fe.domain.usecase.community.DeleteCommunityUseCase
@@ -47,12 +50,14 @@ class CommunityDetailViewModel @Inject constructor(
     private val likeCommunityUseCase: LikeCommunityUseCase,
     private val getIssueReliabilityUseCase: GetIssueReliabilityUseCase,
     private val pinRepository: PinRepository,
+    private val billingRepository: BillingRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val communityId: Long = savedStateHandle.get<Long>("communityId") ?: 0L
     private var issueReliabilityJob: Job? = null
     private var observedReliabilityPinId: Long? = null
+    private var observedBillingProductId = billingRepository.pendingBillingProductId.value
 
     private val _uiState = MutableStateFlow(CommunityDetailUiState())
     val uiState: StateFlow<CommunityDetailUiState> = _uiState.asStateFlow()
@@ -63,13 +68,48 @@ class CommunityDetailViewModel @Inject constructor(
     private val _deleteCompleted = MutableSharedFlow<Unit>()
     val deleteCompleted: SharedFlow<Unit> = _deleteCompleted.asSharedFlow()
 
+    private var detailLoadJob: Job? = null
+    private var cardNewsOpenedFromParentDetail = false
+
+    private companion object {
+        const val DETAIL_KIND_CARDNEWS = "CARDNEWS"
+    }
+
+    private val initialDetailKind: String? = savedStateHandle.get<String>("kind")?.takeIf { it.isNotBlank() }
+
     init {
-        loadDetail()
+        if (initialDetailKind == DETAIL_KIND_CARDNEWS) {
+            loadDetail(kind = DETAIL_KIND_CARDNEWS, markAsCardNewsView = true)
+        } else {
+            loadDetail()
+        }
+        observeBillingPurchaseEvents()
     }
 
     fun loadDetail() {
-        if (_uiState.value.isLoading) return
+        loadDetail(kind = null, markAsCardNewsView = false)
+    }
 
+    fun openCardNews() {
+        val detail = _uiState.value.detail ?: return
+        if (detail.moveCardnews.isNullOrBlank()) return
+        if (detail.kind != CommunityItemKind.POLICY && detail.kind != CommunityItemKind.CONTEST) return
+
+        cardNewsOpenedFromParentDetail = true
+        loadDetail(kind = DETAIL_KIND_CARDNEWS, markAsCardNewsView = true)
+    }
+
+    fun shouldExitToParentDetail(): Boolean {
+        return _uiState.value.isCardNewsView && cardNewsOpenedFromParentDetail
+    }
+
+    fun exitCardNewsView() {
+        if (!_uiState.value.isCardNewsView) return
+        cardNewsOpenedFromParentDetail = false
+        loadDetail(kind = null, markAsCardNewsView = false)
+    }
+
+    private fun loadDetail(kind: String?, markAsCardNewsView: Boolean) {
         if (communityId == 0L) {
             _uiState.update {
                 it.copy(
@@ -80,13 +120,14 @@ class CommunityDetailViewModel @Inject constructor(
             return
         }
 
-        viewModelScope.launch {
-            getCommunityDetailUseCase(communityId)
+        detailLoadJob?.cancel()
+        detailLoadJob = viewModelScope.launch {
+            getCommunityDetailUseCase(communityId, kind)
                 .onStart {
                     _uiState.update {
                         it.copy(
                             isLoading = true,
-                            errorMessage = null
+                            errorMessage = null,
                         )
                     }
                 }
@@ -94,7 +135,11 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = "게시글을 불러오지 못했습니다.\n잠시 후 다시 시도해주세요."
+                            errorMessage = if (markAsCardNewsView) {
+                                "카드뉴스를 불러오지 못했습니다.\n잠시 후 다시 시도해주세요."
+                            } else {
+                                "게시글을 불러오지 못했습니다.\n잠시 후 다시 시도해주세요."
+                            },
                         )
                     }
                 }
@@ -117,6 +162,7 @@ class CommunityDetailViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            isCardNewsView = markAsCardNewsView,
                             detail = detail.copy(
                                 petitionCount = petitionStatus?.petitionCount ?: detail.petitionCount,
                                 petitionTargetCount = petitionStatus?.targetPetition ?: detail.petitionTargetCount,
@@ -139,6 +185,9 @@ class CommunityDetailViewModel @Inject constructor(
                     }
                     if (detail.kind == CommunityItemKind.ISSUE && pinId != null) {
                         startIssueReliabilityObservation(pinId)
+                    } else {
+                        issueReliabilityJob?.cancel()
+                        observedReliabilityPinId = null
                     }
                 }
         }
@@ -396,29 +445,7 @@ class CommunityDetailViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            pinRepository.getEmojiCandidates()
-                .onSuccess { candidates ->
-                    _uiState.update {
-                        it.copy(
-                            emojiPicker = it.emojiPicker.copy(
-                                candidates = candidates,
-                                isLoading = false,
-                                errorMessage = null,
-                            )
-                        )
-                    }
-                }
-                .onFailure { throwable ->
-                    _uiState.update {
-                        it.copy(
-                            emojiPicker = it.emojiPicker.copy(
-                                isLoading = false,
-                                errorMessage = throwable.message?.takeIf { message -> message.isNotBlank() }
-                                    ?: "이모지 목록을 불러오지 못했습니다.",
-                            )
-                        )
-                    }
-                }
+            refreshEmojiCandidates()
         }
     }
 
@@ -429,21 +456,99 @@ class CommunityDetailViewModel @Inject constructor(
     fun selectEmojiCandidate(emojiId: Long) {
         val candidate = _uiState.value.emojiPicker.candidates.firstOrNull { it.emojiId == emojiId }
             ?: return
-        if (!candidate.canReact) {
-            viewModelScope.launch {
-                _toastMessage.emit("구매가 필요한 이모지입니다.")
-            }
+        if (!candidate.canReact) return
+        _uiState.update {
+            val nextSelection = if (it.emojiPicker.selectedEmojiId == emojiId) null else emojiId
+            it.copy(emojiPicker = it.emojiPicker.copy(selectedEmojiId = nextSelection))
+        }
+    }
+
+    fun purchaseEmoji(activity: Activity?, emojiId: Long) {
+        val candidate = _uiState.value.emojiPicker.candidates.firstOrNull { it.emojiId == emojiId }
+            ?: return
+        if (candidate.canReact || billingRepository.pendingBillingProductId.value != null) return
+        val productId = candidate.productId ?: run {
+            _toastMessage.tryEmit("구매 정보를 찾을 수 없습니다.")
             return
         }
-        _uiState.update { it.copy(emojiPicker = it.emojiPicker.copy(selectedEmojiId = emojiId)) }
+        if (activity == null) {
+            _toastMessage.tryEmit("결제 화면을 열 수 없습니다.")
+            return
+        }
+        observedBillingProductId = productId
+        viewModelScope.launch {
+            billingRepository.purchaseProduct(activity, productId)
+                .onFailure { error ->
+                    observedBillingProductId = null
+                    _toastMessage.emit(error.message ?: "결제창을 열지 못했습니다.")
+                }
+        }
+    }
+
+    private fun observeBillingPurchaseEvents() {
+        viewModelScope.launch {
+            billingRepository.purchaseEvents.collect { event ->
+                if (event.productId != observedBillingProductId) return@collect
+                when (event) {
+                    is BillingPurchaseEvent.Verified -> {
+                        refreshEmojiCandidates()
+                        _toastMessage.emit("이모지를 구매했습니다.")
+                        finishBillingPurchase(event.productId)
+                    }
+                    is BillingPurchaseEvent.Pending -> {
+                        _toastMessage.emit("결제가 대기 중입니다.")
+                    }
+                    is BillingPurchaseEvent.Canceled -> {
+                        finishBillingPurchase(event.productId)
+                    }
+                    is BillingPurchaseEvent.Failed -> {
+                        _toastMessage.emit(event.message)
+                        finishBillingPurchase(event.productId)
+                    }
+                }
+            }
+        }
+    }
+
+    private fun finishBillingPurchase(productId: String) {
+        observedBillingProductId = null
+        billingRepository.acknowledgePurchaseResult(productId)
+    }
+
+    private suspend fun refreshEmojiCandidates() {
+        pinRepository.getEmojiCandidates()
+            .onSuccess { candidates ->
+                _uiState.update {
+                    it.copy(
+                        emojiPicker = it.emojiPicker.copy(
+                            candidates = candidates,
+                            isLoading = false,
+                            errorMessage = null,
+                        )
+                    )
+                }
+            }
+            .onFailure { throwable ->
+                _uiState.update {
+                    it.copy(
+                        emojiPicker = it.emojiPicker.copy(
+                            isLoading = false,
+                            errorMessage = throwable.message?.takeIf { message -> message.isNotBlank() }
+                                ?: "이모지 목록을 불러오지 못했습니다.",
+                        )
+                    )
+                }
+            }
     }
 
     fun applySelectedEmoji() {
         val picker = _uiState.value.emojiPicker
         val pinId = picker.targetPinId ?: return
-        val selectedEmojiId = picker.selectedEmojiId ?: return
-        val selectedCandidate = picker.candidates.firstOrNull { it.emojiId == selectedEmojiId } ?: return
-        if (!selectedCandidate.canReact || picker.isSubmitting) return
+        val selectedEmojiId = picker.selectedEmojiId
+        val selectedCandidate = selectedEmojiId?.let { emojiId ->
+            picker.candidates.firstOrNull { it.emojiId == emojiId }
+        }
+        if (selectedCandidate?.canReact == false || picker.isSubmitting) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(emojiPicker = it.emojiPicker.copy(isSubmitting = true)) }

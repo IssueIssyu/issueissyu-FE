@@ -1,10 +1,16 @@
 package com.issueissyu.fe.domain.repository
 
-import com.android.billingclient.api.Purchase
+import android.app.Activity
+import com.issueissyu.fe.domain.model.billing.BillingPurchaseEvent
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 
 interface BillingRepository {
-    fun connect()
-    fun queryProducts()
-    fun purchaseProduct(productId: String)
-    fun acknowledgePurchase(purchase: Purchase)
+    val purchaseEvents: SharedFlow<BillingPurchaseEvent>
+    val pendingBillingProductId: StateFlow<String?>
+
+    suspend fun restorePurchases(): Result<Unit>
+    suspend fun purchaseProduct(activity: Activity, productId: String): Result<Unit>
+    suspend fun verifyPurchase(productId: String, purchaseToken: String): Result<Long>
+    fun acknowledgePurchaseResult(productId: String)
 }
