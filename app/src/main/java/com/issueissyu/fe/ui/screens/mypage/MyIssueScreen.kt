@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.screens.mypage
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,6 +35,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -80,6 +82,12 @@ fun MyIssueScreen(
             viewModel.loadIssues(append = true)
         }
     }
+
+    ObservePinListLoadMoreError(
+        errorMessage = uiState.errorMessage,
+        hasItems = uiState.issues.isNotEmpty(),
+        onErrorConsumed = viewModel::clearErrorMessage,
+    )
 
     Column(
         modifier = Modifier
@@ -140,6 +148,22 @@ fun MyIssueScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+internal fun ObservePinListLoadMoreError(
+    errorMessage: String?,
+    hasItems: Boolean,
+    onErrorConsumed: () -> Unit,
+) {
+    val context = LocalContext.current
+    LaunchedEffect(errorMessage) {
+        val message = errorMessage ?: return@LaunchedEffect
+        if (hasItems) {
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            onErrorConsumed()
         }
     }
 }

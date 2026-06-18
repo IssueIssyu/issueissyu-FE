@@ -80,6 +80,10 @@ class MyIssueViewModel @Inject constructor(
         }
     }
 
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     private fun applyPage(page: MyIssuePage, append: Boolean) {
         _uiState.update {
             it.copy(

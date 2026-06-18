@@ -59,6 +59,12 @@ fun MySolverParticipationScreen(
         }
     }
 
+    ObservePinListLoadMoreError(
+        errorMessage = uiState.errorMessage,
+        hasItems = uiState.issues.isNotEmpty(),
+        onErrorConsumed = viewModel::clearErrorMessage,
+    )
+
     Column(
         modifier = Modifier
             .background(White)

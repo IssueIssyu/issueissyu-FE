@@ -1,5 +1,6 @@
 package com.issueissyu.fe.ui.navigation
 
+import android.content.Context
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -482,13 +483,11 @@ fun AppNavGraph(
                 MyIssueScreen(
                     onBackClick = { navController.navigateUp() },
                     onPinClick = { pinId ->
-                        pinId.toLongOrNull()?.let { id ->
-                            navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
-                                popUpTo(AppDestinations.TOWN_ROUTE) {
-                                    inclusive = true
-                                }
-                            }
-                        }
+                        navigateToFocusedPin(
+                            navController = navController,
+                            context = context,
+                            pinId = pinId,
+                        )
                     },
                 )
             }
@@ -502,13 +501,11 @@ fun AppNavGraph(
                 MySolverParticipationScreen(
                     onBackClick = { navController.navigateUp() },
                     onPinClick = { pinId ->
-                        pinId.toLongOrNull()?.let { id ->
-                            navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
-                                popUpTo(AppDestinations.TOWN_ROUTE) {
-                                    inclusive = true
-                                }
-                            }
-                        }
+                        navigateToFocusedPin(
+                            navController = navController,
+                            context = context,
+                            pinId = pinId,
+                        )
                     },
                 )
             }
@@ -743,6 +740,23 @@ private fun canNavigateFromPush(route: String?): Boolean {
 
 private fun String?.isLoginRoute(): Boolean =
     this?.startsWith(LOGIN_ROUTE) == true
+
+private fun navigateToFocusedPin(
+    navController: NavHostController,
+    context: Context,
+    pinId: String,
+) {
+    val id = pinId.toLongOrNull()
+    if (id != null) {
+        navController.navigate(AppDestinations.townRouteWithFocusPin(id)) {
+            popUpTo(AppDestinations.TOWN_ROUTE) {
+                inclusive = true
+            }
+        }
+    } else {
+        Toast.makeText(context, "핀 정보를 불러올 수 없습니다.", Toast.LENGTH_SHORT).show()
+    }
+}
 
 private fun NavHostController.navigateToLoginClearingBackStack(
     showStorageWarning: Boolean = false,

@@ -80,6 +80,10 @@ class MySolverParticipationViewModel @Inject constructor(
         }
     }
 
+    fun clearErrorMessage() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     private fun applyPage(page: MySolverPinPage, append: Boolean) {
         _uiState.update {
             it.copy(
