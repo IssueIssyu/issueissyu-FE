@@ -20,6 +20,7 @@ data class MapPinItemResponse(
     val longitude: Double? = null,
     val pinDetailAddress: String? = null,
     val pinLocation: String? = null,
+    val discount: String? = null,
 )
 
 data class MapPinCardResponse(

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Logout
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.VolunteerActivism
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -47,6 +49,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.SavedStateHandle
@@ -73,6 +77,7 @@ sealed class MyPageEvent {
     data object NavigateToProfile: MyPageEvent()
     data object NavigateToLocal: MyPageEvent()
     data object NavigateToIssue: MyPageEvent()
+    data object NavigateToSolverParticipation: MyPageEvent()
     data object NavigateToSettingAlarm: MyPageEvent()
     data object NavigateToLanding: MyPageEvent()
     data object NavigateToLogin: MyPageEvent()
@@ -101,9 +106,9 @@ fun MyPageScreen(
         }
     }
 
+    val context = LocalContext.current
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }
-    var actionErrorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(authActionState) {
         when (val state = authActionState) {
@@ -112,7 +117,9 @@ fun MyPageScreen(
                 viewModel.resetAuthActionState()
             }
             is MyPageViewModel.AuthActionState.Error -> {
-                actionErrorMessage = state.message
+                showLogoutDialog = false
+                showWithdrawDialog = false
+                Toast.makeText(context, state.message, Toast.LENGTH_SHORT).show()
                 viewModel.resetAuthActionState()
             }
             else -> Unit
@@ -217,6 +224,7 @@ private fun MyPageContent(
         IssueissyuTopAppBar(
             titleText = "마이페이지",
             onBackClick = { onEvent(MyPageEvent.NavigateBack) },
+            modifier = Modifier.statusBarsPadding(),
         )
 
         Column(
@@ -269,6 +277,11 @@ private fun MyPageContent(
                 icon = Icons.Default.LocationOn,
                 title = "내 이슈",
                 onNavClick = { onEvent(MyPageEvent.NavigateToIssue) },
+            )
+            NavBar(
+                icon = Icons.Outlined.VolunteerActivism,
+                title = "해결 참여",
+                onNavClick = { onEvent(MyPageEvent.NavigateToSolverParticipation) },
             )
             NavBar(
                 icon = Icons.Outlined.Notifications,

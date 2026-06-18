@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -132,7 +133,9 @@ fun CollectionScreen(
             // 상단 바
             IssueissyuTopAppBar(
                 titleText = "컬렉션",
-                modifier = Modifier.background(color = White)
+                modifier = Modifier
+                    .background(color = White)
+                    .statusBarsPadding(),
             )
 
             when {

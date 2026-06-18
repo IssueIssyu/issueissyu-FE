@@ -48,7 +48,7 @@ data class PinCreateUiState(
     val isLoadingAiDraftQuota: Boolean = false,
     val showAiDraftConfirmDialog: Boolean = false,
     val aiDraftRateLimitQuota: PinEditRateLimitQuota? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
 )
 
 @HiltViewModel
@@ -64,7 +64,14 @@ class PinCreateViewModel @Inject constructor(
     private val _createdEvents = MutableSharedFlow<String>()
     val createdEvents = _createdEvents.asSharedFlow()
 
+    private val _toastMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val toastMessage = _toastMessage.asSharedFlow()
+
     private var lastFailedImageFingerprint: String? = null
+
+    private fun showToast(message: String) {
+        _toastMessage.tryEmit(message)
+    }
 
     fun initialize(
         category: PinCategory,
@@ -146,9 +153,7 @@ class PinCreateViewModel @Inject constructor(
         val snapshot = _uiState.value
         val remaining = PinImageUploadConstraints.MAX_COUNT - snapshot.imageUris.size
         if (remaining <= 0) {
-            _uiState.update {
-                it.copy(errorMessage = "사진은 최대 ${PinImageUploadConstraints.MAX_COUNT}장까지 첨부할 수 있습니다.")
-            }
+            showToast("사진은 최대 ${PinImageUploadConstraints.MAX_COUNT}장까지 첨부할 수 있습니다.")
             return
         }
 
@@ -174,12 +179,10 @@ class PinCreateViewModel @Inject constructor(
             }
 
             validation.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
-                            ?: "첨부한 사진을 확인할 수 없습니다.",
-                    )
-                }
+                showToast(
+                    error.message?.takeIf { message -> message.isNotBlank() }
+                        ?: "첨부한 사진을 확인할 수 없습니다.",
+                )
                 return@launch
             }
 
@@ -187,7 +190,6 @@ class PinCreateViewModel @Inject constructor(
                 it.copy(
                     imageUris = merged,
                     mainImageUri = it.mainImageUri?.takeIf { mainUri -> mainUri in merged } ?: merged.firstOrNull(),
-                    errorMessage = null,
                 )
             }
             clearImageUploadFailureTracking()
@@ -235,15 +237,15 @@ class PinCreateViewModel @Inject constructor(
         val pinLng = state.pinLng
         when {
             state.title.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "제목을 먼저 입력해주세요.") }
+                showToast("제목을 먼저 입력해주세요.")
                 return
             }
             state.description.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "상세 설명을 먼저 입력해주세요.") }
+                showToast("상세 설명을 먼저 입력해주세요.")
                 return
             }
             pinLat == null || pinLng == null -> {
-                _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
+                showToast("핀 위치 정보를 확인하지 못했습니다.")
                 return
             }
         }
@@ -325,12 +327,10 @@ class PinCreateViewModel @Inject constructor(
                     )
                 }
             }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        isGeneratingAiContent = false,
-                        errorMessage = e.message?.takeIf { message -> message.isNotBlank() } ?: "AI 글쓰기에 실패했습니다.",
-                    )
-                }
+                _uiState.update { it.copy(isGeneratingAiContent = false) }
+                showToast(
+                    e.message?.takeIf { message -> message.isNotBlank() } ?: "AI 글쓰기에 실패했습니다.",
+                )
             }
         }
     }
@@ -344,23 +344,23 @@ class PinCreateViewModel @Inject constructor(
         val pinLng = state.pinLng
         when {
             category == null -> {
-                _uiState.update { it.copy(errorMessage = "핀 종류를 확인하지 못했습니다.") }
+                showToast("핀 종류를 확인하지 못했습니다.")
                 return
             }
             state.title.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "제목을 입력해주세요.") }
+                showToast("제목을 입력해주세요.")
                 return
             }
             state.description.isBlank() -> {
-                _uiState.update { it.copy(errorMessage = "상세 설명을 입력해주세요.") }
+                showToast("상세 설명을 입력해주세요.")
                 return
             }
             pinLat == null || pinLng == null -> {
-                _uiState.update { it.copy(errorMessage = "핀 위치 정보를 확인하지 못했습니다.") }
+                showToast("핀 위치 정보를 확인하지 못했습니다.")
                 return
             }
             category == PinCategory.ISSUE && state.imageUris.isEmpty() -> {
-                _uiState.update { it.copy(errorMessage = "이슈 핀은 사진을 최소 1장 첨부해야 합니다.") }
+                showToast("이슈 핀은 사진을 최소 1장 첨부해야 합니다.")
                 return
             }
         }
@@ -380,16 +380,14 @@ class PinCreateViewModel @Inject constructor(
             }
 
             validation.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        errorMessage = error.message?.takeIf { message -> message.isNotBlank() }
-                            ?: "첨부한 사진을 확인할 수 없습니다.",
-                    )
-                }
+                showToast(
+                    error.message?.takeIf { message -> message.isNotBlank() }
+                        ?: "첨부한 사진을 확인할 수 없습니다.",
+                )
                 return@launch
             }
 
-            _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+            _uiState.update { it.copy(isSubmitting = true) }
             pinRepository.createPin(
                 CreatePinRequest(
                     category = category,
@@ -407,15 +405,11 @@ class PinCreateViewModel @Inject constructor(
                 )
             ).onSuccess { createdPin ->
                 clearImageUploadFailureTracking()
-                _uiState.update { it.copy(isSubmitting = false, errorMessage = null) }
+                _uiState.update { it.copy(isSubmitting = false) }
                 _createdEvents.emit(createdPin.id)
             }.onFailure { e ->
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        errorMessage = resolveSubmitErrorMessage(e, state.imageUris),
-                    )
-                }
+                _uiState.update { it.copy(isSubmitting = false) }
+                showToast(resolveSubmitErrorMessage(e, state.imageUris))
             }
         }
     }
