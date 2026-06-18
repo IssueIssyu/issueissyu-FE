@@ -128,7 +128,7 @@ fun PinSummaryCard(
                         // 1. 제목
                         Text(
                             text = pin.title,
-                            style = IssueTypo.Bold18.copy(color = Gray_7, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold),
+                            style = IssueTypo.Bold18.copy(color = Gray_7, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(
