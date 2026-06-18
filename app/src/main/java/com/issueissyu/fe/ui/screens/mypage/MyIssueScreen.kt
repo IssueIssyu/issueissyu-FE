@@ -192,6 +192,7 @@ private fun MyIssueEmptyState() {
 fun MyIssueCard(
     issue: MyIssueItem,
     onClick: () -> Unit,
+    showPinType: Boolean = true,
 ) {
     val cardShape = RoundedCornerShape(15.dp)
     val (pinTypeLabel, pinTypeColor) = when (issue.pinType) {
@@ -236,22 +237,24 @@ fun MyIssueCard(
                 modifier = Modifier.weight(1f),
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
+            if (showPinType) {
+                Spacer(modifier = Modifier.width(8.dp))
 
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.wrapContentWidth(),
-            ) {
-                Icon(
-                    imageVector = Icons.Default.LocationOn,
-                    contentDescription = pinTypeLabel,
-                    tint = pinTypeColor,
-                    modifier = Modifier.size(25.dp),
-                )
-                Text(
-                    text = pinTypeLabel,
-                    style = IssueTypo.ExtraBold15.copy(color = Text),
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.wrapContentWidth(),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.LocationOn,
+                        contentDescription = pinTypeLabel,
+                        tint = pinTypeColor,
+                        modifier = Modifier.size(25.dp),
+                    )
+                    Text(
+                        text = pinTypeLabel,
+                        style = IssueTypo.ExtraBold15.copy(color = Text),
+                    )
+                }
             }
         }
 
