@@ -8,17 +8,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import android.widget.Toast
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
+import com.issueissyu.fe.ui.components.Dialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.*
 import com.issueissyu.fe.ui.screens.onboarding.UserVerificationViewModel.Companion.PHONE_NUMBER_LENGTH
@@ -39,72 +41,56 @@ fun UserVerificationScreen(
     onSwitchAccountClick: (() -> Unit)? = null,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val context = LocalContext.current
     val emailDomains = listOf("선택", "naver.com", "gmail.com", "daum.net", "직접 입력")
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
             when (event) {
                 is UserVerificationViewModel.UiEvent.ShowToast -> {
-                    Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
+                    errorMessage = event.message
                 }
             }
         }
     }
 
     if (uiState.showLinkCompletedDialog) {
-        AlertDialog(
-            onDismissRequest = { },
-            title = {
-                Text("연동 완료", style = IssueTypo.Bold18)
+        Dialog(
+            title = "연동 완료",
+            message = "계정 연동이 완료되었어요. 확인을 누르면 로그아웃 후 로그인 화면으로 이동합니다.",
+            confirmText = "확인",
+            dismissText = "확인",
+            onDismiss = { viewModel.onLinkCompletedAcknowledged(onNavigateToLogin) },
+            onConfirm = { viewModel.onLinkCompletedAcknowledged(onNavigateToLogin) },
+        )
+    }
+
+    if (uiState.showAccountLinkDialog) {
+        Dialog(
+            title = "이미 가입된 번호예요",
+            message = "이 전화번호로 가입된 계정이 있습니다. 지금 로그인한 계정과 연동할까요?",
+            confirmText = "연동",
+            onDismiss = {
+                if (!uiState.isLinkingAccount) {
+                    viewModel.dismissAccountLinkDialog()
+                }
             },
-            text = {
-                Text(
-                    "계정 연동이 완료되었어요. 확인을 누르면 로그아웃 후 로그인 화면으로 이동합니다.",
-                    style = IssueTypo.Regular15.copy(color = Text),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.onLinkCompletedAcknowledged(onNavigateToLogin) },
-                ) {
-                    Text("확인", style = IssueTypo.Bold12.copy(color = BrandColor))
+            onConfirm = {
+                if (!uiState.isLinkingAccount) {
+                    viewModel.confirmAccountLink()
                 }
             },
         )
     }
 
-    if (uiState.showAccountLinkDialog) {
-        AlertDialog(
-            onDismissRequest = { if (!uiState.isLinkingAccount) viewModel.dismissAccountLinkDialog() },
-            title = {
-                Text(
-                    text = "이미 가입된 번호예요",
-                    style = IssueTypo.Bold18,
-                )
-            },
-            text = {
-                Text(
-                    text = "이 전화번호로 가입된 계정이 있습니다. 지금 로그인한 계정과 연동할까요?",
-                    style = IssueTypo.Regular15.copy(color = Text),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { viewModel.confirmAccountLink() },
-                    enabled = !uiState.isLinkingAccount,
-                ) {
-                    Text("연동", style = IssueTypo.Bold12.copy(color = BrandColor))
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { viewModel.dismissAccountLinkDialog() },
-                    enabled = !uiState.isLinkingAccount,
-                ) {
-                    Text("취소", style = IssueTypo.Regular12.copy(color = Gray_5))
-                }
-            },
+    errorMessage?.let { message ->
+        Dialog(
+            title = "안내",
+            message = message,
+            confirmText = "확인",
+            dismissText = "확인",
+            onDismiss = { errorMessage = null },
+            onConfirm = { errorMessage = null },
         )
     }
 

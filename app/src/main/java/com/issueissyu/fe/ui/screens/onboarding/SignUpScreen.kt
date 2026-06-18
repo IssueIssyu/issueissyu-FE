@@ -15,11 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -32,6 +30,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.R
 import com.issueissyu.fe.ui.components.CommonButton
 import com.issueissyu.fe.ui.components.CommonTextField
+import com.issueissyu.fe.ui.components.Dialog
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_5
@@ -48,26 +47,18 @@ fun SignUpScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     if (uiState.signUpSuccess) {
-        AlertDialog(
-            onDismissRequest = { },
-            title = {
-                Text("회원가입 완료!", style = IssueTypo.Bold18)
+        Dialog(
+            title = "회원가입 완료!",
+            message = "가입이 완료되었어요. 로그인 후 서비스를 이용해 주세요.",
+            confirmText = "확인",
+            dismissText = "확인",
+            onDismiss = {
+                viewModel.consumeSignUpSuccess()
+                onSignUpCompleteNavigateToLogin()
             },
-            text = {
-                Text(
-                    "가입이 완료되었어요. 로그인 후 서비스를 이용해 주세요.",
-                    style = IssueTypo.Regular15.copy(color = Text),
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.consumeSignUpSuccess()
-                        onSignUpCompleteNavigateToLogin()
-                    },
-                ) {
-                    Text("확인", style = IssueTypo.Bold12.copy(color = BrandColor))
-                }
+            onConfirm = {
+                viewModel.consumeSignUpSuccess()
+                onSignUpCompleteNavigateToLogin()
             },
         )
     }
