@@ -994,34 +994,30 @@ private fun ResolutionGoNowConfirmDialogButton(
         textAlign = TextAlign.Center,
     )
 
-    if (isPrimary) {
-        Button(
-            onClick = onClick,
-            modifier = modifier.defaultMinSize(minHeight = 48.dp),
-            shape = shape,
-            contentPadding = contentPadding,
-            colors = ButtonDefaults.buttonColors(
+    Button(
+        onClick = onClick,
+        modifier = modifier.defaultMinSize(minHeight = 48.dp),
+        shape = shape,
+        contentPadding = contentPadding,
+        border = if (isPrimary) null else BorderStroke(1.dp, Gray_3),
+        colors = if (isPrimary) {
+            ButtonDefaults.buttonColors(
                 containerColor = BrandColor,
                 contentColor = White,
-            ),
-        ) {
-            ResolutionGoNowConfirmButtonLabel(text = text, style = textStyle)
-        }
-    } else {
-        Button(
-            onClick = onClick,
-            modifier = modifier.defaultMinSize(minHeight = 48.dp),
-            shape = shape,
-            contentPadding = contentPadding,
-            border = BorderStroke(1.dp, Gray_3),
-            colors = ButtonDefaults.buttonColors(
+            )
+        } else {
+            ButtonDefaults.buttonColors(
                 containerColor = White,
                 contentColor = Gray_5,
-            ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-        ) {
-            ResolutionGoNowConfirmButtonLabel(text = text, style = textStyle)
-        }
+            )
+        },
+        elevation = if (isPrimary) {
+            ButtonDefaults.buttonElevation()
+        } else {
+            ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+        },
+    ) {
+        ResolutionGoNowConfirmButtonLabel(text = text, style = textStyle)
     }
 }
 
