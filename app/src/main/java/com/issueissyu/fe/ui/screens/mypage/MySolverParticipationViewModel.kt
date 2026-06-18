@@ -2,7 +2,6 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.domain.model.mypage.MyIssuePin
 import com.issueissyu.fe.domain.model.mypage.MySolverPinPage
 import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,22 +13,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class MySolverParticipationUiState(
-    val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val errorMessage: String? = null,
-    val issues: List<MyIssuePin> = emptyList(),
-    val hasNext: Boolean = false,
-    val nextCursor: String? = null,
-)
-
 @HiltViewModel
 class MySolverParticipationViewModel @Inject constructor(
     private val userRepository: UserRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MySolverParticipationUiState())
-    val uiState: StateFlow<MySolverParticipationUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(MyIssueUiState())
+    val uiState: StateFlow<MyIssueUiState> = _uiState.asStateFlow()
 
     private var loadIssuesJob: Job? = null
 

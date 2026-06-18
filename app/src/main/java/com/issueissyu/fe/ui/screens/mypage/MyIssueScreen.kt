@@ -64,6 +64,59 @@ fun MyIssueScreen(
     viewModel: MyIssueViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    MyPinListContent(
+        title = "내 이슈",
+        uiState = uiState,
+        showPinType = true,
+        emptyTitle = "아직 생성한 핀이 없어요",
+        emptyDescription = "지도에서 우리 동네를 기록해보세요!",
+        loadMoreThreshold = MyIssueViewModel.LOAD_MORE_THRESHOLD,
+        onBackClick = onBackClick,
+        onRetry = { viewModel.loadIssues() },
+        onLoadMore = { viewModel.loadIssues(append = true) },
+        onPinClick = onPinClick,
+        onErrorConsumed = viewModel::clearErrorMessage,
+    )
+}
+
+@Composable
+fun MySolverParticipationScreen(
+    onBackClick: () -> Unit,
+    onPinClick: (pinId: String) -> Unit,
+    viewModel: MySolverParticipationViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsState()
+
+    MyPinListContent(
+        title = "해결 참여",
+        uiState = uiState,
+        showPinType = false,
+        emptyTitle = "아직 참여한 이슈가 없어요",
+        emptyDescription = "시민해결사로 이웃의 이슈를 함께 해결해보세요!",
+        loadMoreThreshold = MySolverParticipationViewModel.LOAD_MORE_THRESHOLD,
+        onBackClick = onBackClick,
+        onRetry = { viewModel.loadIssues() },
+        onLoadMore = { viewModel.loadIssues(append = true) },
+        onPinClick = onPinClick,
+        onErrorConsumed = viewModel::clearErrorMessage,
+    )
+}
+
+@Composable
+internal fun MyPinListContent(
+    title: String,
+    uiState: MyIssueUiState,
+    showPinType: Boolean,
+    emptyTitle: String,
+    emptyDescription: String,
+    loadMoreThreshold: Int,
+    onBackClick: () -> Unit,
+    onRetry: () -> Unit,
+    onLoadMore: () -> Unit,
+    onPinClick: (pinId: String) -> Unit,
+    onErrorConsumed: () -> Unit,
+) {
     val listState = rememberLazyListState()
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -73,20 +126,20 @@ fun MyIssueScreen(
             uiState.hasNext &&
                 !uiState.isLoadingMore &&
                 uiState.issues.isNotEmpty() &&
-                lastVisibleIndex >= uiState.issues.lastIndex - MyIssueViewModel.LOAD_MORE_THRESHOLD
+                lastVisibleIndex >= uiState.issues.lastIndex - loadMoreThreshold
         }
     }
 
     LaunchedEffect(shouldLoadMore) {
         if (shouldLoadMore) {
-            viewModel.loadIssues(append = true)
+            onLoadMore()
         }
     }
 
     ObservePinListLoadMoreError(
         errorMessage = uiState.errorMessage,
         hasItems = uiState.issues.isNotEmpty(),
-        onErrorConsumed = viewModel::clearErrorMessage,
+        onErrorConsumed = onErrorConsumed,
     )
 
     Column(
@@ -95,7 +148,7 @@ fun MyIssueScreen(
             .fillMaxSize(),
     ) {
         IssueissyuTopAppBar(
-            titleText = "내 이슈",
+            titleText = title,
             onBackClick = onBackClick,
         )
 
@@ -110,14 +163,17 @@ fun MyIssueScreen(
             }
 
             uiState.errorMessage != null && uiState.issues.isEmpty() -> {
-                MyIssueErrorState(
+                PinListErrorState(
                     message = uiState.errorMessage.orEmpty(),
-                    onRetry = { viewModel.loadIssues() },
+                    onRetry = onRetry,
                 )
             }
 
             uiState.issues.isEmpty() -> {
-                MyIssueEmptyState()
+                PinListEmptyState(
+                    title = emptyTitle,
+                    description = emptyDescription,
+                )
             }
 
             else -> {
@@ -130,6 +186,7 @@ fun MyIssueScreen(
                     items(uiState.issues, key = { it.pinId }) { issue ->
                         MyIssueCard(
                             issue = issue,
+                            showPinType = showPinType,
                             onClick = { onPinClick(issue.pinId.toString()) },
                         )
                     }
@@ -169,7 +226,7 @@ internal fun ObservePinListLoadMoreError(
 }
 
 @Composable
-private fun MyIssueErrorState(
+private fun PinListErrorState(
     message: String,
     onRetry: () -> Unit,
 ) {
@@ -192,7 +249,10 @@ private fun MyIssueErrorState(
 }
 
 @Composable
-private fun MyIssueEmptyState() {
+private fun PinListEmptyState(
+    title: String,
+    description: String,
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
@@ -202,11 +262,11 @@ private fun MyIssueEmptyState() {
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text(
-                text = "아직 생성한 핀이 없어요",
+                text = title,
                 style = IssueTypo.Bold18.copy(color = Title),
             )
             Text(
-                text = "지도에서 우리 동네를 기록해보세요!",
+                text = description,
                 style = IssueTypo.Regular15.copy(color = Text),
             )
         }
