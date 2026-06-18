@@ -35,12 +35,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.issueissyu.fe.R
 import com.issueissyu.fe.domain.model.mypage.MyIssuePin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
@@ -275,7 +278,7 @@ fun MyIssueCard(
     onClick: () -> Unit,
     showPinType: Boolean = true,
 ) {
-    val cardShape = RoundedCornerShape(15.dp)
+    val cardShape = RoundedCornerShape(20.dp)
     val (pinTypeLabel, pinTypeColor) = when (issue.pinType) {
         PinCategory.ISSUE -> "이슈" to Issue
         PinCategory.COMMUNICATION -> "소통" to Communication
@@ -325,12 +328,21 @@ fun MyIssueCard(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.wrapContentWidth(),
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.LocationOn,
-                        contentDescription = pinTypeLabel,
-                        tint = pinTypeColor,
-                        modifier = Modifier.size(25.dp),
-                    )
+                    if (issue.pinType == PinCategory.ISSUE) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_issue),
+                            contentDescription = pinTypeLabel,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(25.dp),
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.LocationOn,
+                            contentDescription = pinTypeLabel,
+                            tint = pinTypeColor,
+                            modifier = Modifier.size(25.dp),
+                        )
+                    }
                     Text(
                         text = pinTypeLabel,
                         style = IssueTypo.ExtraBold15.copy(color = Text),
@@ -339,7 +351,7 @@ fun MyIssueCard(
             }
         }
 
-        Spacer(modifier = Modifier.height(5.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),

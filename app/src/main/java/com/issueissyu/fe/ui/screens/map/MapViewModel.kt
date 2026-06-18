@@ -16,6 +16,7 @@ import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.domain.model.pin.PinEmojis
 import com.issueissyu.fe.domain.repository.LocationRepository
+import com.issueissyu.fe.domain.repository.AlarmRepository
 import com.issueissyu.fe.domain.repository.BillingRepository
 import com.issueissyu.fe.domain.repository.MapRepository
 import com.issueissyu.fe.domain.repository.PinRepository
@@ -70,6 +71,7 @@ class MapViewModel @Inject constructor(
     private val pinRepository: PinRepository,
     private val billingRepository: BillingRepository,
     private val locationRepository: LocationRepository,
+    private val alarmRepository: AlarmRepository,
     private val tokenManager: TokenManager,
 ) : ViewModel() {
 
@@ -178,6 +180,9 @@ class MapViewModel @Inject constructor(
     val emojiPickerUiState: StateFlow<MapEmojiPickerUiState> = _emojiPickerUiState.asStateFlow()
     private var observedBillingProductId = billingRepository.pendingBillingProductId.value
 
+    private val _hasUnreadNotifications = MutableStateFlow(false)
+    val hasUnreadNotifications: StateFlow<Boolean> = _hasUnreadNotifications.asStateFlow()
+
     init {
         loadNotices()
         observeBillingPurchaseEvents()
@@ -187,6 +192,17 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             mapRepository.getMapNotices()
                 .onSuccess { _notices.value = it }
+        }
+    }
+
+    fun refreshUnreadNotificationState() {
+        viewModelScope.launch {
+            alarmRepository.getAlarmList().fold(
+                onSuccess = { page ->
+                    _hasUnreadNotifications.value = page.items.any { it.isUnread }
+                },
+                onFailure = { /* 배지 상태 유지 */ },
+            )
         }
     }
 
