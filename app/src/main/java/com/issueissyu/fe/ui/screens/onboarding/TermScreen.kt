@@ -2,8 +2,10 @@
 package com.issueissyu.fe.ui.screens.onboarding
 
 import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -25,7 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.issueissyu.fe.R
@@ -48,15 +49,16 @@ fun TermScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
     fun hasLocationPermission(): Boolean {
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+        ) == PackageManager.PERMISSION_GRANTED ||
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.ACCESS_COARSE_LOCATION,
-            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) == PackageManager.PERMISSION_GRANTED
     }
 
     fun hasNotificationPermission(): Boolean {
@@ -64,20 +66,27 @@ fun TermScreen(
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.POST_NOTIFICATIONS,
-        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-    }
-
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions(),
-    ) { permissions ->
-        val granted = permissions.values.any { it }
-        viewModel.onLocationAgreementChanged(granted)
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         viewModel.onMarketingAgreementChanged(granted)
+        onAgreeClick()
+    }
+
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { permissions ->
+        val granted = permissions.values.any { it }
+        val needNotification = viewModel.wasMarketingChecked()
+        viewModel.onLocationAgreementChanged(granted)
+        if (needNotification && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            onAgreeClick()
+        }
     }
 
     LaunchedEffect(uiState.submitError) {
@@ -93,7 +102,45 @@ fun TermScreen(
         },
         bottomBar = {
             CommonButton(
-                onClick = { viewModel.submitTerms(onAgreeClick) },
+                onClick = {
+                    viewModel.submitTerms(
+                        onAgreeClick = onAgreeClick,
+                        requestLocation = {
+                            if (hasLocationPermission()) {
+                                viewModel.onLocationAgreementChanged(true)
+                                if (
+                                    viewModel.wasMarketingChecked() &&
+                                    !hasNotificationPermission() &&
+                                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                                ) {
+                                    notificationPermissionLauncher.launch(
+                                        Manifest.permission.POST_NOTIFICATIONS,
+                                    )
+                                } else {
+                                    onAgreeClick()
+                                }
+                            } else {
+                                locationPermissionLauncher.launch(
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                    ),
+                                )
+                            }
+                        },
+                        requestNotification = {
+                            if (hasNotificationPermission()) {
+                                onAgreeClick()
+                            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                notificationPermissionLauncher.launch(
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                )
+                            } else {
+                                onAgreeClick()
+                            }
+                        },
+                    )
+                },
                 modifier =Modifier
                     .fillMaxWidth()
                     .padding(31.dp, 45.dp),
@@ -143,26 +190,7 @@ fun TermScreen(
                 text = "전체 동의",
                 isChecked = uiState.isAllAgreed,
                 onCheckedChange = { checked ->
-                    if (!checked) {
-                        viewModel.onAllAgreementChanged(false)
-                    } else {
-                        viewModel.onAllAgreementChanged(true)
-                        if (hasLocationPermission()) {
-                            viewModel.onLocationAgreementChanged(true)
-                        } else {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                ),
-                            )
-                        }
-                        if (hasNotificationPermission()) {
-                            viewModel.onMarketingAgreementChanged(true)
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    }
+                    viewModel.onAllAgreementChanged(checked)
                 },
                 labelType = null,
                 showArrow = false,
@@ -200,17 +228,7 @@ fun TermScreen(
                     text = "위치기반 서비스 이용약관 동의",
                     isChecked = uiState.isLocationAgreed,
                     onCheckedChange = { checked ->
-                        if (!checked) return@TermsCheckboxItem
-                        if (hasLocationPermission()) {
-                            viewModel.onLocationAgreementChanged(true)
-                        } else {
-                            locationPermissionLauncher.launch(
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                ),
-                            )
-                        }
+                        viewModel.onLocationAgreementChanged(checked)
                     },
                     labelType = LabelType.OPTIONAL,
                     onArrowClick = { onTermsDetailClick(TermsType.LOCATION) }
@@ -220,14 +238,7 @@ fun TermScreen(
                     text = "푸시 알림 수신 동의",
                     isChecked = uiState.isMarketingAgreed,
                     onCheckedChange = { checked ->
-                        if (!checked) return@TermsCheckboxItem
-                        if (hasNotificationPermission()) {
-                            viewModel.onMarketingAgreementChanged(true)
-                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        } else {
-                            viewModel.onMarketingAgreementChanged(true)
-                        }
+                        viewModel.onMarketingAgreementChanged(checked)
                     },
                     labelType = LabelType.OPTIONAL,
                     showArrow = false

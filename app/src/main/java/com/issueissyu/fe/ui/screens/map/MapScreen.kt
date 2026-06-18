@@ -883,7 +883,7 @@ fun MapScreen(
                     selectedCategory = selectedCategory,
                     onCategorySelected = viewModel::onCategorySelected,
                     onNotificationClick = {
-                        // TODO: 알림 목록 UI 또는 알림 화면 연결
+                        navController.navigate(AppDestinations.NOTIFICATION_ROUTE)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1044,7 +1044,10 @@ fun MapScreen(
                                 AppDestinations.communityDetailRoute(numericCommunityId)
                             )
                         },
-                        onEditClick = {},
+                        onEditClick = { pinId ->
+                            viewModel.clearSelectedPin()
+                            navController.navigateToPinDetail(pinId, startHomeEdit = true)
+                        },
                         onDeleteClick = viewModel::deletePin,
                         onSympathyClick = viewModel::toggleSympathy,
                         onEmojiClick = viewModel::openEmojiPicker,

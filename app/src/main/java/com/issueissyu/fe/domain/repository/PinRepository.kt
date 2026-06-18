@@ -7,6 +7,12 @@ import com.issueissyu.fe.domain.model.pin.Pin
 import com.issueissyu.fe.domain.model.pin.PetitionStatus
 import com.issueissyu.fe.domain.model.pin.PetitionSubmit
 import com.issueissyu.fe.domain.model.pin.UpdatePinRequest
+import com.issueissyu.fe.domain.model.pin.PinCategory
+import com.issueissyu.fe.domain.model.pin.UpdatePinEditRequest
+import com.issueissyu.fe.domain.model.pin.IssuePinEditResult
+import com.issueissyu.fe.domain.model.pin.PinHomeEditSubmitResult
+import com.issueissyu.fe.domain.model.pin.PinDetailHomeResult
+import com.issueissyu.fe.domain.model.pin.PinEditRateLimitQuota
 import com.issueissyu.fe.domain.model.MapPinMarker
 import com.issueissyu.fe.domain.model.pin.GoNow
 import com.issueissyu.fe.domain.model.pin.PinEmojiCandidate
@@ -30,10 +36,18 @@ interface PinRepository {
     suspend fun getMyPins(): List<Pin>
     suspend fun createPin(request: CreatePinRequest): Result<Pin>
     suspend fun updatePin(pinId: String, request: UpdatePinRequest): Pin
+    suspend fun updatePinHomeEdit(
+        pinId: Long,
+        category: PinCategory,
+        request: UpdatePinEditRequest,
+        existingPin: Pin? = null,
+    ): Result<PinHomeEditSubmitResult>
+
+    suspend fun getIssuePinEditQuota(pinId: Long): Result<PinEditRateLimitQuota>
 
     suspend fun getMapPinsInBounds(bounds: MapBounds): List<MapPinMarker>
 
-    suspend fun getPinDetailHome(pinId: Long): Result<Pin>
+    suspend fun getPinDetailHome(pinId: Long): Result<PinDetailHomeResult>
 
     suspend fun getPinDetailPost(pinId: Long): Result<PinPostSympathyContent?>
 

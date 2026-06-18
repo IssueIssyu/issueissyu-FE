@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.issueissyu.fe.ui.theme.BrandColor
 import com.issueissyu.fe.ui.theme.Gray_3
@@ -113,6 +114,103 @@ fun Dialog(
             }
         }
     }
+}
+
+@Composable
+fun RemainingQuotaDialog(
+    title: String,
+    countLabel: String?,
+    description: String,
+    confirmText: String = "확인",
+    dismissText: String = "취소",
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .background(White)
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = title,
+                    style = IssueTypo.Bold18.copy(color = Title),
+                    textAlign = TextAlign.Center,
+                )
+
+                if (!countLabel.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = countLabel,
+                        style = IssueTypo.ExtraBold30.copy(color = Title),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = description,
+                    style = IssueTypo.Regular15.copy(color = Title, lineHeight = 22.sp),
+                    textAlign = TextAlign.Center,
+                )
+
+                Spacer(modifier = Modifier.height(28.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Gray_3),
+                    ) {
+                        Text(
+                            text = dismissText,
+                            style = IssueTypo.Bold18.copy(color = Gray_5),
+                        )
+                    }
+
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandColor),
+                    ) {
+                        Text(
+                            text = confirmText,
+                            style = IssueTypo.Bold18.copy(color = White),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun PreviewRemainingQuotaDialog() {
+    RemainingQuotaDialog(
+        title = "남은 이슈 핀 수정 횟수",
+        countLabel = "2/3",
+        description = "이슈 핀 수정은 정해진 일일 한도 내에서만 사용 가능합니다!",
+        onDismiss = {},
+        onConfirm = {},
+    )
 }
 
 @Preview(showBackground = true)

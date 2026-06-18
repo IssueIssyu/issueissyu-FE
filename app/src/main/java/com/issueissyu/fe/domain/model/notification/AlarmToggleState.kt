@@ -1,6 +1,6 @@
-package com.issueissyu.fe.domain.model
+package com.issueissyu.fe.domain.model.notification
 
-data class TermsAgreementResult(
+data class AlarmToggleState(
     val eventAlarmActive: Boolean,
     val likeAlarmActive: Boolean,
     val hotAlarmActive: Boolean,

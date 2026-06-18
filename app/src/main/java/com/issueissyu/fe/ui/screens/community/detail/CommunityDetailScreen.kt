@@ -60,6 +60,7 @@ import com.issueissyu.fe.domain.model.issue.IssueReliabilityStatus
 import com.issueissyu.fe.domain.model.pin.PinEmojiReaction
 import com.issueissyu.fe.ui.components.ActionState
 import com.issueissyu.fe.ui.components.CompactSympathyButton
+import com.issueissyu.fe.ui.components.DotPagerIndicator
 import com.issueissyu.fe.ui.components.EmojiReactionBottomSheet
 import com.issueissyu.fe.ui.components.GoNowButton
 import com.issueissyu.fe.ui.components.IssueReliabilityIndicator
@@ -959,33 +960,10 @@ private fun CommunityCardNewsImageSection(
         }
 
         if (imageUrls.size > 1) {
-            CardNewsPagerIndicator(
+            DotPagerIndicator(
                 pageCount = imageUrls.size,
                 currentPage = pagerState.currentPage,
                 modifier = Modifier.padding(vertical = 12.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun CardNewsPagerIndicator(
-    pageCount: Int,
-    currentPage: Int,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        repeat(pageCount) { index ->
-            val isSelected = index == currentPage
-            Box(
-                modifier = Modifier
-                    .size(if (isSelected) 7.dp else 6.dp)
-                    .clip(CircleShape)
-                    .background(if (isSelected) BrandColor else Gray_3),
             )
         }
     }

@@ -20,7 +20,7 @@ import com.issueissyu.fe.domain.auth.ExistingPhoneRequiresLinkException
 import com.issueissyu.fe.domain.auth.RefreshTokenUnauthorizedException
 import com.issueissyu.fe.domain.model.auth.AuthUser
 import com.issueissyu.fe.domain.model.auth.OnboardingProfile
-import com.issueissyu.fe.domain.model.TermsAgreementResult
+import com.issueissyu.fe.domain.model.notification.AlarmToggleState
 import com.issueissyu.fe.domain.repository.AuthRepository
 import com.issueissyu.fe.domain.repository.UserCollectionsStore
 import javax.inject.Inject
@@ -381,23 +381,33 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun logout(): Result<Unit> {
         return try {
-            val response = runCatching { authApi.logout() }.getOrNull()
-            clearUserSession()
-            when (response?.code) {
-                "LOGOUT_200",
-                "LOGOUT_401",
-                -> Result.success(Unit)
-                null -> Result.success(Unit)
+            sessionManager.prepareLogout()
+            val response = authApi.logout()
+            when (response.code) {
+                "LOGOUT_200" -> {
+                    clearUserSession()
+                    Result.success(Unit)
+                }
+                "LOGOUT_401" -> {
+                    clearUserSession()
+                    Result.success(Unit)
+                }
                 else ->
                     if (response.isSuccess) {
+                        clearUserSession()
                         Result.success(Unit)
                     } else {
-                        Result.success(Unit)
+                        Result.failure(
+                            Exception(
+                                safeMessage(response.message, "로그아웃에 실패했습니다."),
+                            ),
+                        )
                     }
             }
         } catch (e: Exception) {
-            clearUserSession()
-            Result.success(Unit)
+            Result.failure(
+                Exception(safeMessage(e.message, "로그아웃에 실패했습니다.")),
+            )
         }
     }
 
@@ -464,7 +474,7 @@ class AuthRepositoryImpl @Inject constructor(
         privacyTerm: Boolean,
         locationTerm: Boolean,
         marketingTerm: Boolean,
-    ): Result<TermsAgreementResult> {
+    ): Result<AlarmToggleState> {
         return try {
             val response = authApi.termAgree(
                 TermRequest(
@@ -481,7 +491,7 @@ class AuthRepositoryImpl @Inject constructor(
                             Exception(response.message.ifBlank { "약관 동의 응답이 올바르지 않습니다." }),
                         )
                     Result.success(
-                        TermsAgreementResult(
+                        AlarmToggleState(
                             eventAlarmActive = r.eventAlarmActive,
                             likeAlarmActive = r.likeAlarmActive,
                             hotAlarmActive = r.hotAlarmActive,
@@ -497,7 +507,7 @@ class AuthRepositoryImpl @Inject constructor(
                     if (response.isSuccess && response.result != null) {
                         val r = response.result
                         Result.success(
-                            TermsAgreementResult(
+                            AlarmToggleState(
                                 eventAlarmActive = r.eventAlarmActive,
                                 likeAlarmActive = r.likeAlarmActive,
                                 hotAlarmActive = r.hotAlarmActive,
