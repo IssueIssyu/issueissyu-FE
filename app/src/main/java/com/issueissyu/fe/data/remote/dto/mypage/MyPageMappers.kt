@@ -6,7 +6,6 @@ import com.issueissyu.fe.data.remote.dto.response.mypage.PinInfo
 import com.issueissyu.fe.data.remote.dto.response.mypage.SolverPinInfo
 import com.issueissyu.fe.domain.model.mypage.MyIssuePage
 import com.issueissyu.fe.domain.model.mypage.MyIssuePin
-import com.issueissyu.fe.domain.model.mypage.MySolverPin
 import com.issueissyu.fe.domain.model.mypage.MySolverPinPage
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
@@ -21,15 +20,16 @@ fun GetMyIssueResponse.toMyIssuePage(): MyIssuePage {
 
 fun GetMySolverPinResponse.toMySolverPinPage(): MySolverPinPage {
     return MySolverPinPage(
-        items = pins.map { it.toMySolverPin() },
+        items = pins.map { it.toMyIssuePin() },
         hasNext = pageInfo.hasNext,
         nextCursor = pageInfo.nextCursor,
     )
 }
 
-private fun SolverPinInfo.toMySolverPin(): MySolverPin {
-    return MySolverPin(
+private fun SolverPinInfo.toMyIssuePin(): MyIssuePin {
+    return MyIssuePin(
         pinId = pinId,
+        pinType = PinCategory.ISSUE,
         title = pinTitle,
         address = pinDetailAddress,
         createdAt = createdAt,

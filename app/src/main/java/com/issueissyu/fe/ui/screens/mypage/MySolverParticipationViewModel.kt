@@ -2,9 +2,8 @@ package com.issueissyu.fe.ui.screens.mypage
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.issueissyu.fe.domain.model.mypage.MySolverPin
+import com.issueissyu.fe.domain.model.mypage.MyIssuePin
 import com.issueissyu.fe.domain.model.mypage.MySolverPinPage
-import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -19,7 +18,7 @@ data class MySolverParticipationUiState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,
-    val issues: List<MyIssueItem> = emptyList(),
+    val issues: List<MyIssuePin> = emptyList(),
     val hasNext: Boolean = false,
     val nextCursor: String? = null,
 )
@@ -87,25 +86,15 @@ class MySolverParticipationViewModel @Inject constructor(
                 isLoading = false,
                 isLoadingMore = false,
                 issues = if (append) {
-                    it.issues + page.items.map { pin -> pin.toUiItem() }
+                    it.issues + page.items
                 } else {
-                    page.items.map { pin -> pin.toUiItem() }
+                    page.items
                 },
                 hasNext = page.hasNext,
                 nextCursor = page.nextCursor,
                 errorMessage = null,
             )
         }
-    }
-
-    private fun MySolverPin.toUiItem(): MyIssueItem {
-        return MyIssueItem(
-            id = pinId.toString(),
-            title = title,
-            address = address,
-            pinType = PinCategory.ISSUE,
-            resolutionStatus = resolutionStatus,
-        )
     }
 
     companion object {

@@ -97,11 +97,11 @@ fun MySolverParticipationScreen(
                     contentPadding = PaddingValues(horizontal = 31.dp, vertical = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(uiState.issues, key = { it.id }) { issue ->
+                    items(uiState.issues, key = { it.pinId }) { issue ->
                         MyIssueCard(
                             issue = issue,
                             showPinType = false,
-                            onClick = { onPinClick(issue.id) },
+                            onClick = { onPinClick(issue.pinId.toString()) },
                         )
                     }
 

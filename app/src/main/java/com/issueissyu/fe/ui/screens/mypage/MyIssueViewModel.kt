@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.issueissyu.fe.domain.model.mypage.MyIssuePage
 import com.issueissyu.fe.domain.model.mypage.MyIssuePin
-import com.issueissyu.fe.domain.model.pin.PinCategory
-import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.domain.repository.UserRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -16,19 +14,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class MyIssueItem(
-    val id: String,
-    val title: String,
-    val address: String,
-    val pinType: PinCategory,
-    val resolutionStatus: ResolutionStatus?,
-)
-
 data class MyIssueUiState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val errorMessage: String? = null,
-    val issues: List<MyIssueItem> = emptyList(),
+    val issues: List<MyIssuePin> = emptyList(),
     val hasNext: Boolean = false,
     val nextCursor: String? = null,
 )
@@ -96,25 +86,15 @@ class MyIssueViewModel @Inject constructor(
                 isLoading = false,
                 isLoadingMore = false,
                 issues = if (append) {
-                    it.issues + page.items.map { pin -> pin.toUiItem() }
+                    it.issues + page.items
                 } else {
-                    page.items.map { pin -> pin.toUiItem() }
+                    page.items
                 },
                 hasNext = page.hasNext,
                 nextCursor = page.nextCursor,
                 errorMessage = null,
             )
         }
-    }
-
-    private fun MyIssuePin.toUiItem(): MyIssueItem {
-        return MyIssueItem(
-            id = pinId.toString(),
-            title = title,
-            address = address,
-            pinType = pinType,
-            resolutionStatus = resolutionStatus,
-        )
     }
 
     companion object {

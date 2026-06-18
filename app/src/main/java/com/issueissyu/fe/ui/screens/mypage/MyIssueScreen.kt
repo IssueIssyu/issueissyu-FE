@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.issueissyu.fe.domain.model.mypage.MyIssuePin
 import com.issueissyu.fe.domain.model.pin.PinCategory
 import com.issueissyu.fe.domain.model.pin.ResolutionStatus
 import com.issueissyu.fe.ui.components.IssueissyuTopAppBar
@@ -118,10 +119,10 @@ fun MyIssueScreen(
                     contentPadding = PaddingValues(horizontal = 31.dp, vertical = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(uiState.issues, key = { it.id }) { issue ->
+                    items(uiState.issues, key = { it.pinId }) { issue ->
                         MyIssueCard(
                             issue = issue,
-                            onClick = { onPinClick(issue.id) },
+                            onClick = { onPinClick(issue.pinId.toString()) },
                         )
                     }
 
@@ -190,7 +191,7 @@ private fun MyIssueEmptyState() {
 
 @Composable
 fun MyIssueCard(
-    issue: MyIssueItem,
+    issue: MyIssuePin,
     onClick: () -> Unit,
     showPinType: Boolean = true,
 ) {
