@@ -56,6 +56,7 @@ fun <T> CategoryButtons(
     selectedCategory: T?,
     onCategorySelected: (T?) -> Unit,
     modifier: Modifier = Modifier,
+    hasUnreadNotifications: Boolean = false,
     onNotificationClick: (() -> Unit)? = null
 ) {
     Row(
@@ -112,10 +113,15 @@ fun <T> CategoryButtons(
             }
         }
         onNotificationClick?.let { onClick ->
+            val notificationIcon = if (hasUnreadNotifications) {
+                R.drawable.notification_unread
+            } else {
+                R.drawable.notification
+            }
             IconButton(onClick = onClick) {
                 Icon(
-                    painter = painterResource(id = R.drawable.notification),
-                    contentDescription = "Notification",
+                    painter = painterResource(id = notificationIcon),
+                    contentDescription = "알림",
                     tint = Color.Unspecified
                 )
             }

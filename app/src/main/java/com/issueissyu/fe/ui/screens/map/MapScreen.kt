@@ -50,13 +50,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
@@ -287,8 +294,10 @@ fun MapScreen(
     val currentLocation by viewModel.currentLocation.collectAsStateWithLifecycle()
     val isInCertifiedNeighborhood by viewModel.isInCertifiedNeighborhood.collectAsStateWithLifecycle()
     val emojiPickerUiState by viewModel.emojiPickerUiState.collectAsStateWithLifecycle()
+    val hasUnreadNotifications by viewModel.hasUnreadNotifications.collectAsStateWithLifecycle()
     val currentUserId = viewModel.currentUserId
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val activity = context.findActivity()
 
     LaunchedEffect(isLocationSelectionMode) {
@@ -299,6 +308,16 @@ fun MapScreen(
         onDispose {
             onLocationSelectionModeChanged(false)
         }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshUnreadNotificationState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     if (emojiPickerUiState.isVisible) {
@@ -884,6 +903,7 @@ fun MapScreen(
                     categories = sampleCategories,
                     selectedCategory = selectedCategory,
                     onCategorySelected = viewModel::onCategorySelected,
+                    hasUnreadNotifications = hasUnreadNotifications,
                     onNotificationClick = {
                         navController.navigate(AppDestinations.NOTIFICATION_ROUTE)
                     },
@@ -963,6 +983,7 @@ fun MapScreen(
                     painter = painterResource(id = R.drawable.findspot),
                     contentDescription = "내 위치 찾기",
                     modifier = Modifier
+                        .mapFloatingButtonShadow(CircleShape)
                         .size(60.dp)
                         .clickable {
                             moveToCurrentLocation()
@@ -976,6 +997,7 @@ fun MapScreen(
                     painter = painterResource(id = R.drawable.pinbutton),
                     contentDescription = "핀 생성",
                     modifier = Modifier
+                        .mapFloatingButtonShadow(RoundedCornerShape(35.dp))
                         .size(width = 70.dp, height = 81.dp)
                         .clickable { viewModel.openPinTypeSelector() },
                     tint = Color.Unspecified
@@ -1088,3 +1110,13 @@ fun MapScreen(
         }
     }
 }
+
+private fun Modifier.mapFloatingButtonShadow(shape: Shape): Modifier = dropShadow(
+    shape = shape,
+    shadow = Shadow(
+        radius = 3.dp,
+        spread = (-11).dp,
+        color = Color.Black.copy(alpha = 0.1f),
+        offset = DpOffset(0.dp, 0.dp),
+    ),
+)
