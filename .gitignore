@@ -1,0 +1,23 @@
+# IntelliJ or Android Studio settings
+.idea/
+
+*.iml
+.gradle
+/local.properties
+/.DS_Store
+
+/build
+/captures
+.externalNativeBuild
+.cxx
+**/build/
+app/release/
+*.aab
+
+*.log
+*.jks
+*.keystore
+
+#key값
+
+app/google-services.json
